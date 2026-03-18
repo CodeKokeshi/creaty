@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Nifty Fifty</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/style.css?v=20260318-1">
+</head>
+<body class="home-page-customer">
+    <header class="site-header">
+        <div class="topbar">
+            <a class="brand-badge" href="/">
+                <img src="assets/images/main_logo.png" alt="The Nifty Fifty">
+            </a>
+
+            <a class="topbar-link topbar-help" href="#">
+                <img src="assets/icons/help_icon.svg" alt="">
+                <span>Help</span>
+            </a>
+
+            <form class="topbar-search landing-search" action="#" method="get">
+                <span class="landing-search-icon" aria-hidden="true">&#128269;</span>
+                <input type="search" name="q" placeholder="Search products, events, or services">
+            </form>
+
+            <a class="topbar-cart" href="cart/" aria-label="Cart">
+                <img src="assets/icons/cart_icon.svg" alt="">
+                <span class="cart-count">1</span>
+            </a>
+
+            <a class="topbar-link" href="#">Message us</a>
+            <a class="account-pill" href="login/">Account</a>
+        </div>
+
+        <nav class="section-nav section-nav-interactive" aria-label="Catalog filters">
+            <div class="section-nav-item section-nav-item-filter">
+                <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="brands-filter-panel">
+                    BRANDS
+                </button>
+
+                <div class="filter-panel filter-panel-brands" id="brands-filter-panel" hidden>
+                    <button class="filter-option is-selected" type="button" data-filter-group="brand" data-filter-value="all">ALL BRANDS</button>
+                    <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="fuji">FUJI</button>
+                    <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="sony">SONY</button>
+                    <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="canon">CANON</button>
+                    <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="nikon">NIKON</button>
+                </div>
+            </div>
+
+            <a class="section-nav-section" href="events/">EVENTS</a>
+
+            <div class="section-nav-item section-nav-item-filter">
+                <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="date-filter-panel">
+                    DATE
+                </button>
+
+                <div class="filter-panel filter-panel-date" id="date-filter-panel" hidden>
+                    <div class="filter-group">
+                        <p>Month</p>
+                        <div class="filter-group-options">
+                            <button class="filter-option is-selected" type="button" data-filter-group="month" data-filter-value="all">All</button>
+                            <button class="filter-option" type="button" data-filter-group="month" data-filter-value="january">January</button>
+                            <button class="filter-option" type="button" data-filter-group="month" data-filter-value="march">March</button>
+                            <button class="filter-option" type="button" data-filter-group="month" data-filter-value="june">June</button>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <p>Day</p>
+                        <div class="filter-group-options">
+                            <button class="filter-option is-selected" type="button" data-filter-group="day" data-filter-value="all">All</button>
+                            <button class="filter-option" type="button" data-filter-group="day" data-filter-value="01">01</button>
+                            <button class="filter-option" type="button" data-filter-group="day" data-filter-value="12">12</button>
+                            <button class="filter-option" type="button" data-filter-group="day" data-filter-value="23">23</button>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <p>Year</p>
+                        <div class="filter-group-options">
+                            <button class="filter-option is-selected" type="button" data-filter-group="year" data-filter-value="all">All</button>
+                            <button class="filter-option" type="button" data-filter-group="year" data-filter-value="2024">2024</button>
+                            <button class="filter-option" type="button" data-filter-group="year" data-filter-value="2025">2025</button>
+                            <button class="filter-option" type="button" data-filter-group="year" data-filter-value="2026">2026</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="landing-shell">
+        <section class="promo-banner reveal" aria-label="Promo carousel placeholder">
+            <button class="promo-arrow promo-arrow-left" type="button" aria-label="Previous promo">&#10094;</button>
+
+            <div class="promo-carousel" aria-live="polite">
+                <div class="promo-slide promo-slide-one is-active">
+                    <div class="promo-placeholder">
+                        <span>Promo banner image placeholder 1</span>
+                    </div>
+                </div>
+
+                <div class="promo-slide promo-slide-two">
+                    <div class="promo-placeholder">
+                        <span>Promo banner image placeholder 2</span>
+                    </div>
+                </div>
+
+                <div class="promo-slide promo-slide-three">
+                    <div class="promo-placeholder">
+                        <span>Promo banner image placeholder 3</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="promo-arrow promo-arrow-right" type="button" aria-label="Next promo">&#10095;</button>
+        </section>
+
+        <section class="landing-section reveal" aria-labelledby="how-it-works-title">
+            <h2 class="landing-title" id="how-it-works-title">HOW IT WORKS</h2>
+
+            <div class="steps-grid">
+                <article class="step-card">
+                    <img class="step-image" src="assets/how_it_works/1.png" alt="Step 1: Pick your camera or service">
+                </article>
+
+                <article class="step-card">
+                    <img class="step-image" src="assets/how_it_works/2.png" alt="Step 2: Select your preferred method">
+                </article>
+
+                <article class="step-card">
+                    <img class="step-image" src="assets/how_it_works/3.png" alt="Step 3: Confirm your order">
+                </article>
+
+                <article class="step-card">
+                    <img class="step-image" src="assets/how_it_works/4.png" alt="Step 4: Wait for order details">
+                </article>
+            </div>
+        </section>
+
+        <section class="landing-section reveal" aria-labelledby="featured-products-title">
+            <h2 class="landing-title" id="featured-products-title">FEATURED PRODUCTS</h2>
+
+            <div class="product-grid">
+                <article class="product-card" data-brand="canon" data-month="january" data-day="01" data-year="2026">
+                    <a class="product-visual-link" href="products/?product=canon-700d" aria-label="View Canon 700D product page">
+                        <div class="product-visual product-visual-canon700d">
+                            <img class="product-visual-image" src="assets/cameras/Canon%20700D.png" alt="Canon 700D">
+                        </div>
+                    </a>
+                    <div class="product-copy d-flex flex-column h-100">
+                        <h3><a class="product-title-link" href="products/?product=canon-700d">Canon 700D</a></h3>
+                        <p>18MP APS-C CMOS sensor</p>
+                        <p>1080p Full HD video recording at up to 30 fps</p>
+                        <div class="product-footer mt-auto">
+                            <span>P 800.00</span>
+                            <a class="product-cart-link btn btn-light btn-sm" href="cart/">ADD TO CART</a>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="product-card product-card-highlight" data-brand="canon" data-month="march" data-day="12" data-year="2026">
+                    <div class="product-ribbon">PROMO 20% OFF!</div>
+                    <a class="product-visual-link" href="products/?product=canon-1200d" aria-label="View Canon 1200D product page">
+                        <div class="product-visual product-visual-canon1200d">
+                            <img class="product-visual-image" src="assets/cameras/Canon%201200D.png" alt="Canon 1200D">
+                        </div>
+                    </a>
+                    <div class="product-copy d-flex flex-column h-100">
+                        <h3><a class="product-title-link" href="products/?product=canon-1200d">Canon 1200D</a></h3>
+                        <p>18-megapixel APS-C CMOS sensor</p>
+                        <p>Full HD 1080p video recording</p>
+                        <div class="product-footer mt-auto">
+                            <span>P 450.00</span>
+                            <a class="product-cart-link btn btn-light btn-sm" href="cart/">ADD TO CART</a>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="product-card" data-brand="fuji" data-month="march" data-day="12" data-year="2025">
+                    <a class="product-visual-link" href="products/?product=fuji-x-a3" aria-label="View Fuji X A3 product page">
+                        <div class="product-visual product-visual-fuji">
+                            <img class="product-visual-image" src="assets/cameras/Fujifilm%20XA-3.png" alt="Fujifilm XA-3">
+                        </div>
+                    </a>
+                    <div class="product-copy d-flex flex-column h-100">
+                        <h3><a class="product-title-link" href="products/?product=fuji-x-a3">Fuji X A3</a></h3>
+                        <p>APS-C mirrorless camera</p>
+                        <p>24.2MP CMOS sensor, an ISO range of 200-6400</p>
+                        <div class="product-footer mt-auto">
+                            <span>P 450.00</span>
+                            <a class="product-cart-link btn btn-light btn-sm" href="cart/">ADD TO CART</a>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="product-card" data-brand="canon" data-month="june" data-day="23" data-year="2024">
+                    <a class="product-visual-link" href="products/?product=canon-4000d" aria-label="View Canon 4000D product page">
+                        <div class="product-visual product-visual-canon4000d">
+                            <img class="product-visual-image" src="assets/cameras/Canon%20400D.png" alt="Canon 4000D">
+                        </div>
+                    </a>
+                    <div class="product-copy d-flex flex-column h-100">
+                        <h3><a class="product-title-link" href="products/?product=canon-4000d">Canon 4000D</a></h3>
+                        <p>18MP APS-C CMOS sensor</p>
+                        <p>ISO range of 100-6400 (expandable to 12800)</p>
+                        <div class="product-footer mt-auto">
+                            <span>P 600.00</span>
+                            <a class="product-cart-link btn btn-light btn-sm" href="cart/">ADD TO CART</a>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="product-card" data-brand="nikon" data-month="january" data-day="12" data-year="2026">
+                    <a class="product-visual-link" href="products/?product=nikon-d60" aria-label="View Nikon D60 product page">
+                        <div class="product-visual product-visual-nikon">
+                            <img class="product-visual-image" src="assets/cameras/Nikon%20D60.png" alt="Nikon D60">
+                        </div>
+                    </a>
+                    <div class="product-copy d-flex flex-column h-100">
+                        <h3><a class="product-title-link" href="products/?product=nikon-d60">Nikon D60</a></h3>
+                        <p>10.2MP CCD sensor</p>
+                        <p>ISO range of 100-1600 (expandable to 3200)</p>
+                        <div class="product-footer mt-auto">
+                            <span>P 250.00</span>
+                            <a class="product-cart-link btn btn-light btn-sm" href="cart/">ADD TO CART</a>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="product-card" data-brand="sony" data-month="march" data-day="23" data-year="2026">
+                    <a class="product-visual-link" href="products/?product=sony-zv-e10" aria-label="View Sony ZV E10 product page">
+                        <div class="product-visual product-visual-sony">
+                            <img class="product-visual-image" src="assets/cameras/Sony%20ZV-E10.png" alt="Sony ZV-E10">
+                        </div>
+                    </a>
+                    <div class="product-copy d-flex flex-column h-100">
+                        <h3><a class="product-title-link" href="products/?product=sony-zv-e10">Sony ZV E10</a></h3>
+                        <p>24.2MP APS-C sensor</p>
+                        <p>4K 30p video and Full HD 120p slow-motion</p>
+                        <div class="product-footer mt-auto">
+                            <span>P 899.00</span>
+                            <a class="product-cart-link btn btn-light btn-sm" href="cart/">ADD TO CART</a>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <p class="product-grid-empty" hidden>No featured products match the selected filters.</p>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="js/script.js?v=20260312-4"></script>
+</body>
+</html>
