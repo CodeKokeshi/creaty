@@ -40,9 +40,7 @@ $accountSettingsPath = $assetBase . 'account-settings/';
 $logoutPath = $assetBase . 'logout/';
 $cartPath = $assetBase . 'cart/';
 $eventsPath = $assetBase . 'events/';
-$addToCartUrl = $isCustomerLoggedIn
-    ? '?product=' . urlencode($productKey) . '&add_to_cart=1'
-    : $loginPath . '?redirect=' . rawurlencode($_SERVER['REQUEST_URI'] ?? ($assetBase . 'products/?product=' . urlencode($productKey)));
+$addToCartLoginUrl = $loginPath . '?redirect=' . rawurlencode($_SERVER['REQUEST_URI'] ?? ($assetBase . 'products/?product=' . urlencode($productKey)));
 
 $products = [
     'canon-700d' => [
@@ -377,7 +375,22 @@ $calendarRows = [
 
                     <div class="product-information-footer" style="justify-content: space-between; align-items: center; padding: 0 1rem; margin-top: 1rem;">
                         <span style="font-size: 1.9rem; font-weight: 800;"><?php echo htmlspecialchars($selectedProduct['price'], ENT_QUOTES, 'UTF-8'); ?></span>
-                        <a class="product-detail-cart-link btn btn-light btn-sm" href="<?php echo htmlspecialchars($addToCartUrl, ENT_QUOTES, 'UTF-8'); ?>">ADD TO CART</a>
+                        <button
+                            class="product-detail-cart-link btn btn-light btn-sm"
+                            type="button"
+                            data-add-cart
+                            data-item-id="camera-<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-item-type="camera"
+                            data-item-name="<?php echo htmlspecialchars($selectedProduct['brand'] . ' ' . $selectedProduct['name'], ENT_QUOTES, 'UTF-8'); ?>"
+                            data-item-copy="<?php echo htmlspecialchars($selectedProduct['tagline'], ENT_QUOTES, 'UTF-8'); ?>"
+                            data-item-image="<?php echo htmlspecialchars($assetBase . $selectedProduct['cameraImage'], ENT_QUOTES, 'UTF-8'); ?>"
+                            data-item-price="<?php echo htmlspecialchars($selectedProduct['price'], ENT_QUOTES, 'UTF-8'); ?>"
+                            <?php if (!$isCustomerLoggedIn): ?>
+                                data-login-url="<?php echo htmlspecialchars($addToCartLoginUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                            <?php endif; ?>
+                        >
+                            ADD TO CART
+                        </button>
                     </div>
                 </article>
 
@@ -445,6 +458,6 @@ $calendarRows = [
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260312-4"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260319-1"></script>
 </body>
 </html>

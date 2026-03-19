@@ -440,6 +440,536 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    var cartStorageKey = "creaty_cart_v1";
+    var bookingStorageKey = "creaty_booking_v1";
+
+    function loadJsonStorage(storageKey, fallbackValue) {
+        try {
+            var raw = window.localStorage.getItem(storageKey);
+            if (!raw) {
+                return fallbackValue;
+            }
+
+            return JSON.parse(raw);
+        } catch (error) {
+            return fallbackValue;
+        }
+    }
+
+    function saveJsonStorage(storageKey, value) {
+        try {
+            window.localStorage.setItem(storageKey, JSON.stringify(value));
+        } catch (error) {
+            // Keep UI usable even if localStorage quota is exceeded.
+        }
+    }
+
+    function parseMoney(value) {
+        var normalized = String(value || "").replace(/[^0-9.]/g, "");
+        var amount = Number.parseFloat(normalized);
+
+        if (!Number.isFinite(amount)) {
+            return 0;
+        }
+
+        return amount;
+    }
+
+    function formatMoney(value) {
+        var safeValue = Number.isFinite(value) ? value : 0;
+
+        return "P " + safeValue.toFixed(2);
+    }
+
+    function getCartItems() {
+        var parsed = loadJsonStorage(cartStorageKey, []);
+
+        if (!Array.isArray(parsed)) {
+            return [];
+        }
+
+        return parsed
+            .map(function (item) {
+                if (!item || typeof item !== "object") {
+                    return null;
+                }
+
+                var qty = Number.parseInt(item.qty, 10);
+                var days = Number.parseInt(item.days, 10);
+
+                return {
+                    id: String(item.id || ""),
+                    type: String(item.type || "item"),
+                    name: String(item.name || "Unnamed Item"),
+                    copy: String(item.copy || ""),
+                    image: String(item.image || ""),
+                    price: parseMoney(item.price),
+                    qty: Number.isFinite(qty) && qty > 0 ? qty : 1,
+                    days: Number.isFinite(days) && days > 0 ? days : 1
+                };
+            })
+            .filter(function (item) {
+                return item && item.id;
+            });
+    }
+
+    function saveCartItems(items) {
+        saveJsonStorage(cartStorageKey, items);
+    }
+
+    function getCartCount(items) {
+        var source = Array.isArray(items) ? items : getCartItems();
+
+        return source.reduce(function (total, item) {
+            return total + (Number.isFinite(item.qty) ? item.qty : 0);
+        }, 0);
+    }
+
+    function syncCartCountBadges(items) {
+        var count = getCartCount(items);
+        var badges = document.querySelectorAll(".cart-count");
+
+        badges.forEach(function (badge) {
+            badge.textContent = String(count);
+        });
+    }
+
+    function showCartToast(message) {
+        var toast = document.getElementById("cart-toast");
+        if (!toast) {
+            toast = document.createElement("div");
+            toast.id = "cart-toast";
+            toast.className = "cart-toast";
+            document.body.appendChild(toast);
+        }
+
+        toast.textContent = message;
+        toast.classList.add("is-visible");
+
+        window.setTimeout(function () {
+            toast.classList.remove("is-visible");
+        }, 1800);
+    }
+
+    function addOrUpdateCartItem(nextItem) {
+        var items = getCartItems();
+        var existingIndex = items.findIndex(function (item) {
+            return item.id === nextItem.id;
+        });
+
+        if (existingIndex >= 0) {
+            items[existingIndex].qty += 1;
+        } else {
+            items.push(nextItem);
+        }
+
+        saveCartItems(items);
+        syncCartCountBadges(items);
+    }
+
+    function initializeAddToCartButtons() {
+        var buttons = document.querySelectorAll("[data-add-cart]");
+
+        buttons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                var loginUrl = button.getAttribute("data-login-url");
+                if (loginUrl) {
+                    window.location.href = loginUrl;
+                    return;
+                }
+
+                var itemId = button.getAttribute("data-item-id");
+                if (!itemId) {
+                    return;
+                }
+
+                addOrUpdateCartItem({
+                    id: itemId,
+                    type: button.getAttribute("data-item-type") || "item",
+                    name: button.getAttribute("data-item-name") || "Unnamed Item",
+                    copy: button.getAttribute("data-item-copy") || "",
+                    image: button.getAttribute("data-item-image") || "",
+                    price: parseMoney(button.getAttribute("data-item-price") || "0"),
+                    qty: 1,
+                    days: 1
+                });
+
+                showCartToast("Added to cart");
+            });
+        });
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function initializeCartPage() {
+        var panel = document.querySelector("[data-cart-items-panel]");
+        if (!panel) {
+            return;
+        }
+
+        var emptyMessage = panel.querySelector("[data-cart-empty-message]");
+        var totalNode = document.querySelector("[data-cart-total]");
+        var breakdownNode = document.querySelector("[data-cart-breakdown]");
+        var bookingCard = document.querySelector("[data-cart-booking]");
+        var bookingNote = document.querySelector("[data-cart-booking-note]");
+        var confirmButton = bookingCard ? bookingCard.querySelector(".cart-confirm-button") : null;
+        var paymentSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='paymentMethod']") : null;
+        var mapFrame = bookingCard ? bookingCard.querySelector("[data-booking-map]") : null;
+        var deliveryOnlyBlock = bookingCard ? bookingCard.querySelector("[data-delivery-only-block]") : null;
+        var courierSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='courier']") : null;
+        var placeSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='place']") : null;
+        var receiveDateInput = bookingCard ? bookingCard.querySelector("[data-booking-field='receiveDate']") : null;
+        var returnDateInput = bookingCard ? bookingCard.querySelector("[data-booking-field='returnDate']") : null;
+        var receiveMethodInputs = bookingCard ? bookingCard.querySelectorAll("input[name='receivingMethod']") : [];
+        var returnMethodInputs = bookingCard ? bookingCard.querySelectorAll("input[name='returningMethod']") : [];
+        var uploadInputs = bookingCard ? bookingCard.querySelectorAll("input[type='file'][data-booking-field]") : [];
+        var bookingState = loadJsonStorage(bookingStorageKey, {});
+
+        function getMethodValue(inputList, fallbackValue) {
+            var checked = Array.prototype.find.call(inputList, function (input) {
+                return input.checked;
+            });
+
+            return checked ? checked.value : fallbackValue;
+        }
+
+        function restoreBookingDefaults() {
+            var now = new Date();
+            var today = now.toISOString().slice(0, 10);
+            var tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            var tomorrow = tomorrowDate.toISOString().slice(0, 10);
+
+            if (receiveDateInput) {
+                receiveDateInput.min = today;
+                receiveDateInput.value = bookingState.receiveDate || today;
+            }
+
+            if (returnDateInput) {
+                returnDateInput.min = receiveDateInput ? receiveDateInput.value : today;
+                returnDateInput.value = bookingState.returnDate || tomorrow;
+            }
+
+            if (placeSelect && bookingState.place) {
+                placeSelect.value = bookingState.place;
+            }
+
+            if (courierSelect && bookingState.courier) {
+                courierSelect.value = bookingState.courier;
+            }
+
+            if (bookingCard) {
+                var receiveTime = bookingCard.querySelector("[data-booking-field='receiveTime']");
+                var returnTime = bookingCard.querySelector("[data-booking-field='returnTime']");
+
+                if (receiveTime && bookingState.receiveTime) {
+                    receiveTime.value = bookingState.receiveTime;
+                }
+
+                if (returnTime && bookingState.returnTime) {
+                    returnTime.value = bookingState.returnTime;
+                }
+
+                if (paymentSelect && bookingState.paymentMethod) {
+                    paymentSelect.value = bookingState.paymentMethod;
+                }
+            }
+
+            if (bookingState.receivingMethod) {
+                Array.prototype.forEach.call(receiveMethodInputs, function (input) {
+                    input.checked = input.value === bookingState.receivingMethod;
+                });
+            }
+
+            if (bookingState.returningMethod) {
+                Array.prototype.forEach.call(returnMethodInputs, function (input) {
+                    input.checked = input.value === bookingState.returningMethod;
+                });
+            }
+        }
+
+        function updateMethodOptionStyles() {
+            if (!bookingCard) {
+                return;
+            }
+
+            bookingCard.querySelectorAll(".cart-method-option").forEach(function (option) {
+                var radio = option.querySelector("input[type='radio']");
+                option.classList.toggle("is-selected", Boolean(radio && radio.checked));
+            });
+        }
+
+        function getBookingSnapshot() {
+            if (!bookingCard) {
+                return {};
+            }
+
+            var receiveTimeField = bookingCard.querySelector("[data-booking-field='receiveTime']");
+            var returnTimeField = bookingCard.querySelector("[data-booking-field='returnTime']");
+
+            return {
+                receiveDate: receiveDateInput ? receiveDateInput.value : "",
+                receiveTime: receiveTimeField ? receiveTimeField.value : "",
+                place: placeSelect ? placeSelect.value : "",
+                returnDate: returnDateInput ? returnDateInput.value : "",
+                returnTime: returnTimeField ? returnTimeField.value : "",
+                courier: courierSelect ? courierSelect.value : "",
+                receivingMethod: getMethodValue(receiveMethodInputs, "pickup"),
+                returningMethod: getMethodValue(returnMethodInputs, "meetup"),
+                paymentMethod: paymentSelect ? paymentSelect.value : ""
+            };
+        }
+
+        function saveBookingSnapshot() {
+            bookingState = getBookingSnapshot();
+            saveJsonStorage(bookingStorageKey, bookingState);
+        }
+
+        function updateMapPreview() {
+            if (!mapFrame || !placeSelect) {
+                return;
+            }
+
+            var place = placeSelect.value || "Cavite";
+            mapFrame.src = "https://www.google.com/maps?q=" + encodeURIComponent(place) + "&output=embed";
+        }
+
+        function updateDeliveryFields() {
+            var receivingMethod = getMethodValue(receiveMethodInputs, "pickup");
+            var returningMethod = getMethodValue(returnMethodInputs, "meetup");
+            var hasDelivery = receivingMethod === "delivery" || returningMethod === "delivery";
+
+            if (deliveryOnlyBlock) {
+                deliveryOnlyBlock.hidden = !hasDelivery;
+            }
+
+            if (courierSelect) {
+                courierSelect.disabled = !hasDelivery;
+            }
+
+            updateMethodOptionStyles();
+        }
+
+        function renderCartItems() {
+            var items = getCartItems();
+
+            panel.querySelectorAll(".cart-item-card").forEach(function (node) {
+                node.remove();
+            });
+
+            if (emptyMessage) {
+                emptyMessage.hidden = items.length > 0;
+            }
+
+            if (!items.length) {
+                if (totalNode) {
+                    totalNode.textContent = formatMoney(0);
+                }
+
+                if (breakdownNode) {
+                    breakdownNode.textContent = "Subtotal P 0.00 + Service fee P 0.00";
+                }
+
+                syncCartCountBadges(items);
+                return;
+            }
+
+            items.forEach(function (item) {
+                var lineTotal = item.price * item.qty * item.days;
+                var card = document.createElement("article");
+                card.className = "cart-item-card";
+                card.setAttribute("data-cart-item-id", item.id);
+                card.innerHTML = '' +
+                    '<div class="cart-item-copy">' +
+                        '<h2>' + escapeHtml(String(item.name).toUpperCase()) + '</h2>' +
+                        '<p>' + escapeHtml(item.copy) + '</p>' +
+                        '<label class="cart-mini-field">' +
+                            '<span>Qty</span>' +
+                            '<input type="number" min="1" max="20" value="' + item.qty + '" data-cart-edit="qty">' +
+                        '</label>' +
+                    '</div>' +
+                    '<div class="cart-item-thumb">' +
+                        '<img class="cart-item-thumb-image" src="' + escapeHtml(item.image) + '" alt="' + escapeHtml(item.name) + '">' +
+                    '</div>' +
+                    '<div class="cart-item-pricebox">' +
+                        '<label class="cart-mini-field">' +
+                            '<span>Days</span>' +
+                            '<input type="number" min="1" max="14" value="' + item.days + '" data-cart-edit="days">' +
+                        '</label>' +
+                        '<p class="cart-item-price-label">Price:</p>' +
+                        '<strong>' + formatMoney(lineTotal) + '</strong>' +
+                    '</div>' +
+                    '<button class="cart-remove-button" type="button" aria-label="Remove item" data-cart-remove>&#10005;</button>';
+
+                panel.appendChild(card);
+            });
+
+            refreshTotals(items);
+            syncCartCountBadges(items);
+        }
+
+        function refreshTotals(items) {
+            var activeItems = Array.isArray(items) ? items : getCartItems();
+            var subtotal = activeItems.reduce(function (sum, item) {
+                return sum + (item.price * item.qty * item.days);
+            }, 0);
+            var booking = getBookingSnapshot();
+            var deliveryCount = 0;
+
+            if (booking.receivingMethod === "delivery") {
+                deliveryCount += 1;
+            }
+
+            if (booking.returningMethod === "delivery") {
+                deliveryCount += 1;
+            }
+
+            var courierFee = deliveryCount * 120;
+            var serviceFee = subtotal > 0 ? 45 : 0;
+            var total = subtotal + courierFee + serviceFee;
+
+            if (totalNode) {
+                totalNode.textContent = formatMoney(total);
+            }
+
+            if (breakdownNode) {
+                breakdownNode.textContent = "Subtotal " + formatMoney(subtotal) + " + Service fee " + formatMoney(serviceFee) + " + Courier " + formatMoney(courierFee);
+            }
+        }
+
+        function handleCartPanelInput(event) {
+            var target = event.target;
+            var field = target.getAttribute("data-cart-edit");
+            if (!field) {
+                return;
+            }
+
+            var card = target.closest("[data-cart-item-id]");
+            if (!card) {
+                return;
+            }
+
+            var itemId = card.getAttribute("data-cart-item-id");
+            var nextValue = Number.parseInt(target.value, 10);
+            if (!Number.isFinite(nextValue) || nextValue < 1) {
+                nextValue = 1;
+            }
+
+            target.value = String(nextValue);
+
+            var items = getCartItems().map(function (item) {
+                if (item.id === itemId) {
+                    item[field] = nextValue;
+                }
+
+                return item;
+            });
+
+            saveCartItems(items);
+            renderCartItems();
+        }
+
+        panel.addEventListener("click", function (event) {
+            var removeButton = event.target.closest("[data-cart-remove]");
+            if (!removeButton) {
+                return;
+            }
+
+            var card = removeButton.closest("[data-cart-item-id]");
+            if (!card) {
+                return;
+            }
+
+            var itemId = card.getAttribute("data-cart-item-id");
+            var filteredItems = getCartItems().filter(function (item) {
+                return item.id !== itemId;
+            });
+
+            saveCartItems(filteredItems);
+            renderCartItems();
+        });
+
+        panel.addEventListener("input", handleCartPanelInput);
+        panel.addEventListener("change", handleCartPanelInput);
+
+        if (bookingCard) {
+            bookingCard.querySelectorAll("[data-booking-field], input[name='receivingMethod'], input[name='returningMethod']").forEach(function (control) {
+                control.addEventListener("change", function () {
+                    if (receiveDateInput && returnDateInput && receiveDateInput.value) {
+                        returnDateInput.min = receiveDateInput.value;
+                        if (returnDateInput.value && returnDateInput.value < receiveDateInput.value) {
+                            returnDateInput.value = receiveDateInput.value;
+                        }
+                    }
+
+                    updateMapPreview();
+                    updateDeliveryFields();
+                    saveBookingSnapshot();
+                    refreshTotals();
+                });
+            });
+        }
+
+        uploadInputs.forEach(function (input) {
+            input.addEventListener("change", function () {
+                var label = input.getAttribute("data-booking-field") === "validIdImage"
+                    ? bookingCard.querySelector("[data-upload-label='validId']")
+                    : bookingCard.querySelector("[data-upload-label='selfieId']");
+
+                if (!label) {
+                    return;
+                }
+
+                if (input.files && input.files.length) {
+                    label.textContent = input.files[0].name;
+                    return;
+                }
+
+                label.textContent = "No file selected";
+            });
+        });
+
+        if (paymentSelect && bookingNote) {
+            paymentSelect.addEventListener("change", function () {
+                if (paymentSelect.value === "gcash" || paymentSelect.value === "bank-transfer") {
+                    bookingNote.textContent = "Demo payment selected. No charges will be made in this frontend prototype.";
+                    return;
+                }
+
+                bookingNote.textContent = "Demo flow only: no real booking or payment will be processed.";
+            });
+        }
+
+        if (confirmButton && bookingNote) {
+            confirmButton.addEventListener("click", function () {
+                var items = getCartItems();
+                if (!items.length) {
+                    bookingNote.textContent = "Add at least one item before confirming your demo booking.";
+                    return;
+                }
+
+                bookingNote.textContent = "Booking request staged in demo mode. We did not submit this to any backend payment or booking service.";
+                showCartToast("Demo booking prepared");
+            });
+        }
+
+        restoreBookingDefaults();
+        updateMapPreview();
+        updateDeliveryFields();
+        saveBookingSnapshot();
+        renderCartItems();
+    }
+
+    syncCartCountBadges();
+    initializeAddToCartButtons();
+    initializeCartPage();
+
     // Calendar Initialization
     var calendarCard = document.querySelector(".product-calendar-card");
     if (calendarCard) {

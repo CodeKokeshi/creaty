@@ -19,24 +19,6 @@ $logoutPath = $assetBase . 'logout/';
 $cartPath = $assetBase . 'cart/';
 $eventsPath = $assetBase . 'events/';
 
-$cartItems = [
-    [
-        'name' => 'Fuji X A3',
-        'copy' => 'APS-C mirrorless camera 24.2MP CMOS sensor',
-        'image' => 'assets/cameras/Fujifilm%20XA-3.png',
-        'price' => 'P 450.00',
-        'qty' => '1',
-        'days' => '1'
-    ],
-    [
-        'name' => 'Sony ZV E10',
-        'copy' => '24.2MP APS-C sensor with 4K 30p video capture',
-        'image' => 'assets/cameras/Sony%20ZV-E10.png',
-        'price' => 'P 899.00',
-        'qty' => '1',
-        'days' => '1'
-    ]
-];
 ?>
 
 <!DOCTYPE html>
@@ -49,7 +31,7 @@ $cartItems = [
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260312-5">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260319-3">
 </head>
 <body class="cart-page">
     <header class="site-header">
@@ -109,40 +91,8 @@ $cartItems = [
                     <h1>CART</h1>
                 </div>
 
-                <div class="cart-items-panel">
-                    <?php foreach ($cartItems as $item): ?>
-                        <article class="cart-item-card">
-                            <div class="cart-item-copy">
-                                <h2><?php echo htmlspecialchars(strtoupper($item['name']), ENT_QUOTES, 'UTF-8'); ?></h2>
-                                <p><?php echo htmlspecialchars($item['copy'], ENT_QUOTES, 'UTF-8'); ?></p>
-
-                                <label class="cart-mini-field">
-                                    <span>Qty</span>
-                                    <input type="text" value="<?php echo htmlspecialchars($item['qty'], ENT_QUOTES, 'UTF-8'); ?>" readonly>
-                                </label>
-                            </div>
-
-                            <div class="cart-item-thumb">
-                                <img
-                                    class="cart-item-thumb-image"
-                                    src="<?php echo htmlspecialchars($assetBase . $item['image'], ENT_QUOTES, 'UTF-8'); ?>"
-                                    alt="<?php echo htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8'); ?>"
-                                >
-                            </div>
-
-                            <div class="cart-item-pricebox">
-                                <label class="cart-mini-field">
-                                    <span>Days</span>
-                                    <input type="text" value="<?php echo htmlspecialchars($item['days'], ENT_QUOTES, 'UTF-8'); ?>" readonly>
-                                </label>
-
-                                <p class="cart-item-price-label">Price:</p>
-                                <strong><?php echo htmlspecialchars($item['price'], ENT_QUOTES, 'UTF-8'); ?></strong>
-                            </div>
-
-                            <button class="cart-remove-button" type="button" aria-label="Remove item">&#10005;</button>
-                        </article>
-                    <?php endforeach; ?>
+                <div class="cart-items-panel" data-cart-items-panel>
+                    <p class="cart-items-empty" data-cart-empty-message>Your cart is empty. Add event packages or camera rentals to continue.</p>
                 </div>
 
                 <section class="cart-terms-block">
@@ -374,34 +324,69 @@ $cartItems = [
             </div>
 
             <aside class="cart-sidebar">
-                <section class="cart-booking-card">
+                <section class="cart-booking-card" data-cart-booking>
                     <div class="cart-booking-group">
                         <h2>Receiving Date/Time:</h2>
                         <div class="cart-inline-fields">
-                            <select>
-                                <option selected>Dec 3, 2025</option>
-                            </select>
-                            <select>
-                                <option selected>10:00 AM</option>
+                            <input type="date" data-booking-field="receiveDate">
+                            <select data-booking-field="receiveTime">
+                                <option value="08:00">08:00 AM</option>
+                                <option value="09:00">09:00 AM</option>
+                                <option value="10:00" selected>10:00 AM</option>
+                                <option value="11:00">11:00 AM</option>
+                                <option value="12:00">12:00 PM</option>
+                                <option value="13:00">01:00 PM</option>
+                                <option value="14:00">02:00 PM</option>
+                                <option value="15:00">03:00 PM</option>
+                                <option value="16:00">04:00 PM</option>
+                                <option value="17:00">05:00 PM</option>
                             </select>
                         </div>
 
                         <label class="cart-form-line">
                             <span>Place:</span>
-                            <select>
-                                <option selected>emart (Carmona)</option>
+                            <select data-booking-field="place">
+                                <option value="Carmona, Cavite" selected>Carmona, Cavite</option>
+                                <option value="Bacoor, Cavite">Bacoor, Cavite</option>
+                                <option value="Imus, Cavite">Imus, Cavite</option>
+                                <option value="Dasmarinas, Cavite">Dasmarinas, Cavite</option>
+                                <option value="Tagaytay, Cavite">Tagaytay, Cavite</option>
+                                <option value="Silang, Cavite">Silang, Cavite</option>
+                                <option value="General Trias, Cavite">General Trias, Cavite</option>
+                                <option value="Tanza, Cavite">Tanza, Cavite</option>
+                                <option value="Trece Martires, Cavite">Trece Martires, Cavite</option>
+                                <option value="Naic, Cavite">Naic, Cavite</option>
+                                <option value="Kawit, Cavite">Kawit, Cavite</option>
+                                <option value="Rosario, Cavite">Rosario, Cavite</option>
                             </select>
                         </label>
+
+                        <div class="cart-map-embed-wrap">
+                            <iframe
+                                title="Cavite map preview"
+                                loading="lazy"
+                                referrerpolicy="no-referrer-when-downgrade"
+                                data-booking-map
+                                src="https://www.google.com/maps?q=Carmona%2C%20Cavite&output=embed"
+                            ></iframe>
+                        </div>
                     </div>
 
                     <div class="cart-booking-group">
                         <h2>Returning Date/Time:</h2>
                         <div class="cart-inline-fields">
-                            <select>
-                                <option selected>Dec 4, 2025</option>
-                            </select>
-                            <select>
-                                <option selected>8:00 AM</option>
+                            <input type="date" data-booking-field="returnDate">
+                            <select data-booking-field="returnTime">
+                                <option value="08:00" selected>08:00 AM</option>
+                                <option value="09:00">09:00 AM</option>
+                                <option value="10:00">10:00 AM</option>
+                                <option value="11:00">11:00 AM</option>
+                                <option value="12:00">12:00 PM</option>
+                                <option value="13:00">01:00 PM</option>
+                                <option value="14:00">02:00 PM</option>
+                                <option value="15:00">03:00 PM</option>
+                                <option value="16:00">04:00 PM</option>
+                                <option value="17:00">05:00 PM</option>
                             </select>
                         </div>
 
@@ -409,8 +394,12 @@ $cartItems = [
 
                         <label class="cart-form-line">
                             <span>Courier:</span>
-                            <select>
-                                <option selected>Lalamove</option>
+                            <select data-booking-field="courier">
+                                <option value="lalamove" selected>Lalamove</option>
+                                <option value="grab-express">GrabExpress</option>
+                                <option value="lbc">LBC</option>
+                                <option value="j-and-t">J&T Express</option>
+                                <option value="self-booked">Self-booked Courier</option>
                             </select>
                         </label>
                     </div>
@@ -418,50 +407,83 @@ $cartItems = [
                     <div class="cart-methods-row">
                         <section class="cart-method-card">
                             <h3>Receiving Method:</h3>
-                            <ul>
-                                <li>PICK-UP</li>
-                                <li class="is-selected">MEET-UP</li>
-                                <li>DELIVERY</li>
-                            </ul>
+                            <div class="cart-method-options" data-booking-method-group="receivingMethod">
+                                <label class="cart-method-option">
+                                    <input type="radio" name="receivingMethod" value="pickup" checked>
+                                    <span>PICK-UP</span>
+                                </label>
+                                <label class="cart-method-option">
+                                    <input type="radio" name="receivingMethod" value="meetup">
+                                    <span>MEET-UP</span>
+                                </label>
+                                <label class="cart-method-option">
+                                    <input type="radio" name="receivingMethod" value="delivery">
+                                    <span>DELIVERY</span>
+                                </label>
+                            </div>
                         </section>
 
                         <section class="cart-method-card">
                             <h3>Returning Method:</h3>
-                            <ul>
-                                <li>PICK-UP</li>
-                                <li>MEET-UP</li>
-                                <li class="is-selected">DELIVERY</li>
-                            </ul>
+                            <div class="cart-method-options" data-booking-method-group="returningMethod">
+                                <label class="cart-method-option">
+                                    <input type="radio" name="returningMethod" value="pickup">
+                                    <span>PICK-UP</span>
+                                </label>
+                                <label class="cart-method-option">
+                                    <input type="radio" name="returningMethod" value="meetup" checked>
+                                    <span>MEET-UP</span>
+                                </label>
+                                <label class="cart-method-option">
+                                    <input type="radio" name="returningMethod" value="delivery">
+                                    <span>DELIVERY</span>
+                                </label>
+                            </div>
                         </section>
                     </div>
 
-                    <div class="cart-valid-id-block">
+                    <div class="cart-valid-id-block" data-delivery-only-block hidden>
                         <p>Valid Id (PhilSys, Tin Drivers license, Etc.)</p>
                         <div class="cart-upload-row">
-                            <span>...58_33_Pro.jpg</span>
-                            <button type="button" aria-label="Upload valid ID">&#8682;</button>
+                            <span data-upload-label="validId">No file selected</span>
+                            <label class="cart-upload-button" aria-label="Upload valid ID">
+                                <input type="file" accept="image/*" data-booking-field="validIdImage" hidden>
+                                <span>&#8682;</span>
+                            </label>
                         </div>
                         <p>Holding the Valid id near the face</p>
+                        <div class="cart-upload-row">
+                            <span data-upload-label="selfieId">No file selected</span>
+                            <label class="cart-upload-button" aria-label="Upload selfie with valid ID">
+                                <input type="file" accept="image/*" data-booking-field="selfieWithId" hidden>
+                                <span>&#8682;</span>
+                            </label>
+                        </div>
                     </div>
 
                     <div class="cart-summary-card">
                         <h3>TOTAL:</h3>
-                        <strong>P 1349.00</strong>
+                        <strong data-cart-total>P 0.00</strong>
+                        <p class="cart-summary-breakdown" data-cart-breakdown>Subtotal P 0.00 + Service fee P 0.00</p>
                     </div>
 
-                    <select class="cart-payment-select">
-                        <option selected>Payment Method</option>
+                    <select class="cart-payment-select" data-booking-field="paymentMethod">
+                        <option value="">Payment Method</option>
+                        <option value="gcash">GCash (Demo)</option>
+                        <option value="bank-transfer">Bank Transfer (Demo)</option>
+                        <option value="cash-pickup">Cash on Pick-up</option>
+                        <option value="cash-meetup">Cash on Meet-up</option>
                     </select>
 
                     <button class="cart-confirm-button" type="button">CONFIRM BOOKING</button>
 
-                    <p class="cart-booking-note">Pay within an hour after confirming your booking. (For delivery only)</p>
+                    <p class="cart-booking-note" data-cart-booking-note>Demo flow only: no real booking or payment will be processed.</p>
                 </section>
             </aside>
         </section>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260312-4"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260319-1"></script>
 </body>
 </html>

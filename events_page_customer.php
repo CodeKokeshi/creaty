@@ -42,31 +42,37 @@ $eventsPath = $assetBase . 'events/';
 
 $eventPackages = [
     [
+        'key' => 'wedding',
         'title' => 'WEDDING PACKAGE',
         'price' => 'P 800.00',
         'thumbnail_folder' => 'weddings',
     ],
     [
+        'key' => 'birthdays',
         'title' => 'BIRTHDAY PACKAGE',
         'price' => 'P 450.00',
         'thumbnail_folder' => 'birthdays',
     ],
     [
+        'key' => 'debut',
         'title' => 'DEBUT PACKAGE',
         'price' => 'P 450.00',
         'thumbnail_folder' => 'debut',
     ],
     [
+        'key' => 'photo-shoot',
         'title' => 'PHOTO SHOOT',
         'price' => 'P 600.00',
         'thumbnail_folder' => 'photography-and-videography',
     ],
     [
+        'key' => 'business-shoots',
         'title' => 'BUSINESS SHOOTS',
         'price' => 'P 250.00',
         'thumbnail_folder' => 'business',
     ],
     [
+        'key' => 'photo-video-services',
         'title' => 'PHOTOGRAPHY AND VIDEOGRAPHY SERVICES',
         'price' => 'P 899.00',
         'thumbnail_folder' => 'photography-and-videography',
@@ -206,6 +212,7 @@ unset($eventPackage);
                     $images = $eventPackage['images'];
                     $title = $eventPackage['title'];
                     $price = $eventPackage['price'];
+                    $detailPageUrl = $assetBase . 'event/?package=' . urlencode($eventPackage['key']);
                     ?>
                     <article class="package-card">
                         <div
@@ -234,20 +241,34 @@ unset($eventPackage);
                         </div>
 
                         <div class="package-body">
-                            <h2><?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></h2>
+                            <h2>
+                                <a class="package-title-link" href="<?php echo htmlspecialchars($detailPageUrl, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?>
+                                </a>
+                            </h2>
                             <div class="package-footer">
                                 <span><?php echo htmlspecialchars($price, ENT_QUOTES, 'UTF-8'); ?></span>
-                                <?php if ($isCustomerLoggedIn): ?>
-                                    <form action="" method="get">
-                                        <input type="hidden" name="add_event" value="<?php echo htmlspecialchars((string) $index, ENT_QUOTES, 'UTF-8'); ?>">
-                                        <button type="submit">ADD TO CART</button>
-                                    </form>
-                                <?php else: ?>
-                                    <form action="<?php echo htmlspecialchars($loginPath, ENT_QUOTES, 'UTF-8'); ?>" method="get">
-                                        <input type="hidden" name="redirect" value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'] ?? ($assetBase . 'events/'), ENT_QUOTES, 'UTF-8'); ?>">
-                                        <button type="submit">ADD TO CART</button>
-                                    </form>
-                                <?php endif; ?>
+                                <?php
+                                $eventPreview = $images !== []
+                                    ? buildAssetUrl($assetBase, $images[0])
+                                    : ($assetBase . 'assets/images/main_logo.png');
+                                $eventLoginUrl = $loginPath . '?redirect=' . rawurlencode($_SERVER['REQUEST_URI'] ?? ($assetBase . 'events/'));
+                                ?>
+                                <button
+                                    type="button"
+                                    data-add-cart
+                                    data-item-id="event-<?php echo htmlspecialchars($eventPackage['key'], ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-item-type="event-package"
+                                    data-item-name="<?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-item-copy="Event package with curated coverage style and sample gallery references."
+                                    data-item-image="<?php echo htmlspecialchars($eventPreview, ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-item-price="<?php echo htmlspecialchars($price, ENT_QUOTES, 'UTF-8'); ?>"
+                                    <?php if (!$isCustomerLoggedIn): ?>
+                                        data-login-url="<?php echo htmlspecialchars($eventLoginUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                                    <?php endif; ?>
+                                >
+                                    ADD TO CART
+                                </button>
                             </div>
                         </div>
                     </article>
@@ -257,6 +278,6 @@ unset($eventPackage);
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260319-1"></script>
 </body>
 </html>
