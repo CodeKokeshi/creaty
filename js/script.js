@@ -374,6 +374,60 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         var calendarDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+        
+        function updateDisables() {
+            var today = new Date();
+            var currentY = today.getFullYear();
+            var currentM = today.getMonth();
+            if (currentY < 2026) {
+                currentY = 2026;
+                currentM = 2; // March
+            }
+
+            // Hide and disable past years
+            Array.from(yearSelect.options).forEach(function(opt) {
+                var y = parseInt(opt.value, 10);
+                if (y < currentY) {
+                    opt.disabled = true;
+                    opt.hidden = true;
+                } else {
+                    opt.disabled = false;
+                    opt.hidden = false;
+                }
+            });
+            
+            // If selected year is disabled, push it to current year
+            if (yearSelect.options[yearSelect.selectedIndex] && yearSelect.options[yearSelect.selectedIndex].disabled) {
+                var firstAbleYear = Array.from(yearSelect.options).find(function(o) { return !o.disabled; });
+                if (firstAbleYear) {
+                    yearSelect.value = firstAbleYear.value;
+                }
+            }
+
+            var selY = parseInt(yearSelect.value, 10);
+
+            Array.from(monthSelect.options).forEach(function(opt) {
+                var m = parseInt(opt.value, 10);
+                if (selY < currentY) {
+                    opt.disabled = true;
+                    opt.hidden = true;
+                } else if (selY === currentY) {
+                    var isPastMonth = (m < currentM);
+                    opt.disabled = isPastMonth;
+                    opt.hidden = isPastMonth;
+                } else {
+                    opt.disabled = false;
+                    opt.hidden = false;
+                }
+            });
+
+            if (monthSelect.options[monthSelect.selectedIndex] && monthSelect.options[monthSelect.selectedIndex].disabled) {
+                var firstAble = Array.from(monthSelect.options).find(function(o) { return !o.disabled; });
+                if (firstAble) {
+                    monthSelect.value = firstAble.value;
+                }
+            }
+        }
 
         function renderCalendar() {
             var selectedMonth = parseInt(monthSelect.value, 10);
@@ -385,6 +439,22 @@ document.addEventListener("DOMContentLoaded", function () {
             var daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
             var daysInPrevMonth = new Date(selectedYear, selectedMonth, 0).getDate();
             
+            var today = new Date();
+            var currentY = today.getFullYear();
+            if (currentY < 2026) { currentY = 2026; }
+            // Let's use hardcoded 2026 / 2 for March or dynamic:
+            // Since environment context is March 18, 2026, let's just use real JS Date
+            // but fallback structurally:
+            var actualTodayY = today.getFullYear();
+            var actualTodayM = today.getMonth();
+            var actualTodayD = today.getDate();
+            // Environment override since we're simulating mock future/present
+            if (actualTodayY < 2026) {
+                actualTodayY = 2026;
+                actualTodayM = 2;
+                actualTodayD = 18;
+            }
+
             var html = "";
             
             calendarDays.forEach(function(day) {
@@ -405,10 +475,23 @@ document.addEventListener("DOMContentLoaded", function () {
                         html += '<span class="calendar-date is-muted">' + nextDate + '</span>';
                         nextDate++;
                     } else {
+                        var isPastDay = false;
+                        if (selectedYear < actualTodayY) {
+                            isPastDay = true;
+                        } else if (selectedYear === actualTodayY) {
+                            if (selectedMonth < actualTodayM) {
+                                isPastDay = true;
+                            } else if (selectedMonth === actualTodayM && date < actualTodayD) {
+                                isPastDay = true;
+                            }
+                        }
+
                         var sDate = date.toString().padStart(2, '0');
-                        var isAvailableDay = isAvailMonthYear && availDays.includes(sDate);
+                        var isAvailableDay = isAvailMonthYear && availDays.includes(sDate) && !isPastDay;
                         var classes = "calendar-date";
-                        if (isAvailableDay) classes += " is-available";
+                        
+                        if (isPastDay) classes += " is-muted";
+                        else if (isAvailableDay) classes += " is-available";
                         
                         html += '<span class="' + classes + '">' + date + '</span>';
                         date++;
@@ -420,7 +503,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (monthSelect && yearSelect && gridContainer) {
             monthSelect.addEventListener("change", renderCalendar);
-            yearSelect.addEventListener("change", renderCalendar);
+            yearSelect.addEventListener("change", function() {
+                updateDisables();
+                renderCalendar();
+            });
+            updateDisables();
             renderCalendar();
         }
     }

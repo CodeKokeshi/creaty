@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
     header('Location: products/');
     exit;
@@ -13,7 +13,7 @@ $products = [
     'canon-700d' => [
         'brand' => 'Canon',
         'name' => '700D',
-        'price' => ' 800.00',
+        'price' => '₱ 800.00',
         'tagline' => '18MP APS-C CMOS sensor and 1080p Full HD recording.',
         'cameraImage' => 'assets/cameras/Canon%20700D.png',
         'captureSlides' => ['Street portrait placeholder', 'Indoor sample placeholder', 'Outdoor detail placeholder'],
@@ -44,7 +44,7 @@ $products = [
     'canon-1200d' => [
         'brand' => 'Canon',
         'name' => '1200D',
-        'price' => ' 450.00',
+        'price' => '₱ 450.00',
         'tagline' => '18-megapixel APS-C DSLR with straightforward controls.',
         'cameraImage' => 'assets/cameras/Canon%201200D.png',
         'captureSlides' => ['Event capture placeholder', 'Portrait placeholder', 'Backlit scene placeholder'],
@@ -75,7 +75,7 @@ $products = [
     'fuji-x-a3' => [
         'brand' => 'Fuji',
         'name' => 'X A3',
-        'price' => ' 450.00',
+        'price' => '₱ 450.00',
         'tagline' => 'APS-C mirrorless camera with a clean travel-friendly body.',
         'cameraImage' => 'assets/cameras/Fujifilm%20XA-3.png',
         'captureSlides' => ['Captured photo placeholder 1', 'Captured photo placeholder 2', 'Captured photo placeholder 3'],
@@ -107,7 +107,7 @@ $products = [
     'canon-4000d' => [
         'brand' => 'Canon',
         'name' => '4000D',
-        'price' => ' 600.00',
+        'price' => '₱ 600.00',
         'tagline' => 'Starter DSLR with a simple layout for casual rentals.',
         'cameraImage' => 'assets/cameras/Canon%20400D.png',
         'captureSlides' => ['Lifestyle placeholder', 'Daylight placeholder', 'Landscape placeholder'],
@@ -138,7 +138,7 @@ $products = [
     'nikon-d60' => [
         'brand' => 'Nikon',
         'name' => 'D60',
-        'price' => ' 250.00',
+        'price' => '₱ 250.00',
         'tagline' => 'Compact DSLR with reliable entry-level performance.',
         'cameraImage' => 'assets/cameras/Nikon%20D60.png',
         'captureSlides' => ['Studio placeholder', 'Warm daylight placeholder', 'Night scene placeholder'],
@@ -169,7 +169,7 @@ $products = [
     'sony-zv-e10' => [
         'brand' => 'Sony',
         'name' => 'ZV E10',
-        'price' => ' 899.00',
+        'price' => '₱ 899.00',
         'tagline' => 'Creator-focused APS-C body for hybrid photo and video shoots.',
         'cameraImage' => 'assets/cameras/Sony%20ZV-E10.png',
         'captureSlides' => ['Vlog frame placeholder', 'Product shoot placeholder', 'Outdoor reel placeholder'],
@@ -285,18 +285,19 @@ $calendarRows = [
                     <div class="recommendation-list">
                         <?php foreach ($selectedProduct['recommendations'] as $recommendedKey): ?>
                             <?php $recommended = $products[$recommendedKey]; ?>
-                            <a class="recommendation-card" href="?product=<?php echo urlencode($recommendedKey); ?>">
-                                <div class="recommendation-copy">
-                                    <p><?php echo htmlspecialchars($recommended['tagline'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                    <span><?php echo htmlspecialchars($recommended['price'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <a class="recommendation-card" href="?product=<?php echo urlencode($recommendedKey); ?>" style="display: flex; flex-direction: column; gap: 0.8rem; text-decoration: none; color: inherit;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                                    <p style="margin: 0; font-size: 0.85rem; line-height: 1.4; flex: 1;"><?php echo htmlspecialchars($recommended['tagline'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                    <div class="recommendation-thumb" style="width: 80px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+                                        <img
+                                            class="recommendation-thumb-image"
+                                            src="<?php echo htmlspecialchars($assetBase . $recommended['cameraImage'], ENT_QUOTES, 'UTF-8'); ?>"
+                                            alt="<?php echo htmlspecialchars($recommended['brand'] . ' ' . $recommended['name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                            style="width: 100%; height: auto; object-fit: contain; display: block;"
+                                        >
+                                    </div>
                                 </div>
-                                <div class="recommendation-thumb">
-                                    <img
-                                        class="recommendation-thumb-image"
-                                        src="<?php echo htmlspecialchars($assetBase . $recommended['cameraImage'], ENT_QUOTES, 'UTF-8'); ?>"
-                                        alt="<?php echo htmlspecialchars($recommended['brand'] . ' ' . $recommended['name'], ENT_QUOTES, 'UTF-8'); ?>"
-                                    >
-                                </div>
+                                <span style="font-weight: 700; color: #dde531; font-size: 1.1rem;"><?php echo htmlspecialchars($recommended['price'], ENT_QUOTES, 'UTF-8'); ?></span>
                             </a>
                         <?php endforeach; ?>
                     </div>
@@ -354,7 +355,10 @@ $calendarRows = [
                         <label>
                             <span class="sr-only">Year</span>
                             <select id="calendar-year-select">
-                                <?php for ($y = 2024; $y <= 2028; $y++): ?>
+                                <?php 
+                                $currentYear = (int)date('Y');
+                                if ($currentYear < 2026) $currentYear = 2026;
+                                for ($y = $currentYear; $y <= $currentYear + 2; $y++): ?>
                                     <option value="<?php echo $y; ?>"><?php echo $y; ?></option>
                                 <?php endfor; ?>
                             </select>

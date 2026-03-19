@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="css/style.css?v=20260318-1">
+    <link rel="stylesheet" href="css/style.css?v=20260319-1">
 </head>
 <body class="home-page-customer">
     <header class="site-header">
@@ -94,26 +94,20 @@
     </header>
 
     <main class="landing-shell">
-        <section class="promo-banner reveal" aria-label="Promo carousel placeholder">
+        <section class="promo-banner reveal" aria-label="Promo carousel">
             <button class="promo-arrow promo-arrow-left" type="button" aria-label="Previous promo">&#10094;</button>
 
             <div class="promo-carousel" aria-live="polite">
                 <div class="promo-slide promo-slide-one is-active">
-                    <div class="promo-placeholder">
-                        <span>Promo banner image placeholder 1</span>
-                    </div>
+                    <img class="promo-image" src="assets/promo_images/0001.png" alt="Promo of the week for Fuji X-A3 with 30 percent off">
                 </div>
 
                 <div class="promo-slide promo-slide-two">
-                    <div class="promo-placeholder">
-                        <span>Promo banner image placeholder 2</span>
-                    </div>
+                    <img class="promo-image" src="assets/promo_images/0002.png" alt="Promo of the week for Canon 700D with 50 percent off">
                 </div>
 
                 <div class="promo-slide promo-slide-three">
-                    <div class="promo-placeholder">
-                        <span>Promo banner image placeholder 3</span>
-                    </div>
+                    <img class="promo-image" src="assets/promo_images/0003.png" alt="Promo of the week for Canon 1200D with 20 percent off">
                 </div>
             </div>
 
@@ -152,14 +146,11 @@
                             <img class="product-visual-image" src="assets/cameras/Canon%20700D.png" alt="Canon 700D">
                         </div>
                     </a>
-                    <div class="product-copy d-flex flex-column h-100">
+                    <div class="product-copy">
                         <h3><a class="product-title-link" href="products/?product=canon-700d">Canon 700D</a></h3>
                         <p>18MP APS-C CMOS sensor</p>
                         <p>1080p Full HD video recording at up to 30 fps</p>
-                        <div class="product-footer mt-auto">
-                            <span>P 800.00</span>
-                            <a class="product-cart-link btn btn-light btn-sm" href="cart/">ADD TO CART</a>
-                        </div>
+                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #f4f4f4;">&#8369; 800.00</p>
                     </div>
                 </article>
 
@@ -170,14 +161,14 @@
                             <img class="product-visual-image" src="assets/cameras/Canon%201200D.png" alt="Canon 1200D">
                         </div>
                     </a>
-                    <div class="product-copy d-flex flex-column h-100">
+                    <div class="product-copy">
                         <h3><a class="product-title-link" href="products/?product=canon-1200d">Canon 1200D</a></h3>
                         <p>18-megapixel APS-C CMOS sensor</p>
                         <p>Full HD 1080p video recording</p>
-                        <div class="product-footer mt-auto">
-                            <span>P 450.00</span>
-                            <a class="product-cart-link btn btn-light btn-sm" href="cart/">ADD TO CART</a>
-                        </div>
+                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #dde531;">
+                            <span style="color: #a1a1aa; text-decoration: line-through; font-size: 0.95rem; font-weight: 600; margin-right: 0.45rem;">&#8369; 450.00</span>
+                            <span>&#8369; 360.00</span>
+                        </p>
                     </div>
                 </article>
 
@@ -187,14 +178,11 @@
                             <img class="product-visual-image" src="assets/cameras/Fujifilm%20XA-3.png" alt="Fujifilm XA-3">
                         </div>
                     </a>
-                    <div class="product-copy d-flex flex-column h-100">
+                    <div class="product-copy">
                         <h3><a class="product-title-link" href="products/?product=fuji-x-a3">Fuji X A3</a></h3>
                         <p>APS-C mirrorless camera</p>
                         <p>24.2MP CMOS sensor, an ISO range of 200-6400</p>
-                        <div class="product-footer mt-auto">
-                            <span>P 450.00</span>
-                            <a class="product-cart-link btn btn-light btn-sm" href="cart/">ADD TO CART</a>
-                        </div>
+                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #f4f4f4;">&#8369; 450.00</p>
                     </div>
                 </article>
 
@@ -204,14 +192,11 @@
                             <img class="product-visual-image" src="assets/cameras/Canon%20400D.png" alt="Canon 4000D">
                         </div>
                     </a>
-                    <div class="product-copy d-flex flex-column h-100">
+                    <div class="product-copy">
                         <h3><a class="product-title-link" href="products/?product=canon-4000d">Canon 4000D</a></h3>
                         <p>18MP APS-C CMOS sensor</p>
                         <p>ISO range of 100-6400 (expandable to 12800)</p>
-                        <div class="product-footer mt-auto">
-                            <span>P 600.00</span>
-                            <a class="product-cart-link btn btn-light btn-sm" href="cart/">ADD TO CART</a>
-                        </div>
+                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #f4f4f4;">&#8369; 600.00</p>
                     </div>
                 </article>
 
@@ -221,14 +206,11 @@
                             <img class="product-visual-image" src="assets/cameras/Nikon%20D60.png" alt="Nikon D60">
                         </div>
                     </a>
-                    <div class="product-copy d-flex flex-column h-100">
+                    <div class="product-copy">
                         <h3><a class="product-title-link" href="products/?product=nikon-d60">Nikon D60</a></h3>
                         <p>10.2MP CCD sensor</p>
                         <p>ISO range of 100-1600 (expandable to 3200)</p>
-                        <div class="product-footer mt-auto">
-                            <span>P 250.00</span>
-                            <a class="product-cart-link btn btn-light btn-sm" href="cart/">ADD TO CART</a>
-                        </div>
+                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #f4f4f4;">&#8369; 250.00</p>
                     </div>
                 </article>
 
@@ -238,14 +220,11 @@
                             <img class="product-visual-image" src="assets/cameras/Sony%20ZV-E10.png" alt="Sony ZV-E10">
                         </div>
                     </a>
-                    <div class="product-copy d-flex flex-column h-100">
+                    <div class="product-copy">
                         <h3><a class="product-title-link" href="products/?product=sony-zv-e10">Sony ZV E10</a></h3>
                         <p>24.2MP APS-C sensor</p>
                         <p>4K 30p video and Full HD 120p slow-motion</p>
-                        <div class="product-footer mt-auto">
-                            <span>P 899.00</span>
-                            <a class="product-cart-link btn btn-light btn-sm" href="cart/">ADD TO CART</a>
-                        </div>
+                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #f4f4f4;">&#8369; 899.00</p>
                     </div>
                 </article>
             </div>
