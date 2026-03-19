@@ -1,3 +1,13 @@
+<?php
+session_start();
+
+$isCustomerLoggedIn = isset($_SESSION['customer_id']);
+$cartCount = $isCustomerLoggedIn ? (int) ($_SESSION['customer_cart_count'] ?? 0) : 0;
+$accountLabel = $isCustomerLoggedIn ? 'Account' : 'Sign In';
+$accountSettingsPath = 'account-settings/';
+$logoutPath = 'logout/';
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,17 +33,32 @@
             </a>
 
             <form class="topbar-search landing-search" action="#" method="get">
-                <span class="landing-search-icon" aria-hidden="true">&#128269;</span>
                 <input type="search" name="q" placeholder="Search products, events, or services">
             </form>
 
             <a class="topbar-cart" href="cart/" aria-label="Cart">
                 <img src="assets/icons/cart_icon.svg" alt="">
-                <span class="cart-count">1</span>
+                <span class="cart-count"><?php echo $cartCount; ?></span>
             </a>
 
             <a class="topbar-link" href="#">Message us</a>
-            <a class="account-pill" href="login/">Account</a>
+            <?php if ($isCustomerLoggedIn): ?>
+                <div class="dropdown topbar-account-menu">
+                    <button class="account-pill account-pill-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
+                        <li><a class="dropdown-item" href="cart/">My Cart</a></li>
+                        <li><a class="dropdown-item" href="events/">Browse Events</a></li>
+                        <li><a class="dropdown-item" href="#">Help Center</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
+                    </ul>
+                </div>
+            <?php else: ?>
+                <a class="account-pill" href="login/"><?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?></a>
+            <?php endif; ?>
         </div>
 
         <nav class="section-nav section-nav-interactive" aria-label="Catalog filters">
@@ -140,7 +165,8 @@
             <h2 class="landing-title" id="featured-products-title">FEATURED PRODUCTS</h2>
 
             <div class="product-grid">
-                <article class="product-card" data-brand="canon" data-month="january" data-day="01" data-year="2026">
+                <article class="product-card product-card-highlight" data-brand="canon" data-month="january" data-day="01" data-year="2026">
+                    <div class="product-ribbon">PROMO 50% OFF!</div>
                     <a class="product-visual-link" href="products/?product=canon-700d" aria-label="View Canon 700D product page">
                         <div class="product-visual product-visual-canon700d">
                             <img class="product-visual-image" src="assets/cameras/Canon%20700D.png" alt="Canon 700D">
@@ -150,7 +176,10 @@
                         <h3><a class="product-title-link" href="products/?product=canon-700d">Canon 700D</a></h3>
                         <p>18MP APS-C CMOS sensor</p>
                         <p>1080p Full HD video recording at up to 30 fps</p>
-                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #f4f4f4;">&#8369; 800.00</p>
+                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #dde531;">
+                            <span style="color: #a1a1aa; text-decoration: line-through; font-size: 0.95rem; font-weight: 600; margin-right: 0.45rem;">&#8369; 800.00</span>
+                            <span>&#8369; 400.00</span>
+                        </p>
                     </div>
                 </article>
 
@@ -172,7 +201,8 @@
                     </div>
                 </article>
 
-                <article class="product-card" data-brand="fuji" data-month="march" data-day="12" data-year="2025">
+                <article class="product-card product-card-highlight" data-brand="fuji" data-month="march" data-day="12" data-year="2025">
+                    <div class="product-ribbon">PROMO 30% OFF!</div>
                     <a class="product-visual-link" href="products/?product=fuji-x-a3" aria-label="View Fuji X A3 product page">
                         <div class="product-visual product-visual-fuji">
                             <img class="product-visual-image" src="assets/cameras/Fujifilm%20XA-3.png" alt="Fujifilm XA-3">
@@ -182,7 +212,10 @@
                         <h3><a class="product-title-link" href="products/?product=fuji-x-a3">Fuji X A3</a></h3>
                         <p>APS-C mirrorless camera</p>
                         <p>24.2MP CMOS sensor, an ISO range of 200-6400</p>
-                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #f4f4f4;">&#8369; 450.00</p>
+                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #dde531;">
+                            <span style="color: #a1a1aa; text-decoration: line-through; font-size: 0.95rem; font-weight: 600; margin-right: 0.45rem;">&#8369; 450.00</span>
+                            <span>&#8369; 315.00</span>
+                        </p>
                     </div>
                 </article>
 

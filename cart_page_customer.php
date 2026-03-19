@@ -4,10 +4,20 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
     exit;
 }
 
+session_start();
+
 $assetBase = $assetBase ?? '';
 $homePath = $homePath ?? '';
 $loginPath = $loginPath ?? 'login/';
 $productListPath = $homePath . '#featured-products-title';
+
+$isCustomerLoggedIn = isset($_SESSION['customer_id']);
+$cartCount = $isCustomerLoggedIn ? (int) ($_SESSION['customer_cart_count'] ?? 0) : 0;
+$accountLabel = $isCustomerLoggedIn ? 'Account' : 'Sign In';
+$accountSettingsPath = $assetBase . 'account-settings/';
+$logoutPath = $assetBase . 'logout/';
+$cartPath = $assetBase . 'cart/';
+$eventsPath = $assetBase . 'events/';
 
 $cartItems = [
     [
@@ -59,11 +69,27 @@ $cartItems = [
 
             <a class="topbar-cart" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>cart/" aria-label="Cart">
                 <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cart_icon.svg" alt="">
-                <span class="cart-count">2</span>
+                <span class="cart-count"><?php echo $cartCount; ?></span>
             </a>
 
             <a class="topbar-link" href="#">Message us</a>
-            <a class="account-pill" href="<?php echo htmlspecialchars($loginPath, ENT_QUOTES, 'UTF-8'); ?>">Account</a>
+            <?php if ($isCustomerLoggedIn): ?>
+                <div class="dropdown topbar-account-menu">
+                    <button class="account-pill account-pill-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
+                        <li><a class="dropdown-item" href="#">Help Center</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
+                    </ul>
+                </div>
+            <?php else: ?>
+                <a class="account-pill" href="<?php echo htmlspecialchars($loginPath, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?></a>
+            <?php endif; ?>
         </div>
 
         <nav class="section-nav section-nav-disabled" aria-label="Catalog filters">
