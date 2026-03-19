@@ -32,6 +32,7 @@ $emailDefault = (string) ($_SESSION['customer_email'] ?? '');
 
 $firstNameValue = $firstNameDefault;
 $lastNameValue = $lastNameDefault;
+$emailValue = $emailDefault;
 $phoneValue = '';
 $addressOneValue = '';
 $addressTwoValue = '';
@@ -41,8 +42,11 @@ $postalValue = '';
 $infoMessage = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $formAction = trim((string) ($_POST['form_action'] ?? ''));
+
     $firstNameValue = trim($_POST['first_name'] ?? '');
     $lastNameValue = trim($_POST['last_name'] ?? '');
+    $emailValue = trim($_POST['email'] ?? '');
     $phoneValue = trim($_POST['phone'] ?? '');
     $addressOneValue = trim($_POST['address_line_one'] ?? '');
     $addressTwoValue = trim($_POST['address_line_two'] ?? '');
@@ -50,8 +54,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $provinceValue = trim($_POST['province'] ?? '');
     $postalValue = trim($_POST['postal_code'] ?? '');
 
-    $infoMessage = 'Changes are for preview only. Profile saving will be added in a future update.';
+    if ($formAction === 'profile_info') {
+        $infoMessage = 'Personal information updated for preview only. Profile saving will be added in a future update.';
+    } elseif ($formAction === 'address_info') {
+        $infoMessage = 'Address updated for preview only. Profile saving will be added in a future update.';
+    } else {
+        $infoMessage = 'Changes are for preview only. Profile saving will be added in a future update.';
+    }
 }
+
+$displayName = trim($firstNameValue . ' ' . $lastNameValue);
+$displayName = $displayName !== '' ? $displayName : 'None';
+$displayEmail = $emailValue !== '' ? $emailValue : 'None';
+$displayPhone = $phoneValue !== '' ? $phoneValue : 'None';
+
+$addressParts = array_filter([
+    $addressOneValue,
+    $addressTwoValue,
+    $cityValue,
+    $provinceValue,
+    $postalValue
+], static function ($part) {
+    return $part !== '';
+});
+
+$displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No address yet.';
+
+$staticOrders = [
+    ['id' => '1001', 'status' => 'Return', 'actionLabel' => 'Upload Delivery Link', 'actionType' => 'secondary'],
+    ['id' => '1002', 'status' => 'Completed', 'actionLabel' => '', 'actionType' => ''],
+    ['id' => '1003', 'status' => 'Pending', 'actionLabel' => 'Upload Payment Receipt', 'actionType' => 'primary'],
+    ['id' => '1004', 'status' => 'Approved', 'actionLabel' => 'Cancel', 'actionType' => 'danger'],
+    ['id' => '1005', 'status' => 'Ongoing', 'actionLabel' => '', 'actionType' => ''],
+    ['id' => '1006', 'status' => 'Canceled', 'actionLabel' => '', 'actionType' => '']
+];
 ?>
 
 <!DOCTYPE html>
@@ -59,12 +95,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Nifty Fifty | Account Settings</title>
+    <title>The Nifty Fifty | Profile</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260319-2">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260319-3">
 </head>
 <body class="account-settings-page">
     <header class="site-header">
@@ -105,75 +141,184 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <nav class="section-nav section-nav-disabled" aria-label="Catalog filters">
             <span class="section-nav-filter is-disabled" aria-disabled="true">PROFILE</span>
-            <span class="section-nav-section is-disabled" aria-disabled="true">ACCOUNT SETTINGS</span>
-            <span class="section-nav-filter is-disabled" aria-disabled="true">SECURITY</span>
+            <span class="section-nav-section is-disabled" aria-disabled="true">PERSONAL INFORMATION</span>
+            <span class="section-nav-filter is-disabled" aria-disabled="true">ORDER STATUS</span>
         </nav>
     </header>
 
     <main class="account-settings-shell">
         <section class="account-settings-card reveal">
             <div class="account-settings-head">
-                <h1>Account Settings</h1>
-                <p>Update your profile details below. Saving to database is not enabled yet.</p>
+                <h1>Profile</h1>
+                <p>Manage your personal information and address. Order statuses shown below are static previews.</p>
             </div>
 
             <?php if ($infoMessage !== ''): ?>
                 <p class="form-message form-message-success"><?php echo htmlspecialchars($infoMessage, ENT_QUOTES, 'UTF-8'); ?></p>
             <?php endif; ?>
 
-            <form class="account-settings-form" action="" method="post" novalidate>
-                <div class="account-settings-grid">
-                    <label>
-                        <span>First Name</span>
-                        <input type="text" name="first_name" value="<?php echo htmlspecialchars($firstNameValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Enter first name">
-                    </label>
-
-                    <label>
-                        <span>Last Name</span>
-                        <input type="text" name="last_name" value="<?php echo htmlspecialchars($lastNameValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Enter last name">
-                    </label>
-
-                    <label>
-                        <span>Email Address</span>
-                        <input type="email" name="email" value="<?php echo htmlspecialchars($emailDefault, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Email address" readonly>
-                    </label>
-
-                    <label>
-                        <span>Mobile Number</span>
-                        <input type="text" name="phone" value="<?php echo htmlspecialchars($phoneValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="09xx xxx xxxx">
-                    </label>
-
-                    <label class="account-field-wide">
-                        <span>Address Line 1</span>
-                        <input type="text" name="address_line_one" value="<?php echo htmlspecialchars($addressOneValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="House number and street">
-                    </label>
-
-                    <label class="account-field-wide">
-                        <span>Address Line 2</span>
-                        <input type="text" name="address_line_two" value="<?php echo htmlspecialchars($addressTwoValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Barangay, subdivision, or landmark">
-                    </label>
-
-                    <label>
-                        <span>City / Municipality</span>
-                        <input type="text" name="city" value="<?php echo htmlspecialchars($cityValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="City">
-                    </label>
-
-                    <label>
-                        <span>Province</span>
-                        <input type="text" name="province" value="<?php echo htmlspecialchars($provinceValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Province">
-                    </label>
-
-                    <label>
-                        <span>Postal Code</span>
-                        <input type="text" name="postal_code" value="<?php echo htmlspecialchars($postalValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Postal code">
-                    </label>
+            <section class="profile-section-card" aria-labelledby="profile-personal-heading">
+                <div class="profile-section-head">
+                    <h2 id="profile-personal-heading">Personal Information</h2>
                 </div>
 
-                <div class="account-settings-actions">
-                    <button type="submit">Update Preview</button>
+                <div class="profile-info-grid" aria-label="Personal information details">
+                    <div class="profile-info-item">
+                        <span>Name</span>
+                        <strong><?php echo htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?></strong>
+                    </div>
+                    <div class="profile-info-item">
+                        <span>Email</span>
+                        <strong><?php echo htmlspecialchars($displayEmail, ENT_QUOTES, 'UTF-8'); ?></strong>
+                    </div>
+                    <div class="profile-info-item">
+                        <span>Contact Number</span>
+                        <strong><?php echo htmlspecialchars($displayPhone, ENT_QUOTES, 'UTF-8'); ?></strong>
+                    </div>
                 </div>
-            </form>
+
+                <div class="profile-section-actions">
+                    <button type="button" class="profile-action-button" data-profile-toggle="profile-info-editor">Edit Info</button>
+                </div>
+
+                <form id="profile-info-editor" class="profile-editor-panel" action="" method="post" hidden novalidate>
+                    <input type="hidden" name="form_action" value="profile_info">
+                    <input type="hidden" name="address_line_one" value="<?php echo htmlspecialchars($addressOneValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="address_line_two" value="<?php echo htmlspecialchars($addressTwoValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="city" value="<?php echo htmlspecialchars($cityValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="province" value="<?php echo htmlspecialchars($provinceValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="postal_code" value="<?php echo htmlspecialchars($postalValue, ENT_QUOTES, 'UTF-8'); ?>">
+
+                    <div class="account-settings-grid">
+                        <label>
+                            <span>First Name</span>
+                            <input type="text" name="first_name" value="<?php echo htmlspecialchars($firstNameValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Enter first name">
+                        </label>
+
+                        <label>
+                            <span>Last Name</span>
+                            <input type="text" name="last_name" value="<?php echo htmlspecialchars($lastNameValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Enter last name">
+                        </label>
+
+                        <label>
+                            <span>Email</span>
+                            <input type="email" name="email" value="<?php echo htmlspecialchars($emailValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Email address">
+                        </label>
+
+                        <label>
+                            <span>Contact Number</span>
+                            <input type="text" name="phone" value="<?php echo htmlspecialchars($phoneValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="09xx xxx xxxx">
+                        </label>
+                    </div>
+
+                    <div class="account-settings-actions">
+                        <button type="submit">Save Info</button>
+                        <button type="button" class="profile-action-button is-ghost" data-profile-cancel="profile-info-editor">Cancel</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="profile-section-card" aria-labelledby="profile-address-heading">
+                <div class="profile-section-head">
+                    <h2 id="profile-address-heading">Address</h2>
+                </div>
+
+                <p class="profile-address-copy"><?php echo htmlspecialchars($displayAddress, ENT_QUOTES, 'UTF-8'); ?></p>
+
+                <div class="profile-section-actions">
+                    <button type="button" class="profile-action-button" data-profile-toggle="profile-address-editor">
+                        <span class="profile-action-icon" aria-hidden="true">+</span>
+                        <span>Add Address</span>
+                    </button>
+                </div>
+
+                <form id="profile-address-editor" class="profile-editor-panel" action="" method="post" hidden novalidate>
+                    <input type="hidden" name="form_action" value="address_info">
+                    <input type="hidden" name="first_name" value="<?php echo htmlspecialchars($firstNameValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="last_name" value="<?php echo htmlspecialchars($lastNameValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="email" value="<?php echo htmlspecialchars($emailValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="phone" value="<?php echo htmlspecialchars($phoneValue, ENT_QUOTES, 'UTF-8'); ?>">
+
+                    <div class="account-settings-grid">
+                        <label class="account-field-wide">
+                            <span>Address Line 1</span>
+                            <input type="text" name="address_line_one" value="<?php echo htmlspecialchars($addressOneValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="House number and street">
+                        </label>
+
+                        <label class="account-field-wide">
+                            <span>Address Line 2</span>
+                            <input type="text" name="address_line_two" value="<?php echo htmlspecialchars($addressTwoValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Barangay, subdivision, or landmark">
+                        </label>
+
+                        <label>
+                            <span>City / Municipality</span>
+                            <input type="text" name="city" value="<?php echo htmlspecialchars($cityValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="City">
+                        </label>
+
+                        <label>
+                            <span>Province</span>
+                            <input type="text" name="province" value="<?php echo htmlspecialchars($provinceValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Province">
+                        </label>
+
+                        <label>
+                            <span>Postal Code</span>
+                            <input type="text" name="postal_code" value="<?php echo htmlspecialchars($postalValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Postal code">
+                        </label>
+                    </div>
+
+                    <div class="account-settings-actions">
+                        <button type="submit">Save Address</button>
+                        <button type="button" class="profile-action-button is-ghost" data-profile-cancel="profile-address-editor">Cancel</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="profile-section-card" aria-labelledby="profile-order-status-heading">
+                <div class="profile-section-head">
+                    <h2 id="profile-order-status-heading">Order Status</h2>
+                </div>
+
+                <div class="profile-order-list" aria-label="Order status list">
+                    <?php foreach ($staticOrders as $order): ?>
+                        <?php
+                        $statusLower = strtolower($order['status']);
+                        $statusClass = 'status-' . preg_replace('/[^a-z0-9]+/', '-', $statusLower);
+                        ?>
+                        <article class="profile-order-item">
+                            <div class="profile-order-meta">
+                                <p class="profile-order-id">Order#<?php echo htmlspecialchars($order['id'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                <span class="profile-order-status <?php echo htmlspecialchars($statusClass, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($order['status'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            </div>
+
+                            <?php if ($order['actionLabel'] !== ''): ?>
+                                <?php if ($order['status'] === 'Approved'): ?>
+                                    <button type="button" class="profile-order-action <?php echo htmlspecialchars($order['actionType'], ENT_QUOTES, 'UTF-8'); ?>" data-profile-open-cancel-modal>
+                                        <?php echo htmlspecialchars($order['actionLabel'], ENT_QUOTES, 'UTF-8'); ?>
+                                    </button>
+                                <?php else: ?>
+                                    <button type="button" class="profile-order-action <?php echo htmlspecialchars($order['actionType'], ENT_QUOTES, 'UTF-8'); ?>">
+                                        <?php echo htmlspecialchars($order['actionLabel'], ENT_QUOTES, 'UTF-8'); ?>
+                                    </button>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </section>
         </section>
+
+        <div class="profile-modal" id="profile-cancel-modal" hidden>
+            <div class="profile-modal-backdrop" data-profile-close-cancel-modal></div>
+            <section class="profile-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-cancel-title">
+                <h3 id="profile-cancel-title">Reason for Cancellation</h3>
+                <p>Please tell us why you want to cancel this approved order.</p>
+                <textarea rows="4" placeholder="Type your reason here..."></textarea>
+                <div class="profile-modal-actions">
+                    <button type="button" class="profile-action-button is-ghost" data-profile-close-cancel-modal>Close</button>
+                    <button type="button" class="profile-action-button">Submit Request</button>
+                </div>
+            </section>
+        </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>

@@ -340,6 +340,106 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    var profileToggleButtons = document.querySelectorAll("[data-profile-toggle]");
+    var profileCancelButtons = document.querySelectorAll("[data-profile-cancel]");
+    var cancelModal = document.getElementById("profile-cancel-modal");
+    var openCancelModalButtons = document.querySelectorAll("[data-profile-open-cancel-modal]");
+    var closeCancelModalButtons = document.querySelectorAll("[data-profile-close-cancel-modal]");
+
+    function hideEditor(editorId) {
+        var target = document.getElementById(editorId);
+
+        if (!target) {
+            return;
+        }
+
+        target.hidden = true;
+    }
+
+    function toggleEditor(editorId) {
+        var target = document.getElementById(editorId);
+
+        if (!target) {
+            return;
+        }
+
+        target.hidden = !target.hidden;
+    }
+
+    profileToggleButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            var targetId = button.getAttribute("data-profile-toggle");
+
+            if (!targetId) {
+                return;
+            }
+
+            toggleEditor(targetId);
+        });
+    });
+
+    profileCancelButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            var targetId = button.getAttribute("data-profile-cancel");
+
+            if (!targetId) {
+                return;
+            }
+
+            hideEditor(targetId);
+        });
+    });
+
+    function openCancelModal() {
+        if (!cancelModal) {
+            return;
+        }
+
+        cancelModal.hidden = false;
+    }
+
+    function closeCancelModal() {
+        if (!cancelModal) {
+            return;
+        }
+
+        cancelModal.hidden = true;
+    }
+
+    openCancelModalButtons.forEach(function (button) {
+        button.addEventListener("click", openCancelModal);
+    });
+
+    closeCancelModalButtons.forEach(function (button) {
+        button.addEventListener("click", closeCancelModal);
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+            closeCancelModal();
+        }
+    });
+
+    var termsToggleButtons = document.querySelectorAll("[data-terms-toggle]");
+
+    termsToggleButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            var contentId = button.getAttribute("aria-controls");
+            var content = contentId ? document.getElementById(contentId) : null;
+            var showLabel = button.getAttribute("data-label-show") || "Show Full Terms and Conditions";
+            var hideLabel = button.getAttribute("data-label-hide") || "Hide Full Terms and Conditions";
+            var isExpanded = button.getAttribute("aria-expanded") === "true";
+            var nextExpanded = !isExpanded;
+
+            button.setAttribute("aria-expanded", nextExpanded ? "true" : "false");
+            button.textContent = nextExpanded ? hideLabel : showLabel;
+
+            if (content) {
+                content.hidden = !nextExpanded;
+            }
+        });
+    });
+
     // Calendar Initialization
     var calendarCard = document.querySelector(".product-calendar-card");
     if (calendarCard) {
