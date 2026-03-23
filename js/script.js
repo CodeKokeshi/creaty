@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEditClose = document.querySelector("[data-admin-edit-close]");
     var adminEditCancel = document.querySelector("[data-admin-edit-cancel]");
     var adminEditBrowse = document.querySelector("[data-admin-edit-browse]");
+    var adminEditRecrop = document.querySelector("[data-admin-edit-recrop]");
     var adminCropWorkspace = document.querySelector("[data-admin-crop-workspace]");
     var adminEditCropCancel = document.querySelector("[data-admin-edit-crop-cancel]");
     var adminEditCropSave = document.querySelector("[data-admin-edit-crop-save]");
@@ -252,6 +253,35 @@ document.addEventListener("DOMContentLoaded", function () {
         syncAdminPreviewTransform();
     }
 
+    function buildAdminCropDataUrlFromPreview() {
+        if (!adminEditPreviewImage || !adminEditPreviewImage.src || !adminEditPreviewImage.naturalWidth || !adminEditPreviewImage.naturalHeight) {
+            return null;
+        }
+
+        var size = 600;
+        var canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+
+        var ctx = canvas.getContext("2d");
+        if (!ctx) {
+            return null;
+        }
+
+        var zoomValue = Math.max(1, Number(adminCropState.zoom || 1));
+        var scaleToCover = Math.max(size / adminEditPreviewImage.naturalWidth, size / adminEditPreviewImage.naturalHeight);
+        var scale = scaleToCover * zoomValue;
+        var drawWidth = adminEditPreviewImage.naturalWidth * scale;
+        var drawHeight = adminEditPreviewImage.naturalHeight * scale;
+        var drawX = ((size - drawWidth) / 2) + adminCropState.offsetX;
+        var drawY = ((size - drawHeight) / 2) + adminCropState.offsetY;
+
+        ctx.clearRect(0, 0, size, size);
+        ctx.drawImage(adminEditPreviewImage, drawX, drawY, drawWidth, drawHeight);
+
+        return canvas.toDataURL("image/png");
+    }
+
     function clampDiscount(value) {
         var parsed = Number.parseInt(String(value || "0"), 10);
 
@@ -359,6 +389,20 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    if (adminEditRecrop && adminEditPreviewImage) {
+        adminEditRecrop.addEventListener("click", function () {
+            if (!adminEditPreviewImage.src) {
+                return;
+            }
+
+            adminCropState.previewBeforeCrop = adminEditPreviewImage.src;
+            adminCropState.sourceImage = adminEditPreviewImage.src;
+            resetAdminCropState();
+            setAdminCropWorkspaceVisible(true);
+            syncAdminPreviewTransform();
+        });
+    }
+
     if (adminEditFileInput && adminEditPreviewImage) {
         adminEditPreviewImage.addEventListener("dragstart", function (event) {
             event.preventDefault();
@@ -439,43 +483,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (adminEditCropSave && adminEditPreviewImage) {
         adminEditCropSave.addEventListener("click", function () {
-            var source = adminCropState.sourceImage || adminEditPreviewImage.getAttribute("src");
+            var croppedDataUrl = buildAdminCropDataUrlFromPreview();
 
-            if (!source) {
+            if (!croppedDataUrl) {
                 return;
             }
 
-            var image = new Image();
-            image.onload = function () {
-                var size = 600;
-                var canvas = document.createElement("canvas");
-                canvas.width = size;
-                canvas.height = size;
-
-                var ctx = canvas.getContext("2d");
-                if (!ctx) {
-                    return;
-                }
-
-                var zoomValue = Math.max(1, Number(adminCropState.zoom || 1));
-                var scaleToCover = Math.max(size / image.naturalWidth, size / image.naturalHeight);
-                var scale = scaleToCover * zoomValue;
-                var drawWidth = image.naturalWidth * scale;
-                var drawHeight = image.naturalHeight * scale;
-                var drawX = ((size - drawWidth) / 2) + adminCropState.offsetX;
-                var drawY = ((size - drawHeight) / 2) + adminCropState.offsetY;
-
-                ctx.clearRect(0, 0, size, size);
-                ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
-
-                adminEditPreviewImage.src = canvas.toDataURL("image/png");
-                adminCropState.previewBeforeCrop = adminEditPreviewImage.src;
-                adminCropState.sourceImage = "";
-                resetAdminCropState();
-                setAdminCropWorkspaceVisible(false);
-            };
-
-            image.src = source;
+            adminEditPreviewImage.src = croppedDataUrl;
+            adminCropState.previewBeforeCrop = croppedDataUrl;
+            adminCropState.sourceImage = "";
+            resetAdminCropState();
+            setAdminCropWorkspaceVisible(false);
         });
     }
 
@@ -527,8 +545,24 @@ document.addEventListener("DOMContentLoaded", function () {
             var priceParagraph = copyParagraphs[2] || null;
             var ribbon = activeAdminEditCard.querySelector(".product-ribbon");
 
-            if (imageEl && adminEditPreviewImage && adminEditPreviewImage.src) {
-                imageEl.src = adminEditPreviewImage.src;
+            var finalPreviewSrc = adminEditPreviewImage ? adminEditPreviewImage.src : "";
+
+            if (adminCropState.isCropping) {
+                var autoCroppedDataUrl = buildAdminCropDataUrlFromPreview();
+
+                if (autoCroppedDataUrl && adminEditPreviewImage) {
+                    finalPreviewSrc = autoCroppedDataUrl;
+                    adminEditPreviewImage.src = autoCroppedDataUrl;
+                    adminCropState.previewBeforeCrop = autoCroppedDataUrl;
+                }
+
+                adminCropState.sourceImage = "";
+                resetAdminCropState();
+                setAdminCropWorkspaceVisible(false);
+            }
+
+            if (imageEl && finalPreviewSrc) {
+                imageEl.src = finalPreviewSrc;
                 imageEl.alt = nameValue;
             }
 

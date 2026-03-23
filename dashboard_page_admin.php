@@ -339,6 +339,7 @@ $logoutPath = $routeBase . 'logout.php';
 
                         <div class="admin-edit-image-actions">
                             <button type="button" class="admin-edit-secondary" data-admin-edit-browse>Browse Image</button>
+                            <button type="button" class="admin-edit-secondary" data-admin-edit-recrop>Edit Crop</button>
                         </div>
 
                         <div class="admin-crop-workspace" data-admin-crop-workspace hidden>
