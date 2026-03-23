@@ -788,19 +788,34 @@ button {
     z-index: 1200;
     display: grid;
     place-items: center;
-    padding: 1rem;
-    background: rgba(8, 9, 12, 0.45);
-    backdrop-filter: blur(10px);
+    padding: 1.2rem;
+    background: rgba(6, 7, 10, 0.62);
+    backdrop-filter: blur(14px);
 }
 
 .admin-edit-modal {
+    --admin-modal-line: rgba(255, 255, 255, 0.16);
+    --admin-modal-line-strong: rgba(255, 255, 255, 0.32);
+    --admin-modal-surface: rgba(255, 255, 255, 0.05);
+    --admin-modal-surface-strong: rgba(255, 255, 255, 0.1);
+    --admin-modal-text-muted: #c8c8cb;
     width: min(100%, 820px);
     max-height: min(92vh, 820px);
     overflow: auto;
-    background: #17181b;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    box-shadow: 0 20px 56px rgba(0, 0, 0, 0.48);
-    padding: 0.8rem;
+    background: linear-gradient(180deg, #15171d 0%, #0f1218 100%);
+    border: 1px solid var(--admin-modal-line);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.52);
+    border-radius: 24px;
+    padding: 1.4rem;
+}
+
+.admin-edit-modal::-webkit-scrollbar {
+    width: 10px;
+}
+
+.admin-edit-modal::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
 }
 
 .admin-edit-modal-head {
@@ -808,51 +823,71 @@ button {
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 0.7rem;
+    margin-bottom: 1.2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--admin-modal-line);
 }
 
 .admin-edit-modal-head h2 {
     margin: 0;
-    font-size: 1.2rem;
-    letter-spacing: 0.03em;
+    font-size: clamp(1.55rem, 2.2vw, 1.95rem);
+    font-weight: 700;
+    letter-spacing: 0.02em;
 }
 
 .admin-edit-close {
-    width: 34px;
-    height: 34px;
-    border: 1px solid rgba(255, 255, 255, 0.38);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.08);
+    width: 48px;
+    height: 48px;
+    border: 1px solid var(--admin-modal-line-strong);
+    border-radius: 14px;
+    background: var(--admin-modal-surface);
     color: #f4f4f4;
-    font-size: 1.1rem;
+    font-size: 1.25rem;
+    line-height: 1;
     cursor: pointer;
+    transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+.admin-edit-close:hover,
+.admin-edit-close:focus-visible {
+    background: var(--admin-modal-surface-strong);
+    border-color: rgba(255, 255, 255, 0.46);
+    transform: translateY(-1px);
 }
 
 .admin-edit-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 0.75rem;
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    gap: 1.2rem;
 }
 
 .admin-edit-image-column,
 .admin-edit-fields-column {
     display: grid;
-    gap: 0.42rem;
+    gap: 0.75rem;
+    align-content: start;
+    padding: 1rem;
+    border-radius: 18px;
+    border: 1px solid var(--admin-modal-line);
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .admin-edit-label {
-    font-size: 0.82rem;
-    color: #c8c8cb;
-    letter-spacing: 0.04em;
+    font-size: 0.94rem;
+    font-weight: 600;
+    color: var(--admin-modal-text-muted);
+    letter-spacing: 0.01em;
 }
 
 .admin-edit-image-preview {
-    width: min(100%, 260px);
+    width: min(100%, 320px);
+    margin: 0 auto;
     aspect-ratio: 1 / 1;
-    border: 1px solid rgba(255, 255, 255, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.28);
     background: #0f1012;
     overflow: hidden;
     position: relative;
+    border-radius: 16px;
 }
 
 .admin-edit-image-preview.is-crop-active {
@@ -876,38 +911,59 @@ button {
 }
 
 .admin-edit-image-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
 }
 
-.admin-edit-secondary,
-.admin-edit-primary {
-    min-height: 38px;
-    padding: 0 0.8rem;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+.admin-edit-modal .admin-edit-secondary,
+.admin-edit-modal .admin-edit-primary {
+    min-height: 46px;
+    padding: 0 1.05rem;
+    border-radius: 14px;
+    border: 1px solid var(--admin-modal-line-strong);
     color: #f4f4f4;
     cursor: pointer;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
 }
 
-.admin-edit-secondary {
-    background: rgba(255, 255, 255, 0.08);
+.admin-edit-modal .admin-edit-secondary {
+    background: var(--admin-modal-surface);
 }
 
-.admin-edit-primary {
-    background: #4a8f2c;
-    border-color: #3b7125;
+.admin-edit-modal .admin-edit-primary {
+    background: linear-gradient(180deg, #5aaa34 0%, #498b2c 100%);
+    border-color: #3f7828;
+}
+
+.admin-edit-modal .admin-edit-secondary:hover,
+.admin-edit-modal .admin-edit-secondary:focus-visible {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-1px);
+}
+
+.admin-edit-modal .admin-edit-primary:hover,
+.admin-edit-modal .admin-edit-primary:focus-visible {
+    background: linear-gradient(180deg, #67be3d 0%, #529a32 100%);
+    border-color: #4d8f30;
+    transform: translateY(-1px);
 }
 
 .admin-crop-controls {
     display: grid;
-    gap: 0.5rem;
+    gap: 0.55rem;
 }
 
 .admin-crop-workspace {
     display: grid;
-    gap: 0.42rem;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .admin-crop-workspace[hidden] {
@@ -916,36 +972,148 @@ button {
 
 .admin-crop-hint {
     margin: 0;
-    color: #c8c8cb;
-    font-size: 0.78rem;
+    color: var(--admin-modal-text-muted);
+    font-size: 0.82rem;
 }
 
 .admin-crop-controls label {
     display: grid;
-    gap: 0.3rem;
-    font-size: 0.78rem;
-    color: #c8c8cb;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    color: var(--admin-modal-text-muted);
 }
 
 .admin-crop-actions {
-    display: flex;
-    gap: 0.45rem;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
 }
 
 .admin-edit-fields-column input {
-    min-height: 36px;
-    border: 1px solid rgba(255, 255, 255, 0.28);
+    min-height: 48px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
     background: rgba(255, 255, 255, 0.06);
     color: #f4f4f4;
-    padding: 0 0.7rem;
+    padding: 0 0.95rem;
+    border-radius: 14px;
+}
+
+.admin-edit-fields-column input:focus-visible {
+    outline: 0;
+    border-color: rgba(255, 255, 255, 0.52);
+    background: rgba(255, 255, 255, 0.09);
+    box-shadow: 0 0 0 3px rgba(94, 164, 55, 0.2);
+}
+
+.admin-edit-money-field {
+    position: relative;
+}
+
+.admin-edit-currency {
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    transform: translateY(-50%);
+    color: #d7d7da;
+    font-weight: 700;
+    pointer-events: none;
+}
+
+#admin-edit-price {
+    padding-left: 2.25rem;
+}
+
+#admin-edit-price,
+#admin-edit-discount {
+    -moz-appearance: textfield;
+}
+
+#admin-edit-price::-webkit-outer-spin-button,
+#admin-edit-price::-webkit-inner-spin-button,
+#admin-edit-discount::-webkit-outer-spin-button,
+#admin-edit-discount::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .admin-edit-actions {
-    margin-top: 0.7rem;
+    margin-top: 1.2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--admin-modal-line);
     display: flex;
     justify-content: flex-end;
-    gap: 0.5rem;
+    gap: 0.65rem;
+}
+
+.admin-edit-actions .admin-edit-secondary,
+.admin-edit-actions .admin-edit-primary {
+    min-width: 166px;
+}
+
+@media (max-width: 900px) {
+    .admin-edit-modal {
+        width: min(100%, 720px);
+        padding: 1.1rem;
+        border-radius: 20px;
+    }
+
+    .admin-edit-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-edit-image-preview {
+        width: min(100%, 340px);
+    }
+
+    .admin-edit-actions {
+        justify-content: stretch;
+    }
+
+    .admin-edit-actions .admin-edit-secondary,
+    .admin-edit-actions .admin-edit-primary {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .admin-edit-modal-backdrop {
+        padding: 0.7rem;
+    }
+
+    .admin-edit-modal {
+        max-height: 95vh;
+        padding: 0.9rem;
+        border-radius: 16px;
+    }
+
+    .admin-edit-modal-head {
+        margin-bottom: 0.9rem;
+        padding-bottom: 0.8rem;
+    }
+
+    .admin-edit-close {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+    }
+
+    .admin-edit-image-column,
+    .admin-edit-fields-column {
+        padding: 0.8rem;
+        border-radius: 14px;
+    }
+
+    .admin-edit-image-actions,
+    .admin-crop-actions,
+    .admin-edit-actions {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-edit-actions {
+        display: grid;
+    }
+}
 }
 
 .product-card.is-hidden {

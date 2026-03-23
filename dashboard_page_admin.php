@@ -330,7 +330,6 @@ $logoutPath = $routeBase . 'logout.php';
             <form class="admin-edit-form" data-admin-edit-form>
                 <div class="admin-edit-grid">
                     <div class="admin-edit-image-column">
-                        <p class="admin-edit-label">Image (1:1 crop)</p>
                         <div class="admin-edit-image-preview" data-admin-edit-image-preview>
                             <img src="" alt="Product preview" data-admin-edit-preview-img draggable="false">
                         </div>
@@ -369,7 +368,10 @@ $logoutPath = $routeBase . 'logout.php';
                         <input id="admin-edit-spec2" type="text" data-admin-edit-spec2 required>
 
                         <label class="admin-edit-label" for="admin-edit-price">Price</label>
-                        <input id="admin-edit-price" type="number" min="0" step="0.01" data-admin-edit-price required>
+                        <div class="admin-edit-money-field">
+                            <span class="admin-edit-currency" aria-hidden="true">&#8369;</span>
+                            <input id="admin-edit-price" type="number" min="0" step="0.01" data-admin-edit-price required>
+                        </div>
 
                         <label class="admin-edit-label" for="admin-edit-discount">Discount Percentage</label>
                         <input id="admin-edit-discount" type="number" min="0" max="95" step="1" data-admin-edit-discount>
