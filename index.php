@@ -1,5 +1,13 @@
 <?php
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
+$isAdminLoggedIn = isset($_SESSION['user_id']);
+if ($isAdminLoggedIn) {
+    header('Location: admin/dashboard/');
+    exit;
+}
 
 $isCustomerLoggedIn = isset($_SESSION['customer_id']);
 $cartCount = $isCustomerLoggedIn ? (int) ($_SESSION['customer_cart_count'] ?? 0) : 0;

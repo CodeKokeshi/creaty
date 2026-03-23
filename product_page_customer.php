@@ -4,7 +4,9 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
     exit;
 }
 
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 
 $assetBase = $assetBase ?? '';
 $homePath = $homePath ?? '';
@@ -46,7 +48,7 @@ $products = [
     'canon-700d' => [
         'brand' => 'Canon',
         'name' => '700D',
-        'price' => '₱ 800.00',
+        'price' => 'â‚± 800.00',
         'tagline' => '18MP APS-C CMOS sensor and 1080p Full HD recording.',
         'cameraImage' => 'assets/cameras/Canon%20700D.png',
         'captureSlides' => ['Street portrait placeholder', 'Indoor sample placeholder', 'Outdoor detail placeholder'],
@@ -77,7 +79,7 @@ $products = [
     'canon-1200d' => [
         'brand' => 'Canon',
         'name' => '1200D',
-        'price' => '₱ 450.00',
+        'price' => 'â‚± 450.00',
         'tagline' => '18-megapixel APS-C DSLR with straightforward controls.',
         'cameraImage' => 'assets/cameras/Canon%201200D.png',
         'captureSlides' => ['Event capture placeholder', 'Portrait placeholder', 'Backlit scene placeholder'],
@@ -108,7 +110,7 @@ $products = [
     'fuji-x-a3' => [
         'brand' => 'Fuji',
         'name' => 'X A3',
-        'price' => '₱ 450.00',
+        'price' => 'â‚± 450.00',
         'tagline' => 'APS-C mirrorless camera with a clean travel-friendly body.',
         'cameraImage' => 'assets/cameras/Fujifilm%20XA-3.png',
         'captureSlides' => ['Captured photo placeholder 1', 'Captured photo placeholder 2', 'Captured photo placeholder 3'],
@@ -140,7 +142,7 @@ $products = [
     'canon-4000d' => [
         'brand' => 'Canon',
         'name' => '4000D',
-        'price' => '₱ 600.00',
+        'price' => 'â‚± 600.00',
         'tagline' => 'Starter DSLR with a simple layout for casual rentals.',
         'cameraImage' => 'assets/cameras/Canon%20400D.png',
         'captureSlides' => ['Lifestyle placeholder', 'Daylight placeholder', 'Landscape placeholder'],
@@ -171,7 +173,7 @@ $products = [
     'nikon-d60' => [
         'brand' => 'Nikon',
         'name' => 'D60',
-        'price' => '₱ 250.00',
+        'price' => 'â‚± 250.00',
         'tagline' => 'Compact DSLR with reliable entry-level performance.',
         'cameraImage' => 'assets/cameras/Nikon%20D60.png',
         'captureSlides' => ['Studio placeholder', 'Warm daylight placeholder', 'Night scene placeholder'],
@@ -202,7 +204,7 @@ $products = [
     'sony-zv-e10' => [
         'brand' => 'Sony',
         'name' => 'ZV E10',
-        'price' => '₱ 899.00',
+        'price' => 'â‚± 899.00',
         'tagline' => 'Creator-focused APS-C body for hybrid photo and video shoots.',
         'cameraImage' => 'assets/cameras/Sony%20ZV-E10.png',
         'captureSlides' => ['Vlog frame placeholder', 'Product shoot placeholder', 'Outdoor reel placeholder'],
