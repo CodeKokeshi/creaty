@@ -26,6 +26,11 @@ $redirectTarget = trim((string) ($_POST['redirect'] ?? $_GET['redirect'] ?? ''))
 
 $defaultRedirect = $routeBase === '' ? '/' : $routeBase;
 
+if (isset($_SESSION['user_id'])) {
+    header('Location: ' . $routeBase . 'admin/dashboard/');
+    exit;
+}
+
 if (isset($_SESSION['customer_id'])) {
     if ($redirectTarget !== '' && preg_match('/^(?:\/|\.\.?\/)/', $redirectTarget) === 1 && strpos($redirectTarget, '://') === false && strpos($redirectTarget, '//') !== 0) {
         header('Location: ' . $redirectTarget);

@@ -16,6 +16,11 @@ require_once __DIR__ . '/config/db.php';
 
 $adminAccountsTable = $adminAccountsTable ?? 'admin_accounts';
 
+if (isset($_SESSION['customer_id'])) {
+    header('Location: ' . $assetBase);
+    exit;
+}
+
 if (isset($_SESSION['user_id'])) {
     header('Location: ' . $routeBase . 'dashboard/');
     exit;

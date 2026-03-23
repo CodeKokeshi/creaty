@@ -8,6 +8,11 @@ if (isset($_SESSION['user_id'])) {
 	exit;
 }
 
+if (isset($_SESSION['customer_id'])) {
+	header('Location: ../');
+	exit;
+}
+
 $routeBase = '../';
 $assetBase = '../';
 $customerLoginPath = './';

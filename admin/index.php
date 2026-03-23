@@ -8,6 +8,11 @@ if (isset($_SESSION['customer_id'])) {
 	exit;
 }
 
+if (isset($_SESSION['user_id'])) {
+	header('Location: dashboard/');
+	exit;
+}
+
 $routeBase = '';
 $assetBase = '../';
 require dirname(__DIR__) . '/login_page_admin.php';
