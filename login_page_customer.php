@@ -8,9 +8,9 @@ session_start();
 
 $routeBase = $routeBase ?? '';
 $assetBase = $assetBase ?? '';
-$customerLoginPath = $customerLoginPath ?? 'login/';
-$customerSignupPath = $customerSignupPath ?? 'signup/';
-$customerPrivacyPolicyPath = $customerPrivacyPolicyPath ?? 'privacy-policy/';
+$customerLoginPath = $customerLoginPath ?? 'customer-login/';
+$customerSignupPath = $customerSignupPath ?? 'customer-signup/';
+$customerPrivacyPolicyPath = $customerPrivacyPolicyPath ?? 'customer-privacy-policy/';
 
 require_once __DIR__ . '/config/db.php';
 

@@ -8,13 +8,13 @@ session_start();
 
 $assetBase = $assetBase ?? '';
 $homePath = $homePath ?? '';
-$loginPath = $loginPath ?? 'login/';
+$loginPath = $loginPath ?? 'customer-login/';
 
 $isCustomerLoggedIn = isset($_SESSION['customer_id']);
 
 if (isset($_GET['add_event'])) {
     if (!$isCustomerLoggedIn) {
-        $currentPageUrl = $_SERVER['REQUEST_URI'] ?? ($assetBase . 'events/');
+        $currentPageUrl = $_SERVER['REQUEST_URI'] ?? ($assetBase . 'customer-events/');
         $redirectQuery = '?redirect=' . rawurlencode($currentPageUrl);
         header('Location: ' . $loginPath . $redirectQuery);
         exit;
@@ -35,10 +35,10 @@ if (isset($_GET['add_event'])) {
 
 $cartCount = $isCustomerLoggedIn ? (int) ($_SESSION['customer_cart_count'] ?? 0) : 0;
 $accountLabel = $isCustomerLoggedIn ? 'Account' : 'Sign In';
-$accountSettingsPath = $assetBase . 'account-settings/';
-$logoutPath = $assetBase . 'logout/';
-$cartPath = $assetBase . 'cart/';
-$eventsPath = $assetBase . 'events/';
+$accountSettingsPath = $assetBase . 'customer-account-settings/';
+$logoutPath = $assetBase . 'customer-logout/';
+$cartPath = $assetBase . 'customer-cart/';
+$eventsPath = $assetBase . 'customer-events/';
 
 $eventPackages = [
     [
@@ -165,7 +165,7 @@ unset($eventPackage);
                 <input type="search" name="q" placeholder="Search packages, events, or services">
             </form>
 
-            <a class="topbar-cart" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>cart/" aria-label="Cart">
+            <a class="topbar-cart" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>customer-cart/" aria-label="Cart">
                 <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cart_icon.svg" alt="">
                 <span class="cart-count"><?php echo $cartCount; ?></span>
             </a>
@@ -212,7 +212,7 @@ unset($eventPackage);
                     $images = $eventPackage['images'];
                     $title = $eventPackage['title'];
                     $price = $eventPackage['price'];
-                    $detailPageUrl = $assetBase . 'event/?package=' . urlencode($eventPackage['key']);
+                    $detailPageUrl = $assetBase . 'customer-event/?package=' . urlencode($eventPackage['key']);
                     ?>
                     <article class="package-card">
                         <div
@@ -252,7 +252,7 @@ unset($eventPackage);
                                 $eventPreview = $images !== []
                                     ? buildAssetUrl($assetBase, $images[0])
                                     : ($assetBase . 'assets/images/main_logo.png');
-                                $eventLoginUrl = $loginPath . '?redirect=' . rawurlencode($_SERVER['REQUEST_URI'] ?? ($assetBase . 'events/'));
+                                $eventLoginUrl = $loginPath . '?redirect=' . rawurlencode($_SERVER['REQUEST_URI'] ?? ($assetBase . 'customer-events/'));
                                 ?>
                                 <button
                                     type="button"

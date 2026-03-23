@@ -1,5 +1,5 @@
 <?php
 $assetBase = '../';
 $homePath = '../';
-$loginPath = '../login/';
+$loginPath = '../customer-login/';
 require dirname(__DIR__) . '/event_page_customer.php';

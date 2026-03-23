@@ -1950,6 +1950,10 @@ button {
     padding: 0 0.75rem;
 }
 
+.calendar-toolbar select option:disabled {
+    color: #8f3030;
+}
+
 .calendar-grid {
     padding: 0.85rem 1rem 1rem;
     display: grid;
@@ -1979,6 +1983,12 @@ button {
 .calendar-date.is-available {
     background: #458e43;
     color: #f4f4f4;
+    font-weight: 700;
+}
+
+.calendar-date.is-past {
+    background: rgba(153, 56, 56, 0.3);
+    color: #7f2f2f;
     font-weight: 700;
 }
 
@@ -2527,9 +2537,10 @@ button {
     min-height: 48px;
 }
 
-.section-nav a,
-.section-nav button,
-.section-nav span {
+.section-nav > a,
+.section-nav > button,
+.section-nav > span,
+.section-nav > .section-nav-item > .section-nav-filter {
     min-width: 132px;
     min-height: 36px;
     padding: 0 1rem;
@@ -2568,30 +2579,35 @@ button {
     display: none;
 }
 
-.section-nav a:not(.is-active),
-.section-nav button:not(.is-active),
-.section-nav span:not(.is-active) {
+.section-nav > a:not(.is-active),
+.section-nav > button:not(.is-active),
+.section-nav > span:not(.is-active),
+.section-nav > .section-nav-item > .section-nav-filter:not(.is-active) {
     opacity: 0.74;
 }
 
-.section-nav a.is-active,
-.section-nav a[aria-current="page"],
-.section-nav button.is-active,
-.section-nav button[aria-current="page"],
-.section-nav span.is-active,
-.section-nav span[aria-current="page"] {
+.section-nav > a.is-active,
+.section-nav > a[aria-current="page"],
+.section-nav > button.is-active,
+.section-nav > button[aria-current="page"],
+.section-nav > span.is-active,
+.section-nav > span[aria-current="page"],
+.section-nav > .section-nav-item > .section-nav-filter.is-active,
+.section-nav > .section-nav-item > .section-nav-filter[aria-current="page"] {
     background: #111214;
     color: #f4f4f4;
     opacity: 1;
     box-shadow: 0 0 0 1px rgba(17, 18, 20, 0.18);
 }
 
-.section-nav a.is-active::after,
-.section-nav a[aria-current="page"]::after,
-.section-nav button.is-active::after,
-.section-nav button[aria-current="page"]::after,
-.section-nav span.is-active::after,
-.section-nav span[aria-current="page"]::after {
+.section-nav > a.is-active::after,
+.section-nav > a[aria-current="page"]::after,
+.section-nav > button.is-active::after,
+.section-nav > button[aria-current="page"]::after,
+.section-nav > span.is-active::after,
+.section-nav > span[aria-current="page"]::after,
+.section-nav > .section-nav-item > .section-nav-filter.is-active::after,
+.section-nav > .section-nav-item > .section-nav-filter[aria-current="page"]::after {
     border-top-color: currentColor;
 }
 
@@ -2628,7 +2644,146 @@ button {
 }
 
 .filter-panel-date {
-    min-width: 140px;
+    min-width: 316px;
+    max-width: min(360px, calc(100vw - 2rem));
+}
+
+.date-picker-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+}
+
+.date-picker-tab {
+    min-height: 34px;
+    border: 0;
+    background: rgba(17, 18, 20, 0.08);
+    color: #111214;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+}
+
+.date-picker-tab.is-active,
+.date-picker-tab:hover,
+.date-picker-tab:focus-visible {
+    background: #555555;
+    color: #f4f4f4;
+}
+
+.date-picker-content {
+    margin-top: 0.55rem;
+}
+
+.date-picker-view {
+    display: none;
+}
+
+.date-picker-view.is-active {
+    display: block;
+}
+
+.date-filter-options-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.date-filter-options-grid .filter-option {
+    min-height: 33px;
+    font-size: 0.76rem;
+    padding: 0.35rem 0.3rem;
+}
+
+.date-filter-options-grid .filter-option.is-past {
+    background: rgba(153, 56, 56, 0.24);
+    color: #7f2f2f;
+    cursor: not-allowed;
+}
+
+.date-calendar-panel {
+    display: grid;
+    gap: 0.38rem;
+}
+
+.date-calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.date-calendar-title {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.date-calendar-weekdays,
+.date-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.22rem;
+}
+
+.date-calendar-weekdays span {
+    text-align: center;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: rgba(17, 18, 20, 0.76);
+    text-transform: uppercase;
+}
+
+.date-calendar-cell {
+    min-height: 30px;
+    border: 1px solid rgba(17, 18, 20, 0.2);
+    background: rgba(255, 255, 255, 0.35);
+    color: #111214;
+    font-size: 0.76rem;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+}
+
+.date-calendar-cell.is-empty {
+    border-color: transparent;
+    background: transparent;
+}
+
+.date-calendar-day {
+    cursor: pointer;
+}
+
+.date-calendar-day.is-available {
+    background: #4a8f2c;
+    border-color: #3a701f;
+    color: #f4f4f4;
+}
+
+.date-calendar-day.is-unavailable {
+    background: rgba(17, 18, 20, 0.08);
+    color: rgba(17, 18, 20, 0.42);
+    cursor: not-allowed;
+}
+
+.date-calendar-day.is-past {
+    background: rgba(153, 56, 56, 0.3);
+    border-color: rgba(103, 34, 34, 0.62);
+    color: #7f2f2f;
+    cursor: not-allowed;
+}
+
+.date-calendar-day.is-selected {
+    box-shadow: 0 0 0 2px #111214 inset;
+}
+
+.date-calendar-day.is-available:hover,
+.date-calendar-day.is-available:focus-visible {
+    filter: brightness(1.08);
+}
+
+.date-clear-option {
+    margin-top: 0.22rem;
 }
 
 .filter-option {
@@ -3377,9 +3532,10 @@ button {
         display: none;
     }
 
-    .section-nav a,
-    .section-nav button,
-    .section-nav span {
+    .section-nav > a,
+    .section-nav > button,
+    .section-nav > span,
+    .section-nav > .section-nav-item > .section-nav-filter {
         width: min(100%, 220px);
     }
 
@@ -3392,6 +3548,14 @@ button {
     .filter-panel {
         left: 50%;
         min-width: min(220px, calc(100vw - 2rem));
+    }
+
+    .filter-panel-date {
+        min-width: min(320px, calc(100vw - 2rem));
+    }
+
+    .date-filter-options-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .catalog-header h1 {

@@ -1,6 +1,6 @@
 <?php
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
-    header('Location: account-settings/');
+    header('Location: customer-account-settings/');
     exit;
 }
 
@@ -8,15 +8,15 @@ session_start();
 
 $assetBase = $assetBase ?? '';
 $homePath = $homePath ?? '';
-$loginPath = $loginPath ?? 'login/';
-$accountSettingsPath = $accountSettingsPath ?? $assetBase . 'account-settings/';
-$logoutPath = $logoutPath ?? $assetBase . 'logout/';
-$cartPath = $cartPath ?? $assetBase . 'cart/';
-$eventsPath = $eventsPath ?? $assetBase . 'events/';
+$loginPath = $loginPath ?? 'customer-login/';
+$accountSettingsPath = $accountSettingsPath ?? $assetBase . 'customer-account-settings/';
+$logoutPath = $logoutPath ?? $assetBase . 'customer-logout/';
+$cartPath = $cartPath ?? $assetBase . 'customer-cart/';
+$eventsPath = $eventsPath ?? $assetBase . 'customer-events/';
 
 $isCustomerLoggedIn = isset($_SESSION['customer_id']);
 if (!$isCustomerLoggedIn) {
-    $currentPageUrl = $_SERVER['REQUEST_URI'] ?? ($assetBase . 'account-settings/');
+    $currentPageUrl = $_SERVER['REQUEST_URI'] ?? ($assetBase . 'customer-account-settings/');
     header('Location: ' . $loginPath . '?redirect=' . rawurlencode($currentPageUrl));
     exit;
 }

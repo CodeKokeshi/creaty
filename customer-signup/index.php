@@ -1,7 +1,7 @@
 <?php
 $routeBase = '../';
 $assetBase = '../';
-$customerLoginPath = '../login/';
+$customerLoginPath = '../customer-login/';
 $customerSignupPath = './';
-$customerPrivacyPolicyPath = '../privacy-policy/';
+$customerPrivacyPolicyPath = '../customer-privacy-policy/';
 require dirname(__DIR__) . '/signup_page_customer.php';

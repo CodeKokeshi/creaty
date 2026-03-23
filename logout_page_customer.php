@@ -1,6 +1,6 @@
 <?php
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
-    header('Location: logout/');
+    header('Location: customer-logout/');
     exit;
 }
 

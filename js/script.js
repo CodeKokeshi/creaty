@@ -10,7 +10,6 @@ document.addEventListener("DOMContentLoaded", function () {
     var promoDelay = 3000;
     var filterNav = document.querySelector(".section-nav-interactive");
     var filterToggles = filterNav ? filterNav.querySelectorAll(".filter-toggle") : [];
-    var filterOptions = filterNav ? filterNav.querySelectorAll(".filter-option") : [];
     var productCards = document.querySelectorAll(".product-grid .product-card");
     var productEmpty = document.querySelector(".product-grid-empty");
     var detailGalleries = document.querySelectorAll("[data-gallery]");
@@ -22,6 +21,39 @@ document.addEventListener("DOMContentLoaded", function () {
         day: "all",
         year: "all"
     };
+    var availabilityStartDate = new Date(2026, 2, 19);
+    var availabilityEndDate = new Date(2028, 11, 31);
+    var fixedAvailabilityYears = [2026, 2027, 2028];
+    var monthDefinitions = [
+        { value: "january", label: "January" },
+        { value: "february", label: "February" },
+        { value: "march", label: "March" },
+        { value: "april", label: "April" },
+        { value: "may", label: "May" },
+        { value: "june", label: "June" },
+        { value: "july", label: "July" },
+        { value: "august", label: "August" },
+        { value: "september", label: "September" },
+        { value: "october", label: "October" },
+        { value: "november", label: "November" },
+        { value: "december", label: "December" }
+    ];
+    var monthValueToIndex = monthDefinitions.reduce(function (result, month, index) {
+        result[month.value] = index;
+        return result;
+    }, {});
+    var dateFilterPanel = filterNav ? filterNav.querySelector("#date-filter-panel") : null;
+    var dateTabButtons = dateFilterPanel ? dateFilterPanel.querySelectorAll("[data-date-tab]") : [];
+    var dateViews = dateFilterPanel ? dateFilterPanel.querySelectorAll("[data-date-view]") : [];
+    var monthOptionsWrap = dateFilterPanel ? dateFilterPanel.querySelector("[data-date-month-options]") : null;
+    var yearOptionsWrap = dateFilterPanel ? dateFilterPanel.querySelector("[data-date-year-options]") : null;
+    var calendarGrid = dateFilterPanel ? dateFilterPanel.querySelector("[data-date-calendar-grid]") : null;
+    var calendarTitle = dateFilterPanel ? dateFilterPanel.querySelector("[data-calendar-title]") : null;
+    var availableDateKeys = new Set();
+    var availableYears = [];
+    var now = new Date();
+    var calendarViewMonthIndex = now.getMonth();
+    var calendarViewYear = now.getFullYear();
 
     revealItems.forEach(function (item, index) {
         window.setTimeout(function () {
@@ -104,15 +136,32 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        var effectiveToday = getEffectiveToday();
         var visibleCount = 0;
 
         productCards.forEach(function (card) {
-            var matches = Object.keys(activeFilters).every(function (key) {
-                var selectedValue = activeFilters[key];
-                var cardValue = (card.getAttribute("data-" + key) || "").toLowerCase();
+            var cardBrand = normalizeFilterValue(card.getAttribute("data-brand"));
+            var cardProductKey = getCardProductKey(card);
+            var brandMatches = activeFilters.brand === "all" || activeFilters.brand === cardBrand;
+            var hasDateFilter = activeFilters.month !== "all" || activeFilters.day !== "all" || activeFilters.year !== "all";
+            var matches = brandMatches;
 
-                return selectedValue === "all" || selectedValue === cardValue;
-            });
+            if (matches && hasDateFilter) {
+                var selectedYear = activeFilters.year === "all" ? calendarViewYear : Number.parseInt(activeFilters.year, 10);
+                var selectedMonthIndex = activeFilters.month === "all" ? calendarViewMonthIndex : monthValueToIndex[activeFilters.month];
+                var selectedDay = activeFilters.day === "all" ? null : Number.parseInt(activeFilters.day, 10);
+
+                if (!cardProductKey) {
+                    matches = false;
+                } else if (selectedDay !== null && Number.isFinite(selectedYear) && Number.isFinite(selectedMonthIndex)) {
+                    var targetDate = new Date(selectedYear, selectedMonthIndex, selectedDay);
+                    matches = targetDate >= effectiveToday && isDateAvailableForCamera(cardProductKey, targetDate);
+                } else if (activeFilters.month !== "all" && Number.isFinite(selectedYear) && Number.isFinite(selectedMonthIndex)) {
+                    matches = cameraHasAvailabilityInMonth(cardProductKey, selectedYear, selectedMonthIndex, effectiveToday);
+                } else if (activeFilters.year !== "all" && Number.isFinite(selectedYear)) {
+                    matches = cameraHasAvailabilityInYear(cardProductKey, selectedYear, effectiveToday);
+                }
+            }
 
             card.classList.toggle("is-hidden", !matches);
 
@@ -124,6 +173,447 @@ document.addEventListener("DOMContentLoaded", function () {
         if (productEmpty) {
             productEmpty.hidden = visibleCount !== 0;
         }
+    }
+
+    function padTwo(value) {
+        return String(value).padStart(2, "0");
+    }
+
+    function getStartOfDay(dateValue) {
+        var date = new Date(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate());
+        date.setHours(0, 0, 0, 0);
+        return date;
+    }
+
+    function getEffectiveToday() {
+        var today = getStartOfDay(new Date());
+
+        if (today < availabilityStartDate) {
+            return new Date(availabilityStartDate.getTime());
+        }
+
+        return today;
+    }
+
+    function dateKeyFromDate(dateValue) {
+        return String(dateValue.getFullYear()) + "-" + padTwo(dateValue.getMonth() + 1) + "-" + padTwo(dateValue.getDate());
+    }
+
+    function hashString(value) {
+        var hash = 0;
+
+        for (var index = 0; index < value.length; index += 1) {
+            hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
+        }
+
+        return Math.abs(hash);
+    }
+
+    function isWithinAvailabilityRange(dateValue) {
+        return dateValue >= availabilityStartDate && dateValue <= availabilityEndDate;
+    }
+
+    function isDateAvailableForCamera(cameraKey, dateValue) {
+        if (!cameraKey) {
+            return false;
+        }
+
+        var normalizedDate = getStartOfDay(dateValue);
+
+        if (!isWithinAvailabilityRange(normalizedDate)) {
+            return false;
+        }
+
+        var keySeed = String(cameraKey).toLowerCase() + "|" + dateKeyFromDate(normalizedDate);
+        var availabilityScore = hashString(keySeed) % 100;
+
+        return availabilityScore < 34;
+    }
+
+    function extractProductKeyFromHref(hrefValue) {
+        if (!hrefValue) {
+            return "";
+        }
+
+        var productMatch = hrefValue.match(/[?&]product=([^&#]+)/i);
+
+        if (!productMatch || !productMatch[1]) {
+            return "";
+        }
+
+        try {
+            return decodeURIComponent(productMatch[1]).toLowerCase();
+        } catch (error) {
+            return String(productMatch[1]).toLowerCase();
+        }
+    }
+
+    function collectHomepageCameraKeys() {
+        var cameraKeys = new Set();
+
+        productCards.forEach(function (card) {
+            var productLink = card.querySelector(".product-visual-link") || card.querySelector(".product-title-link");
+            var productKey = extractProductKeyFromHref(productLink ? productLink.getAttribute("href") : "");
+
+            if (productKey) {
+                cameraKeys.add(productKey);
+            }
+        });
+
+        return Array.from(cameraKeys);
+    }
+
+    function getCardProductKey(card) {
+        if (!card) {
+            return "";
+        }
+
+        var existingKey = normalizeFilterValue(card.getAttribute("data-product-key"));
+
+        if (existingKey && existingKey !== "all") {
+            return existingKey;
+        }
+
+        var productLink = card.querySelector(".product-visual-link") || card.querySelector(".product-title-link");
+        var parsedKey = extractProductKeyFromHref(productLink ? productLink.getAttribute("href") : "");
+
+        if (parsedKey) {
+            card.setAttribute("data-product-key", parsedKey);
+        }
+
+        return parsedKey;
+    }
+
+    function collectHomepageCameraKeysForDateContext() {
+        var cameraKeys = new Set();
+
+        productCards.forEach(function (card) {
+            var cardBrand = normalizeFilterValue(card.getAttribute("data-brand"));
+            var brandMatches = activeFilters.brand === "all" || activeFilters.brand === cardBrand;
+
+            if (!brandMatches) {
+                return;
+            }
+
+            var productKey = getCardProductKey(card);
+
+            if (productKey) {
+                cameraKeys.add(productKey);
+            }
+        });
+
+        if (!cameraKeys.size) {
+            return collectHomepageCameraKeys();
+        }
+
+        return Array.from(cameraKeys);
+    }
+
+    function syncCalendarViewFromFilters() {
+        var effectiveToday = getEffectiveToday();
+
+        if (activeFilters.year !== "all") {
+            var parsedYear = Number.parseInt(activeFilters.year, 10);
+
+            if (Number.isFinite(parsedYear)) {
+                calendarViewYear = parsedYear;
+            }
+        } else if (!Number.isFinite(calendarViewYear)) {
+            calendarViewYear = effectiveToday.getFullYear();
+        }
+
+        calendarViewYear = Math.min(Math.max(calendarViewYear, fixedAvailabilityYears[0]), fixedAvailabilityYears[fixedAvailabilityYears.length - 1]);
+
+        if (activeFilters.month !== "all" && monthValueToIndex[activeFilters.month] !== undefined) {
+            calendarViewMonthIndex = monthValueToIndex[activeFilters.month];
+        } else if (!Number.isFinite(calendarViewMonthIndex) || calendarViewMonthIndex < 0 || calendarViewMonthIndex > 11) {
+            calendarViewMonthIndex = calendarViewYear === effectiveToday.getFullYear() ? effectiveToday.getMonth() : 0;
+        }
+    }
+
+    function normalizeFilterValue(value) {
+        return String(value || "all").toLowerCase();
+    }
+
+    function getMonthLabel(monthValue) {
+        var normalized = normalizeFilterValue(monthValue);
+        var month = monthDefinitions.find(function (item) {
+            return item.value === normalized;
+        });
+
+        return month ? month.label : "Month";
+    }
+
+    function syncFilterButtons(group) {
+        if (!filterNav) {
+            return;
+        }
+
+        var selected = activeFilters[group];
+
+        filterNav.querySelectorAll('.filter-option[data-filter-group="' + group + '"]').forEach(function (option) {
+            var optionValue = normalizeFilterValue(option.getAttribute("data-filter-value"));
+            option.classList.toggle("is-selected", optionValue === selected);
+        });
+    }
+
+    function setActiveFilter(group, value, options) {
+        var config = options || {};
+        var normalizedValue = normalizeFilterValue(value);
+
+        activeFilters[group] = normalizedValue;
+        syncFilterButtons(group);
+
+        if (!config.skipApply) {
+            applyProductFilters();
+        }
+    }
+
+    function buildDateAvailability() {
+        var effectiveToday = getEffectiveToday();
+        var daysInVisibleMonth = new Date(calendarViewYear, calendarViewMonthIndex + 1, 0).getDate();
+        var cameraKeys = collectHomepageCameraKeysForDateContext();
+        availableDateKeys.clear();
+
+        for (var day = 1; day <= daysInVisibleMonth; day += 1) {
+            var candidateDate = new Date(calendarViewYear, calendarViewMonthIndex, day);
+
+            if (candidateDate < effectiveToday || candidateDate > availabilityEndDate) {
+                continue;
+            }
+
+            var hasAvailableCamera = cameraKeys.some(function (cameraKey) {
+                return isDateAvailableForCamera(cameraKey, candidateDate);
+            });
+
+            if (hasAvailableCamera) {
+                availableDateKeys.add(dateKeyFromDate(candidateDate));
+            }
+        }
+
+        availableYears = fixedAvailabilityYears.slice();
+
+        if (!Number.isFinite(calendarViewYear)) {
+            calendarViewYear = effectiveToday.getFullYear();
+        }
+
+        calendarViewYear = Math.min(Math.max(calendarViewYear, fixedAvailabilityYears[0]), fixedAvailabilityYears[fixedAvailabilityYears.length - 1]);
+
+        if (!Number.isFinite(calendarViewMonthIndex) || calendarViewMonthIndex < 0 || calendarViewMonthIndex > 11) {
+            calendarViewMonthIndex = calendarViewYear === effectiveToday.getFullYear() ? effectiveToday.getMonth() : 0;
+        }
+    }
+
+    function cameraHasAvailabilityInMonth(cameraKey, yearValue, monthIndex, floorDate) {
+        if (!cameraKey || !Number.isFinite(yearValue) || !Number.isFinite(monthIndex)) {
+            return false;
+        }
+
+        var daysInMonth = new Date(yearValue, monthIndex + 1, 0).getDate();
+
+        for (var day = 1; day <= daysInMonth; day += 1) {
+            var dateValue = new Date(yearValue, monthIndex, day);
+
+            if (dateValue < floorDate || dateValue > availabilityEndDate) {
+                continue;
+            }
+
+            if (isDateAvailableForCamera(cameraKey, dateValue)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function cameraHasAvailabilityInYear(cameraKey, yearValue, floorDate) {
+        if (!cameraKey || !Number.isFinite(yearValue)) {
+            return false;
+        }
+
+        for (var monthIndex = 0; monthIndex < 12; monthIndex += 1) {
+            if (cameraHasAvailabilityInMonth(cameraKey, yearValue, monthIndex, floorDate)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function setActiveDateView(nextView) {
+        if (!dateTabButtons.length || !dateViews.length) {
+            return;
+        }
+
+        dateTabButtons.forEach(function (button) {
+            var isSelected = button.getAttribute("data-date-tab") === nextView;
+            button.classList.toggle("is-active", isSelected);
+            button.setAttribute("aria-selected", isSelected ? "true" : "false");
+        });
+
+        dateViews.forEach(function (view) {
+            view.classList.toggle("is-active", view.getAttribute("data-date-view") === nextView);
+        });
+
+        if (nextView === "day") {
+            renderCalendarView();
+        }
+    }
+
+    function updateDateTabLabels() {
+        if (!dateTabButtons.length) {
+            return;
+        }
+
+        dateTabButtons.forEach(function (button) {
+            var tab = button.getAttribute("data-date-tab");
+            button.textContent = tab ? tab.charAt(0).toUpperCase() + tab.slice(1) : "Date";
+        });
+    }
+
+    function createDateOptionButton(group, value, label) {
+        var button = document.createElement("button");
+        var normalizedValue = normalizeFilterValue(value);
+
+        button.type = "button";
+        button.className = "filter-option";
+        button.setAttribute("data-filter-group", group);
+        button.setAttribute("data-filter-value", normalizedValue);
+        button.textContent = label;
+        button.classList.toggle("is-selected", activeFilters[group] === normalizedValue);
+
+        return button;
+    }
+
+    function renderMonthOptions() {
+        if (!monthOptionsWrap) {
+            return;
+        }
+
+        var effectiveToday = getEffectiveToday();
+        var selectedYear = activeFilters.year === "all" ? effectiveToday.getFullYear() : Number.parseInt(activeFilters.year, 10);
+
+        monthOptionsWrap.innerHTML = "";
+        monthOptionsWrap.appendChild(createDateOptionButton("month", "all", "All Months"));
+
+        monthDefinitions.forEach(function (month, monthIndex) {
+            var option = createDateOptionButton("month", month.value, month.label);
+            var isPast = selectedYear < effectiveToday.getFullYear() || (selectedYear === effectiveToday.getFullYear() && monthIndex < effectiveToday.getMonth());
+
+            if (isPast) {
+                option.classList.add("is-past");
+                option.disabled = true;
+                option.setAttribute("aria-disabled", "true");
+            }
+
+            monthOptionsWrap.appendChild(option);
+        });
+    }
+
+    function renderYearOptions() {
+        if (!yearOptionsWrap) {
+            return;
+        }
+
+        var effectiveToday = getEffectiveToday();
+
+        yearOptionsWrap.innerHTML = "";
+        yearOptionsWrap.appendChild(createDateOptionButton("year", "all", "All Years"));
+
+        availableYears.forEach(function (yearValue) {
+            var option = createDateOptionButton("year", String(yearValue), String(yearValue));
+
+            if (yearValue < effectiveToday.getFullYear()) {
+                option.classList.add("is-past");
+                option.disabled = true;
+                option.setAttribute("aria-disabled", "true");
+            }
+
+            yearOptionsWrap.appendChild(option);
+        });
+    }
+
+    function renderCalendarView() {
+        if (!calendarGrid) {
+            return;
+        }
+
+        if (activeFilters.month !== "all" && monthValueToIndex[activeFilters.month] !== undefined) {
+            calendarViewMonthIndex = monthValueToIndex[activeFilters.month];
+        }
+
+        if (activeFilters.year !== "all") {
+            var parsedYear = Number.parseInt(activeFilters.year, 10);
+
+            if (Number.isFinite(parsedYear)) {
+                calendarViewYear = parsedYear;
+            }
+        }
+
+        var monthLabel = monthDefinitions[calendarViewMonthIndex].label;
+        var firstWeekday = new Date(calendarViewYear, calendarViewMonthIndex, 1).getDay();
+        var totalDays = new Date(calendarViewYear, calendarViewMonthIndex + 1, 0).getDate();
+        var effectiveToday = getEffectiveToday();
+
+        calendarGrid.innerHTML = "";
+
+        if (calendarTitle) {
+            calendarTitle.textContent = monthLabel + " " + calendarViewYear;
+        }
+
+        for (var padIndex = 0; padIndex < firstWeekday; padIndex += 1) {
+            var padCell = document.createElement("span");
+            padCell.className = "date-calendar-cell is-empty";
+            padCell.setAttribute("aria-hidden", "true");
+            calendarGrid.appendChild(padCell);
+        }
+
+        for (var day = 1; day <= totalDays; day += 1) {
+            var dayValue = padTwo(day);
+            var monthValue = padTwo(calendarViewMonthIndex + 1);
+            var dateKey = String(calendarViewYear) + "-" + monthValue + "-" + dayValue;
+            var dayDate = new Date(calendarViewYear, calendarViewMonthIndex, day);
+            var isPastDay = dayDate < effectiveToday;
+            var isAvailable = availableDateKeys.has(dateKey);
+            var dayButton = document.createElement("button");
+
+            dayButton.type = "button";
+            dayButton.className = "date-calendar-cell date-calendar-day";
+            dayButton.textContent = String(day);
+            dayButton.setAttribute("data-calendar-day", dayValue);
+            dayButton.setAttribute("aria-label", monthLabel + " " + day + ", " + calendarViewYear);
+
+            if (isPastDay) {
+                dayButton.classList.add("is-past");
+                dayButton.disabled = true;
+            } else if (isAvailable) {
+                dayButton.classList.add("is-available");
+            } else {
+                dayButton.classList.add("is-unavailable");
+                dayButton.disabled = true;
+            }
+
+            if (
+                activeFilters.day === dayValue &&
+                activeFilters.month === monthDefinitions[calendarViewMonthIndex].value &&
+                activeFilters.year === String(calendarViewYear)
+            ) {
+                dayButton.classList.add("is-selected");
+            }
+
+            calendarGrid.appendChild(dayButton);
+        }
+
+        syncFilterButtons("day");
+    }
+
+    function refreshDatePickerUI() {
+        syncCalendarViewFromFilters();
+        buildDateAvailability();
+        renderMonthOptions();
+        renderYearOptions();
+        updateDateTabLabels();
+        renderCalendarView();
     }
 
     function setupDetailGallery(gallery) {
@@ -272,6 +762,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (filterNav) {
+        refreshDatePickerUI();
+
         filterToggles.forEach(function (toggle) {
             toggle.addEventListener("click", function () {
                 var panelId = toggle.getAttribute("aria-controls");
@@ -281,27 +773,50 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        filterOptions.forEach(function (option) {
-            option.addEventListener("click", function () {
-                var group = option.getAttribute("data-filter-group");
-                var value = option.getAttribute("data-filter-value");
+        filterNav.addEventListener("click", function (event) {
+            var target = event.target;
+            var dateTabButton = target.closest("[data-date-tab]");
 
-                if (!group || !value) {
-                    return;
-                }
+            if (dateTabButton && dateFilterPanel && dateFilterPanel.contains(dateTabButton)) {
+                setActiveDateView(dateTabButton.getAttribute("data-date-tab"));
+                return;
+            }
 
-                activeFilters[group] = value.toLowerCase();
+            var dayButton = target.closest("[data-calendar-day]");
 
-                filterNav.querySelectorAll('.filter-option[data-filter-group="' + group + '"]').forEach(function (groupOption) {
-                    groupOption.classList.toggle("is-selected", groupOption === option);
-                });
+            if (dayButton && dateFilterPanel && dateFilterPanel.contains(dayButton)) {
+                var selectedDay = dayButton.getAttribute("data-calendar-day");
+                var selectedMonth = monthDefinitions[calendarViewMonthIndex].value;
 
-                applyProductFilters();
-            });
+                setActiveFilter("month", selectedMonth, { skipApply: true });
+                setActiveFilter("year", String(calendarViewYear), { skipApply: true });
+                setActiveFilter("day", selectedDay);
+                refreshDatePickerUI();
+                return;
+            }
+
+            var option = target.closest(".filter-option");
+
+            if (!option || !filterNav.contains(option)) {
+                return;
+            }
+
+            var group = option.getAttribute("data-filter-group");
+            var value = option.getAttribute("data-filter-value");
+
+            if (!group || !value) {
+                return;
+            }
+
+            setActiveFilter(group, value);
+            refreshDatePickerUI();
         });
 
         document.addEventListener("click", function (event) {
-            if (!filterNav.contains(event.target)) {
+            var clickPath = typeof event.composedPath === "function" ? event.composedPath() : [];
+            var clickedInsideFilterNav = clickPath.includes(filterNav) || filterNav.contains(event.target);
+
+            if (!clickedInsideFilterNav) {
                 closeFilterPanels(null);
             }
         });
@@ -976,85 +1491,76 @@ document.addEventListener("DOMContentLoaded", function () {
         var monthSelect = document.getElementById("calendar-month-select");
         var yearSelect = document.getElementById("calendar-year-select");
         var gridContainer = document.getElementById("calendar-grid-container");
-        
-        var availMonthStr = calendarCard.getAttribute("data-available-month");
-        var availYearStr = calendarCard.getAttribute("data-available-year");
-        var availDaysStr = calendarCard.getAttribute("data-available-days");
-        
-        var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        var availMonthIndex = months.indexOf(availMonthStr);
-        var availDays = [];
-        try {
-            availDays = JSON.parse(availDaysStr);
-        } catch (e) {}
-
-        if (availMonthIndex !== -1 && monthSelect) {
-            monthSelect.value = availMonthIndex;
-        }
-        if (availYearStr && yearSelect) {
-            var options = Array.from(yearSelect.options);
-            var opt = options.find(o => o.value === availYearStr);
-            if (!opt) {
-                var newOpt = document.createElement("option");
-                newOpt.value = availYearStr;
-                newOpt.text = availYearStr;
-                yearSelect.appendChild(newOpt);
-            }
-            yearSelect.value = availYearStr;
-        }
-
         var calendarDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-        
+        var calendarProductKey = (calendarCard.getAttribute("data-product-key") || "").toLowerCase();
+
+        if (!calendarProductKey) {
+            calendarProductKey = extractProductKeyFromHref(window.location.search || "");
+        }
+
+        function setStartOfDay(dateValue) {
+            var date = new Date(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate());
+            date.setHours(0, 0, 0, 0);
+            return date;
+        }
+
+        function getCalendarToday() {
+            var today = setStartOfDay(new Date());
+            var floorDate = new Date(2026, 2, 19);
+
+            return today < floorDate ? floorDate : today;
+        }
+
+        function rebuildYearOptions() {
+            if (!yearSelect) {
+                return;
+            }
+
+            yearSelect.innerHTML = "";
+
+            [2026, 2027, 2028].forEach(function (yearValue) {
+                var option = document.createElement("option");
+                option.value = String(yearValue);
+                option.textContent = String(yearValue);
+                yearSelect.appendChild(option);
+            });
+        }
+
         function updateDisables() {
-            var today = new Date();
+            var today = getCalendarToday();
             var currentY = today.getFullYear();
             var currentM = today.getMonth();
-            if (currentY < 2026) {
-                currentY = 2026;
-                currentM = 2; // March
-            }
 
-            // Hide and disable past years
-            Array.from(yearSelect.options).forEach(function(opt) {
-                var y = parseInt(opt.value, 10);
-                if (y < currentY) {
-                    opt.disabled = true;
-                    opt.hidden = true;
-                } else {
-                    opt.disabled = false;
-                    opt.hidden = false;
-                }
+            Array.from(yearSelect.options).forEach(function (opt) {
+                var y = Number.parseInt(opt.value, 10);
+                opt.disabled = y < currentY;
             });
-            
-            // If selected year is disabled, push it to current year
+
             if (yearSelect.options[yearSelect.selectedIndex] && yearSelect.options[yearSelect.selectedIndex].disabled) {
-                var firstAbleYear = Array.from(yearSelect.options).find(function(o) { return !o.disabled; });
+                var firstAbleYear = Array.from(yearSelect.options).find(function (o) {
+                    return !o.disabled;
+                });
+
                 if (firstAbleYear) {
                     yearSelect.value = firstAbleYear.value;
                 }
             }
 
-            var selY = parseInt(yearSelect.value, 10);
+            var selectedYear = Number.parseInt(yearSelect.value, 10);
 
-            Array.from(monthSelect.options).forEach(function(opt) {
-                var m = parseInt(opt.value, 10);
-                if (selY < currentY) {
-                    opt.disabled = true;
-                    opt.hidden = true;
-                } else if (selY === currentY) {
-                    var isPastMonth = (m < currentM);
-                    opt.disabled = isPastMonth;
-                    opt.hidden = isPastMonth;
-                } else {
-                    opt.disabled = false;
-                    opt.hidden = false;
-                }
+            Array.from(monthSelect.options).forEach(function (opt) {
+                var monthIndex = Number.parseInt(opt.value, 10);
+                var isPastMonth = selectedYear < currentY || (selectedYear === currentY && monthIndex < currentM);
+                opt.disabled = isPastMonth;
             });
 
             if (monthSelect.options[monthSelect.selectedIndex] && monthSelect.options[monthSelect.selectedIndex].disabled) {
-                var firstAble = Array.from(monthSelect.options).find(function(o) { return !o.disabled; });
-                if (firstAble) {
-                    monthSelect.value = firstAble.value;
+                var firstAvailableMonth = Array.from(monthSelect.options).find(function (o) {
+                    return !o.disabled;
+                });
+
+                if (firstAvailableMonth) {
+                    monthSelect.value = firstAvailableMonth.value;
                 }
             }
         }
@@ -1062,28 +1568,11 @@ document.addEventListener("DOMContentLoaded", function () {
         function renderCalendar() {
             var selectedMonth = parseInt(monthSelect.value, 10);
             var selectedYear = parseInt(yearSelect.value, 10);
-            
-            var isAvailMonthYear = (selectedMonth === availMonthIndex && selectedYear === parseInt(availYearStr, 10));
 
             var firstDay = new Date(selectedYear, selectedMonth, 1).getDay();
             var daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
             var daysInPrevMonth = new Date(selectedYear, selectedMonth, 0).getDate();
-            
-            var today = new Date();
-            var currentY = today.getFullYear();
-            if (currentY < 2026) { currentY = 2026; }
-            // Let's use hardcoded 2026 / 2 for March or dynamic:
-            // Since environment context is March 18, 2026, let's just use real JS Date
-            // but fallback structurally:
-            var actualTodayY = today.getFullYear();
-            var actualTodayM = today.getMonth();
-            var actualTodayD = today.getDate();
-            // Environment override since we're simulating mock future/present
-            if (actualTodayY < 2026) {
-                actualTodayY = 2026;
-                actualTodayM = 2;
-                actualTodayD = 18;
-            }
+            var effectiveToday = getCalendarToday();
 
             var html = "";
             
@@ -1105,23 +1594,16 @@ document.addEventListener("DOMContentLoaded", function () {
                         html += '<span class="calendar-date is-muted">' + nextDate + '</span>';
                         nextDate++;
                     } else {
-                        var isPastDay = false;
-                        if (selectedYear < actualTodayY) {
-                            isPastDay = true;
-                        } else if (selectedYear === actualTodayY) {
-                            if (selectedMonth < actualTodayM) {
-                                isPastDay = true;
-                            } else if (selectedMonth === actualTodayM && date < actualTodayD) {
-                                isPastDay = true;
-                            }
-                        }
-
-                        var sDate = date.toString().padStart(2, '0');
-                        var isAvailableDay = isAvailMonthYear && availDays.includes(sDate) && !isPastDay;
+                        var currentDate = new Date(selectedYear, selectedMonth, date);
+                        var isPastDay = currentDate < effectiveToday;
+                        var isAvailableDay = isDateAvailableForCamera(calendarProductKey, currentDate) && !isPastDay;
                         var classes = "calendar-date";
-                        
-                        if (isPastDay) classes += " is-muted";
-                        else if (isAvailableDay) classes += " is-available";
+
+                        if (isPastDay) {
+                            classes += " is-past";
+                        } else if (isAvailableDay) {
+                            classes += " is-available";
+                        }
                         
                         html += '<span class="' + classes + '">' + date + '</span>';
                         date++;
@@ -1132,6 +1614,12 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (monthSelect && yearSelect && gridContainer) {
+            rebuildYearOptions();
+
+            var startupToday = getCalendarToday();
+            yearSelect.value = String(Math.min(Math.max(startupToday.getFullYear(), 2026), 2028));
+            monthSelect.value = String(startupToday.getMonth());
+
             monthSelect.addEventListener("change", renderCalendar);
             yearSelect.addEventListener("change", function() {
                 updateDisables();

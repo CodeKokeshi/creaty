@@ -8,8 +8,8 @@ session_start();
 
 $routeBase = $routeBase ?? '';
 $assetBase = $assetBase ?? '';
-$customerLoginPath = $customerLoginPath ?? 'login/';
-$customerSignupPath = $customerSignupPath ?? 'signup/';
+$customerLoginPath = $customerLoginPath ?? 'customer-login/';
+$customerSignupPath = $customerSignupPath ?? 'customer-signup/';
 
 require_once __DIR__ . '/config/db.php';
 
