@@ -31,6 +31,10 @@ body {
         linear-gradient(180deg, #111214 0%, #0a0a0b 100%);
 }
 
+body.admin-modal-open {
+    overflow: hidden;
+}
+
 img {
     display: block;
     max-width: 100%;
@@ -705,6 +709,37 @@ button {
     transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
 }
 
+.product-card-admin-edit {
+    position: absolute;
+    top: 0.5rem;
+    right: 2.7rem;
+    z-index: 3;
+    width: 30px;
+    height: 30px;
+    border: 1px solid #3d9042;
+    border-radius: 8px;
+    background: #4aaa52;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+
+.product-card-admin-edit img {
+    width: 16px;
+    height: 16px;
+    filter: brightness(0) invert(1);
+}
+
+.product-card-admin-edit:hover,
+.product-card-admin-edit:focus-visible {
+    transform: scale(1.06);
+    background: #3f9446;
+    border-color: #53ad5c;
+}
+
 .product-card-admin-remove:hover,
 .product-card-admin-remove:focus-visible {
     transform: scale(1.06);
@@ -745,6 +780,172 @@ button {
     font-size: 2rem;
     line-height: 1;
     margin-bottom: 0.6rem;
+}
+
+.admin-edit-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(8, 9, 12, 0.45);
+    backdrop-filter: blur(10px);
+}
+
+.admin-edit-modal {
+    width: min(100%, 820px);
+    max-height: min(92vh, 820px);
+    overflow: auto;
+    background: #17181b;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 20px 56px rgba(0, 0, 0, 0.48);
+    padding: 0.8rem;
+}
+
+.admin-edit-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.7rem;
+}
+
+.admin-edit-modal-head h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    letter-spacing: 0.03em;
+}
+
+.admin-edit-close {
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.38);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f4f4;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+.admin-edit-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.75rem;
+}
+
+.admin-edit-image-column,
+.admin-edit-fields-column {
+    display: grid;
+    gap: 0.42rem;
+}
+
+.admin-edit-label {
+    font-size: 0.82rem;
+    color: #c8c8cb;
+    letter-spacing: 0.04em;
+}
+
+.admin-edit-image-preview {
+    width: min(100%, 260px);
+    aspect-ratio: 1 / 1;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: #0f1012;
+    overflow: hidden;
+    position: relative;
+}
+
+.admin-edit-image-preview.is-crop-active {
+    cursor: grab;
+}
+
+.admin-edit-image-preview.is-crop-active:active {
+    cursor: grabbing;
+}
+
+.admin-edit-image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: translate(var(--admin-crop-x, 0px), var(--admin-crop-y, 0px)) scale(var(--admin-crop-zoom, 1));
+    transform-origin: center center;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    touch-action: none;
+}
+
+.admin-edit-image-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.admin-edit-secondary,
+.admin-edit-primary {
+    min-height: 38px;
+    padding: 0 0.8rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #f4f4f4;
+    cursor: pointer;
+}
+
+.admin-edit-secondary {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-edit-primary {
+    background: #4a8f2c;
+    border-color: #3b7125;
+}
+
+.admin-crop-controls {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.admin-crop-workspace {
+    display: grid;
+    gap: 0.42rem;
+}
+
+.admin-crop-workspace[hidden] {
+    display: none;
+}
+
+.admin-crop-hint {
+    margin: 0;
+    color: #c8c8cb;
+    font-size: 0.78rem;
+}
+
+.admin-crop-controls label {
+    display: grid;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    color: #c8c8cb;
+}
+
+.admin-crop-actions {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+
+.admin-edit-fields-column input {
+    min-height: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.06);
+    color: #f4f4f4;
+    padding: 0 0.7rem;
+}
+
+.admin-edit-actions {
+    margin-top: 0.7rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
 }
 
 .product-card.is-hidden {
@@ -3710,6 +3911,14 @@ button {
     .steps-grid,
     .product-grid {
         grid-template-columns: 1fr;
+    }
+
+    .admin-edit-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-edit-image-preview {
+        width: min(100%, 100%);
     }
 
     .product-detail-layout,

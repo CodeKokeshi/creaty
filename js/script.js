@@ -14,6 +14,39 @@ document.addEventListener("DOMContentLoaded", function () {
     var productCards = document.querySelectorAll('.product-grid .product-card:not([data-admin-add-card="true"])');
     var productEmpty = document.querySelector(".product-grid-empty");
     var adminRemoveButtons = document.querySelectorAll("[data-admin-remove-featured]");
+    var adminEditButtons = document.querySelectorAll("[data-admin-edit-featured]");
+    var adminEditBackdrop = document.querySelector("[data-admin-edit-backdrop]");
+    var adminEditForm = document.querySelector("[data-admin-edit-form]");
+    var adminEditClose = document.querySelector("[data-admin-edit-close]");
+    var adminEditCancel = document.querySelector("[data-admin-edit-cancel]");
+    var adminEditBrowse = document.querySelector("[data-admin-edit-browse]");
+    var adminCropWorkspace = document.querySelector("[data-admin-crop-workspace]");
+    var adminEditCropCancel = document.querySelector("[data-admin-edit-crop-cancel]");
+    var adminEditCropSave = document.querySelector("[data-admin-edit-crop-save]");
+    var adminEditFileInput = document.querySelector("[data-admin-edit-file]");
+    var adminEditPreviewWrap = document.querySelector("[data-admin-edit-image-preview]");
+    var adminEditPreviewImage = document.querySelector("[data-admin-edit-preview-img]");
+    var adminEditName = document.querySelector("[data-admin-edit-name]");
+    var adminEditSpec1 = document.querySelector("[data-admin-edit-spec1]");
+    var adminEditSpec2 = document.querySelector("[data-admin-edit-spec2]");
+    var adminEditPrice = document.querySelector("[data-admin-edit-price]");
+    var adminEditDiscount = document.querySelector("[data-admin-edit-discount]");
+    var adminEditZoom = document.querySelector("[data-admin-edit-zoom]");
+    var activeAdminEditCard = null;
+    var adminCropState = {
+        zoom: 1,
+        offsetX: 0,
+        offsetY: 0,
+        isCropping: false,
+        isDragging: false,
+        dragPointerId: null,
+        dragStartClientX: 0,
+        dragStartClientY: 0,
+        dragStartOffsetX: 0,
+        dragStartOffsetY: 0,
+        sourceImage: "",
+        previewBeforeCrop: ""
+    };
     var detailGalleries = document.querySelectorAll("[data-gallery]");
     var packageSlideshows = document.querySelectorAll("[data-package-slideshow]");
     var packageSlideshowControllers = [];
@@ -151,6 +184,407 @@ document.addEventListener("DOMContentLoaded", function () {
             }, 180);
         });
     });
+
+    function parseMoneyValue(value) {
+        var normalized = String(value || "").replace(/[^0-9.]/g, "");
+        var parsed = Number.parseFloat(normalized);
+
+        if (!Number.isFinite(parsed)) {
+            return 0;
+        }
+
+        return parsed;
+    }
+
+    function formatPeso(value) {
+        return "\u20B1 " + Number(value).toFixed(2);
+    }
+
+    function syncAdminPreviewTransform() {
+        if (!adminEditPreviewWrap || !adminEditPreviewImage || !adminEditZoom) {
+            return;
+        }
+
+        adminEditPreviewWrap.style.setProperty("--admin-crop-zoom", String(adminCropState.zoom));
+        adminEditPreviewWrap.style.setProperty("--admin-crop-x", String(adminCropState.offsetX) + "px");
+        adminEditPreviewWrap.style.setProperty("--admin-crop-y", String(adminCropState.offsetY) + "px");
+        adminEditPreviewWrap.classList.toggle("is-crop-active", adminCropState.isCropping);
+    }
+
+    function setAdminCropWorkspaceVisible(isVisible) {
+        adminCropState.isCropping = isVisible;
+
+        if (adminCropWorkspace) {
+            adminCropWorkspace.hidden = !isVisible;
+        }
+
+        syncAdminPreviewTransform();
+    }
+
+    function clampAdminCropOffsets(nextX, nextY) {
+        if (!adminEditPreviewWrap || !adminEditPreviewImage) {
+            return { x: nextX, y: nextY };
+        }
+
+        var rect = adminEditPreviewWrap.getBoundingClientRect();
+        var zoom = Math.max(1, adminCropState.zoom);
+        var maxShift = Math.max(0, ((rect.width * zoom) - rect.width) / 2);
+        var clampedX = Math.min(maxShift, Math.max(-maxShift, nextX));
+        var clampedY = Math.min(maxShift, Math.max(-maxShift, nextY));
+
+        return {
+            x: clampedX,
+            y: clampedY
+        };
+    }
+
+    function resetAdminCropState() {
+        adminCropState.zoom = 1;
+        adminCropState.offsetX = 0;
+        adminCropState.offsetY = 0;
+        adminCropState.isDragging = false;
+        adminCropState.dragPointerId = null;
+
+        if (adminEditZoom) {
+            adminEditZoom.value = "1";
+        }
+
+        syncAdminPreviewTransform();
+    }
+
+    function clampDiscount(value) {
+        var parsed = Number.parseInt(String(value || "0"), 10);
+
+        if (!Number.isFinite(parsed)) {
+            return 0;
+        }
+
+        return Math.min(95, Math.max(0, parsed));
+    }
+
+    function closeAdminEditModal() {
+        if (!adminEditBackdrop) {
+            return;
+        }
+
+        setAdminCropWorkspaceVisible(false);
+        resetAdminCropState();
+
+        adminEditBackdrop.hidden = true;
+        document.body.classList.remove("admin-modal-open");
+        activeAdminEditCard = null;
+    }
+
+    function openAdminEditModal(card) {
+        if (!adminEditBackdrop || !adminEditForm || !card) {
+            return;
+        }
+
+        activeAdminEditCard = card;
+
+        var cardImage = card.querySelector(".product-visual-image");
+        var titleLink = card.querySelector(".product-title-link");
+        var copyParagraphs = card.querySelectorAll(".product-copy > p");
+        var specOne = copyParagraphs[0] ? copyParagraphs[0].textContent.trim() : "";
+        var specTwo = copyParagraphs[1] ? copyParagraphs[1].textContent.trim() : "";
+        var priceParagraph = copyParagraphs[2] || null;
+        var priceOriginal = 0;
+        var discountPercent = 0;
+
+        if (priceParagraph) {
+            var spans = priceParagraph.querySelectorAll("span");
+
+            if (spans.length >= 2) {
+                priceOriginal = parseMoneyValue(spans[0].textContent);
+                var discountedPrice = parseMoneyValue(spans[1].textContent);
+
+                if (priceOriginal > 0 && discountedPrice > 0 && discountedPrice < priceOriginal) {
+                    discountPercent = Math.round((1 - (discountedPrice / priceOriginal)) * 100);
+                }
+            } else {
+                priceOriginal = parseMoneyValue(priceParagraph.textContent);
+            }
+        }
+
+        if (adminEditPreviewImage) {
+            adminEditPreviewImage.src = cardImage ? cardImage.src : "";
+        }
+
+        if (adminEditName) {
+            adminEditName.value = titleLink ? titleLink.textContent.trim() : "";
+        }
+
+        if (adminEditSpec1) {
+            adminEditSpec1.value = specOne;
+        }
+
+        if (adminEditSpec2) {
+            adminEditSpec2.value = specTwo;
+        }
+
+        if (adminEditPrice) {
+            adminEditPrice.value = priceOriginal > 0 ? String(priceOriginal.toFixed(2)) : "";
+        }
+
+        if (adminEditDiscount) {
+            adminEditDiscount.value = String(discountPercent);
+        }
+
+        if (adminEditFileInput) {
+            adminEditFileInput.value = "";
+        }
+
+        adminCropState.previewBeforeCrop = adminEditPreviewImage ? adminEditPreviewImage.src : "";
+        adminCropState.sourceImage = "";
+        resetAdminCropState();
+        setAdminCropWorkspaceVisible(false);
+
+        adminEditBackdrop.hidden = false;
+        document.body.classList.add("admin-modal-open");
+    }
+
+    if (adminEditZoom) {
+        adminEditZoom.addEventListener("input", function () {
+            adminCropState.zoom = Number.parseFloat(adminEditZoom.value) || 1;
+            var clamped = clampAdminCropOffsets(adminCropState.offsetX, adminCropState.offsetY);
+            adminCropState.offsetX = clamped.x;
+            adminCropState.offsetY = clamped.y;
+            syncAdminPreviewTransform();
+        });
+    }
+
+    if (adminEditBrowse && adminEditFileInput) {
+        adminEditBrowse.addEventListener("click", function () {
+            adminEditFileInput.click();
+        });
+    }
+
+    if (adminEditFileInput && adminEditPreviewImage) {
+        adminEditPreviewImage.addEventListener("dragstart", function (event) {
+            event.preventDefault();
+        });
+
+        adminEditFileInput.addEventListener("change", function () {
+            var file = adminEditFileInput.files && adminEditFileInput.files[0] ? adminEditFileInput.files[0] : null;
+
+            if (!file) {
+                return;
+            }
+
+            var reader = new FileReader();
+            reader.onload = function (event) {
+                adminCropState.previewBeforeCrop = adminEditPreviewImage.src || "";
+                adminCropState.sourceImage = String(event.target && event.target.result ? event.target.result : "");
+                adminEditPreviewImage.src = adminCropState.sourceImage;
+                resetAdminCropState();
+                setAdminCropWorkspaceVisible(true);
+                syncAdminPreviewTransform();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (adminEditPreviewWrap) {
+        adminEditPreviewWrap.addEventListener("pointerdown", function (event) {
+            if (!adminCropState.isCropping || event.button !== 0) {
+                return;
+            }
+
+            event.preventDefault();
+
+            adminCropState.isDragging = true;
+            adminCropState.dragPointerId = event.pointerId;
+            adminCropState.dragStartClientX = event.clientX;
+            adminCropState.dragStartClientY = event.clientY;
+            adminCropState.dragStartOffsetX = adminCropState.offsetX;
+            adminCropState.dragStartOffsetY = adminCropState.offsetY;
+            adminEditPreviewWrap.setPointerCapture(event.pointerId);
+        });
+
+        adminEditPreviewWrap.addEventListener("pointermove", function (event) {
+            if (!adminCropState.isCropping || !adminCropState.isDragging || adminCropState.dragPointerId !== event.pointerId) {
+                return;
+            }
+
+            var nextX = adminCropState.dragStartOffsetX + (event.clientX - adminCropState.dragStartClientX);
+            var nextY = adminCropState.dragStartOffsetY + (event.clientY - adminCropState.dragStartClientY);
+            var clamped = clampAdminCropOffsets(nextX, nextY);
+            adminCropState.offsetX = clamped.x;
+            adminCropState.offsetY = clamped.y;
+            syncAdminPreviewTransform();
+        });
+
+        function stopAdminCropDrag(event) {
+            if (!adminCropState.isDragging || adminCropState.dragPointerId !== event.pointerId) {
+                return;
+            }
+
+            adminCropState.isDragging = false;
+            adminCropState.dragPointerId = null;
+            adminEditPreviewWrap.releasePointerCapture(event.pointerId);
+        }
+
+        adminEditPreviewWrap.addEventListener("pointerup", stopAdminCropDrag);
+        adminEditPreviewWrap.addEventListener("pointercancel", stopAdminCropDrag);
+    }
+
+    if (adminEditCropCancel && adminEditPreviewImage) {
+        adminEditCropCancel.addEventListener("click", function () {
+            adminEditPreviewImage.src = adminCropState.previewBeforeCrop || adminEditPreviewImage.src;
+            adminCropState.sourceImage = "";
+            resetAdminCropState();
+            setAdminCropWorkspaceVisible(false);
+        });
+    }
+
+    if (adminEditCropSave && adminEditPreviewImage) {
+        adminEditCropSave.addEventListener("click", function () {
+            var source = adminCropState.sourceImage || adminEditPreviewImage.getAttribute("src");
+
+            if (!source) {
+                return;
+            }
+
+            var image = new Image();
+            image.onload = function () {
+                var size = 600;
+                var canvas = document.createElement("canvas");
+                canvas.width = size;
+                canvas.height = size;
+
+                var ctx = canvas.getContext("2d");
+                if (!ctx) {
+                    return;
+                }
+
+                var zoomValue = Math.max(1, Number(adminCropState.zoom || 1));
+                var scaleToCover = Math.max(size / image.naturalWidth, size / image.naturalHeight);
+                var scale = scaleToCover * zoomValue;
+                var drawWidth = image.naturalWidth * scale;
+                var drawHeight = image.naturalHeight * scale;
+                var drawX = ((size - drawWidth) / 2) + adminCropState.offsetX;
+                var drawY = ((size - drawHeight) / 2) + adminCropState.offsetY;
+
+                ctx.clearRect(0, 0, size, size);
+                ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+
+                adminEditPreviewImage.src = canvas.toDataURL("image/png");
+                adminCropState.previewBeforeCrop = adminEditPreviewImage.src;
+                adminCropState.sourceImage = "";
+                resetAdminCropState();
+                setAdminCropWorkspaceVisible(false);
+            };
+
+            image.src = source;
+        });
+    }
+
+    adminEditButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            var card = button.closest(".product-card");
+            openAdminEditModal(card);
+        });
+    });
+
+    if (adminEditClose) {
+        adminEditClose.addEventListener("click", closeAdminEditModal);
+    }
+
+    if (adminEditCancel) {
+        adminEditCancel.addEventListener("click", closeAdminEditModal);
+    }
+
+    if (adminEditBackdrop) {
+        adminEditBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminEditBackdrop) {
+                closeAdminEditModal();
+            }
+        });
+    }
+
+    if (adminEditForm) {
+        adminEditForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            if (!activeAdminEditCard) {
+                closeAdminEditModal();
+                return;
+            }
+
+            var nameValue = adminEditName ? adminEditName.value.trim() : "";
+            var specOneValue = adminEditSpec1 ? adminEditSpec1.value.trim() : "";
+            var specTwoValue = adminEditSpec2 ? adminEditSpec2.value.trim() : "";
+            var priceValue = adminEditPrice ? Number.parseFloat(adminEditPrice.value) : 0;
+            var discountValue = clampDiscount(adminEditDiscount ? adminEditDiscount.value : 0);
+
+            if (!nameValue || !specOneValue || !specTwoValue || !Number.isFinite(priceValue) || priceValue < 0) {
+                return;
+            }
+
+            var imageEl = activeAdminEditCard.querySelector(".product-visual-image");
+            var titleLink = activeAdminEditCard.querySelector(".product-title-link");
+            var copyParagraphs = activeAdminEditCard.querySelectorAll(".product-copy > p");
+            var priceParagraph = copyParagraphs[2] || null;
+            var ribbon = activeAdminEditCard.querySelector(".product-ribbon");
+
+            if (imageEl && adminEditPreviewImage && adminEditPreviewImage.src) {
+                imageEl.src = adminEditPreviewImage.src;
+                imageEl.alt = nameValue;
+            }
+
+            if (titleLink) {
+                titleLink.textContent = nameValue;
+            }
+
+            if (copyParagraphs[0]) {
+                copyParagraphs[0].textContent = specOneValue;
+            }
+
+            if (copyParagraphs[1]) {
+                copyParagraphs[1].textContent = specTwoValue;
+            }
+
+            if (priceParagraph) {
+                if (discountValue > 0) {
+                    var discountedPrice = priceValue * (1 - (discountValue / 100));
+
+                    if (!ribbon) {
+                        ribbon = document.createElement("div");
+                        ribbon.className = "product-ribbon";
+                        activeAdminEditCard.insertBefore(ribbon, activeAdminEditCard.firstChild);
+                    }
+
+                    ribbon.textContent = "PROMO " + discountValue + "% OFF!";
+                    activeAdminEditCard.classList.add("product-card-highlight");
+                    priceParagraph.style.color = "#dde531";
+                    priceParagraph.innerHTML =
+                        '<span style="color: #a1a1aa; text-decoration: line-through; font-size: 0.95rem; font-weight: 600; margin-right: 0.45rem;">' + formatPeso(priceValue) + '</span>' +
+                        '<span>' + formatPeso(discountedPrice) + '</span>';
+                } else {
+                    if (ribbon) {
+                        ribbon.remove();
+                    }
+
+                    activeAdminEditCard.classList.remove("product-card-highlight");
+                    priceParagraph.style.color = "#f4f4f4";
+                    priceParagraph.textContent = formatPeso(priceValue);
+                }
+            }
+
+            var editButton = activeAdminEditCard.querySelector("[data-admin-edit-featured]");
+            var removeButton = activeAdminEditCard.querySelector("[data-admin-remove-featured]");
+
+            if (editButton) {
+                editButton.setAttribute("aria-label", "Edit " + nameValue + " featured details");
+            }
+
+            if (removeButton) {
+                removeButton.setAttribute("aria-label", "Remove " + nameValue + " from featured");
+            }
+
+            closeAdminEditModal();
+        });
+    }
 
     function showPromoSlide(nextIndex) {
         if (!promoSlides.length) {

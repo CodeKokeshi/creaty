@@ -187,6 +187,9 @@ $logoutPath = $routeBase . 'logout.php';
 
             <div class="product-grid">
                 <article class="product-card product-card-highlight" data-brand="canon" data-month="january" data-day="01" data-year="2026">
+                    <button class="product-card-admin-edit" type="button" data-admin-edit-featured aria-label="Edit Canon 700D featured details">
+                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
+                    </button>
                     <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Canon 700D from featured">&times;</button>
                     <div class="product-ribbon">PROMO 50% OFF!</div>
                     <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Canon 700D product page">
@@ -206,6 +209,9 @@ $logoutPath = $routeBase . 'logout.php';
                 </article>
 
                 <article class="product-card product-card-highlight" data-brand="canon" data-month="march" data-day="12" data-year="2026">
+                    <button class="product-card-admin-edit" type="button" data-admin-edit-featured aria-label="Edit Canon 1200D featured details">
+                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
+                    </button>
                     <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Canon 1200D from featured">&times;</button>
                     <div class="product-ribbon">PROMO 20% OFF!</div>
                     <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Canon 1200D product page">
@@ -225,6 +231,9 @@ $logoutPath = $routeBase . 'logout.php';
                 </article>
 
                 <article class="product-card product-card-highlight" data-brand="fuji" data-month="march" data-day="12" data-year="2027">
+                    <button class="product-card-admin-edit" type="button" data-admin-edit-featured aria-label="Edit Fuji X A3 featured details">
+                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
+                    </button>
                     <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Fuji X A3 from featured">&times;</button>
                     <div class="product-ribbon">PROMO 30% OFF!</div>
                     <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Fuji X A3 product page">
@@ -244,6 +253,9 @@ $logoutPath = $routeBase . 'logout.php';
                 </article>
 
                 <article class="product-card" data-brand="canon" data-month="june" data-day="23" data-year="2028">
+                    <button class="product-card-admin-edit" type="button" data-admin-edit-featured aria-label="Edit Canon 4000D featured details">
+                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
+                    </button>
                     <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Canon 4000D from featured">&times;</button>
                     <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Canon 4000D product page">
                         <div class="product-visual product-visual-canon4000d">
@@ -259,6 +271,9 @@ $logoutPath = $routeBase . 'logout.php';
                 </article>
 
                 <article class="product-card" data-brand="nikon" data-month="january" data-day="12" data-year="2026">
+                    <button class="product-card-admin-edit" type="button" data-admin-edit-featured aria-label="Edit Nikon D60 featured details">
+                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
+                    </button>
                     <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Nikon D60 from featured">&times;</button>
                     <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Nikon D60 product page">
                         <div class="product-visual product-visual-nikon">
@@ -274,6 +289,9 @@ $logoutPath = $routeBase . 'logout.php';
                 </article>
 
                 <article class="product-card" data-brand="sony" data-month="march" data-day="23" data-year="2026">
+                    <button class="product-card-admin-edit" type="button" data-admin-edit-featured aria-label="Edit Sony ZV E10 featured details">
+                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
+                    </button>
                     <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Sony ZV E10 from featured">&times;</button>
                     <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Sony ZV E10 product page">
                         <div class="product-visual product-visual-sony">
@@ -301,6 +319,69 @@ $logoutPath = $routeBase . 'logout.php';
             <p class="product-grid-empty" hidden>No featured products match the selected filters.</p>
         </section>
     </main>
+
+    <div class="admin-edit-modal-backdrop" data-admin-edit-backdrop hidden>
+        <section class="admin-edit-modal" role="dialog" aria-modal="true" aria-labelledby="admin-edit-title">
+            <div class="admin-edit-modal-head">
+                <h2 id="admin-edit-title">Edit Featured Product</h2>
+                <button class="admin-edit-close" type="button" data-admin-edit-close aria-label="Close edit window">&times;</button>
+            </div>
+
+            <form class="admin-edit-form" data-admin-edit-form>
+                <div class="admin-edit-grid">
+                    <div class="admin-edit-image-column">
+                        <p class="admin-edit-label">Image (1:1 crop)</p>
+                        <div class="admin-edit-image-preview" data-admin-edit-image-preview>
+                            <img src="" alt="Product preview" data-admin-edit-preview-img draggable="false">
+                        </div>
+
+                        <input type="file" accept="image/*" data-admin-edit-file hidden>
+
+                        <div class="admin-edit-image-actions">
+                            <button type="button" class="admin-edit-secondary" data-admin-edit-browse>Browse Image</button>
+                        </div>
+
+                        <div class="admin-crop-workspace" data-admin-crop-workspace hidden>
+                            <p class="admin-crop-hint">Drag the image inside the square and use zoom.</p>
+
+                            <div class="admin-crop-controls">
+                            <label>Zoom
+                                <input type="range" min="1" max="3" step="0.01" value="1" data-admin-edit-zoom>
+                            </label>
+                            </div>
+
+                            <div class="admin-crop-actions">
+                                <button type="button" class="admin-edit-secondary" data-admin-edit-crop-cancel>Cancel Crop</button>
+                                <button type="button" class="admin-edit-primary" data-admin-edit-crop-save>Save Crop</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="admin-edit-fields-column">
+                        <label class="admin-edit-label" for="admin-edit-name">Product Name</label>
+                        <input id="admin-edit-name" type="text" data-admin-edit-name required>
+
+                        <label class="admin-edit-label" for="admin-edit-spec1">Specs 1</label>
+                        <input id="admin-edit-spec1" type="text" data-admin-edit-spec1 required>
+
+                        <label class="admin-edit-label" for="admin-edit-spec2">Specs 2</label>
+                        <input id="admin-edit-spec2" type="text" data-admin-edit-spec2 required>
+
+                        <label class="admin-edit-label" for="admin-edit-price">Price</label>
+                        <input id="admin-edit-price" type="number" min="0" step="0.01" data-admin-edit-price required>
+
+                        <label class="admin-edit-label" for="admin-edit-discount">Discount Percentage</label>
+                        <input id="admin-edit-discount" type="number" min="0" max="95" step="1" data-admin-edit-discount>
+                    </div>
+                </div>
+
+                <div class="admin-edit-actions">
+                    <button type="button" class="admin-edit-secondary" data-admin-edit-cancel>Cancel</button>
+                    <button type="submit" class="admin-edit-primary">Save Changes</button>
+                </div>
+            </form>
+        </section>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260319-6"></script>
