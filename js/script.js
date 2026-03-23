@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
     var revealItems = document.querySelectorAll(".reveal");
     var toggleButtons = document.querySelectorAll(".toggle-visibility");
+    var authSwitchLinks = document.querySelectorAll("[data-auth-switch]");
     var promoBanner = document.querySelector(".promo-banner");
     var promoSlides = promoBanner ? promoBanner.querySelectorAll(".promo-slide") : [];
     var promoPrev = promoBanner ? promoBanner.querySelector(".promo-arrow-left") : null;
@@ -60,6 +61,50 @@ document.addEventListener("DOMContentLoaded", function () {
             item.classList.add("is-visible");
         }, 120 * (index + 1));
     });
+
+    if (document.body.classList.contains("login-page") && authSwitchLinks.length) {
+        var switchStorageKey = "creaty-auth-switch";
+
+        try {
+            if (window.sessionStorage.getItem(switchStorageKey) === "1") {
+                document.body.classList.add("is-auth-switched");
+                window.sessionStorage.removeItem(switchStorageKey);
+                window.setTimeout(function () {
+                    document.body.classList.remove("is-auth-switched");
+                }, 600);
+            }
+        } catch (error) {
+            // Ignore storage errors in private browsing contexts.
+        }
+
+        authSwitchLinks.forEach(function (link) {
+            link.addEventListener("click", function (event) {
+                if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                    return;
+                }
+
+                var targetHref = link.getAttribute("href");
+
+                if (!targetHref) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                try {
+                    window.sessionStorage.setItem(switchStorageKey, "1");
+                } catch (error) {
+                    // Ignore storage errors in private browsing contexts.
+                }
+
+                document.body.classList.add("is-auth-switching");
+
+                window.setTimeout(function () {
+                    window.location.href = targetHref;
+                }, 180);
+            });
+        });
+    }
 
     toggleButtons.forEach(function (button) {
         button.addEventListener("click", function () {

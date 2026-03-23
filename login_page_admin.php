@@ -8,6 +8,7 @@ session_start();
 
 $routeBase = $routeBase ?? 'admin/';
 $assetBase = $assetBase ?? '';
+$customerLoginPath = $customerLoginPath ?? $assetBase . 'customer-login/';
 
 require_once __DIR__ . '/config/db.php';
 
@@ -67,6 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body class="login-page">
     <main class="login-page-shell">
+        <a class="auth-switch-link" href="<?php echo htmlspecialchars($customerLoginPath, ENT_QUOTES, 'UTF-8'); ?>" data-auth-switch aria-label="Switch to customer login">
+            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/customer-login-icon.svg" alt="">
+        </a>
+
         <section class="login-card reveal">
             <div class="brand-wrap">
                 <img class="brand-logo" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/images/main_logo.png" alt="The Nifty Fifty">
