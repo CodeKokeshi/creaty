@@ -332,6 +332,10 @@ $logoutPath = $routeBase . 'logout.php';
                     <div class="admin-edit-image-column">
                         <div class="admin-edit-image-preview" data-admin-edit-image-preview>
                             <img src="" alt="Product preview" data-admin-edit-preview-img draggable="false">
+                            <div class="admin-crop-drag-badge" aria-hidden="true">
+                                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/drag_pan.svg" alt="">
+                                <span>Drag</span>
+                            </div>
                         </div>
 
                         <input type="file" accept="image/*" data-admin-edit-file hidden>
@@ -342,12 +346,12 @@ $logoutPath = $routeBase . 'logout.php';
                         </div>
 
                         <div class="admin-crop-workspace" data-admin-crop-workspace hidden>
-                            <p class="admin-crop-hint">Drag the image inside the square and use zoom.</p>
-
                             <div class="admin-crop-controls">
-                            <label>Zoom
-                                <input type="range" min="1" max="3" step="0.01" value="1" data-admin-edit-zoom>
-                            </label>
+                                <label class="admin-crop-zoom-label">
+                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/zoom_in_out.svg" alt="" aria-hidden="true">
+                                    <span class="sr-only">Zoom</span>
+                                    <input type="range" min="1" max="3" step="0.01" value="1" data-admin-edit-zoom>
+                                </label>
                             </div>
 
                             <div class="admin-crop-actions">
