@@ -187,6 +187,7 @@ $logoutPath = $routeBase . 'logout.php';
 
             <div class="product-grid">
                 <article class="product-card product-card-highlight" data-brand="canon" data-month="january" data-day="01" data-year="2026">
+                    <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Canon 700D from featured">&times;</button>
                     <div class="product-ribbon">PROMO 50% OFF!</div>
                     <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Canon 700D product page">
                         <div class="product-visual product-visual-canon700d">
@@ -205,6 +206,7 @@ $logoutPath = $routeBase . 'logout.php';
                 </article>
 
                 <article class="product-card product-card-highlight" data-brand="canon" data-month="march" data-day="12" data-year="2026">
+                    <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Canon 1200D from featured">&times;</button>
                     <div class="product-ribbon">PROMO 20% OFF!</div>
                     <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Canon 1200D product page">
                         <div class="product-visual product-visual-canon1200d">
@@ -223,6 +225,7 @@ $logoutPath = $routeBase . 'logout.php';
                 </article>
 
                 <article class="product-card product-card-highlight" data-brand="fuji" data-month="march" data-day="12" data-year="2027">
+                    <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Fuji X A3 from featured">&times;</button>
                     <div class="product-ribbon">PROMO 30% OFF!</div>
                     <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Fuji X A3 product page">
                         <div class="product-visual product-visual-fuji">
@@ -241,6 +244,7 @@ $logoutPath = $routeBase . 'logout.php';
                 </article>
 
                 <article class="product-card" data-brand="canon" data-month="june" data-day="23" data-year="2028">
+                    <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Canon 4000D from featured">&times;</button>
                     <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Canon 4000D product page">
                         <div class="product-visual product-visual-canon4000d">
                             <img class="product-visual-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/cameras/Canon%20400D.png" alt="Canon 4000D">
@@ -255,6 +259,7 @@ $logoutPath = $routeBase . 'logout.php';
                 </article>
 
                 <article class="product-card" data-brand="nikon" data-month="january" data-day="12" data-year="2026">
+                    <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Nikon D60 from featured">&times;</button>
                     <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Nikon D60 product page">
                         <div class="product-visual product-visual-nikon">
                             <img class="product-visual-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/cameras/Nikon%20D60.png" alt="Nikon D60">
@@ -269,6 +274,7 @@ $logoutPath = $routeBase . 'logout.php';
                 </article>
 
                 <article class="product-card" data-brand="sony" data-month="march" data-day="23" data-year="2026">
+                    <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Sony ZV E10 from featured">&times;</button>
                     <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Sony ZV E10 product page">
                         <div class="product-visual product-visual-sony">
                             <img class="product-visual-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/cameras/Sony%20ZV-E10.png" alt="Sony ZV-E10">
@@ -279,6 +285,15 @@ $logoutPath = $routeBase . 'logout.php';
                         <p>24.2MP APS-C sensor</p>
                         <p>4K 30p video and Full HD 120p slow-motion</p>
                         <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #f4f4f4;">&#8369; 899.00</p>
+                    </div>
+                </article>
+
+                <article class="product-card product-card-admin-add" data-admin-add-card="true">
+                    <div class="admin-add-product-box" aria-label="Add products placeholder">
+                        <div>
+                            <span>+</span>
+                            Add Products
+                        </div>
                     </div>
                 </article>
             </div>

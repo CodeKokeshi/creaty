@@ -11,8 +11,9 @@ document.addEventListener("DOMContentLoaded", function () {
     var promoDelay = 3000;
     var filterNav = document.querySelector(".section-nav-interactive");
     var filterToggles = filterNav ? filterNav.querySelectorAll(".filter-toggle") : [];
-    var productCards = document.querySelectorAll(".product-grid .product-card");
+    var productCards = document.querySelectorAll('.product-grid .product-card:not([data-admin-add-card="true"])');
     var productEmpty = document.querySelector(".product-grid-empty");
+    var adminRemoveButtons = document.querySelectorAll("[data-admin-remove-featured]");
     var detailGalleries = document.querySelectorAll("[data-gallery]");
     var packageSlideshows = document.querySelectorAll("[data-package-slideshow]");
     var packageSlideshowControllers = [];
@@ -131,6 +132,26 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    adminRemoveButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            var card = button.closest(".product-card");
+
+            if (!card) {
+                return;
+            }
+
+            card.classList.add("is-admin-removing");
+
+            window.setTimeout(function () {
+                // Intentionally client-side only for now; no persistence.
+                card.setAttribute("data-admin-removed", "true");
+                card.classList.remove("is-admin-removing");
+                card.classList.add("is-hidden");
+                applyProductFilters();
+            }, 180);
+        });
+    });
+
     function showPromoSlide(nextIndex) {
         if (!promoSlides.length) {
             return;
@@ -185,6 +206,11 @@ document.addEventListener("DOMContentLoaded", function () {
         var visibleCount = 0;
 
         productCards.forEach(function (card) {
+            if (card.getAttribute("data-admin-removed") === "true") {
+                card.classList.add("is-hidden");
+                return;
+            }
+
             var cardBrand = normalizeFilterValue(card.getAttribute("data-brand"));
             var cardProductKey = getCardProductKey(card);
             var brandMatches = activeFilters.brand === "all" || activeFilters.brand === cardBrand;
