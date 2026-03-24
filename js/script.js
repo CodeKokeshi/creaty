@@ -61,6 +61,10 @@ document.addEventListener("DOMContentLoaded", function () {
         sourceImage: "",
         previewBeforeCrop: ""
     };
+    var adminCoverAspect = {
+        width: 1,
+        height: 0.82
+    };
     var adminUndoState = {
         timerId: null,
         pending: null
@@ -524,9 +528,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         var rect = adminEditPreviewWrap.getBoundingClientRect();
         var zoom = Math.max(1, adminCropState.zoom);
-        var maxShift = Math.max(0, ((rect.width * zoom) - rect.width) / 2);
-        var clampedX = Math.min(maxShift, Math.max(-maxShift, nextX));
-        var clampedY = Math.min(maxShift, Math.max(-maxShift, nextY));
+        var maxShiftX = Math.max(0, ((rect.width * zoom) - rect.width) / 2);
+        var maxShiftY = Math.max(0, ((rect.height * zoom) - rect.height) / 2);
+        var clampedX = Math.min(maxShiftX, Math.max(-maxShiftX, nextX));
+        var clampedY = Math.min(maxShiftY, Math.max(-maxShiftY, nextY));
 
         return {
             x: clampedX,
@@ -553,10 +558,11 @@ document.addEventListener("DOMContentLoaded", function () {
             return null;
         }
 
-        var size = 600;
+        var outputWidth = 900;
+        var outputHeight = Math.round(outputWidth * (adminCoverAspect.height / adminCoverAspect.width));
         var canvas = document.createElement("canvas");
-        canvas.width = size;
-        canvas.height = size;
+        canvas.width = outputWidth;
+        canvas.height = outputHeight;
 
         var ctx = canvas.getContext("2d");
         if (!ctx) {
@@ -564,14 +570,14 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         var zoomValue = Math.max(1, Number(adminCropState.zoom || 1));
-        var scaleToCover = Math.max(size / adminEditPreviewImage.naturalWidth, size / adminEditPreviewImage.naturalHeight);
+        var scaleToCover = Math.max(outputWidth / adminEditPreviewImage.naturalWidth, outputHeight / adminEditPreviewImage.naturalHeight);
         var scale = scaleToCover * zoomValue;
         var drawWidth = adminEditPreviewImage.naturalWidth * scale;
         var drawHeight = adminEditPreviewImage.naturalHeight * scale;
-        var drawX = ((size - drawWidth) / 2) + adminCropState.offsetX;
-        var drawY = ((size - drawHeight) / 2) + adminCropState.offsetY;
+        var drawX = ((outputWidth - drawWidth) / 2) + adminCropState.offsetX;
+        var drawY = ((outputHeight - drawHeight) / 2) + adminCropState.offsetY;
 
-        ctx.clearRect(0, 0, size, size);
+        ctx.clearRect(0, 0, outputWidth, outputHeight);
         ctx.drawImage(adminEditPreviewImage, drawX, drawY, drawWidth, drawHeight);
 
         return canvas.toDataURL("image/png");

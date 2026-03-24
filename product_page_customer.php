@@ -658,6 +658,10 @@ $productListPath = $homePath . '#featured-products-title';
                     dragStartOffsetY: 0,
                     previewBeforeCrop: ''
                 };
+                var coverAspect = {
+                    width: 1,
+                    height: 0.82
+                };
 
                 function clampCoverOffsets(nextX, nextY) {
                     if (!coverPreviewWrap) {
@@ -666,11 +670,12 @@ $productListPath = $homePath . '#featured-products-title';
 
                     var rect = coverPreviewWrap.getBoundingClientRect();
                     var zoom = Math.max(1, coverCropState.zoom);
-                    var maxShift = Math.max(0, ((rect.width * zoom) - rect.width) / 2);
+                    var maxShiftX = Math.max(0, ((rect.width * zoom) - rect.width) / 2);
+                    var maxShiftY = Math.max(0, ((rect.height * zoom) - rect.height) / 2);
 
                     return {
-                        x: Math.min(maxShift, Math.max(-maxShift, nextX)),
-                        y: Math.min(maxShift, Math.max(-maxShift, nextY))
+                        x: Math.min(maxShiftX, Math.max(-maxShiftX, nextX)),
+                        y: Math.min(maxShiftY, Math.max(-maxShiftY, nextY))
                     };
                 }
 
@@ -718,10 +723,11 @@ $productListPath = $homePath . '#featured-products-title';
                         return null;
                     }
 
-                    var size = 900;
+                    var outputWidth = 900;
+                    var outputHeight = Math.round(outputWidth * (coverAspect.height / coverAspect.width));
                     var canvas = document.createElement('canvas');
-                    canvas.width = size;
-                    canvas.height = size;
+                    canvas.width = outputWidth;
+                    canvas.height = outputHeight;
 
                     var context = canvas.getContext('2d');
                     if (!context) {
@@ -729,14 +735,14 @@ $productListPath = $homePath . '#featured-products-title';
                     }
 
                     var zoomValue = Math.max(1, Number(coverCropState.zoom || 1));
-                    var scaleToCover = Math.max(size / coverPreviewImage.naturalWidth, size / coverPreviewImage.naturalHeight);
+                    var scaleToCover = Math.max(outputWidth / coverPreviewImage.naturalWidth, outputHeight / coverPreviewImage.naturalHeight);
                     var scale = scaleToCover * zoomValue;
                     var drawWidth = coverPreviewImage.naturalWidth * scale;
                     var drawHeight = coverPreviewImage.naturalHeight * scale;
-                    var drawX = ((size - drawWidth) / 2) + coverCropState.offsetX;
-                    var drawY = ((size - drawHeight) / 2) + coverCropState.offsetY;
+                    var drawX = ((outputWidth - drawWidth) / 2) + coverCropState.offsetX;
+                    var drawY = ((outputHeight - drawHeight) / 2) + coverCropState.offsetY;
 
-                    context.clearRect(0, 0, size, size);
+                    context.clearRect(0, 0, outputWidth, outputHeight);
                     context.drawImage(coverPreviewImage, drawX, drawY, drawWidth, drawHeight);
 
                     return canvas.toDataURL('image/png');

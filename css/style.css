@@ -953,7 +953,7 @@ button {
 
 .admin-edit-image-preview {
     width: 100%;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 1 / 0.82;
     border: 1px solid var(--admin-panel-line);
     background: #0f1012;
     overflow: hidden;
