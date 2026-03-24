@@ -203,13 +203,8 @@ if (!is_array($products)) {
                         $isPromo = $discount > 0;
                         $discounted = $price * (1 - ($discount / 100));
                         $imagePath = trim((string) ($product['cameraImage'] ?? ''));
-
-                        $featuredDate = is_array($product['featuredDate'] ?? null) ? $product['featuredDate'] : [];
-                        $month = strtolower(trim((string) ($featuredDate['month'] ?? 'all')));
-                        $day = trim((string) ($featuredDate['day'] ?? 'all'));
-                        $year = trim((string) ($featuredDate['year'] ?? 'all'));
                     ?>
-                    <article class="product-card<?php echo $isPromo ? ' product-card-highlight' : ''; ?>" data-product-key="<?php echo htmlspecialchars((string) $productKey, ENT_QUOTES, 'UTF-8'); ?>" data-product-name="<?php echo htmlspecialchars($productName, ENT_QUOTES, 'UTF-8'); ?>" data-brand="<?php echo htmlspecialchars($brandValue, ENT_QUOTES, 'UTF-8'); ?>" data-month="<?php echo htmlspecialchars($month, ENT_QUOTES, 'UTF-8'); ?>" data-day="<?php echo htmlspecialchars($day, ENT_QUOTES, 'UTF-8'); ?>" data-year="<?php echo htmlspecialchars($year, ENT_QUOTES, 'UTF-8'); ?>">
+                    <article class="product-card<?php echo $isPromo ? ' product-card-highlight' : ''; ?>" data-product-key="<?php echo htmlspecialchars((string) $productKey, ENT_QUOTES, 'UTF-8'); ?>" data-product-name="<?php echo htmlspecialchars($productName, ENT_QUOTES, 'UTF-8'); ?>" data-brand="<?php echo htmlspecialchars($brandValue, ENT_QUOTES, 'UTF-8'); ?>">
                         <?php if ($isPromo): ?>
                             <div class="product-ribbon">PROMO <?php echo htmlspecialchars((string) $discount, ENT_QUOTES, 'UTF-8'); ?>% OFF!</div>
                         <?php endif; ?>
@@ -240,6 +235,6 @@ if (!is_array($products)) {
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="js/script.js?v=20260324-1"></script>
+    <script src="js/script.js?v=20260324-2"></script>
 </body>
 </html>

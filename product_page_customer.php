@@ -225,7 +225,7 @@ $calendarRows = [
                     </div>
                 </article>
 
-                <article class="product-calendar-card" data-product-key="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>" data-available-month="<?php echo htmlspecialchars($selectedProduct['availability']['month'], ENT_QUOTES, 'UTF-8'); ?>" data-available-year="<?php echo htmlspecialchars($selectedProduct['availability']['year'], ENT_QUOTES, 'UTF-8'); ?>" data-available-days='<?php echo json_encode($selectedProduct['availability']['days']); ?>'>
+                <article class="product-calendar-card" data-product-key="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
                     <h2>Available Dates</h2>
 
                     <div class="calendar-toolbar">
@@ -297,6 +297,6 @@ $calendarRows = [
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260324-1"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260324-2"></script>
 </body>
 </html>

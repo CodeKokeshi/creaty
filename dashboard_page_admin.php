@@ -211,13 +211,8 @@ if (!is_array($products)) {
                         $isPromo = $discount > 0;
                         $discounted = $price * (1 - ($discount / 100));
                         $imagePath = trim((string) ($product['cameraImage'] ?? ''));
-
-                        $featuredDate = is_array($product['featuredDate'] ?? null) ? $product['featuredDate'] : [];
-                        $month = strtolower(trim((string) ($featuredDate['month'] ?? 'all')));
-                        $day = trim((string) ($featuredDate['day'] ?? 'all'));
-                        $year = trim((string) ($featuredDate['year'] ?? 'all'));
                     ?>
-                    <article class="product-card<?php echo $isPromo ? ' product-card-highlight' : ''; ?>" data-product-key="<?php echo htmlspecialchars((string) $productKey, ENT_QUOTES, 'UTF-8'); ?>" data-product-name="<?php echo htmlspecialchars($productName, ENT_QUOTES, 'UTF-8'); ?>" data-brand="<?php echo htmlspecialchars($brandValue, ENT_QUOTES, 'UTF-8'); ?>" data-month="<?php echo htmlspecialchars($month, ENT_QUOTES, 'UTF-8'); ?>" data-day="<?php echo htmlspecialchars($day, ENT_QUOTES, 'UTF-8'); ?>" data-year="<?php echo htmlspecialchars($year, ENT_QUOTES, 'UTF-8'); ?>">
+                    <article class="product-card<?php echo $isPromo ? ' product-card-highlight' : ''; ?>" data-product-key="<?php echo htmlspecialchars((string) $productKey, ENT_QUOTES, 'UTF-8'); ?>" data-product-name="<?php echo htmlspecialchars($productName, ENT_QUOTES, 'UTF-8'); ?>" data-brand="<?php echo htmlspecialchars($brandValue, ENT_QUOTES, 'UTF-8'); ?>">
                         <button class="product-card-admin-edit" type="button" data-admin-edit-featured aria-label="Edit <?php echo htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?> featured details">
                             <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
                         </button>
@@ -260,7 +255,7 @@ if (!is_array($products)) {
         </section>
     </main>
 
-    <div class="admin-edit-modal-backdrop" data-admin-edit-backdrop data-admin-duplicate-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/duplicate_product.php', ENT_QUOTES, 'UTF-8'); ?>" hidden>
+    <div class="admin-edit-modal-backdrop" data-admin-edit-backdrop data-admin-duplicate-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/duplicate_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_product.php', ENT_QUOTES, 'UTF-8'); ?>" hidden>
         <section class="admin-edit-modal" role="dialog" aria-modal="true" aria-labelledby="admin-edit-title">
             <div class="admin-edit-modal-head">
                 <h2 id="admin-edit-title">Edit Featured Product</h2>
@@ -327,6 +322,21 @@ if (!is_array($products)) {
 
                         <label class="admin-edit-label" for="admin-edit-discount">Discount Percentage</label>
                         <input id="admin-edit-discount" type="number" min="0" max="95" step="1" data-admin-edit-discount>
+
+                        <label class="admin-edit-label" for="admin-edit-tagline">Tagline</label>
+                        <textarea id="admin-edit-tagline" rows="2" data-admin-edit-tagline></textarea>
+
+                        <label class="admin-edit-label" for="admin-edit-imaging-specs">Imaging Specs (one per line)</label>
+                        <textarea id="admin-edit-imaging-specs" rows="4" data-admin-edit-imaging-specs></textarea>
+
+                        <label class="admin-edit-label" for="admin-edit-video-specs">Video Specs (one per line)</label>
+                        <textarea id="admin-edit-video-specs" rows="4" data-admin-edit-video-specs></textarea>
+
+                        <label class="admin-edit-label" for="admin-edit-physical-specs">Physical Specs (one per line)</label>
+                        <textarea id="admin-edit-physical-specs" rows="4" data-admin-edit-physical-specs></textarea>
+
+                        <label class="admin-edit-label" for="admin-edit-capture-slides">Capture Slides (one per line)</label>
+                        <textarea id="admin-edit-capture-slides" rows="3" data-admin-edit-capture-slides></textarea>
                     </div>
                 </div>
 
@@ -339,7 +349,11 @@ if (!is_array($products)) {
         </section>
     </div>
 
+    <script>
+        window.__creatyAdminProducts = <?php echo json_encode($products, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260324-1"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260324-2"></script>
 </body>
 </html>

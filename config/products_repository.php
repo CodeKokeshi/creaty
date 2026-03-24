@@ -18,6 +18,9 @@ function load_products_repository()
         return [];
     }
 
+    // Some editors/write paths may prepend UTF-8 BOM; strip it so json_decode works reliably.
+    $raw = preg_replace('/^\xEF\xBB\xBF/', '', (string) $raw);
+
     $decoded = json_decode($raw, true);
     if (!is_array($decoded)) {
         return [];
@@ -192,6 +195,8 @@ function duplicate_product_record($products, $sourceKey, $projectRoot)
     $duplicate = $source;
     $duplicate['brand'] = $brand;
     $duplicate['name'] = $newName;
+    unset($duplicate['availability']);
+    unset($duplicate['featuredDate']);
     $duplicate['cameraImage'] = copy_product_image_for_duplicate(
         isset($source['cameraImage']) ? $source['cameraImage'] : '',
         $brand,
@@ -206,4 +211,93 @@ function duplicate_product_record($products, $sourceKey, $projectRoot)
         'newKey' => $newKey,
         'newProduct' => $duplicate
     ];
+}
+
+function normalize_lines_array($value)
+{
+    if (is_array($value)) {
+        $lines = $value;
+    } else {
+        $lines = preg_split('/\r\n|\r|\n/', (string) $value);
+    }
+
+    $result = [];
+
+    foreach ($lines as $line) {
+        $trimmed = trim((string) $line);
+
+        if ($trimmed !== '') {
+            $result[] = $trimmed;
+        }
+    }
+
+    return array_values($result);
+}
+
+function product_full_name($brand, $name)
+{
+    return trim(normalize_product_brand($brand) . ' ' . trim((string) $name));
+}
+
+function has_duplicate_product_display_name($products, $brand, $name, $exceptKey)
+{
+    $target = strtolower(product_full_name($brand, $name));
+
+    foreach ($products as $key => $product) {
+        if ($key === $exceptKey || !is_array($product)) {
+            continue;
+        }
+
+        if (strtolower(product_display_name($product)) === $target) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function save_product_image_from_data_url($dataUrl, $brand, $name, $projectRoot)
+{
+    $value = (string) $dataUrl;
+
+    if (!preg_match('/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/i', $value, $matches)) {
+        throw new RuntimeException('Invalid image payload.');
+    }
+
+    $extension = strtolower($matches[1]);
+    if ($extension === 'jpg') {
+        $extension = 'jpeg';
+    }
+
+    $binary = base64_decode($matches[2], true);
+    if ($binary === false) {
+        throw new RuntimeException('Invalid base64 image payload.');
+    }
+
+    $targetDirRelative = 'assets/cameras';
+    $targetDirAbsolute = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $targetDirRelative);
+
+    if (!is_dir($targetDirAbsolute)) {
+        throw new RuntimeException('Target image directory is missing.');
+    }
+
+    $baseFilename = sanitize_product_filename(normalize_product_brand($brand) . ' ' . $name);
+    if ($baseFilename === '') {
+        $baseFilename = 'Product';
+    }
+
+    $counter = 0;
+    do {
+        $suffix = $counter === 0 ? '' : ' ' . $counter;
+        $rawName = $baseFilename . $suffix . '.' . $extension;
+        $targetRelativePath = $targetDirRelative . '/' . rawurlencode($rawName);
+        $targetAbsolutePath = $targetDirAbsolute . DIRECTORY_SEPARATOR . $rawName;
+        $counter++;
+    } while (file_exists($targetAbsolutePath) && $counter < 1000);
+
+    if (file_put_contents($targetAbsolutePath, $binary, LOCK_EX) === false) {
+        throw new RuntimeException('Unable to save edited image asset.');
+    }
+
+    return $targetRelativePath;
 }

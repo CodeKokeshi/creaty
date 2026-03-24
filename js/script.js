@@ -34,6 +34,11 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEditSpec2 = document.querySelector("[data-admin-edit-spec2]");
     var adminEditPrice = document.querySelector("[data-admin-edit-price]");
     var adminEditDiscount = document.querySelector("[data-admin-edit-discount]");
+    var adminEditTagline = document.querySelector("[data-admin-edit-tagline]");
+    var adminEditImagingSpecs = document.querySelector("[data-admin-edit-imaging-specs]");
+    var adminEditVideoSpecs = document.querySelector("[data-admin-edit-video-specs]");
+    var adminEditPhysicalSpecs = document.querySelector("[data-admin-edit-physical-specs]");
+    var adminEditCaptureSlides = document.querySelector("[data-admin-edit-capture-slides]");
     var adminEditZoom = document.querySelector("[data-admin-edit-zoom]");
     var activeAdminEditCard = null;
     var adminCropState = {
@@ -95,6 +100,9 @@ document.addEventListener("DOMContentLoaded", function () {
         nikon: "Nikon",
         sony: "Sony"
     };
+    var adminProducts = (typeof window.__creatyAdminProducts === "object" && window.__creatyAdminProducts)
+        ? window.__creatyAdminProducts
+        : {};
 
     revealItems.forEach(function (item, index) {
         window.setTimeout(function () {
@@ -269,6 +277,46 @@ document.addEventListener("DOMContentLoaded", function () {
         card.setAttribute("data-product-name", storedName);
     }
 
+    function linesToTextarea(value) {
+        if (!Array.isArray(value)) {
+            return "";
+        }
+
+        return value
+            .map(function (line) {
+                return String(line || "").trim();
+            })
+            .filter(function (line) {
+                return line !== "";
+            })
+            .join("\n");
+    }
+
+    function textareaToLines(value) {
+        return String(value || "")
+            .split(/\r\n|\r|\n/)
+            .map(function (line) {
+                return line.trim();
+            })
+            .filter(function (line) {
+                return line !== "";
+            });
+    }
+
+    function getActiveAdminProductData() {
+        if (!activeAdminEditCard) {
+            return null;
+        }
+
+        var productKey = activeAdminEditCard.getAttribute("data-product-key") || "";
+
+        if (!productKey || !adminProducts || typeof adminProducts !== "object") {
+            return null;
+        }
+
+        return adminProducts[productKey] || null;
+    }
+
     function syncAdminPreviewTransform() {
         if (!adminEditPreviewWrap || !adminEditPreviewImage || !adminEditZoom) {
             return;
@@ -435,6 +483,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminEditDiscount) {
             adminEditDiscount.value = String(discountPercent);
+        }
+
+        var activeProductData = getActiveAdminProductData() || {};
+        var specsMap = activeProductData.specs && typeof activeProductData.specs === "object" ? activeProductData.specs : {};
+
+        if (adminEditTagline) {
+            adminEditTagline.value = String(activeProductData.tagline || "");
+        }
+
+        if (adminEditImagingSpecs) {
+            adminEditImagingSpecs.value = linesToTextarea(specsMap["Imaging and Performance"] || []);
+        }
+
+        if (adminEditVideoSpecs) {
+            adminEditVideoSpecs.value = linesToTextarea(specsMap.Video || []);
+        }
+
+        if (adminEditPhysicalSpecs) {
+            adminEditPhysicalSpecs.value = linesToTextarea(specsMap["Physical Specifications"] || []);
+        }
+
+        if (adminEditCaptureSlides) {
+            adminEditCaptureSlides.value = linesToTextarea(activeProductData.captureSlides || []);
         }
 
         if (adminEditFileInput) {
@@ -675,28 +746,28 @@ document.addEventListener("DOMContentLoaded", function () {
         adminEditForm.addEventListener("submit", function (event) {
             event.preventDefault();
 
-            if (!activeAdminEditCard) {
+            if (!activeAdminEditCard || !adminEditBackdrop) {
                 closeAdminEditModal();
                 return;
             }
 
+            var productKey = activeAdminEditCard.getAttribute("data-product-key") || "";
+            var updateEndpoint = adminEditBackdrop.getAttribute("data-admin-update-endpoint") || "";
             var brandValue = normalizeBrandValue(adminEditBrand ? adminEditBrand.value : "canon");
             var nameValue = adminEditName ? adminEditName.value.trim() : "";
             var specOneValue = adminEditSpec1 ? adminEditSpec1.value.trim() : "";
             var specTwoValue = adminEditSpec2 ? adminEditSpec2.value.trim() : "";
             var priceValue = adminEditPrice ? Number.parseFloat(adminEditPrice.value) : 0;
             var discountValue = clampDiscount(adminEditDiscount ? adminEditDiscount.value : 0);
-            var displayName = composeProductDisplayName(brandValue, nameValue);
+            var taglineValue = adminEditTagline ? adminEditTagline.value.trim() : "";
+            var imagingSpecsValue = textareaToLines(adminEditImagingSpecs ? adminEditImagingSpecs.value : "");
+            var videoSpecsValue = textareaToLines(adminEditVideoSpecs ? adminEditVideoSpecs.value : "");
+            var physicalSpecsValue = textareaToLines(adminEditPhysicalSpecs ? adminEditPhysicalSpecs.value : "");
+            var captureSlidesValue = textareaToLines(adminEditCaptureSlides ? adminEditCaptureSlides.value : "");
 
-            if (!nameValue || !specOneValue || !specTwoValue || !Number.isFinite(priceValue) || priceValue < 0) {
+            if (!productKey || !updateEndpoint || !nameValue || !specOneValue || !specTwoValue || !Number.isFinite(priceValue) || priceValue < 0) {
                 return;
             }
-
-            var imageEl = activeAdminEditCard.querySelector(".product-visual-image");
-            var titleLink = activeAdminEditCard.querySelector(".product-title-link");
-            var copyParagraphs = activeAdminEditCard.querySelectorAll(".product-copy > p");
-            var priceParagraph = copyParagraphs[2] || null;
-            var ribbon = activeAdminEditCard.querySelector(".product-ribbon");
 
             var finalPreviewSrc = adminEditPreviewImage ? adminEditPreviewImage.src : "";
 
@@ -714,70 +785,59 @@ document.addEventListener("DOMContentLoaded", function () {
                 setAdminCropWorkspaceVisible(false);
             }
 
-            if (imageEl && finalPreviewSrc) {
-                imageEl.src = finalPreviewSrc;
-                imageEl.alt = displayName;
+            var submitButton = adminEditForm.querySelector('button[type="submit"]');
+            var previousSubmitText = submitButton ? submitButton.textContent : "";
+
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = "Saving...";
             }
 
-            if (titleLink) {
-                titleLink.textContent = displayName;
-            }
-
-            activeAdminEditCard.setAttribute("data-brand", brandValue);
-            activeAdminEditCard.setAttribute("data-product-name", nameValue);
-
-            if (copyParagraphs[0]) {
-                copyParagraphs[0].textContent = specOneValue;
-            }
-
-            if (copyParagraphs[1]) {
-                copyParagraphs[1].textContent = specTwoValue;
-            }
-
-            if (priceParagraph) {
-                if (discountValue > 0) {
-                    var discountedPrice = priceValue * (1 - (discountValue / 100));
-
-                    if (!ribbon) {
-                        ribbon = document.createElement("div");
-                        ribbon.className = "product-ribbon";
-                        activeAdminEditCard.insertBefore(ribbon, activeAdminEditCard.firstChild);
+            fetch(updateEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    productKey: productKey,
+                    brand: brandValue,
+                    name: nameValue,
+                    spec1: specOneValue,
+                    spec2: specTwoValue,
+                    price: priceValue,
+                    discountPercent: discountValue,
+                    tagline: taglineValue,
+                    imagingSpecs: imagingSpecsValue,
+                    videoSpecs: videoSpecsValue,
+                    physicalSpecs: physicalSpecsValue,
+                    captureSlides: captureSlidesValue,
+                    imageDataUrl: finalPreviewSrc
+                })
+            })
+                .then(function (response) {
+                    return response.json().then(function (payload) {
+                        return {
+                            ok: response.ok,
+                            payload: payload
+                        };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.payload || !result.payload.ok) {
+                        var message = result.payload && result.payload.message ? result.payload.message : "Unable to save product changes.";
+                        throw new Error(message);
                     }
 
-                    ribbon.textContent = "PROMO " + discountValue + "% OFF!";
-                    activeAdminEditCard.classList.add("product-card-highlight");
-                    priceParagraph.style.color = "#dde531";
-                    priceParagraph.innerHTML =
-                        '<span style="color: #a1a1aa; text-decoration: line-through; font-size: 0.95rem; font-weight: 600; margin-right: 0.45rem;">' + formatPeso(priceValue) + '</span>' +
-                        '<span>' + formatPeso(discountedPrice) + '</span>';
-                } else {
-                    if (ribbon) {
-                        ribbon.remove();
+                    window.location.reload();
+                })
+                .catch(function (error) {
+                    window.alert(error.message || "Unable to save product changes.");
+
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = previousSubmitText || "Save Changes";
                     }
-
-                    activeAdminEditCard.classList.remove("product-card-highlight");
-                    priceParagraph.style.color = "#f4f4f4";
-                    priceParagraph.textContent = formatPeso(priceValue);
-                }
-            }
-
-            var editButton = activeAdminEditCard.querySelector("[data-admin-edit-featured]");
-            var removeButton = activeAdminEditCard.querySelector("[data-admin-remove-featured]");
-            var visualLink = activeAdminEditCard.querySelector(".product-visual-link");
-
-            if (editButton) {
-                editButton.setAttribute("aria-label", "Edit " + displayName + " featured details");
-            }
-
-            if (removeButton) {
-                removeButton.setAttribute("aria-label", "Remove " + displayName + " from featured");
-            }
-
-            if (visualLink) {
-                visualLink.setAttribute("aria-label", "View " + displayName + " product page");
-            }
-
-            closeAdminEditModal();
+                });
         });
     }
 
@@ -933,17 +993,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function collectAvailableYearsFromCards() {
         var years = new Set();
+        var baseYear = getEffectiveToday().getFullYear();
 
-        productCards.forEach(function (card) {
-            var raw = card.getAttribute("data-year");
-            var parsed = Number.parseInt(String(raw || ""), 10);
-
-            if (Number.isFinite(parsed)) {
-                years.add(parsed);
-            }
-        });
-
-        years.add(getEffectiveToday().getFullYear());
+        years.add(baseYear);
+        years.add(baseYear + 1);
+        years.add(baseYear + 2);
 
         return Array.from(years).sort(function (left, right) {
             return left - right;

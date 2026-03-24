@@ -1057,8 +1057,27 @@ button {
     transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
 }
 
+.admin-edit-fields-column textarea {
+    width: 100%;
+    min-height: 84px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+    color: #f4f4f4;
+    padding: 0.6rem 0.75rem;
+    border-radius: 10px;
+    resize: vertical;
+    transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
 .admin-edit-fields-column input:focus-visible,
 .admin-edit-fields-column select:focus-visible {
+    outline: 0;
+    border-color: rgba(255, 255, 255, 0.52);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(103, 194, 61, 0.22);
+}
+
+.admin-edit-fields-column textarea:focus-visible {
     outline: 0;
     border-color: rgba(255, 255, 255, 0.52);
     background: rgba(255, 255, 255, 0.08);
