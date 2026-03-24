@@ -59,9 +59,6 @@ document.addEventListener("DOMContentLoaded", function () {
         day: "all",
         year: "all"
     };
-    var availabilityStartDate = new Date(2026, 2, 19);
-    var availabilityEndDate = new Date(2028, 11, 31);
-    var fixedAvailabilityYears = [2026, 2027, 2028];
     var monthDefinitions = [
         { value: "january", label: "January" },
         { value: "february", label: "February" },
@@ -844,7 +841,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             var cardBrand = normalizeFilterValue(card.getAttribute("data-brand"));
-            var cardProductKey = getCardProductKey(card);
             var brandMatches = activeFilters.brand === "all" || activeFilters.brand === cardBrand;
             var hasDateFilter = activeFilters.month !== "all" || activeFilters.day !== "all" || activeFilters.year !== "all";
             var matches = brandMatches;
@@ -854,15 +850,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 var selectedMonthIndex = activeFilters.month === "all" ? calendarViewMonthIndex : monthValueToIndex[activeFilters.month];
                 var selectedDay = activeFilters.day === "all" ? null : Number.parseInt(activeFilters.day, 10);
 
-                if (!cardProductKey) {
+                if (!Number.isFinite(selectedYear)) {
                     matches = false;
                 } else if (selectedDay !== null && Number.isFinite(selectedYear) && Number.isFinite(selectedMonthIndex)) {
                     var targetDate = new Date(selectedYear, selectedMonthIndex, selectedDay);
-                    matches = targetDate >= effectiveToday && isDateAvailableForCamera(cardProductKey, targetDate);
+                    matches = targetDate >= effectiveToday;
                 } else if (activeFilters.month !== "all" && Number.isFinite(selectedYear) && Number.isFinite(selectedMonthIndex)) {
-                    matches = cameraHasAvailabilityInMonth(cardProductKey, selectedYear, selectedMonthIndex, effectiveToday);
+                    matches = selectedYear > effectiveToday.getFullYear() || (selectedYear === effectiveToday.getFullYear() && selectedMonthIndex >= effectiveToday.getMonth());
                 } else if (activeFilters.year !== "all" && Number.isFinite(selectedYear)) {
-                    matches = cameraHasAvailabilityInYear(cardProductKey, selectedYear, effectiveToday);
+                    matches = selectedYear >= effectiveToday.getFullYear();
                 }
             }
 
@@ -889,48 +885,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function getEffectiveToday() {
-        var today = getStartOfDay(new Date());
-
-        if (today < availabilityStartDate) {
-            return new Date(availabilityStartDate.getTime());
-        }
-
-        return today;
+        return getStartOfDay(new Date());
     }
 
     function dateKeyFromDate(dateValue) {
         return String(dateValue.getFullYear()) + "-" + padTwo(dateValue.getMonth() + 1) + "-" + padTwo(dateValue.getDate());
-    }
-
-    function hashString(value) {
-        var hash = 0;
-
-        for (var index = 0; index < value.length; index += 1) {
-            hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
-        }
-
-        return Math.abs(hash);
-    }
-
-    function isWithinAvailabilityRange(dateValue) {
-        return dateValue >= availabilityStartDate && dateValue <= availabilityEndDate;
-    }
-
-    function isDateAvailableForCamera(cameraKey, dateValue) {
-        if (!cameraKey) {
-            return false;
-        }
-
-        var normalizedDate = getStartOfDay(dateValue);
-
-        if (!isWithinAvailabilityRange(normalizedDate)) {
-            return false;
-        }
-
-        var keySeed = String(cameraKey).toLowerCase() + "|" + dateKeyFromDate(normalizedDate);
-        var availabilityScore = hashString(keySeed) % 100;
-
-        return availabilityScore < 34;
     }
 
     function extractProductKeyFromHref(hrefValue) {
@@ -949,21 +908,6 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (error) {
             return String(productMatch[1]).toLowerCase();
         }
-    }
-
-    function collectHomepageCameraKeys() {
-        var cameraKeys = new Set();
-
-        productCards.forEach(function (card) {
-            var productLink = card.querySelector(".product-visual-link") || card.querySelector(".product-title-link");
-            var productKey = extractProductKeyFromHref(productLink ? productLink.getAttribute("href") : "");
-
-            if (productKey) {
-                cameraKeys.add(productKey);
-            }
-        });
-
-        return Array.from(cameraKeys);
     }
 
     function getCardProductKey(card) {
@@ -987,33 +931,30 @@ document.addEventListener("DOMContentLoaded", function () {
         return parsedKey;
     }
 
-    function collectHomepageCameraKeysForDateContext() {
-        var cameraKeys = new Set();
+    function collectAvailableYearsFromCards() {
+        var years = new Set();
 
         productCards.forEach(function (card) {
-            var cardBrand = normalizeFilterValue(card.getAttribute("data-brand"));
-            var brandMatches = activeFilters.brand === "all" || activeFilters.brand === cardBrand;
+            var raw = card.getAttribute("data-year");
+            var parsed = Number.parseInt(String(raw || ""), 10);
 
-            if (!brandMatches) {
-                return;
-            }
-
-            var productKey = getCardProductKey(card);
-
-            if (productKey) {
-                cameraKeys.add(productKey);
+            if (Number.isFinite(parsed)) {
+                years.add(parsed);
             }
         });
 
-        if (!cameraKeys.size) {
-            return collectHomepageCameraKeys();
-        }
+        years.add(getEffectiveToday().getFullYear());
 
-        return Array.from(cameraKeys);
+        return Array.from(years).sort(function (left, right) {
+            return left - right;
+        });
     }
 
     function syncCalendarViewFromFilters() {
         var effectiveToday = getEffectiveToday();
+        var yearPool = availableYears.length ? availableYears : collectAvailableYearsFromCards();
+        var minYear = yearPool[0];
+        var maxYear = yearPool[yearPool.length - 1];
 
         if (activeFilters.year !== "all") {
             var parsedYear = Number.parseInt(activeFilters.year, 10);
@@ -1025,7 +966,7 @@ document.addEventListener("DOMContentLoaded", function () {
             calendarViewYear = effectiveToday.getFullYear();
         }
 
-        calendarViewYear = Math.min(Math.max(calendarViewYear, fixedAvailabilityYears[0]), fixedAvailabilityYears[fixedAvailabilityYears.length - 1]);
+        calendarViewYear = Math.min(Math.max(calendarViewYear, minYear), maxYear);
 
         if (activeFilters.month !== "all" && monthValueToIndex[activeFilters.month] !== undefined) {
             calendarViewMonthIndex = monthValueToIndex[activeFilters.month];
@@ -1075,72 +1016,27 @@ document.addEventListener("DOMContentLoaded", function () {
     function buildDateAvailability() {
         var effectiveToday = getEffectiveToday();
         var daysInVisibleMonth = new Date(calendarViewYear, calendarViewMonthIndex + 1, 0).getDate();
-        var cameraKeys = collectHomepageCameraKeysForDateContext();
         availableDateKeys.clear();
 
         for (var day = 1; day <= daysInVisibleMonth; day += 1) {
             var candidateDate = new Date(calendarViewYear, calendarViewMonthIndex, day);
 
-            if (candidateDate < effectiveToday || candidateDate > availabilityEndDate) {
-                continue;
-            }
-
-            var hasAvailableCamera = cameraKeys.some(function (cameraKey) {
-                return isDateAvailableForCamera(cameraKey, candidateDate);
-            });
-
-            if (hasAvailableCamera) {
+            if (candidateDate >= effectiveToday) {
                 availableDateKeys.add(dateKeyFromDate(candidateDate));
             }
         }
 
-        availableYears = fixedAvailabilityYears.slice();
+        availableYears = collectAvailableYearsFromCards();
 
         if (!Number.isFinite(calendarViewYear)) {
             calendarViewYear = effectiveToday.getFullYear();
         }
 
-        calendarViewYear = Math.min(Math.max(calendarViewYear, fixedAvailabilityYears[0]), fixedAvailabilityYears[fixedAvailabilityYears.length - 1]);
+        calendarViewYear = Math.min(Math.max(calendarViewYear, availableYears[0]), availableYears[availableYears.length - 1]);
 
         if (!Number.isFinite(calendarViewMonthIndex) || calendarViewMonthIndex < 0 || calendarViewMonthIndex > 11) {
             calendarViewMonthIndex = calendarViewYear === effectiveToday.getFullYear() ? effectiveToday.getMonth() : 0;
         }
-    }
-
-    function cameraHasAvailabilityInMonth(cameraKey, yearValue, monthIndex, floorDate) {
-        if (!cameraKey || !Number.isFinite(yearValue) || !Number.isFinite(monthIndex)) {
-            return false;
-        }
-
-        var daysInMonth = new Date(yearValue, monthIndex + 1, 0).getDate();
-
-        for (var day = 1; day <= daysInMonth; day += 1) {
-            var dateValue = new Date(yearValue, monthIndex, day);
-
-            if (dateValue < floorDate || dateValue > availabilityEndDate) {
-                continue;
-            }
-
-            if (isDateAvailableForCamera(cameraKey, dateValue)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    function cameraHasAvailabilityInYear(cameraKey, yearValue, floorDate) {
-        if (!cameraKey || !Number.isFinite(yearValue)) {
-            return false;
-        }
-
-        for (var monthIndex = 0; monthIndex < 12; monthIndex += 1) {
-            if (cameraHasAvailabilityInMonth(cameraKey, yearValue, monthIndex, floorDate)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     function setActiveDateView(nextView) {
@@ -2208,10 +2104,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function getCalendarToday() {
-            var today = setStartOfDay(new Date());
-            var floorDate = new Date(2026, 2, 19);
-
-            return today < floorDate ? floorDate : today;
+            return setStartOfDay(new Date());
         }
 
         function rebuildYearOptions() {
@@ -2221,12 +2114,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
             yearSelect.innerHTML = "";
 
-            [2026, 2027, 2028].forEach(function (yearValue) {
+            var startYear = getCalendarToday().getFullYear();
+            var endYear = startYear + 2;
+
+            for (var yearValue = startYear; yearValue <= endYear; yearValue += 1) {
                 var option = document.createElement("option");
                 option.value = String(yearValue);
                 option.textContent = String(yearValue);
                 yearSelect.appendChild(option);
-            });
+            }
         }
 
         function updateDisables() {
@@ -2299,7 +2195,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     } else {
                         var currentDate = new Date(selectedYear, selectedMonth, date);
                         var isPastDay = currentDate < effectiveToday;
-                        var isAvailableDay = isDateAvailableForCamera(calendarProductKey, currentDate) && !isPastDay;
+                        var isAvailableDay = !isPastDay;
                         var classes = "calendar-date";
 
                         if (isPastDay) {
@@ -2320,7 +2216,7 @@ document.addEventListener("DOMContentLoaded", function () {
             rebuildYearOptions();
 
             var startupToday = getCalendarToday();
-            yearSelect.value = String(Math.min(Math.max(startupToday.getFullYear(), 2026), 2028));
+            yearSelect.value = String(startupToday.getFullYear());
             monthSelect.value = String(startupToday.getMonth());
 
             monthSelect.addEventListener("change", renderCalendar);
