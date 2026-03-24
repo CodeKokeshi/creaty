@@ -67,24 +67,42 @@ $product['spec1'] = $spec1;
 $product['spec2'] = $spec2;
 $product['price'] = number_format($priceValue, 2, '.', '');
 $product['discountPercent'] = $discount;
-$product['tagline'] = $tagline !== '' ? $tagline : $spec1 . ' ' . $spec2;
 
-$imagingLines = normalize_lines_array($payload['imagingSpecs'] ?? ($product['specs']['Imaging and Performance'] ?? []));
-$videoLines = normalize_lines_array($payload['videoSpecs'] ?? ($product['specs']['Video'] ?? []));
-$physicalLines = normalize_lines_array($payload['physicalSpecs'] ?? ($product['specs']['Physical Specifications'] ?? []));
-$slides = normalize_lines_array($payload['captureSlides'] ?? ($product['captureSlides'] ?? []));
-
-if (count($slides) < 1) {
-    $slides = ['Sample capture'];
+if (array_key_exists('tagline', $payload) && $tagline !== '') {
+    $product['tagline'] = $tagline;
 }
 
-$product['captureSlides'] = array_slice($slides, 0, 5);
-$product['specs'] = [
-    'Brand' => [$brand],
-    'Imaging and Performance' => count($imagingLines) ? $imagingLines : ['Sensor details pending.'],
-    'Video' => count($videoLines) ? $videoLines : ['Video details pending.'],
-    'Physical Specifications' => count($physicalLines) ? $physicalLines : ['Physical details pending.']
-];
+if (!isset($product['tagline']) || trim((string) $product['tagline']) === '') {
+    $product['tagline'] = $spec1 . ' ' . $spec2;
+}
+
+$specs = is_array($product['specs'] ?? null) ? $product['specs'] : [];
+$specs['Brand'] = [$brand];
+
+if (array_key_exists('imagingSpecs', $payload)) {
+    $imagingLines = normalize_lines_array($payload['imagingSpecs']);
+    $specs['Imaging and Performance'] = count($imagingLines) ? $imagingLines : ['Sensor details pending.'];
+}
+
+if (array_key_exists('videoSpecs', $payload)) {
+    $videoLines = normalize_lines_array($payload['videoSpecs']);
+    $specs['Video'] = count($videoLines) ? $videoLines : ['Video details pending.'];
+}
+
+if (array_key_exists('physicalSpecs', $payload)) {
+    $physicalLines = normalize_lines_array($payload['physicalSpecs']);
+    $specs['Physical Specifications'] = count($physicalLines) ? $physicalLines : ['Physical details pending.'];
+}
+
+$product['specs'] = $specs;
+
+if (array_key_exists('captureSlides', $payload)) {
+    $slides = normalize_lines_array($payload['captureSlides']);
+    if (count($slides) < 1) {
+        $slides = ['Sample capture'];
+    }
+    $product['captureSlides'] = array_slice($slides, 0, 5);
+}
 
 unset($product['availability']);
 unset($product['featuredDate']);

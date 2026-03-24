@@ -8,14 +8,21 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+$isAdminView = isset($isAdminView) && $isAdminView === true;
 $assetBase = $assetBase ?? '';
 $homePath = $homePath ?? '';
 $loginPath = $loginPath ?? 'customer-login/';
 $productKey = $productKey ?? ($_GET['product'] ?? 'fuji-x-a3');
 
 $isCustomerLoggedIn = isset($_SESSION['customer_id']);
+$isAdminLoggedIn = isset($_SESSION['user_id']) && !isset($_SESSION['customer_id']);
 
-if (isset($_GET['add_to_cart'])) {
+if ($isAdminView && !$isAdminLoggedIn) {
+    header('Location: ' . $assetBase . 'admin/');
+    exit;
+}
+
+if (!$isAdminView && isset($_GET['add_to_cart'])) {
     if (!$isCustomerLoggedIn) {
         $currentPageUrl = $_SERVER['REQUEST_URI'] ?? ($assetBase . 'customer-products/');
         $redirectQuery = '?redirect=' . rawurlencode($currentPageUrl);
@@ -36,8 +43,8 @@ if (isset($_GET['add_to_cart'])) {
     exit;
 }
 
-$cartCount = $isCustomerLoggedIn ? (int) ($_SESSION['customer_cart_count'] ?? 0) : 0;
-$accountLabel = $isCustomerLoggedIn ? 'Account' : 'Sign In';
+$cartCount = $isAdminView ? 0 : ($isCustomerLoggedIn ? (int) ($_SESSION['customer_cart_count'] ?? 0) : 0);
+$accountLabel = $isAdminView ? 'Admin' : ($isCustomerLoggedIn ? 'Account' : 'Sign In');
 $accountSettingsPath = $assetBase . 'customer-account-settings/';
 $logoutPath = $assetBase . 'customer-logout/';
 $cartPath = $assetBase . 'customer-cart/';
@@ -46,6 +53,63 @@ $addToCartLoginUrl = $loginPath . '?redirect=' . rawurlencode($_SERVER['REQUEST_
 
 require __DIR__ . '/config/products_repository.php';
 $products = load_products_repository();
+
+if (
+    $isAdminView
+    && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'
+    && isset($_POST['admin_edit_scope'])
+) {
+    $scope = trim((string) ($_POST['admin_edit_scope'] ?? ''));
+    $postedKey = trim((string) ($_POST['productKey'] ?? ''));
+
+    if ($postedKey !== '' && isset($products[$postedKey]) && is_array($products[$postedKey])) {
+        $productToUpdate = $products[$postedKey];
+
+        if ($scope === 'information') {
+            $tagline = trim((string) ($_POST['tagline'] ?? ''));
+            $captureSlides = normalize_lines_array($_POST['captureSlides'] ?? []);
+
+            if ($tagline !== '') {
+                $productToUpdate['tagline'] = $tagline;
+            }
+
+            if (count($captureSlides) > 0) {
+                $productToUpdate['captureSlides'] = array_slice($captureSlides, 0, 5);
+            }
+        }
+
+        if ($scope === 'specifications') {
+            $imagingLines = normalize_lines_array($_POST['imagingSpecs'] ?? []);
+            $videoLines = normalize_lines_array($_POST['videoSpecs'] ?? []);
+            $physicalLines = normalize_lines_array($_POST['physicalSpecs'] ?? []);
+
+            $specs = is_array($productToUpdate['specs'] ?? null) ? $productToUpdate['specs'] : [];
+            $specs['Brand'] = [normalize_product_brand($productToUpdate['brand'] ?? 'Canon')];
+
+            if (count($imagingLines) > 0) {
+                $specs['Imaging and Performance'] = $imagingLines;
+            }
+
+            if (count($videoLines) > 0) {
+                $specs['Video'] = $videoLines;
+            }
+
+            if (count($physicalLines) > 0) {
+                $specs['Physical Specifications'] = $physicalLines;
+            }
+
+            $productToUpdate['specs'] = $specs;
+        }
+
+        $products[$postedKey] = $productToUpdate;
+        save_products_repository($products);
+    }
+
+    $redirectTarget = $_SERVER['REQUEST_URI'] ?? ($assetBase . 'admin/products/?product=' . urlencode($postedKey));
+    $separator = strpos($redirectTarget, '?') === false ? '?' : '&';
+    header('Location: ' . $redirectTarget . $separator . 'saved=1');
+    exit;
+}
 
 if (!is_array($products) || !$products) {
     $products = [];
@@ -102,13 +166,25 @@ $calendarRows = [
                 <input type="search" name="q" placeholder="Search cameras, services, or rentals">
             </form>
 
-            <a class="topbar-cart" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>customer-cart/" aria-label="Cart">
+            <a class="topbar-cart" href="<?php echo htmlspecialchars($isAdminView ? $homePath : ($assetBase . 'customer-cart/'), ENT_QUOTES, 'UTF-8'); ?>" aria-label="Cart">
                 <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cart_icon.svg" alt="">
                 <span class="cart-count"><?php echo $cartCount; ?></span>
             </a>
 
             <a class="topbar-link" href="#">Message us</a>
-            <?php if ($isCustomerLoggedIn): ?>
+            <?php if ($isAdminView): ?>
+                <div class="dropdown topbar-account-menu">
+                    <button class="account-pill account-pill-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($homePath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($homePath . '#featured-products-title', ENT_QUOTES, 'UTF-8'); ?>">Manage Featured Products</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($assetBase . 'admin/logout.php', ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
+                    </ul>
+                </div>
+            <?php elseif ($isCustomerLoggedIn): ?>
                 <div class="dropdown topbar-account-menu">
                     <button class="account-pill account-pill-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?>
@@ -206,23 +282,44 @@ $calendarRows = [
 
                     <div class="product-information-footer" style="justify-content: space-between; align-items: center; padding: 0 1rem; margin-top: 1rem;">
                         <span style="font-size: 1.9rem; font-weight: 800;">&#8369; <?php echo htmlspecialchars($selectedProduct['price'], ENT_QUOTES, 'UTF-8'); ?></span>
-                        <button
-                            class="product-detail-cart-link btn btn-light btn-sm"
-                            type="button"
-                            data-add-cart
-                            data-item-id="camera-<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>"
-                            data-item-type="camera"
-                            data-item-name="<?php echo htmlspecialchars($selectedProduct['brand'] . ' ' . $selectedProduct['name'], ENT_QUOTES, 'UTF-8'); ?>"
-                            data-item-copy="<?php echo htmlspecialchars($selectedProduct['tagline'], ENT_QUOTES, 'UTF-8'); ?>"
-                            data-item-image="<?php echo htmlspecialchars($assetBase . $selectedProduct['cameraImage'], ENT_QUOTES, 'UTF-8'); ?>"
-                            data-item-price="<?php echo htmlspecialchars($selectedProduct['price'], ENT_QUOTES, 'UTF-8'); ?>"
-                            <?php if (!$isCustomerLoggedIn): ?>
-                                data-login-url="<?php echo htmlspecialchars($addToCartLoginUrl, ENT_QUOTES, 'UTF-8'); ?>"
-                            <?php endif; ?>
-                        >
-                            ADD TO CART
-                        </button>
+                        <?php if ($isAdminView): ?>
+                            <button class="admin-inline-edit-toggle" type="button" data-admin-inline-toggle="information-editor">Edit Information</button>
+                        <?php else: ?>
+                            <button
+                                class="product-detail-cart-link btn btn-light btn-sm"
+                                type="button"
+                                data-add-cart
+                                data-item-id="camera-<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>"
+                                data-item-type="camera"
+                                data-item-name="<?php echo htmlspecialchars($selectedProduct['brand'] . ' ' . $selectedProduct['name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                data-item-copy="<?php echo htmlspecialchars($selectedProduct['tagline'], ENT_QUOTES, 'UTF-8'); ?>"
+                                data-item-image="<?php echo htmlspecialchars($assetBase . $selectedProduct['cameraImage'], ENT_QUOTES, 'UTF-8'); ?>"
+                                data-item-price="<?php echo htmlspecialchars($selectedProduct['price'], ENT_QUOTES, 'UTF-8'); ?>"
+                                <?php if (!$isCustomerLoggedIn): ?>
+                                    data-login-url="<?php echo htmlspecialchars($addToCartLoginUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                                <?php endif; ?>
+                            >
+                                ADD TO CART
+                            </button>
+                        <?php endif; ?>
                     </div>
+
+                    <?php if ($isAdminView): ?>
+                        <form class="admin-inline-edit-form" id="information-editor" method="post" action="">
+                            <input type="hidden" name="admin_edit_scope" value="information">
+                            <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
+
+                            <label for="admin-tagline">Tagline</label>
+                            <textarea id="admin-tagline" name="tagline" rows="2"><?php echo htmlspecialchars($selectedProduct['tagline'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+
+                            <label for="admin-capture-slides">Capture Slides (one per line)</label>
+                            <textarea id="admin-capture-slides" name="captureSlides" rows="4"><?php echo htmlspecialchars(implode("\n", $selectedProduct['captureSlides'] ?? []), ENT_QUOTES, 'UTF-8'); ?></textarea>
+
+                            <div class="admin-inline-edit-actions">
+                                <button type="submit" class="admin-edit-primary">Save Information</button>
+                            </div>
+                        </form>
+                    <?php endif; ?>
                 </article>
 
                 <article class="product-calendar-card" data-product-key="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
@@ -264,7 +361,12 @@ $calendarRows = [
             </section>
 
             <aside class="product-specs-card">
-                <h2>Full Specifications</h2>
+                <div class="admin-specs-head">
+                    <h2>Full Specifications</h2>
+                    <?php if ($isAdminView): ?>
+                        <button class="admin-inline-edit-toggle" type="button" data-admin-inline-toggle="specifications-editor">Edit Specifications</button>
+                    <?php endif; ?>
+                </div>
 
                 <section class="product-specs-section">
                     <h3>BRAND</h3>
@@ -292,11 +394,66 @@ $calendarRows = [
                         <?php endif; ?>
                     </section>
                 <?php endforeach; ?>
+
+                <?php if ($isAdminView): ?>
+                    <form class="admin-inline-edit-form" id="specifications-editor" method="post" action="">
+                        <input type="hidden" name="admin_edit_scope" value="specifications">
+                        <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
+
+                        <label for="admin-imaging-specs">Imaging and Performance (one per line)</label>
+                        <textarea id="admin-imaging-specs" name="imagingSpecs" rows="5"><?php echo htmlspecialchars(implode("\n", $selectedProduct['specs']['Imaging and Performance'] ?? []), ENT_QUOTES, 'UTF-8'); ?></textarea>
+
+                        <label for="admin-video-specs">Video (one per line)</label>
+                        <textarea id="admin-video-specs" name="videoSpecs" rows="4"><?php echo htmlspecialchars(implode("\n", $selectedProduct['specs']['Video'] ?? []), ENT_QUOTES, 'UTF-8'); ?></textarea>
+
+                        <label for="admin-physical-specs">Physical Specifications (one per line)</label>
+                        <textarea id="admin-physical-specs" name="physicalSpecs" rows="4"><?php echo htmlspecialchars(implode("\n", $selectedProduct['specs']['Physical Specifications'] ?? []), ENT_QUOTES, 'UTF-8'); ?></textarea>
+
+                        <div class="admin-inline-edit-actions">
+                            <button type="submit" class="admin-edit-primary">Save Specifications</button>
+                        </div>
+                    </form>
+                <?php endif; ?>
             </aside>
         </section>
     </main>
 
+    <?php if ($isAdminView && isset($_GET['saved']) && $_GET['saved'] === '1'): ?>
+        <div class="admin-inline-save-toast" role="status" aria-live="polite">Product details saved.</div>
+    <?php endif; ?>
+
+    <?php if ($isAdminView): ?>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var buttons = document.querySelectorAll('[data-admin-inline-toggle]');
+
+                buttons.forEach(function (button) {
+                    var defaultLabel = button.textContent;
+
+                    button.addEventListener('click', function () {
+                        var targetId = button.getAttribute('data-admin-inline-toggle');
+                        var form = document.getElementById(targetId);
+
+                        if (!form) {
+                            return;
+                        }
+
+                        var isOpen = form.classList.toggle('is-open');
+                        button.textContent = isOpen ? 'Close Editor' : defaultLabel;
+
+                        if (isOpen) {
+                            var input = form.querySelector('textarea, input, select');
+                            if (input) {
+                                input.focus();
+                            }
+                        }
+                    });
+                });
+            });
+        </script>
+    <?php endif; ?>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260324-2"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260324-3"></script>
 </body>
 </html>

@@ -759,12 +759,6 @@ document.addEventListener("DOMContentLoaded", function () {
             var specTwoValue = adminEditSpec2 ? adminEditSpec2.value.trim() : "";
             var priceValue = adminEditPrice ? Number.parseFloat(adminEditPrice.value) : 0;
             var discountValue = clampDiscount(adminEditDiscount ? adminEditDiscount.value : 0);
-            var taglineValue = adminEditTagline ? adminEditTagline.value.trim() : "";
-            var imagingSpecsValue = textareaToLines(adminEditImagingSpecs ? adminEditImagingSpecs.value : "");
-            var videoSpecsValue = textareaToLines(adminEditVideoSpecs ? adminEditVideoSpecs.value : "");
-            var physicalSpecsValue = textareaToLines(adminEditPhysicalSpecs ? adminEditPhysicalSpecs.value : "");
-            var captureSlidesValue = textareaToLines(adminEditCaptureSlides ? adminEditCaptureSlides.value : "");
-
             if (!productKey || !updateEndpoint || !nameValue || !specOneValue || !specTwoValue || !Number.isFinite(priceValue) || priceValue < 0) {
                 return;
             }
@@ -793,26 +787,23 @@ document.addEventListener("DOMContentLoaded", function () {
                 submitButton.textContent = "Saving...";
             }
 
+            var payload = {
+                productKey: productKey,
+                brand: brandValue,
+                name: nameValue,
+                spec1: specOneValue,
+                spec2: specTwoValue,
+                price: priceValue,
+                discountPercent: discountValue,
+                imageDataUrl: finalPreviewSrc
+            };
+
             fetch(updateEndpoint, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({
-                    productKey: productKey,
-                    brand: brandValue,
-                    name: nameValue,
-                    spec1: specOneValue,
-                    spec2: specTwoValue,
-                    price: priceValue,
-                    discountPercent: discountValue,
-                    tagline: taglineValue,
-                    imagingSpecs: imagingSpecsValue,
-                    videoSpecs: videoSpecsValue,
-                    physicalSpecs: physicalSpecsValue,
-                    captureSlides: captureSlidesValue,
-                    imageDataUrl: finalPreviewSrc
-                })
+                body: JSON.stringify(payload)
             })
                 .then(function (response) {
                     return response.json().then(function (payload) {
