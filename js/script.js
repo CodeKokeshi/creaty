@@ -62,8 +62,8 @@ document.addEventListener("DOMContentLoaded", function () {
         previewBeforeCrop: ""
     };
     var adminCoverAspect = {
-        width: 1,
-        height: 0.82
+        width: 5,
+        height: 4
     };
     var adminUndoState = {
         timerId: null,

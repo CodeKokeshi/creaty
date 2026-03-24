@@ -659,8 +659,8 @@ $productListPath = $homePath . '#featured-products-title';
                     previewBeforeCrop: ''
                 };
                 var coverAspect = {
-                    width: 1,
-                    height: 0.82
+                    width: 5,
+                    height: 4
                 };
 
                 function clampCoverOffsets(nextX, nextY) {

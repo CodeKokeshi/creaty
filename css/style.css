@@ -953,7 +953,7 @@ button {
 
 .admin-edit-image-preview {
     width: 100%;
-    aspect-ratio: 1 / 0.82;
+    aspect-ratio: 5 / 4;
     border: 1px solid var(--admin-panel-line);
     background: #0f1012;
     overflow: hidden;
@@ -1351,7 +1351,7 @@ button {
 }
 
 .product-visual {
-    aspect-ratio: 1 / 0.82;
+    aspect-ratio: 5 / 4;
     margin: 1rem 1rem 0;
     border: 1px solid rgba(255, 255, 255, 0.18);
     overflow: hidden;
