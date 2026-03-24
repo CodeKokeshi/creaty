@@ -16,12 +16,18 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminRemoveButtons = document.querySelectorAll("[data-admin-remove-featured]");
     var adminEditButtons = document.querySelectorAll("[data-admin-edit-featured]");
     var adminEditBackdrop = document.querySelector("[data-admin-edit-backdrop]");
+    var adminRestoreEndpoint = adminEditBackdrop ? (adminEditBackdrop.getAttribute("data-admin-restore-endpoint") || "") : "";
+    var adminUndoToast = document.querySelector("[data-admin-undo-toast]");
+    var adminUndoMessage = document.querySelector("[data-admin-undo-message]");
+    var adminUndoAction = document.querySelector("[data-admin-undo-action]");
     var adminEditForm = document.querySelector("[data-admin-edit-form]");
     var adminEditClose = document.querySelector("[data-admin-edit-close]");
     var adminEditCancel = document.querySelector("[data-admin-edit-cancel]");
     var adminEditDuplicate = document.querySelector("[data-admin-edit-duplicate]");
     var adminEditBrowse = document.querySelector("[data-admin-edit-browse]");
     var adminEditRecrop = document.querySelector("[data-admin-edit-recrop]");
+    var adminEditImageActions = document.querySelector("[data-admin-edit-image-actions]");
+    var adminEditMainActions = document.querySelector("[data-admin-edit-main-actions]");
     var adminCropWorkspace = document.querySelector("[data-admin-crop-workspace]");
     var adminEditCropCancel = document.querySelector("[data-admin-edit-crop-cancel]");
     var adminEditCropSave = document.querySelector("[data-admin-edit-crop-save]");
@@ -54,6 +60,10 @@ document.addEventListener("DOMContentLoaded", function () {
         dragStartOffsetY: 0,
         sourceImage: "",
         previewBeforeCrop: ""
+    };
+    var adminUndoState = {
+        timerId: null,
+        pending: null
     };
     var detailGalleries = document.querySelectorAll("[data-gallery]");
     var packageSlideshows = document.querySelectorAll("[data-package-slideshow]");
@@ -179,23 +189,176 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    function hideAdminUndoToast() {
+        if (!adminUndoToast) {
+            return;
+        }
+
+        adminUndoToast.classList.remove("is-visible");
+        adminUndoToast.hidden = true;
+
+        if (adminUndoAction) {
+            adminUndoAction.disabled = false;
+            adminUndoAction.textContent = "Undo";
+        }
+
+        if (adminUndoState.timerId) {
+            window.clearTimeout(adminUndoState.timerId);
+            adminUndoState.timerId = null;
+        }
+
+        adminUndoState.pending = null;
+    }
+
+    function showAdminUndoToast(productName, pendingState) {
+        if (!adminUndoToast || !adminUndoMessage || !adminUndoAction || !pendingState || !adminRestoreEndpoint) {
+            return;
+        }
+
+        if (adminUndoState.timerId) {
+            window.clearTimeout(adminUndoState.timerId);
+            adminUndoState.timerId = null;
+        }
+
+        adminUndoState.pending = pendingState;
+        adminUndoMessage.textContent = productName ? (productName + " archived") : "Product archived";
+
+        adminUndoToast.hidden = false;
+        window.requestAnimationFrame(function () {
+            adminUndoToast.classList.add("is-visible");
+        });
+
+        adminUndoState.timerId = window.setTimeout(function () {
+            hideAdminUndoToast();
+        }, 8000);
+    }
+
+    if (adminUndoAction) {
+        adminUndoAction.addEventListener("click", function () {
+            var pending = adminUndoState.pending;
+
+            if (!pending || !adminRestoreEndpoint) {
+                hideAdminUndoToast();
+                return;
+            }
+
+            adminUndoAction.disabled = true;
+            adminUndoAction.textContent = "Restoring...";
+
+            fetch(adminRestoreEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    archiveKey: pending.archiveKey
+                })
+            })
+                .then(function (response) {
+                    return response.json().then(function (payload) {
+                        return {
+                            ok: response.ok,
+                            payload: payload
+                        };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.payload || !result.payload.ok) {
+                        var message = result.payload && result.payload.message ? result.payload.message : "Unable to restore product.";
+                        throw new Error(message);
+                    }
+
+                    if (pending.card) {
+                        pending.card.removeAttribute("data-admin-removed");
+                        pending.card.classList.remove("is-hidden");
+                        pending.card.classList.remove("is-admin-removing");
+
+                        if (result.payload.restoredKey) {
+                            pending.card.setAttribute("data-product-key", result.payload.restoredKey);
+                        }
+                    }
+
+                    if (pending.button) {
+                        pending.button.disabled = false;
+                    }
+
+                    applyProductFilters();
+                    hideAdminUndoToast();
+                })
+                .catch(function (error) {
+                    window.alert(error.message || "Unable to restore product.");
+                    adminUndoAction.disabled = false;
+                    adminUndoAction.textContent = "Undo";
+                });
+        });
+    }
+
     adminRemoveButtons.forEach(function (button) {
         button.addEventListener("click", function () {
             var card = button.closest(".product-card");
+            var archiveEndpoint = adminEditBackdrop ? (adminEditBackdrop.getAttribute("data-admin-archive-endpoint") || "") : "";
 
-            if (!card) {
+            if (!card || !archiveEndpoint) {
+                return;
+            }
+
+            var productKey = card.getAttribute("data-product-key") || "";
+            if (!productKey) {
                 return;
             }
 
             card.classList.add("is-admin-removing");
+            button.disabled = true;
 
-            window.setTimeout(function () {
-                // Intentionally client-side only for now; no persistence.
-                card.setAttribute("data-admin-removed", "true");
-                card.classList.remove("is-admin-removing");
-                card.classList.add("is-hidden");
-                applyProductFilters();
-            }, 180);
+            fetch(archiveEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    productKey: productKey
+                })
+            })
+                .then(function (response) {
+                    return response.json().then(function (payload) {
+                        return {
+                            ok: response.ok,
+                            payload: payload
+                        };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.payload || !result.payload.ok) {
+                        var message = result.payload && result.payload.message ? result.payload.message : "Unable to archive product.";
+                        throw new Error(message);
+                    }
+
+                    var titleLink = card.querySelector(".product-title-link");
+                    var productName = titleLink ? titleLink.textContent.trim() : "Product";
+                    var archiveKey = result.payload.archivedEntry && result.payload.archivedEntry.archiveKey
+                        ? String(result.payload.archivedEntry.archiveKey)
+                        : "";
+
+                    window.setTimeout(function () {
+                        card.setAttribute("data-admin-removed", "true");
+                        card.classList.remove("is-admin-removing");
+                        card.classList.add("is-hidden");
+                        applyProductFilters();
+
+                        if (archiveKey) {
+                            showAdminUndoToast(productName, {
+                                archiveKey: archiveKey,
+                                card: card,
+                                button: button
+                            });
+                        }
+                    }, 160);
+                })
+                .catch(function (error) {
+                    window.alert(error.message || "Unable to archive product.");
+                    card.classList.remove("is-admin-removing");
+                    button.disabled = false;
+                });
         });
     });
 
@@ -333,6 +496,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminCropWorkspace) {
             adminCropWorkspace.hidden = !isVisible;
+        }
+
+        if (adminEditImageActions) {
+            adminEditImageActions.hidden = isVisible;
+
+            Array.prototype.forEach.call(adminEditImageActions.querySelectorAll("button"), function (button) {
+                button.disabled = isVisible;
+            });
+        }
+
+        if (adminEditMainActions) {
+            adminEditMainActions.hidden = isVisible;
+
+            Array.prototype.forEach.call(adminEditMainActions.querySelectorAll("button"), function (button) {
+                button.disabled = isVisible;
+            });
         }
 
         syncAdminPreviewTransform();
@@ -745,6 +924,10 @@ document.addEventListener("DOMContentLoaded", function () {
     if (adminEditForm) {
         adminEditForm.addEventListener("submit", function (event) {
             event.preventDefault();
+
+            if (adminCropState.isCropping) {
+                return;
+            }
 
             if (!activeAdminEditCard || !adminEditBackdrop) {
                 closeAdminEditModal();

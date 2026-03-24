@@ -233,44 +233,5 @@
             "canon-1200d",
             "canon-700d"
         ]
-    },
-    "canon-700d-copy": {
-        "brand": "Nikon",
-        "name": "Ardie",
-        "price": "800.00",
-        "discountPercent": 50,
-        "spec1": "18MP APS-C CMOS sensor",
-        "spec2": "1080p Full HD video recording at up to 30 fps",
-        "tagline": "18MP APS-C CMOS sensor and 1080p Full HD recording.",
-        "cameraImage": "assets/cameras/Nikon%20Ardie.png",
-        "captureSlides": [
-            "Street portrait placeholder",
-            "Indoor sample placeholder",
-            "Outdoor detail placeholder"
-        ],
-        "specs": {
-            "Brand": [
-                "Nikon"
-            ],
-            "Imaging and Performance": [
-                "Sensor: 18MP APS-C CMOS sensor",
-                "ISO: 100-12800",
-                "Continuous shooting: 5 fps",
-                "Autofocus: 9-point AF system"
-            ],
-            "Video": [
-                "Resolution: Full HD 1080p",
-                "Frame rates: 24 fps, 25 fps, 30 fps"
-            ],
-            "Physical Specifications": [
-                "Weight: 580g with battery and card",
-                "Screen: 3-inch vari-angle touchscreen"
-            ]
-        },
-        "recommendations": [
-            "nikon-d60",
-            "sony-zv-e10",
-            "fuji-x-a3"
-        ]
     }
 }

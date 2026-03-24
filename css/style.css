@@ -753,6 +753,76 @@ button {
     transition: opacity 180ms ease, transform 180ms ease;
 }
 
+.admin-undo-toast {
+    position: fixed;
+    right: 1.2rem;
+    bottom: 1.2rem;
+    z-index: 1050;
+    width: min(92vw, 320px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    padding: 0.68rem 0.8rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    background: rgba(14, 16, 20, 0.95);
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.36);
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 180ms ease, transform 180ms ease;
+    pointer-events: none;
+}
+
+.admin-undo-toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.admin-undo-toast-message {
+    margin: 0;
+    color: #eef0f3;
+    font-size: 0.84rem;
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-undo-toast-button {
+    border: 1px solid #4da951;
+    background: #57b95c;
+    color: #ffffff;
+    border-radius: 8px;
+    padding: 0.28rem 0.68rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+.admin-undo-toast-button:hover,
+.admin-undo-toast-button:focus-visible {
+    transform: translateY(-1px);
+    background: #4da951;
+    border-color: #3f8f43;
+}
+
+.admin-undo-toast-button:disabled {
+    opacity: 0.68;
+    cursor: default;
+    transform: none;
+}
+
+@media (max-width: 640px) {
+    .admin-undo-toast {
+        right: 0.8rem;
+        bottom: 0.8rem;
+    }
+}
+
 .product-card-admin-add {
     border-style: dashed;
     border-color: rgba(255, 255, 255, 0.6);
@@ -950,6 +1020,11 @@ button {
     gap: 0.5rem;
 }
 
+.admin-edit-image-actions .admin-icon-action {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
 .admin-edit-modal .admin-edit-secondary,
 .admin-edit-modal .admin-edit-primary {
     min-height: 42px;
@@ -1043,6 +1118,11 @@ button {
 .admin-crop-actions .admin-edit-secondary,
 .admin-crop-actions .admin-edit-primary {
     flex: 1 1 0;
+}
+
+.admin-crop-actions .admin-icon-action {
+    flex: 1 1 0;
+    min-width: 0;
 }
 
 .admin-edit-fields-column input,
@@ -1147,6 +1227,20 @@ button {
 
 .admin-edit-actions .admin-edit-duplicate {
     margin-right: auto;
+}
+
+.admin-edit-actions[data-admin-edit-main-actions] {
+    align-items: center;
+}
+
+.admin-edit-actions[data-admin-edit-main-actions] .admin-edit-duplicate {
+    margin-right: auto;
+}
+
+.admin-edit-icon-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 @media (max-width: 900px) {
@@ -1810,7 +1904,83 @@ button {
 .admin-inline-edit-actions {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
+    gap: 0.45rem;
     margin-top: 0.25rem;
+}
+
+#admin-info-price::-webkit-outer-spin-button,
+#admin-info-price::-webkit-inner-spin-button,
+#admin-info-discount::-webkit-outer-spin-button,
+#admin-info-discount::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#admin-info-price,
+#admin-info-discount {
+    -moz-appearance: textfield;
+}
+
+.admin-icon-action {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    background: #1a212d;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition: transform 140ms ease, filter 140ms ease, border-color 140ms ease;
+}
+
+.admin-icon-action img {
+    width: 20px;
+    height: 20px;
+    display: block;
+    filter: brightness(0) invert(1);
+}
+
+.admin-icon-action:hover,
+.admin-icon-action:focus-visible {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+    border-color: rgba(255, 255, 255, 0.38);
+}
+
+.admin-icon-action-browse {
+    background: #1f2a39;
+}
+
+.admin-icon-action-edit {
+    background: #2d263a;
+}
+
+.admin-icon-action-cancel {
+    background: #6a1f1f;
+    border-color: rgba(255, 120, 120, 0.35);
+}
+
+.admin-icon-action-save {
+    background: #2f7c29;
+    border-color: rgba(130, 220, 120, 0.38);
+}
+
+.admin-edit-actions[data-admin-cover-main-actions],
+.admin-crop-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.admin-edit-actions[data-admin-cover-main-actions] .admin-icon-action,
+.admin-crop-actions .admin-icon-action {
+    flex: 1 1 0;
+    min-width: 0;
 }
 
 .admin-inline-save-toast {

@@ -402,8 +402,12 @@ $productListPath = $homePath . '#featured-products-title';
                                 <textarea id="admin-info-tagline" name="tagline" rows="3" required><?php echo htmlspecialchars((string) ($selectedProduct['tagline'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
 
                                 <div class="admin-inline-edit-actions">
-                                    <button type="button" class="admin-edit-secondary" data-admin-cancel-edit="information">Cancel</button>
-                                    <button type="submit" class="admin-edit-primary">Save</button>
+                                    <button type="button" class="admin-icon-action admin-icon-action-cancel" data-admin-cancel-edit="information" aria-label="Cancel" title="Cancel">
+                                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cancel.svg" alt="">
+                                    </button>
+                                    <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save" title="Save">
+                                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                                    </button>
                                 </div>
                             </form>
                         <?php endif; ?>
@@ -508,8 +512,12 @@ $productListPath = $homePath . '#featured-products-title';
                             <textarea id="admin-physical-specs" name="physicalSpecs" rows="4" required><?php echo htmlspecialchars(implode("\n", $selectedPhysicalSpecs), ENT_QUOTES, 'UTF-8'); ?></textarea>
 
                             <div class="admin-inline-edit-actions">
-                                <button type="button" class="admin-edit-secondary" data-admin-cancel-edit="specifications">Cancel</button>
-                                <button type="submit" class="admin-edit-primary">Save</button>
+                                <button type="button" class="admin-icon-action admin-icon-action-cancel" data-admin-cancel-edit="specifications" aria-label="Cancel" title="Cancel">
+                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cancel.svg" alt="">
+                                </button>
+                                <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save" title="Save">
+                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                                </button>
                             </div>
                         </form>
                     <?php endif; ?>
@@ -551,16 +559,28 @@ $productListPath = $homePath . '#featured-products-title';
                         </div>
 
                         <div class="admin-crop-actions">
-                            <button type="button" class="admin-edit-secondary" data-admin-cover-crop-cancel>Cancel Crop</button>
-                            <button type="button" class="admin-edit-primary" data-admin-cover-crop-save>Save Crop</button>
+                            <button type="button" class="admin-icon-action admin-icon-action-cancel" data-admin-cover-crop-cancel aria-label="Cancel" title="Cancel">
+                                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cancel.svg" alt="">
+                            </button>
+                            <button type="button" class="admin-icon-action admin-icon-action-save" data-admin-cover-crop-save aria-label="Save" title="Save">
+                                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                            </button>
                         </div>
                     </div>
 
-                    <div class="admin-edit-actions">
-                        <button type="button" class="admin-edit-secondary" data-admin-cover-browse>Browse Image</button>
-                        <button type="button" class="admin-edit-secondary" data-admin-cover-recrop>Edit Crop</button>
-                        <button type="button" class="admin-edit-secondary" data-admin-cover-cancel>Cancel</button>
-                        <button type="submit" class="admin-edit-primary">Save Cover</button>
+                    <div class="admin-edit-actions" data-admin-cover-main-actions>
+                        <button type="button" class="admin-icon-action admin-icon-action-browse" data-admin-cover-browse aria-label="Browse" title="Browse">
+                            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/folder_open.svg" alt="">
+                        </button>
+                        <button type="button" class="admin-icon-action admin-icon-action-edit" data-admin-cover-recrop aria-label="Edit" title="Edit">
+                            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/crop.svg" alt="">
+                        </button>
+                        <button type="button" class="admin-icon-action admin-icon-action-cancel" data-admin-cover-cancel aria-label="Cancel" title="Cancel">
+                            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cancel.svg" alt="">
+                        </button>
+                        <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save" title="Save">
+                            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                        </button>
                     </div>
                 </form>
             </section>
@@ -579,12 +599,20 @@ $productListPath = $homePath . '#featured-products-title';
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 function setEditMode(scope, isEditing) {
-                    var wrap = document.querySelector('[data-admin-edit-swap="' + scope + '"]');
-                    if (!wrap) {
+                    var wraps = document.querySelectorAll('[data-admin-edit-swap]');
+
+                    wraps.forEach(function (item) {
+                        item.classList.remove('is-editing');
+                    });
+
+                    if (!isEditing) {
                         return;
                     }
 
-                    wrap.classList.toggle('is-editing', isEditing);
+                    var wrap = document.querySelector('[data-admin-edit-swap="' + scope + '"]');
+                    if (wrap) {
+                        wrap.classList.add('is-editing');
+                    }
                 }
 
                 document.querySelectorAll('[data-admin-toggle-edit]').forEach(function (button) {
@@ -611,6 +639,7 @@ $productListPath = $homePath . '#featured-products-title';
                 var coverPreviewImage = document.querySelector('[data-admin-cover-preview-img]');
                 var coverPreviewWrap = document.querySelector('[data-admin-cover-preview]');
                 var coverCropWorkspace = document.querySelector('[data-admin-cover-crop-workspace]');
+                var coverMainActions = document.querySelector('[data-admin-cover-main-actions]');
                 var coverCropCancelButton = document.querySelector('[data-admin-cover-crop-cancel]');
                 var coverCropSaveButton = document.querySelector('[data-admin-cover-crop-save]');
                 var coverZoomInput = document.querySelector('[data-admin-cover-zoom]');
@@ -661,6 +690,10 @@ $productListPath = $homePath . '#featured-products-title';
 
                     if (coverCropWorkspace) {
                         coverCropWorkspace.hidden = !isVisible;
+                    }
+
+                    if (coverMainActions) {
+                        coverMainActions.hidden = isVisible;
                     }
 
                     syncCoverPreviewTransform();

@@ -77,6 +77,7 @@ if (!is_array($products)) {
                 <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                     <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
                     <li><a class="dropdown-item" href="#">Manage Featured Products</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived Products</a></li>
                     <li><a class="dropdown-item" href="#">Manage Discounts</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
@@ -255,7 +256,7 @@ if (!is_array($products)) {
         </section>
     </main>
 
-    <div class="admin-edit-modal-backdrop" data-admin-edit-backdrop data-admin-duplicate-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/duplicate_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_product.php', ENT_QUOTES, 'UTF-8'); ?>" hidden>
+    <div class="admin-edit-modal-backdrop" data-admin-edit-backdrop data-admin-duplicate-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/duplicate_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_product.php', ENT_QUOTES, 'UTF-8'); ?>" hidden>
         <section class="admin-edit-modal" role="dialog" aria-modal="true" aria-labelledby="admin-edit-title">
             <div class="admin-edit-modal-head">
                 <h2 id="admin-edit-title">Edit Featured Product</h2>
@@ -275,9 +276,13 @@ if (!is_array($products)) {
 
                         <input type="file" accept="image/*" data-admin-edit-file hidden>
 
-                        <div class="admin-edit-image-actions">
-                            <button type="button" class="admin-edit-secondary" data-admin-edit-browse>Browse Image</button>
-                            <button type="button" class="admin-edit-secondary" data-admin-edit-recrop>Edit Crop</button>
+                        <div class="admin-edit-image-actions" data-admin-edit-image-actions>
+                            <button type="button" class="admin-icon-action admin-icon-action-browse" data-admin-edit-browse aria-label="Browse" title="Browse">
+                                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/folder_open.svg" alt="">
+                            </button>
+                            <button type="button" class="admin-icon-action admin-icon-action-edit" data-admin-edit-recrop aria-label="Edit Crop" title="Edit Crop">
+                                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/crop.svg" alt="">
+                            </button>
                         </div>
 
                         <div class="admin-crop-workspace" data-admin-crop-workspace hidden>
@@ -290,8 +295,12 @@ if (!is_array($products)) {
                             </div>
 
                             <div class="admin-crop-actions">
-                                <button type="button" class="admin-edit-secondary" data-admin-edit-crop-cancel>Cancel Crop</button>
-                                <button type="button" class="admin-edit-primary" data-admin-edit-crop-save>Save Crop</button>
+                                <button type="button" class="admin-icon-action admin-icon-action-cancel" data-admin-edit-crop-cancel aria-label="Cancel" title="Cancel">
+                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cancel.svg" alt="">
+                                </button>
+                                <button type="button" class="admin-icon-action admin-icon-action-save" data-admin-edit-crop-save aria-label="Save" title="Save">
+                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -325,16 +334,27 @@ if (!is_array($products)) {
                     </div>
                 </div>
 
-                <div class="admin-edit-actions">
+                <div class="admin-edit-actions" data-admin-edit-main-actions>
                     <button type="button" class="admin-edit-secondary admin-edit-duplicate" data-admin-edit-duplicate>Duplicate Product</button>
-                    <button type="button" class="admin-edit-secondary" data-admin-edit-cancel>Cancel</button>
-                    <button type="submit" class="admin-edit-primary">Save Changes</button>
+                    <div class="admin-edit-icon-actions">
+                        <button type="button" class="admin-icon-action admin-icon-action-cancel" data-admin-edit-cancel aria-label="Cancel" title="Cancel">
+                            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cancel.svg" alt="">
+                        </button>
+                        <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save Changes" title="Save Changes">
+                            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                        </button>
+                    </div>
                 </div>
             </form>
         </section>
     </div>
 
+    <aside class="admin-undo-toast" data-admin-undo-toast hidden aria-live="polite" aria-atomic="true">
+        <p class="admin-undo-toast-message" data-admin-undo-message>Product archived.</p>
+        <button class="admin-undo-toast-button" type="button" data-admin-undo-action>Undo</button>
+    </aside>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260324-3"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260324-6"></script>
 </body>
 </html>

@@ -301,3 +301,263 @@ function save_product_image_from_data_url($dataUrl, $brand, $name, $projectRoot)
 
     return $targetRelativePath;
 }
+
+function archived_products_repository_path()
+{
+    return __DIR__ . '/archives/products_archived.json';
+}
+
+function load_archived_products_repository()
+{
+    $path = archived_products_repository_path();
+
+    if (!is_file($path)) {
+        return [];
+    }
+
+    $raw = file_get_contents($path);
+    if ($raw === false) {
+        return [];
+    }
+
+    $raw = preg_replace('/^\xEF\xBB\xBF/', '', (string) $raw);
+    $decoded = json_decode($raw, true);
+
+    return is_array($decoded) ? array_values($decoded) : [];
+}
+
+function save_archived_products_repository($archivedItems)
+{
+    $path = archived_products_repository_path();
+    $directory = dirname($path);
+
+    if (!is_dir($directory) && !mkdir($directory, 0777, true) && !is_dir($directory)) {
+        return false;
+    }
+
+    $encoded = json_encode(array_values((array) $archivedItems), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    if ($encoded === false) {
+        return false;
+    }
+
+    return file_put_contents($path, $encoded . PHP_EOL, LOCK_EX) !== false;
+}
+
+function archive_product_image_for_entry($sourceRelativePath, $products, $sourceKey, $archiveKey, $projectRoot)
+{
+    $relativeSource = ltrim((string) $sourceRelativePath, '/');
+    if ($relativeSource === '') {
+        return '';
+    }
+
+    $sourceAbsolutePath = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, rawurldecode($relativeSource));
+    if (!is_file($sourceAbsolutePath)) {
+        return $relativeSource;
+    }
+
+    $extension = strtolower((string) pathinfo($sourceAbsolutePath, PATHINFO_EXTENSION));
+    if ($extension === '') {
+        $extension = 'png';
+    }
+
+    $targetDirRelative = 'assets/cameras/_archived';
+    $targetDirAbsolute = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $targetDirRelative);
+
+    if (!is_dir($targetDirAbsolute) && !mkdir($targetDirAbsolute, 0777, true) && !is_dir($targetDirAbsolute)) {
+        throw new RuntimeException('Unable to create archive image directory.');
+    }
+
+    $baseFilename = sanitize_product_filename($archiveKey);
+    if ($baseFilename === '') {
+        $baseFilename = 'archived-product';
+    }
+
+    $counter = 0;
+    do {
+        $suffix = $counter === 0 ? '' : ' ' . $counter;
+        $rawName = $baseFilename . $suffix . '.' . $extension;
+        $targetRelativePath = $targetDirRelative . '/' . rawurlencode($rawName);
+        $targetAbsolutePath = $targetDirAbsolute . DIRECTORY_SEPARATOR . $rawName;
+        $counter++;
+    } while (file_exists($targetAbsolutePath) && $counter < 1000);
+
+    $isSharedImage = false;
+    foreach ($products as $key => $product) {
+        if ($key === $sourceKey || !is_array($product)) {
+            continue;
+        }
+
+        $candidate = ltrim((string) ($product['cameraImage'] ?? ''), '/');
+        if ($candidate !== '' && strtolower($candidate) === strtolower($relativeSource)) {
+            $isSharedImage = true;
+            break;
+        }
+    }
+
+    if ($isSharedImage) {
+        if (!copy($sourceAbsolutePath, $targetAbsolutePath)) {
+            throw new RuntimeException('Unable to copy archived image asset.');
+        }
+    } else {
+        if (!@rename($sourceAbsolutePath, $targetAbsolutePath)) {
+            if (!copy($sourceAbsolutePath, $targetAbsolutePath)) {
+                throw new RuntimeException('Unable to move archived image asset.');
+            }
+
+            @unlink($sourceAbsolutePath);
+        }
+    }
+
+    return $targetRelativePath;
+}
+
+function archive_product_record($products, $sourceKey, $projectRoot)
+{
+    if (!isset($products[$sourceKey]) || !is_array($products[$sourceKey])) {
+        throw new RuntimeException('Product to archive was not found.');
+    }
+
+    $source = $products[$sourceKey];
+    $displayName = product_display_name($source);
+    $archiveKey = sanitize_product_filename($displayName . ' ' . date('Ymd-His'));
+
+    if ($archiveKey === '') {
+        $archiveKey = 'archived-product-' . date('Ymd-His');
+    }
+
+    $archivedProducts = load_archived_products_repository();
+    $archivedImagePath = archive_product_image_for_entry(
+        isset($source['cameraImage']) ? $source['cameraImage'] : '',
+        $products,
+        $sourceKey,
+        $archiveKey,
+        $projectRoot
+    );
+
+    if ($archivedImagePath !== '') {
+        $source['cameraImage'] = $archivedImagePath;
+    }
+
+    $archivedProducts[] = [
+        'archiveKey' => $archiveKey,
+        'archivedAt' => gmdate('c'),
+        'originalKey' => (string) $sourceKey,
+        'product' => $source
+    ];
+
+    unset($products[$sourceKey]);
+
+    return [
+        'products' => $products,
+        'archivedProducts' => $archivedProducts,
+        'archivedEntry' => end($archivedProducts)
+    ];
+}
+
+function restore_product_image_from_archive($archivedRelativePath, $brand, $name, $projectRoot)
+{
+    $relativeSource = ltrim((string) $archivedRelativePath, '/');
+    if ($relativeSource === '') {
+        return '';
+    }
+
+    $sourceAbsolutePath = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, rawurldecode($relativeSource));
+    if (!is_file($sourceAbsolutePath)) {
+        return $relativeSource;
+    }
+
+    $targetDirRelative = 'assets/cameras';
+    $targetDirAbsolute = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $targetDirRelative);
+
+    if (!is_dir($targetDirAbsolute) && !mkdir($targetDirAbsolute, 0777, true) && !is_dir($targetDirAbsolute)) {
+        throw new RuntimeException('Unable to create camera image directory.');
+    }
+
+    $extension = strtolower((string) pathinfo($sourceAbsolutePath, PATHINFO_EXTENSION));
+    if ($extension === '') {
+        $extension = 'png';
+    }
+
+    $baseFilename = sanitize_product_filename(normalize_product_brand($brand) . ' ' . $name);
+    if ($baseFilename === '') {
+        $baseFilename = 'Restored Product';
+    }
+
+    $counter = 0;
+    do {
+        $suffix = $counter === 0 ? '' : ' ' . $counter;
+        $rawName = $baseFilename . $suffix . '.' . $extension;
+        $targetRelativePath = $targetDirRelative . '/' . rawurlencode($rawName);
+        $targetAbsolutePath = $targetDirAbsolute . DIRECTORY_SEPARATOR . $rawName;
+        $counter++;
+    } while (file_exists($targetAbsolutePath) && $counter < 1000);
+
+    if (!@rename($sourceAbsolutePath, $targetAbsolutePath)) {
+        if (!copy($sourceAbsolutePath, $targetAbsolutePath)) {
+            throw new RuntimeException('Unable to restore archived image asset.');
+        }
+
+        @unlink($sourceAbsolutePath);
+    }
+
+    return $targetRelativePath;
+}
+
+function restore_archived_product_record($products, $archivedProducts, $archiveKey, $projectRoot)
+{
+    $matchIndex = null;
+
+    foreach ($archivedProducts as $index => $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+
+        $candidateKey = trim((string) ($entry['archiveKey'] ?? ''));
+        if ($candidateKey !== '' && $candidateKey === $archiveKey) {
+            $matchIndex = $index;
+            break;
+        }
+    }
+
+    if ($matchIndex === null) {
+        throw new RuntimeException('Archived product was not found.');
+    }
+
+    $entry = $archivedProducts[$matchIndex];
+    $product = is_array($entry['product'] ?? null) ? $entry['product'] : null;
+
+    if (!is_array($product)) {
+        throw new RuntimeException('Archived product payload is invalid.');
+    }
+
+    $brand = normalize_product_brand($product['brand'] ?? 'Canon');
+    $name = trim((string) ($product['name'] ?? 'Product'));
+    if ($name === '') {
+        $name = 'Product';
+    }
+
+    $originalKey = trim((string) ($entry['originalKey'] ?? ''));
+    $restoreKey = ($originalKey !== '' && !isset($products[$originalKey]))
+        ? $originalKey
+        : unique_product_key($products, $brand, $name);
+
+    if (!empty($product['cameraImage'])) {
+        $product['cameraImage'] = restore_product_image_from_archive(
+            (string) $product['cameraImage'],
+            $brand,
+            $name,
+            $projectRoot
+        );
+    }
+
+    $products[$restoreKey] = $product;
+    array_splice($archivedProducts, $matchIndex, 1);
+
+    return [
+        'products' => $products,
+        'archivedProducts' => array_values($archivedProducts),
+        'restoredKey' => $restoreKey,
+        'restoredProduct' => $product,
+        'restoredEntry' => $entry
+    ];
+}
