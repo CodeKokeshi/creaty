@@ -1725,6 +1725,10 @@ button {
     font-weight: 800;
 }
 
+.product-primary-card {
+    position: relative;
+}
+
 .admin-specs-head {
     display: flex;
     align-items: center;
@@ -1732,33 +1736,55 @@ button {
     gap: 0.75rem;
 }
 
-.admin-inline-edit-toggle {
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    background: rgba(255, 255, 255, 0.06);
-    color: #f4f4f4;
-    border-radius: 10px;
-    min-height: 34px;
-    padding: 0 0.85rem;
-    font-size: 0.78rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+.admin-pencil-chip {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    background: #5ba936;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
     cursor: pointer;
 }
 
-.admin-inline-edit-form {
-    margin-top: 0.85rem;
-    padding-top: 0.85rem;
-    border-top: 1px dashed rgba(255, 255, 255, 0.22);
-    display: none;
-    gap: 0.5rem;
+.admin-pencil-chip img {
+    width: 14px;
+    height: 14px;
+    filter: brightness(0) invert(1);
 }
 
-.admin-inline-edit-form.is-open {
+.product-primary-card .admin-pencil-chip {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.55rem;
+    z-index: 2;
+}
+
+.admin-edit-swap {
+    margin-top: 0.85rem;
+    width: 100%;
+}
+
+.admin-edit-swap .admin-edit-swap-panel {
+    display: none;
+}
+
+.admin-edit-swap.is-editing .admin-static-view {
+    display: none;
+}
+
+.admin-edit-swap.is-editing .admin-edit-swap-panel {
     display: grid;
 }
 
-.admin-inline-edit-form label {
+.admin-edit-swap-panel {
+    gap: 0.5rem;
+}
+
+.admin-edit-swap-panel label {
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.06em;
@@ -1766,9 +1792,9 @@ button {
     color: rgba(255, 255, 255, 0.78);
 }
 
-.admin-inline-edit-form textarea,
-.admin-inline-edit-form input,
-.admin-inline-edit-form select {
+.admin-edit-swap-panel textarea,
+.admin-edit-swap-panel input,
+.admin-edit-swap-panel select {
     width: 100%;
     border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 10px;
@@ -1777,7 +1803,7 @@ button {
     padding: 0.55rem 0.65rem;
 }
 
-.admin-inline-edit-form textarea {
+.admin-edit-swap-panel textarea {
     resize: vertical;
 }
 
@@ -1799,6 +1825,50 @@ button {
     padding: 0.55rem 0.8rem;
     font-size: 0.82rem;
     font-weight: 700;
+}
+
+.admin-inline-save-toast-error {
+    color: #ffd7d7;
+    border-color: rgba(255, 110, 110, 0.62);
+}
+
+.admin-cover-preview {
+    margin-bottom: 0.9rem;
+}
+
+.admin-cover-modal {
+    width: min(100%, 560px);
+    max-height: calc(100dvh - 2rem);
+    padding: 0.9rem;
+    border-radius: 16px;
+}
+
+.admin-cover-modal .admin-edit-modal-head h2 {
+    font-size: clamp(1.05rem, 1.7vw, 1.25rem);
+}
+
+.admin-cover-modal .admin-edit-actions {
+    margin-top: 0.7rem;
+}
+
+.admin-cover-modal .admin-edit-actions .admin-edit-secondary,
+.admin-cover-modal .admin-edit-actions .admin-edit-primary {
+    min-width: 0;
+    flex: 1 1 0;
+}
+
+.admin-cover-preview {
+    width: min(100%, 360px);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@media (max-width: 640px) {
+    .admin-cover-modal {
+        width: min(100%, 440px);
+        max-height: calc(100dvh - 1rem);
+        border-radius: 14px;
+    }
 }
 
 .cart-page {
