@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEditForm = document.querySelector("[data-admin-edit-form]");
     var adminEditClose = document.querySelector("[data-admin-edit-close]");
     var adminEditCancel = document.querySelector("[data-admin-edit-cancel]");
+    var adminEditDuplicate = document.querySelector("[data-admin-edit-duplicate]");
     var adminEditBrowse = document.querySelector("[data-admin-edit-browse]");
     var adminEditRecrop = document.querySelector("[data-admin-edit-recrop]");
     var adminCropWorkspace = document.querySelector("[data-admin-crop-workspace]");
@@ -621,6 +622,55 @@ document.addEventListener("DOMContentLoaded", function () {
             if (event.target === adminEditBackdrop) {
                 closeAdminEditModal();
             }
+        });
+    }
+
+    if (adminEditDuplicate) {
+        adminEditDuplicate.addEventListener("click", function () {
+            if (!activeAdminEditCard || !adminEditBackdrop) {
+                return;
+            }
+
+            var productKey = activeAdminEditCard.getAttribute("data-product-key");
+            var endpoint = adminEditBackdrop.getAttribute("data-admin-duplicate-endpoint") || "";
+
+            if (!productKey || !endpoint) {
+                return;
+            }
+
+            adminEditDuplicate.disabled = true;
+            adminEditDuplicate.textContent = "Duplicating...";
+
+            fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    productKey: productKey
+                })
+            })
+                .then(function (response) {
+                    return response.json().then(function (payload) {
+                        return {
+                            ok: response.ok,
+                            payload: payload
+                        };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.payload || !result.payload.ok) {
+                        var message = result.payload && result.payload.message ? result.payload.message : "Unable to duplicate product.";
+                        throw new Error(message);
+                    }
+
+                    window.location.reload();
+                })
+                .catch(function (error) {
+                    window.alert(error.message || "Unable to duplicate product.");
+                    adminEditDuplicate.disabled = false;
+                    adminEditDuplicate.textContent = "Duplicate Product";
+                });
         });
     }
 

@@ -26,6 +26,13 @@ $cartCount = 0;
 $accountLabel = 'Admin';
 $adminHomePath = $routeBase . 'dashboard/';
 $logoutPath = $routeBase . 'logout.php';
+
+require __DIR__ . '/config/products_repository.php';
+$products = load_products_repository();
+
+if (!is_array($products)) {
+    $products = [];
+}
 ?>
 
 <!DOCTYPE html>
@@ -186,125 +193,58 @@ $logoutPath = $routeBase . 'logout.php';
             <h2 class="landing-title" id="featured-products-title">FEATURED PRODUCTS</h2>
 
             <div class="product-grid">
-                <article class="product-card product-card-highlight" data-brand="canon" data-month="january" data-day="01" data-year="2026">
-                    <button class="product-card-admin-edit" type="button" data-admin-edit-featured aria-label="Edit Canon 700D featured details">
-                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
-                    </button>
-                    <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Canon 700D from featured">&times;</button>
-                    <div class="product-ribbon">PROMO 50% OFF!</div>
-                    <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Canon 700D product page">
-                        <div class="product-visual product-visual-canon700d">
-                            <img class="product-visual-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/cameras/Canon%20700D.png" alt="Canon 700D">
-                        </div>
-                    </a>
-                    <div class="product-copy">
-                        <h3><a class="product-title-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title">Canon 700D</a></h3>
-                        <p>18MP APS-C CMOS sensor</p>
-                        <p>1080p Full HD video recording at up to 30 fps</p>
-                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #dde531;">
-                            <span style="color: #a1a1aa; text-decoration: line-through; font-size: 0.95rem; font-weight: 600; margin-right: 0.45rem;">&#8369; 800.00</span>
-                            <span>&#8369; 400.00</span>
-                        </p>
-                    </div>
-                </article>
+                <?php foreach ($products as $productKey => $product): ?>
+                    <?php
+                        if (!is_array($product)) {
+                            continue;
+                        }
 
-                <article class="product-card product-card-highlight" data-brand="canon" data-month="march" data-day="12" data-year="2026">
-                    <button class="product-card-admin-edit" type="button" data-admin-edit-featured aria-label="Edit Canon 1200D featured details">
-                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
-                    </button>
-                    <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Canon 1200D from featured">&times;</button>
-                    <div class="product-ribbon">PROMO 20% OFF!</div>
-                    <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Canon 1200D product page">
-                        <div class="product-visual product-visual-canon1200d">
-                            <img class="product-visual-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/cameras/Canon%201200D.png" alt="Canon 1200D">
-                        </div>
-                    </a>
-                    <div class="product-copy">
-                        <h3><a class="product-title-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title">Canon 1200D</a></h3>
-                        <p>18-megapixel APS-C CMOS sensor</p>
-                        <p>Full HD 1080p video recording</p>
-                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #dde531;">
-                            <span style="color: #a1a1aa; text-decoration: line-through; font-size: 0.95rem; font-weight: 600; margin-right: 0.45rem;">&#8369; 450.00</span>
-                            <span>&#8369; 360.00</span>
-                        </p>
-                    </div>
-                </article>
+                        $brandLabel = normalize_product_brand($product['brand'] ?? 'Canon');
+                        $brandValue = strtolower($brandLabel);
+                        $productName = trim((string) ($product['name'] ?? ''));
+                        $displayName = trim($brandLabel . ' ' . $productName);
+                        $specOne = trim((string) ($product['spec1'] ?? ''));
+                        $specTwo = trim((string) ($product['spec2'] ?? ''));
+                        $price = (float) ($product['price'] ?? 0);
+                        $discount = (int) ($product['discountPercent'] ?? 0);
+                        $discount = max(0, min(95, $discount));
+                        $isPromo = $discount > 0;
+                        $discounted = $price * (1 - ($discount / 100));
+                        $imagePath = trim((string) ($product['cameraImage'] ?? ''));
 
-                <article class="product-card product-card-highlight" data-brand="fuji" data-month="march" data-day="12" data-year="2027">
-                    <button class="product-card-admin-edit" type="button" data-admin-edit-featured aria-label="Edit Fuji X A3 featured details">
-                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
-                    </button>
-                    <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Fuji X A3 from featured">&times;</button>
-                    <div class="product-ribbon">PROMO 30% OFF!</div>
-                    <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Fuji X A3 product page">
-                        <div class="product-visual product-visual-fuji">
-                            <img class="product-visual-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/cameras/Fujifilm%20XA-3.png" alt="Fujifilm XA-3">
+                        $featuredDate = is_array($product['featuredDate'] ?? null) ? $product['featuredDate'] : [];
+                        $month = strtolower(trim((string) ($featuredDate['month'] ?? 'all')));
+                        $day = trim((string) ($featuredDate['day'] ?? 'all'));
+                        $year = trim((string) ($featuredDate['year'] ?? 'all'));
+                    ?>
+                    <article class="product-card<?php echo $isPromo ? ' product-card-highlight' : ''; ?>" data-product-key="<?php echo htmlspecialchars((string) $productKey, ENT_QUOTES, 'UTF-8'); ?>" data-product-name="<?php echo htmlspecialchars($productName, ENT_QUOTES, 'UTF-8'); ?>" data-brand="<?php echo htmlspecialchars($brandValue, ENT_QUOTES, 'UTF-8'); ?>" data-month="<?php echo htmlspecialchars($month, ENT_QUOTES, 'UTF-8'); ?>" data-day="<?php echo htmlspecialchars($day, ENT_QUOTES, 'UTF-8'); ?>" data-year="<?php echo htmlspecialchars($year, ENT_QUOTES, 'UTF-8'); ?>">
+                        <button class="product-card-admin-edit" type="button" data-admin-edit-featured aria-label="Edit <?php echo htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?> featured details">
+                            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
+                        </button>
+                        <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove <?php echo htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?> from featured">&times;</button>
+                        <?php if ($isPromo): ?>
+                            <div class="product-ribbon">PROMO <?php echo htmlspecialchars((string) $discount, ENT_QUOTES, 'UTF-8'); ?>% OFF!</div>
+                        <?php endif; ?>
+                        <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View <?php echo htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?> product page">
+                            <div class="product-visual">
+                                <img class="product-visual-image" src="<?php echo htmlspecialchars($assetBase . $imagePath, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?>">
+                            </div>
+                        </a>
+                        <div class="product-copy">
+                            <h3><a class="product-title-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title"><?php echo htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?></a></h3>
+                            <p><?php echo htmlspecialchars($specOne, ENT_QUOTES, 'UTF-8'); ?></p>
+                            <p><?php echo htmlspecialchars($specTwo, ENT_QUOTES, 'UTF-8'); ?></p>
+                            <?php if ($isPromo): ?>
+                                <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #dde531;">
+                                    <span style="color: #a1a1aa; text-decoration: line-through; font-size: 0.95rem; font-weight: 600; margin-right: 0.45rem;">&#8369; <?php echo htmlspecialchars(number_format($price, 2), ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <span>&#8369; <?php echo htmlspecialchars(number_format($discounted, 2), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </p>
+                            <?php else: ?>
+                                <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #f4f4f4;">&#8369; <?php echo htmlspecialchars(number_format($price, 2), ENT_QUOTES, 'UTF-8'); ?></p>
+                            <?php endif; ?>
                         </div>
-                    </a>
-                    <div class="product-copy">
-                        <h3><a class="product-title-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title">Fuji X A3</a></h3>
-                        <p>APS-C mirrorless camera</p>
-                        <p>24.2MP CMOS sensor, an ISO range of 200-6400</p>
-                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #dde531;">
-                            <span style="color: #a1a1aa; text-decoration: line-through; font-size: 0.95rem; font-weight: 600; margin-right: 0.45rem;">&#8369; 450.00</span>
-                            <span>&#8369; 315.00</span>
-                        </p>
-                    </div>
-                </article>
-
-                <article class="product-card" data-brand="canon" data-month="june" data-day="23" data-year="2028">
-                    <button class="product-card-admin-edit" type="button" data-admin-edit-featured aria-label="Edit Canon 4000D featured details">
-                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
-                    </button>
-                    <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Canon 4000D from featured">&times;</button>
-                    <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Canon 4000D product page">
-                        <div class="product-visual product-visual-canon4000d">
-                            <img class="product-visual-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/cameras/Canon%20400D.png" alt="Canon 4000D">
-                        </div>
-                    </a>
-                    <div class="product-copy">
-                        <h3><a class="product-title-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title">Canon 4000D</a></h3>
-                        <p>18MP APS-C CMOS sensor</p>
-                        <p>ISO range of 100-6400 (expandable to 12800)</p>
-                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #f4f4f4;">&#8369; 600.00</p>
-                    </div>
-                </article>
-
-                <article class="product-card" data-brand="nikon" data-month="january" data-day="12" data-year="2026">
-                    <button class="product-card-admin-edit" type="button" data-admin-edit-featured aria-label="Edit Nikon D60 featured details">
-                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
-                    </button>
-                    <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Nikon D60 from featured">&times;</button>
-                    <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Nikon D60 product page">
-                        <div class="product-visual product-visual-nikon">
-                            <img class="product-visual-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/cameras/Nikon%20D60.png" alt="Nikon D60">
-                        </div>
-                    </a>
-                    <div class="product-copy">
-                        <h3><a class="product-title-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title">Nikon D60</a></h3>
-                        <p>10.2MP CCD sensor</p>
-                        <p>ISO range of 100-1600 (expandable to 3200)</p>
-                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #f4f4f4;">&#8369; 250.00</p>
-                    </div>
-                </article>
-
-                <article class="product-card" data-brand="sony" data-month="march" data-day="23" data-year="2026">
-                    <button class="product-card-admin-edit" type="button" data-admin-edit-featured aria-label="Edit Sony ZV E10 featured details">
-                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
-                    </button>
-                    <button class="product-card-admin-remove" type="button" data-admin-remove-featured aria-label="Remove Sony ZV E10 from featured">&times;</button>
-                    <a class="product-visual-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title" aria-label="View Sony ZV E10 product page">
-                        <div class="product-visual product-visual-sony">
-                            <img class="product-visual-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/cameras/Sony%20ZV-E10.png" alt="Sony ZV-E10">
-                        </div>
-                    </a>
-                    <div class="product-copy">
-                        <h3><a class="product-title-link" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>#featured-products-title">Sony ZV E10</a></h3>
-                        <p>24.2MP APS-C sensor</p>
-                        <p>4K 30p video and Full HD 120p slow-motion</p>
-                        <p style="margin-top: 0.85rem; margin-bottom: 0; text-align: center; font-size: 1.2rem; font-weight: 800; color: #f4f4f4;">&#8369; 899.00</p>
-                    </div>
-                </article>
+                    </article>
+                <?php endforeach; ?>
 
                 <article class="product-card product-card-admin-add" data-admin-add-card="true">
                     <div class="admin-add-product-box" aria-label="Add products placeholder">
@@ -320,7 +260,7 @@ $logoutPath = $routeBase . 'logout.php';
         </section>
     </main>
 
-    <div class="admin-edit-modal-backdrop" data-admin-edit-backdrop hidden>
+    <div class="admin-edit-modal-backdrop" data-admin-edit-backdrop data-admin-duplicate-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/duplicate_product.php', ENT_QUOTES, 'UTF-8'); ?>" hidden>
         <section class="admin-edit-modal" role="dialog" aria-modal="true" aria-labelledby="admin-edit-title">
             <div class="admin-edit-modal-head">
                 <h2 id="admin-edit-title">Edit Featured Product</h2>
@@ -391,6 +331,7 @@ $logoutPath = $routeBase . 'logout.php';
                 </div>
 
                 <div class="admin-edit-actions">
+                    <button type="button" class="admin-edit-secondary admin-edit-duplicate" data-admin-edit-duplicate>Duplicate Product</button>
                     <button type="button" class="admin-edit-secondary" data-admin-edit-cancel>Cancel</button>
                     <button type="submit" class="admin-edit-primary">Save Changes</button>
                 </div>
@@ -399,6 +340,6 @@ $logoutPath = $routeBase . 'logout.php';
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260319-6"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260324-1"></script>
 </body>
 </html>

@@ -44,198 +44,22 @@ $cartPath = $assetBase . 'customer-cart/';
 $eventsPath = $assetBase . 'customer-events/';
 $addToCartLoginUrl = $loginPath . '?redirect=' . rawurlencode($_SERVER['REQUEST_URI'] ?? ($assetBase . 'customer-products/?product=' . urlencode($productKey)));
 
-$products = [
-    'canon-700d' => [
-        'brand' => 'Canon',
-        'name' => '700D',
-        'price' => 'â‚± 800.00',
-        'tagline' => '18MP APS-C CMOS sensor and 1080p Full HD recording.',
-        'cameraImage' => 'assets/cameras/Canon%20700D.png',
-        'captureSlides' => ['Street portrait placeholder', 'Indoor sample placeholder', 'Outdoor detail placeholder'],
-        'specs' => [
-            'Brand' => ['Canon'],
-            'Imaging and Performance' => [
-                'Sensor: 18MP APS-C CMOS sensor',
-                'ISO: 100-12800',
-                'Continuous shooting: 5 fps',
-                'Autofocus: 9-point AF system'
-            ],
-            'Video' => [
-                'Resolution: Full HD 1080p',
-                'Frame rates: 24 fps, 25 fps, 30 fps'
-            ],
-            'Physical Specifications' => [
-                'Weight: 580g with battery and card',
-                'Screen: 3-inch vari-angle touchscreen'
-            ]
-        ],
-        'availability' => [
-            'month' => 'January',
-            'year' => '2026',
-            'days' => ['05', '12', '19', '26']
-        ],
-        'recommendations' => ['nikon-d60', 'sony-zv-e10', 'fuji-x-a3']
-    ],
-    'canon-1200d' => [
-        'brand' => 'Canon',
-        'name' => '1200D',
-        'price' => 'â‚± 450.00',
-        'tagline' => '18-megapixel APS-C DSLR with straightforward controls.',
-        'cameraImage' => 'assets/cameras/Canon%201200D.png',
-        'captureSlides' => ['Event capture placeholder', 'Portrait placeholder', 'Backlit scene placeholder'],
-        'specs' => [
-            'Brand' => ['Canon'],
-            'Imaging and Performance' => [
-                'Sensor: 18MP APS-C CMOS sensor',
-                'ISO: 100-6400 expandable to 12800',
-                'Processor: DIGIC 4',
-                'Autofocus: 9-point AF'
-            ],
-            'Video' => [
-                'Resolution: Full HD 1080p',
-                'Frame rates: 24 fps, 25 fps, 30 fps'
-            ],
-            'Physical Specifications' => [
-                'Weight: 480g body only',
-                'Screen: 3-inch LCD'
-            ]
-        ],
-        'availability' => [
-            'month' => 'March',
-            'year' => '2026',
-            'days' => ['03', '12', '18', '27']
-        ],
-        'recommendations' => ['canon-700d', 'canon-4000d', 'fuji-x-a3']
-    ],
-    'fuji-x-a3' => [
-        'brand' => 'Fuji',
-        'name' => 'X A3',
-        'price' => 'â‚± 450.00',
-        'tagline' => 'APS-C mirrorless camera with a clean travel-friendly body.',
-        'cameraImage' => 'assets/cameras/Fujifilm%20XA-3.png',
-        'captureSlides' => ['Captured photo placeholder 1', 'Captured photo placeholder 2', 'Captured photo placeholder 3'],
-        'specs' => [
-            'Brand' => ['Fuji'],
-            'Imaging and Performance' => [
-                'Sensor: 24.2MP APS-C CMOS sensor',
-                'ISO: 200-6400, expandable to 100-25600',
-                'Shutter speed: 30 sec to 1/32000 sec',
-                'Continuous shooting: 6 fps',
-                'Focus: 77-point contrast-detection AF system'
-            ],
-            'Video' => [
-                'Resolution: Full HD 1920x1080',
-                'Frame rates: 60p, 50p, 30p, 25p, 24p'
-            ],
-            'Physical Specifications' => [
-                'Dimensions: 117 x 67 x 40 mm',
-                'Weight: 339g with battery and card'
-            ]
-        ],
-        'availability' => [
-            'month' => 'September',
-            'year' => '2027',
-            'days' => ['09', '13', '21', '28']
-        ],
-        'recommendations' => ['nikon-d60', 'sony-zv-e10', 'canon-700d']
-    ],
-    'canon-4000d' => [
-        'brand' => 'Canon',
-        'name' => '4000D',
-        'price' => 'â‚± 600.00',
-        'tagline' => 'Starter DSLR with a simple layout for casual rentals.',
-        'cameraImage' => 'assets/cameras/Canon%20400D.png',
-        'captureSlides' => ['Lifestyle placeholder', 'Daylight placeholder', 'Landscape placeholder'],
-        'specs' => [
-            'Brand' => ['Canon'],
-            'Imaging and Performance' => [
-                'Sensor: 18MP APS-C CMOS sensor',
-                'ISO: 100-6400 expandable to 12800',
-                'Autofocus: 9-point AF',
-                'Continuous shooting: 3 fps'
-            ],
-            'Video' => [
-                'Resolution: Full HD 1080p',
-                'Frame rates: 24 fps, 25 fps, 30 fps'
-            ],
-            'Physical Specifications' => [
-                'Weight: 436g body only',
-                'Screen: 2.7-inch LCD'
-            ]
-        ],
-        'availability' => [
-            'month' => 'June',
-            'year' => '2028',
-            'days' => ['07', '14', '23', '30']
-        ],
-        'recommendations' => ['canon-1200d', 'canon-700d', 'sony-zv-e10']
-    ],
-    'nikon-d60' => [
-        'brand' => 'Nikon',
-        'name' => 'D60',
-        'price' => 'â‚± 250.00',
-        'tagline' => 'Compact DSLR with reliable entry-level performance.',
-        'cameraImage' => 'assets/cameras/Nikon%20D60.png',
-        'captureSlides' => ['Studio placeholder', 'Warm daylight placeholder', 'Night scene placeholder'],
-        'specs' => [
-            'Brand' => ['Nikon'],
-            'Imaging and Performance' => [
-                'Sensor: 10.2MP CCD sensor',
-                'ISO: 100-1600 expandable to 3200',
-                'Autofocus: 3-point AF system',
-                'Continuous shooting: 3 fps'
-            ],
-            'Video' => [
-                'Resolution: Photo-focused body, no dedicated video mode',
-                'Best use: Basic still photography rentals'
-            ],
-            'Physical Specifications' => [
-                'Weight: 495g body only',
-                'Screen: 2.5-inch LCD'
-            ]
-        ],
-        'availability' => [
-            'month' => 'January',
-            'year' => '2026',
-            'days' => ['02', '12', '22', '29']
-        ],
-        'recommendations' => ['fuji-x-a3', 'sony-zv-e10', 'canon-700d']
-    ],
-    'sony-zv-e10' => [
-        'brand' => 'Sony',
-        'name' => 'ZV E10',
-        'price' => 'â‚± 899.00',
-        'tagline' => 'Creator-focused APS-C body for hybrid photo and video shoots.',
-        'cameraImage' => 'assets/cameras/Sony%20ZV-E10.png',
-        'captureSlides' => ['Vlog frame placeholder', 'Product shoot placeholder', 'Outdoor reel placeholder'],
-        'specs' => [
-            'Brand' => ['Sony'],
-            'Imaging and Performance' => [
-                'Sensor: 24.2MP APS-C sensor',
-                'ISO: 100-32000',
-                'Autofocus: Real-time Eye AF and tracking',
-                'Continuous shooting: 11 fps'
-            ],
-            'Video' => [
-                'Resolution: 4K 30p and Full HD 120p',
-                'Audio: Directional 3-capsule mic'
-            ],
-            'Physical Specifications' => [
-                'Weight: 343g body only',
-                'Screen: Side-opening vari-angle touchscreen'
-            ]
-        ],
-        'availability' => [
-            'month' => 'March',
-            'year' => '2026',
-            'days' => ['04', '11', '23', '29']
-        ],
-        'recommendations' => ['fuji-x-a3', 'canon-1200d', 'canon-700d']
-    ]
-];
+require __DIR__ . '/config/products_repository.php';
+$products = load_products_repository();
+
+if (!is_array($products) || !$products) {
+    $products = [];
+}
 
 if (!isset($products[$productKey])) {
-    $productKey = 'fuji-x-a3';
+    $keys = array_keys($products);
+    $productKey = isset($keys[0]) ? $keys[0] : null;
+}
+
+if ($productKey === null || !isset($products[$productKey])) {
+    http_response_code(500);
+    echo 'No product data available.';
+    exit;
 }
 
 $selectedProduct = $products[$productKey];
@@ -335,7 +159,12 @@ $calendarRows = [
 
                     <div class="recommendation-list">
                         <?php foreach ($selectedProduct['recommendations'] as $recommendedKey): ?>
-                            <?php $recommended = $products[$recommendedKey]; ?>
+                            <?php
+                                if (!isset($products[$recommendedKey])) {
+                                    continue;
+                                }
+                                $recommended = $products[$recommendedKey];
+                            ?>
                             <a class="recommendation-card" href="?product=<?php echo urlencode($recommendedKey); ?>" style="display: flex; flex-direction: column; gap: 0.8rem; text-decoration: none; color: inherit;">
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
                                     <p style="margin: 0; font-size: 0.85rem; line-height: 1.4; flex: 1;"><?php echo htmlspecialchars($recommended['tagline'], ENT_QUOTES, 'UTF-8'); ?></p>
@@ -348,7 +177,7 @@ $calendarRows = [
                                         >
                                     </div>
                                 </div>
-                                <span style="font-weight: 700; color: #dde531; font-size: 1.1rem;"><?php echo htmlspecialchars($recommended['price'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span style="font-weight: 700; color: #dde531; font-size: 1.1rem;">&#8369; <?php echo htmlspecialchars($recommended['price'], ENT_QUOTES, 'UTF-8'); ?></span>
                             </a>
                         <?php endforeach; ?>
                     </div>
@@ -376,7 +205,7 @@ $calendarRows = [
                     </div>
 
                     <div class="product-information-footer" style="justify-content: space-between; align-items: center; padding: 0 1rem; margin-top: 1rem;">
-                        <span style="font-size: 1.9rem; font-weight: 800;"><?php echo htmlspecialchars($selectedProduct['price'], ENT_QUOTES, 'UTF-8'); ?></span>
+                        <span style="font-size: 1.9rem; font-weight: 800;">&#8369; <?php echo htmlspecialchars($selectedProduct['price'], ENT_QUOTES, 'UTF-8'); ?></span>
                         <button
                             class="product-detail-cart-link btn btn-light btn-sm"
                             type="button"
@@ -437,7 +266,18 @@ $calendarRows = [
             <aside class="product-specs-card">
                 <h2>Full Specifications</h2>
 
+                <section class="product-specs-section">
+                    <h3>BRAND</h3>
+                    <p><?php echo htmlspecialchars($selectedProduct['brand'], ENT_QUOTES, 'UTF-8'); ?></p>
+                </section>
+
+                <section class="product-specs-section">
+                    <h3>PRODUCT</h3>
+                    <p><?php echo htmlspecialchars($selectedProduct['brand'] . ' ' . $selectedProduct['name'], ENT_QUOTES, 'UTF-8'); ?></p>
+                </section>
+
                 <?php foreach ($selectedProduct['specs'] as $sectionTitle => $entries): ?>
+                    <?php if (strtolower((string) $sectionTitle) === 'brand') { continue; } ?>
                     <section class="product-specs-section">
                         <h3><?php echo htmlspecialchars($sectionTitle, ENT_QUOTES, 'UTF-8'); ?></h3>
 
@@ -457,6 +297,6 @@ $calendarRows = [
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260319-6"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260324-1"></script>
 </body>
 </html>
