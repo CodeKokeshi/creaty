@@ -27,6 +27,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEditFileInput = document.querySelector("[data-admin-edit-file]");
     var adminEditPreviewWrap = document.querySelector("[data-admin-edit-image-preview]");
     var adminEditPreviewImage = document.querySelector("[data-admin-edit-preview-img]");
+    var adminEditBrand = document.querySelector("[data-admin-edit-brand]");
     var adminEditName = document.querySelector("[data-admin-edit-name]");
     var adminEditSpec1 = document.querySelector("[data-admin-edit-spec1]");
     var adminEditSpec2 = document.querySelector("[data-admin-edit-spec2]");
@@ -90,6 +91,12 @@ document.addEventListener("DOMContentLoaded", function () {
     var now = new Date();
     var calendarViewMonthIndex = now.getMonth();
     var calendarViewYear = now.getFullYear();
+    var brandValueToLabel = {
+        canon: "Canon",
+        fuji: "Fuji",
+        nikon: "Nikon",
+        sony: "Sony"
+    };
 
     revealItems.forEach(function (item, index) {
         window.setTimeout(function () {
@@ -186,6 +193,10 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    productCards.forEach(function (card) {
+        ensureCardBrandNameData(card);
+    });
+
     function parseMoneyValue(value) {
         var normalized = String(value || "").replace(/[^0-9.]/g, "");
         var parsed = Number.parseFloat(normalized);
@@ -199,6 +210,65 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function formatPeso(value) {
         return "\u20B1 " + Number(value).toFixed(2);
+    }
+
+    function normalizeBrandValue(value) {
+        var normalized = String(value || "").toLowerCase().trim();
+
+        if (Object.prototype.hasOwnProperty.call(brandValueToLabel, normalized)) {
+            return normalized;
+        }
+
+        return "canon";
+    }
+
+    function getBrandLabel(value) {
+        var normalized = normalizeBrandValue(value);
+        return brandValueToLabel[normalized] || "Canon";
+    }
+
+    function splitProductDisplayName(brandValue, fullName) {
+        var normalizedBrand = normalizeBrandValue(brandValue);
+        var brandLabel = getBrandLabel(normalizedBrand);
+        var cleanName = String(fullName || "").trim();
+
+        if (!cleanName) {
+            return "";
+        }
+
+        var escapedBrand = brandLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        var prefixRegex = new RegExp("^" + escapedBrand + "\\s+", "i");
+
+        return cleanName.replace(prefixRegex, "").trim();
+    }
+
+    function composeProductDisplayName(brandValue, productName) {
+        var brandLabel = getBrandLabel(brandValue);
+        var cleanName = String(productName || "").trim();
+
+        if (!cleanName) {
+            return brandLabel;
+        }
+
+        return brandLabel + " " + cleanName;
+    }
+
+    function ensureCardBrandNameData(card) {
+        if (!card) {
+            return;
+        }
+
+        var currentBrand = normalizeBrandValue(card.getAttribute("data-brand"));
+        var storedName = String(card.getAttribute("data-product-name") || "").trim();
+        var titleLink = card.querySelector(".product-title-link");
+        var fallbackTitle = titleLink ? titleLink.textContent.trim() : "";
+
+        if (!storedName) {
+            storedName = splitProductDisplayName(currentBrand, fallbackTitle);
+        }
+
+        card.setAttribute("data-brand", currentBrand);
+        card.setAttribute("data-product-name", storedName);
     }
 
     function syncAdminPreviewTransform() {
@@ -311,12 +381,17 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         activeAdminEditCard = card;
+        ensureCardBrandNameData(card);
 
         var cardImage = card.querySelector(".product-visual-image");
         var titleLink = card.querySelector(".product-title-link");
+        var currentBrandValue = normalizeBrandValue(card.getAttribute("data-brand"));
+        var storedProductName = String(card.getAttribute("data-product-name") || "").trim();
         var copyParagraphs = card.querySelectorAll(".product-copy > p");
         var specOne = copyParagraphs[0] ? copyParagraphs[0].textContent.trim() : "";
         var specTwo = copyParagraphs[1] ? copyParagraphs[1].textContent.trim() : "";
+        var displayedTitle = titleLink ? titleLink.textContent.trim() : "";
+        var productNameValue = storedProductName || splitProductDisplayName(currentBrandValue, displayedTitle);
         var priceParagraph = copyParagraphs[2] || null;
         var priceOriginal = 0;
         var discountPercent = 0;
@@ -340,8 +415,12 @@ document.addEventListener("DOMContentLoaded", function () {
             adminEditPreviewImage.src = cardImage ? cardImage.src : "";
         }
 
+        if (adminEditBrand) {
+            adminEditBrand.value = currentBrandValue;
+        }
+
         if (adminEditName) {
-            adminEditName.value = titleLink ? titleLink.textContent.trim() : "";
+            adminEditName.value = productNameValue;
         }
 
         if (adminEditSpec1) {
@@ -429,6 +508,31 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (adminEditPreviewWrap) {
+        adminEditPreviewWrap.addEventListener("wheel", function (event) {
+            if (!adminCropState.isCropping || !adminEditZoom) {
+                return;
+            }
+
+            event.preventDefault();
+
+            var minZoom = Number.parseFloat(adminEditZoom.min || "1");
+            var maxZoom = Number.parseFloat(adminEditZoom.max || "3");
+            var stepZoom = Number.parseFloat(adminEditZoom.step || "0.01");
+            var direction = event.deltaY < 0 ? 1 : -1;
+            var nextZoom = adminCropState.zoom + (direction * (stepZoom * 5));
+
+            nextZoom = Math.min(maxZoom, Math.max(minZoom, nextZoom));
+            nextZoom = Math.round(nextZoom * 100) / 100;
+
+            adminCropState.zoom = nextZoom;
+            adminEditZoom.value = String(nextZoom);
+
+            var clamped = clampAdminCropOffsets(adminCropState.offsetX, adminCropState.offsetY);
+            adminCropState.offsetX = clamped.x;
+            adminCropState.offsetY = clamped.y;
+            syncAdminPreviewTransform();
+        }, { passive: false });
+
         adminEditPreviewWrap.addEventListener("pointerdown", function (event) {
             if (!adminCropState.isCropping || event.button !== 0) {
                 return;
@@ -529,11 +633,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+            var brandValue = normalizeBrandValue(adminEditBrand ? adminEditBrand.value : "canon");
             var nameValue = adminEditName ? adminEditName.value.trim() : "";
             var specOneValue = adminEditSpec1 ? adminEditSpec1.value.trim() : "";
             var specTwoValue = adminEditSpec2 ? adminEditSpec2.value.trim() : "";
             var priceValue = adminEditPrice ? Number.parseFloat(adminEditPrice.value) : 0;
             var discountValue = clampDiscount(adminEditDiscount ? adminEditDiscount.value : 0);
+            var displayName = composeProductDisplayName(brandValue, nameValue);
 
             if (!nameValue || !specOneValue || !specTwoValue || !Number.isFinite(priceValue) || priceValue < 0) {
                 return;
@@ -563,12 +669,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (imageEl && finalPreviewSrc) {
                 imageEl.src = finalPreviewSrc;
-                imageEl.alt = nameValue;
+                imageEl.alt = displayName;
             }
 
             if (titleLink) {
-                titleLink.textContent = nameValue;
+                titleLink.textContent = displayName;
             }
+
+            activeAdminEditCard.setAttribute("data-brand", brandValue);
+            activeAdminEditCard.setAttribute("data-product-name", nameValue);
 
             if (copyParagraphs[0]) {
                 copyParagraphs[0].textContent = specOneValue;
@@ -607,13 +716,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
             var editButton = activeAdminEditCard.querySelector("[data-admin-edit-featured]");
             var removeButton = activeAdminEditCard.querySelector("[data-admin-remove-featured]");
+            var visualLink = activeAdminEditCard.querySelector(".product-visual-link");
 
             if (editButton) {
-                editButton.setAttribute("aria-label", "Edit " + nameValue + " featured details");
+                editButton.setAttribute("aria-label", "Edit " + displayName + " featured details");
             }
 
             if (removeButton) {
-                removeButton.setAttribute("aria-label", "Remove " + nameValue + " from featured");
+                removeButton.setAttribute("aria-label", "Remove " + displayName + " from featured");
+            }
+
+            if (visualLink) {
+                visualLink.setAttribute("aria-label", "View " + displayName + " product page");
             }
 
             closeAdminEditModal();

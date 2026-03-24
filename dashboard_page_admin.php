@@ -362,6 +362,14 @@ $logoutPath = $routeBase . 'logout.php';
                     </div>
 
                     <div class="admin-edit-fields-column">
+                        <label class="admin-edit-label" for="admin-edit-brand">Brand</label>
+                        <select id="admin-edit-brand" data-admin-edit-brand required>
+                            <option value="canon">Canon</option>
+                            <option value="fuji">Fuji</option>
+                            <option value="nikon">Nikon</option>
+                            <option value="sony">Sony</option>
+                        </select>
+
                         <label class="admin-edit-label" for="admin-edit-name">Product Name</label>
                         <input id="admin-edit-name" type="text" data-admin-edit-name required>
 
