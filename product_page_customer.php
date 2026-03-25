@@ -136,6 +136,69 @@ if (
             }
         }
 
+        if ($scope === 'information-images-add') {
+            $uploadedFile = $_FILES['informationImage'] ?? null;
+
+            if (is_array($uploadedFile) && ($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+                $tmpPath = (string) ($uploadedFile['tmp_name'] ?? '');
+                $originalName = (string) ($uploadedFile['name'] ?? 'information-image.png');
+                $extension = strtolower((string) pathinfo($originalName, PATHINFO_EXTENSION));
+
+                if (!in_array($extension, ['png', 'jpg', 'jpeg', 'webp'], true)) {
+                    $extension = 'png';
+                }
+
+                $projectRoot = __DIR__;
+                $targetDirRelative = 'assets/cameras/product_information';
+                $targetDirAbsolute = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $targetDirRelative);
+
+                if (!is_dir($targetDirAbsolute) && !mkdir($targetDirAbsolute, 0777, true) && !is_dir($targetDirAbsolute)) {
+                    $result = 'error=invalid-info-image';
+                } elseif (is_uploaded_file($tmpPath)) {
+                    $baseFilename = sanitize_product_filename(normalize_product_brand($productToUpdate['brand'] ?? 'Canon') . ' ' . ($productToUpdate['name'] ?? 'Product') . ' Information');
+                    if ($baseFilename === '') {
+                        $baseFilename = 'Product Information';
+                    }
+
+                    $counter = 0;
+                    do {
+                        $suffix = $counter === 0 ? '' : ' ' . $counter;
+                        $rawName = $baseFilename . $suffix . '.' . $extension;
+                        $targetRelativePath = $targetDirRelative . '/' . rawurlencode($rawName);
+                        $targetAbsolutePath = $targetDirAbsolute . DIRECTORY_SEPARATOR . $rawName;
+                        $counter++;
+                    } while (file_exists($targetAbsolutePath) && $counter < 1000);
+
+                    if (move_uploaded_file($tmpPath, $targetAbsolutePath)) {
+                        $informationImages = is_array($productToUpdate['informationImages'] ?? null) ? $productToUpdate['informationImages'] : [];
+                        $informationImages[] = $targetRelativePath;
+                        $productToUpdate['informationImages'] = array_values($informationImages);
+                    } else {
+                        $result = 'error=invalid-info-image';
+                    }
+                }
+            }
+        }
+
+        if ($scope === 'information-images-delete') {
+            $imageIndex = (int) ($_POST['imageIndex'] ?? -1);
+            $informationImages = is_array($productToUpdate['informationImages'] ?? null) ? $productToUpdate['informationImages'] : [];
+
+            if (isset($informationImages[$imageIndex])) {
+                $removed = (string) $informationImages[$imageIndex];
+                unset($informationImages[$imageIndex]);
+                $productToUpdate['informationImages'] = array_values($informationImages);
+
+                $decodedRelative = ltrim(rawurldecode($removed), '/');
+                if (stripos($decodedRelative, 'assets/cameras/product_information/') === 0) {
+                    $absolute = __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $decodedRelative);
+                    if (is_file($absolute)) {
+                        @unlink($absolute);
+                    }
+                }
+            }
+        }
+
         if ($scope === 'specifications') {
             $brandValue = normalize_product_brand($_POST['brand'] ?? ($productToUpdate['brand'] ?? 'Canon'));
             $nameValue = trim((string) ($_POST['name'] ?? ($productToUpdate['name'] ?? '')));
@@ -205,6 +268,23 @@ $selectedSpecs = is_array($selectedProduct['specs'] ?? null) ? $selectedProduct[
 $selectedImagingSpecs = is_array($selectedSpecs['Imaging and Performance'] ?? null) ? $selectedSpecs['Imaging and Performance'] : [];
 $selectedVideoSpecs = is_array($selectedSpecs['Video'] ?? null) ? $selectedSpecs['Video'] : [];
 $selectedPhysicalSpecs = is_array($selectedSpecs['Physical Specifications'] ?? null) ? $selectedSpecs['Physical Specifications'] : [];
+$selectedPrice = (float) ($selectedProduct['price'] ?? 0);
+$selectedDiscountPercent = max(0, min(95, (int) ($selectedProduct['discountPercent'] ?? 0)));
+$selectedDiscountPrice = $selectedPrice * (1 - ($selectedDiscountPercent / 100));
+$selectedTagline = trim((string) ($selectedProduct['tagline'] ?? ''));
+$selectedInformationImages = is_array($selectedProduct['informationImages'] ?? null) ? $selectedProduct['informationImages'] : [];
+
+if (!$selectedInformationImages) {
+    $legacySlides = is_array($selectedProduct['captureSlides'] ?? null) ? $selectedProduct['captureSlides'] : [];
+    foreach ($legacySlides as $legacySlide) {
+        $slideValue = trim((string) $legacySlide);
+        if (preg_match('/\.(png|jpe?g|webp)$/i', $slideValue)) {
+            $selectedInformationImages[] = $slideValue;
+        }
+    }
+}
+
+$selectedInformationImages = array_values($selectedInformationImages);
 $productListPath = $homePath . '#featured-products-title';
 ?>
 
@@ -218,7 +298,7 @@ $productListPath = $homePath . '#featured-products-title';
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260324-4">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260325-1">
 </head>
 <body class="product-page">
     <header class="site-header">
@@ -340,19 +420,41 @@ $productListPath = $homePath . '#featured-products-title';
 
             <section class="product-main-column">
                 <article class="product-information-card">
-                    <div class="product-panel-label">Informations</div>
+                    <div class="product-panel-head">
+                        <div class="product-panel-label">Informations</div>
+                        <?php if ($isAdminView): ?>
+                            <form class="product-info-add-form" method="post" action="" enctype="multipart/form-data">
+                                <input type="hidden" name="admin_edit_scope" value="information-images-add">
+                                <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
+                                <input type="file" accept="image/png,image/jpeg,image/webp" name="informationImage" data-admin-info-image-file hidden>
+                                <button class="admin-info-add-chip" type="button" data-admin-info-image-add aria-label="Add information image" title="Add image">+</button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
 
                     <div class="detail-gallery" data-gallery>
                         <button class="detail-gallery-arrow detail-gallery-arrow-left" type="button" data-gallery-direction="prev" aria-label="Previous sample image">&#10094;</button>
 
                         <div class="detail-gallery-track">
-                            <?php foreach (($selectedProduct['captureSlides'] ?? []) as $index => $slideLabel): ?>
-                                <div class="detail-gallery-slide<?php echo $index === 0 ? ' is-active' : ''; ?>" aria-hidden="<?php echo $index === 0 ? 'false' : 'true'; ?>">
-                                    <div class="detail-photo-placeholder detail-photo-variant-<?php echo ($index % 3) + 1; ?>">
-                                        <span><?php echo htmlspecialchars((string) $slideLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                            <?php if (!$selectedInformationImages): ?>
+                                <div class="detail-gallery-empty">No information images yet.</div>
+                            <?php else: ?>
+                                <?php foreach ($selectedInformationImages as $index => $imagePath): ?>
+                                    <div class="detail-gallery-slide<?php echo $index === 0 ? ' is-active' : ''; ?>" aria-hidden="<?php echo $index === 0 ? 'false' : 'true'; ?>">
+                                        <div class="detail-photo-frame">
+                                            <img class="detail-photo-image" src="<?php echo htmlspecialchars($assetBase . (string) $imagePath, ENT_QUOTES, 'UTF-8'); ?>" alt="Information image <?php echo htmlspecialchars((string) ($index + 1), ENT_QUOTES, 'UTF-8'); ?>">
+                                            <?php if ($isAdminView): ?>
+                                                <form class="detail-photo-delete-form" method="post" action="">
+                                                    <input type="hidden" name="admin_edit_scope" value="information-images-delete">
+                                                    <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <input type="hidden" name="imageIndex" value="<?php echo htmlspecialchars((string) $index, ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <button class="detail-photo-delete" type="submit" aria-label="Delete information image" title="Delete image">&times;</button>
+                                                </form>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
-                                </div>
-                            <?php endforeach; ?>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </div>
 
                         <button class="detail-gallery-arrow detail-gallery-arrow-right" type="button" data-gallery-direction="next" aria-label="Next sample image">&#10095;</button>
@@ -360,13 +462,30 @@ $productListPath = $homePath . '#featured-products-title';
 
                     <div class="admin-edit-swap" data-admin-edit-swap="information">
                         <div class="admin-static-view">
-                            <div class="product-information-footer" style="justify-content: space-between; align-items: center; padding: 0 1rem; margin-top: 1rem;">
-                                <span style="font-size: 1.9rem; font-weight: 800;">&#8369; <?php echo htmlspecialchars((string) ($selectedProduct['price'] ?? '0.00'), ENT_QUOTES, 'UTF-8'); ?></span>
-                                <?php if ($isAdminView): ?>
-                                    <button class="admin-pencil-chip" type="button" data-admin-toggle-edit="information" aria-label="Edit information">
-                                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
-                                    </button>
-                                <?php else: ?>
+                            <div class="product-information-footer">
+                                <div class="product-information-texts">
+                                    <div class="product-information-tagline-row">
+                                        <p class="product-information-copy"><?php echo htmlspecialchars($selectedTagline !== '' ? $selectedTagline : 'No tagline available.', ENT_QUOTES, 'UTF-8'); ?></p>
+                                        <?php if ($isAdminView): ?>
+                                            <button class="admin-pencil-chip" type="button" data-admin-toggle-edit="information" aria-label="Edit information">
+                                                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <?php if ($selectedDiscountPercent > 0): ?>
+                                        <div class="product-information-price-line product-information-price-line-promo">
+                                            <span class="product-price-original">&#8369; <?php echo htmlspecialchars(number_format($selectedPrice, 2), ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span class="product-price-current product-price-current-promo">&#8369; <?php echo htmlspecialchars(number_format($selectedDiscountPrice, 2), ENT_QUOTES, 'UTF-8'); ?> (<?php echo htmlspecialchars((string) $selectedDiscountPercent, ENT_QUOTES, 'UTF-8'); ?>% OFF)</span>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="product-information-price-line">
+                                            <span class="product-price-current">&#8369; <?php echo htmlspecialchars(number_format($selectedPrice, 2), ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+
+                                <?php if (!$isAdminView): ?>
                                     <button
                                         class="product-detail-cart-link btn btn-light btn-sm"
                                         type="button"
@@ -628,6 +747,27 @@ $productListPath = $homePath . '#featured-products-title';
                         setEditMode(scope, false);
                     });
                 });
+
+                var infoAddButton = document.querySelector('[data-admin-info-image-add]');
+                var infoAddFileInput = document.querySelector('[data-admin-info-image-file]');
+
+                if (infoAddButton && infoAddFileInput) {
+                    infoAddButton.addEventListener('click', function () {
+                        infoAddFileInput.click();
+                    });
+
+                    infoAddFileInput.addEventListener('change', function () {
+                        var file = infoAddFileInput.files && infoAddFileInput.files[0] ? infoAddFileInput.files[0] : null;
+                        if (!file) {
+                            return;
+                        }
+
+                        var form = infoAddFileInput.closest('form');
+                        if (form) {
+                            form.submit();
+                        }
+                    });
+                }
 
                 var coverBackdrop = document.querySelector('[data-admin-cover-backdrop]');
                 var coverOpenButton = document.querySelector('[data-admin-open-cover-modal]');
@@ -941,6 +1081,6 @@ $productListPath = $homePath . '#featured-products-title';
     <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260324-4"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260325-1"></script>
 </body>
 </html>

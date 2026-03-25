@@ -1455,6 +1455,34 @@ document.addEventListener("DOMContentLoaded", function () {
         var nextButton = gallery.querySelector('[data-gallery-direction="next"]');
         var currentIndex = 0;
 
+        if (!slides.length) {
+            gallery.classList.add("is-no-arrows");
+
+            if (prevButton) {
+                prevButton.hidden = true;
+            }
+
+            if (nextButton) {
+                nextButton.hidden = true;
+            }
+
+            return;
+        }
+
+        if (slides.length === 1) {
+            gallery.classList.add("is-no-arrows");
+
+            if (prevButton) {
+                prevButton.hidden = true;
+            }
+
+            if (nextButton) {
+                nextButton.hidden = true;
+            }
+        } else {
+            gallery.classList.remove("is-no-arrows");
+        }
+
         function showSlide(nextIndex) {
             if (!slides.length) {
                 return;

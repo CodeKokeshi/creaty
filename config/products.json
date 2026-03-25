@@ -36,6 +36,13 @@
             "nikon-d60",
             "sony-zv-e10",
             "fuji-x-a3"
+        ],
+        "informationImages": [
+            "assets/cameras/product_information/Canon%20700D%20Information.jpg",
+            "assets/cameras/product_information/Canon%20700D%20Information%201.jpg",
+            "assets/cameras/product_information/Canon%20700D%20Information.png",
+            "assets/cameras/product_information/Canon%20700D%20Information%201.png",
+            "assets/cameras/product_information/Canon%20700D%20Information%202.png"
         ]
     },
     "canon-1200d": {
