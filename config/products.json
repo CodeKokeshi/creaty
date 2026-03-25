@@ -279,5 +279,32 @@
             "canon-700d",
             "sony-zv-e10"
         ]
+    },
+    "canon-new-product-copy": {
+        "brand": "Sony",
+        "name": "Assignment",
+        "price": "0.00",
+        "discountPercent": 0,
+        "spec1": "New camera specification 1",
+        "spec2": "New camera specification 2",
+        "tagline": "Add a short product tagline.",
+        "cameraImage": "assets/cameras/Canon%20New%20Product%20%28Copy%29%202.png",
+        "informationImages": [],
+        "captureSlides": [],
+        "specs": {
+            "Brand": [
+                "Sony"
+            ],
+            "Imaging and Performance": [
+                "Add imaging and performance details."
+            ],
+            "Video": [
+                "Add video details."
+            ],
+            "Physical Specifications": [
+                "Add physical specifications."
+            ]
+        },
+        "recommendations": []
     }
 }

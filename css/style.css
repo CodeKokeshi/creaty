@@ -830,6 +830,12 @@ button {
     min-height: 365px;
     display: grid;
     place-items: center;
+    cursor: pointer;
+}
+
+.product-card-admin-add.is-admin-creating {
+    opacity: 0.72;
+    pointer-events: none;
 }
 
 .admin-add-product-box {
