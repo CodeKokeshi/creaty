@@ -199,12 +199,9 @@ if (
             }
         }
 
-        if ($scope === 'specifications') {
+        if ($scope === 'spec_identity') {
             $brandValue = normalize_product_brand($_POST['brand'] ?? ($productToUpdate['brand'] ?? 'Canon'));
             $nameValue = trim((string) ($_POST['name'] ?? ($productToUpdate['name'] ?? '')));
-            $imagingLines = normalize_lines_array($_POST['imagingSpecs'] ?? []);
-            $videoLines = normalize_lines_array($_POST['videoSpecs'] ?? []);
-            $physicalLines = normalize_lines_array($_POST['physicalSpecs'] ?? []);
 
             if ($nameValue !== '' && has_duplicate_product_display_name($products, $brandValue, $nameValue, $postedKey)) {
                 $result = 'error=duplicate-name';
@@ -214,21 +211,22 @@ if (
                 }
 
                 $productToUpdate['brand'] = $brandValue;
+            }
+        }
 
+        if ($scope === 'specifications') {
+            $imagingLines = normalize_lines_array($_POST['imagingSpecs'] ?? []);
+            $videoLines = normalize_lines_array($_POST['videoSpecs'] ?? []);
+            $physicalLines = normalize_lines_array($_POST['physicalSpecs'] ?? []);
+
+            if (count($imagingLines) < 1 || count($videoLines) < 1 || count($physicalLines) < 1) {
+                $result = 'error=invalid-specs';
+            } else {
                 $specs = is_array($productToUpdate['specs'] ?? null) ? $productToUpdate['specs'] : [];
                 $specs['Brand'] = [normalize_product_brand($productToUpdate['brand'] ?? 'Canon')];
-
-                if (count($imagingLines) > 0) {
-                    $specs['Imaging and Performance'] = $imagingLines;
-                }
-
-                if (count($videoLines) > 0) {
-                    $specs['Video'] = $videoLines;
-                }
-
-                if (count($physicalLines) > 0) {
-                    $specs['Physical Specifications'] = $physicalLines;
-                }
+                $specs['Imaging and Performance'] = $imagingLines;
+                $specs['Video'] = $videoLines;
+                $specs['Physical Specifications'] = $physicalLines;
 
                 $productToUpdate['specs'] = $specs;
             }
@@ -362,8 +360,8 @@ $productListPath = $homePath . '#featured-products-title';
     </header>
 
     <main class="product-detail-shell">
-        <section class="product-detail-layout reveal">
-            <aside class="product-sidebar">
+        <section class="product-detail-layout<?php echo $isAdminView ? ' product-detail-layout-admin' : ''; ?> reveal">
+            <aside class="product-sidebar<?php echo $isAdminView ? ' product-sidebar-admin' : ''; ?>">
                 <div class="product-sidebar-header">
                     <a class="catalog-back" href="<?php echo htmlspecialchars($productListPath, ENT_QUOTES, 'UTF-8'); ?>" aria-label="Back to featured products">
                         <span class="catalog-back-icon" aria-hidden="true"></span>
@@ -371,23 +369,70 @@ $productListPath = $homePath . '#featured-products-title';
                     <h1>Product</h1>
                 </div>
 
-                <article class="product-primary-card">
-                    <?php if ($isAdminView): ?>
-                        <button class="admin-pencil-chip" type="button" data-admin-open-cover-modal aria-label="Edit cover image">
-                            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
-                        </button>
-                    <?php endif; ?>
+                <?php if ($isAdminView): ?>
+                    <aside class="product-specs-card product-specs-card-admin-left">
+                        <div class="admin-specs-head">
+                            <h2>Full Specifications</h2>
+                        </div>
 
-                    <div class="product-device-placeholder">
-                        <img
-                            class="product-device-image"
-                            src="<?php echo htmlspecialchars($assetBase . $selectedProduct['cameraImage'], ENT_QUOTES, 'UTF-8'); ?>"
-                            alt="<?php echo htmlspecialchars($selectedBrand . ' ' . $selectedProductName, ENT_QUOTES, 'UTF-8'); ?>"
-                        >
-                    </div>
-                </article>
+                        <form class="admin-edit-swap-panel" method="post" action="" data-admin-spec-form>
+                            <input type="hidden" name="admin_edit_scope" value="specifications">
+                            <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
 
-                <?php if (!$isAdminView): ?>
+                            <label>Imaging and Performance</label>
+                            <div class="admin-line-list" data-admin-line-list data-line-name="imagingSpecs[]" data-line-label="Imaging and Performance">
+                                <?php $imagingRows = count($selectedImagingSpecs) > 0 ? $selectedImagingSpecs : ['']; ?>
+                                <?php foreach ($imagingRows as $line): ?>
+                                    <div class="admin-line-row" data-admin-line-row>
+                                        <input type="text" name="imagingSpecs[]" value="<?php echo htmlspecialchars((string) $line, ENT_QUOTES, 'UTF-8'); ?>" data-admin-line-input>
+                                        <button type="button" class="admin-line-remove" data-admin-line-remove aria-label="Remove line">&times;</button>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <button type="button" class="admin-line-add" data-admin-line-add data-target-name="imagingSpecs[]">+ Add line</button>
+
+                            <label>Video</label>
+                            <div class="admin-line-list" data-admin-line-list data-line-name="videoSpecs[]" data-line-label="Video">
+                                <?php $videoRows = count($selectedVideoSpecs) > 0 ? $selectedVideoSpecs : ['']; ?>
+                                <?php foreach ($videoRows as $line): ?>
+                                    <div class="admin-line-row" data-admin-line-row>
+                                        <input type="text" name="videoSpecs[]" value="<?php echo htmlspecialchars((string) $line, ENT_QUOTES, 'UTF-8'); ?>" data-admin-line-input>
+                                        <button type="button" class="admin-line-remove" data-admin-line-remove aria-label="Remove line">&times;</button>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <button type="button" class="admin-line-add" data-admin-line-add data-target-name="videoSpecs[]">+ Add line</button>
+
+                            <label>Physical Specifications</label>
+                            <div class="admin-line-list" data-admin-line-list data-line-name="physicalSpecs[]" data-line-label="Physical Specifications">
+                                <?php $physicalRows = count($selectedPhysicalSpecs) > 0 ? $selectedPhysicalSpecs : ['']; ?>
+                                <?php foreach ($physicalRows as $line): ?>
+                                    <div class="admin-line-row" data-admin-line-row>
+                                        <input type="text" name="physicalSpecs[]" value="<?php echo htmlspecialchars((string) $line, ENT_QUOTES, 'UTF-8'); ?>" data-admin-line-input>
+                                        <button type="button" class="admin-line-remove" data-admin-line-remove aria-label="Remove line">&times;</button>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <button type="button" class="admin-line-add" data-admin-line-add data-target-name="physicalSpecs[]">+ Add line</button>
+
+                            <div class="admin-inline-edit-actions">
+                                <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save" title="Save">
+                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                                </button>
+                            </div>
+                        </form>
+                    </aside>
+                <?php else: ?>
+                    <article class="product-primary-card">
+                        <div class="product-device-placeholder">
+                            <img
+                                class="product-device-image"
+                                src="<?php echo htmlspecialchars($assetBase . $selectedProduct['cameraImage'], ENT_QUOTES, 'UTF-8'); ?>"
+                                alt="<?php echo htmlspecialchars($selectedBrand . ' ' . $selectedProductName, ENT_QUOTES, 'UTF-8'); ?>"
+                            >
+                        </div>
+                    </article>
+
                     <section class="product-recommendations">
                         <h2>Recommendations</h2>
 
@@ -422,6 +467,48 @@ $productListPath = $homePath . '#featured-products-title';
             </aside>
 
             <section class="product-main-column">
+                <?php if ($isAdminView): ?>
+                    <article class="product-primary-card admin-cover-identity-card">
+                        <div class="admin-cover-identity-grid">
+                            <div class="admin-cover-identity-visual">
+                                <button class="admin-pencil-chip" type="button" data-admin-open-cover-modal aria-label="Edit cover image">
+                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
+                                </button>
+
+                                <div class="product-device-placeholder">
+                                    <img
+                                        class="product-device-image"
+                                        src="<?php echo htmlspecialchars($assetBase . $selectedProduct['cameraImage'], ENT_QUOTES, 'UTF-8'); ?>"
+                                        alt="<?php echo htmlspecialchars($selectedBrand . ' ' . $selectedProductName, ENT_QUOTES, 'UTF-8'); ?>"
+                                    >
+                                </div>
+                            </div>
+
+                            <form class="admin-edit-swap-panel admin-identity-form" method="post" action="">
+                                <input type="hidden" name="admin_edit_scope" value="spec_identity">
+                                <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
+
+                                <label for="admin-spec-brand">Brand</label>
+                                <select id="admin-spec-brand" name="brand" required>
+                                    <option value="canon"<?php echo strtolower($selectedBrand) === 'canon' ? ' selected' : ''; ?>>Canon</option>
+                                    <option value="fuji"<?php echo strtolower($selectedBrand) === 'fuji' ? ' selected' : ''; ?>>Fuji</option>
+                                    <option value="nikon"<?php echo strtolower($selectedBrand) === 'nikon' ? ' selected' : ''; ?>>Nikon</option>
+                                    <option value="sony"<?php echo strtolower($selectedBrand) === 'sony' ? ' selected' : ''; ?>>Sony</option>
+                                </select>
+
+                                <label for="admin-spec-name">Product Name</label>
+                                <input id="admin-spec-name" type="text" name="name" value="<?php echo htmlspecialchars($selectedProductName, ENT_QUOTES, 'UTF-8'); ?>" required>
+
+                                <div class="admin-inline-edit-actions">
+                                    <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save" title="Save">
+                                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </article>
+                <?php endif; ?>
+
                 <article class="product-information-card">
                     <div class="product-panel-head">
                         <div class="product-panel-label">Informations</div>
@@ -463,8 +550,29 @@ $productListPath = $homePath . '#featured-products-title';
                         <button class="detail-gallery-arrow detail-gallery-arrow-right" type="button" data-gallery-direction="next" aria-label="Next sample image">&#10095;</button>
                     </div>
 
-                    <div class="admin-edit-swap" data-admin-edit-swap="information">
-                        <div class="admin-static-view">
+                    <?php if ($isAdminView): ?>
+                        <form class="admin-edit-swap-panel" method="post" action="">
+                            <input type="hidden" name="admin_edit_scope" value="information">
+                            <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
+
+                            <label for="admin-info-price">Price</label>
+                            <input id="admin-info-price" type="number" min="0" step="0.01" name="price" value="<?php echo htmlspecialchars((string) ($selectedProduct['price'] ?? '0.00'), ENT_QUOTES, 'UTF-8'); ?>" required>
+
+                            <label for="admin-info-discount">Discount Percentage</label>
+                            <input id="admin-info-discount" type="number" min="0" max="95" step="1" name="discountPercent" value="<?php echo htmlspecialchars((string) ($selectedProduct['discountPercent'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" required>
+
+                            <label for="admin-info-tagline">Tagline</label>
+                            <textarea id="admin-info-tagline" name="tagline" rows="3" required><?php echo htmlspecialchars((string) ($selectedProduct['tagline'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+
+                            <div class="admin-inline-edit-actions">
+                                <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save" title="Save">
+                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                                </button>
+                            </div>
+                        </form>
+                    <?php else: ?>
+                        <div class="admin-edit-swap" data-admin-edit-swap="information">
+                            <div class="admin-static-view">
                             <div class="product-information-footer">
                                 <div class="product-information-texts">
                                     <div class="product-information-tagline-row">
@@ -509,31 +617,8 @@ $productListPath = $homePath . '#featured-products-title';
                             </div>
                         </div>
 
-                        <?php if ($isAdminView): ?>
-                            <form class="admin-edit-swap-panel" method="post" action="">
-                                <input type="hidden" name="admin_edit_scope" value="information">
-                                <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
-
-                                <label for="admin-info-price">Price</label>
-                                <input id="admin-info-price" type="number" min="0" step="0.01" name="price" value="<?php echo htmlspecialchars((string) ($selectedProduct['price'] ?? '0.00'), ENT_QUOTES, 'UTF-8'); ?>" required>
-
-                                <label for="admin-info-discount">Discount Percentage</label>
-                                <input id="admin-info-discount" type="number" min="0" max="95" step="1" name="discountPercent" value="<?php echo htmlspecialchars((string) ($selectedProduct['discountPercent'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" required>
-
-                                <label for="admin-info-tagline">Tagline</label>
-                                <textarea id="admin-info-tagline" name="tagline" rows="3" required><?php echo htmlspecialchars((string) ($selectedProduct['tagline'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
-
-                                <div class="admin-inline-edit-actions">
-                                    <button type="button" class="admin-icon-action admin-icon-action-cancel" data-admin-cancel-edit="information" aria-label="Cancel" title="Cancel">
-                                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cancel.svg" alt="">
-                                    </button>
-                                    <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save" title="Save">
-                                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
-                                    </button>
-                                </div>
-                            </form>
-                        <?php endif; ?>
-                    </div>
+                        </div>
+                    <?php endif; ?>
                 </article>
 
                 <?php if (!$isAdminView): ?>
@@ -570,6 +655,7 @@ $productListPath = $homePath . '#featured-products-title';
                 <?php endif; ?>
             </section>
 
+            <?php if (!$isAdminView): ?>
             <aside class="product-specs-card">
                 <div class="admin-specs-head">
                     <h2>Full Specifications</h2>
@@ -674,6 +760,7 @@ $productListPath = $homePath . '#featured-products-title';
                     <?php endif; ?>
                 </div>
             </aside>
+            <?php endif; ?>
         </section>
     </main>
 
