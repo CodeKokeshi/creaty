@@ -387,36 +387,38 @@ $productListPath = $homePath . '#featured-products-title';
                     </div>
                 </article>
 
-                <section class="product-recommendations">
-                    <h2>Recommendations</h2>
+                <?php if (!$isAdminView): ?>
+                    <section class="product-recommendations">
+                        <h2>Recommendations</h2>
 
-                    <div class="recommendation-list">
-                        <?php foreach (($selectedProduct['recommendations'] ?? []) as $recommendedKey): ?>
-                            <?php
-                                if (!isset($products[$recommendedKey])) {
-                                    continue;
-                                }
-                                $recommended = $products[$recommendedKey];
-                                $recommendedBrand = normalize_product_brand($recommended['brand'] ?? 'Canon');
-                                $recommendedName = trim((string) ($recommended['name'] ?? ''));
-                            ?>
-                            <a class="recommendation-card" href="?product=<?php echo urlencode((string) $recommendedKey); ?>" style="display: flex; flex-direction: column; gap: 0.8rem; text-decoration: none; color: inherit;">
-                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-                                    <p style="margin: 0; font-size: 0.85rem; line-height: 1.4; flex: 1;"><?php echo htmlspecialchars((string) ($recommended['tagline'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></p>
-                                    <div class="recommendation-thumb" style="width: 80px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
-                                        <img
-                                            class="recommendation-thumb-image"
-                                            src="<?php echo htmlspecialchars($assetBase . (string) ($recommended['cameraImage'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                            alt="<?php echo htmlspecialchars($recommendedBrand . ' ' . $recommendedName, ENT_QUOTES, 'UTF-8'); ?>"
-                                            style="width: 100%; height: auto; object-fit: contain; display: block;"
-                                        >
+                        <div class="recommendation-list">
+                            <?php foreach (($selectedProduct['recommendations'] ?? []) as $recommendedKey): ?>
+                                <?php
+                                    if (!isset($products[$recommendedKey])) {
+                                        continue;
+                                    }
+                                    $recommended = $products[$recommendedKey];
+                                    $recommendedBrand = normalize_product_brand($recommended['brand'] ?? 'Canon');
+                                    $recommendedName = trim((string) ($recommended['name'] ?? ''));
+                                ?>
+                                <a class="recommendation-card" href="?product=<?php echo urlencode((string) $recommendedKey); ?>" style="display: flex; flex-direction: column; gap: 0.8rem; text-decoration: none; color: inherit;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                                        <p style="margin: 0; font-size: 0.85rem; line-height: 1.4; flex: 1;"><?php echo htmlspecialchars((string) ($recommended['tagline'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></p>
+                                        <div class="recommendation-thumb" style="width: 80px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+                                            <img
+                                                class="recommendation-thumb-image"
+                                                src="<?php echo htmlspecialchars($assetBase . (string) ($recommended['cameraImage'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                alt="<?php echo htmlspecialchars($recommendedBrand . ' ' . $recommendedName, ENT_QUOTES, 'UTF-8'); ?>"
+                                                style="width: 100%; height: auto; object-fit: contain; display: block;"
+                                            >
+                                        </div>
                                     </div>
-                                </div>
-                                <span style="font-weight: 700; color: #dde531; font-size: 1.1rem;">&#8369; <?php echo htmlspecialchars((string) ($recommended['price'] ?? '0.00'), ENT_QUOTES, 'UTF-8'); ?></span>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-                </section>
+                                    <span style="font-weight: 700; color: #dde531; font-size: 1.1rem;">&#8369; <?php echo htmlspecialchars((string) ($recommended['price'] ?? '0.00'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+                <?php endif; ?>
             </aside>
 
             <section class="product-main-column">
@@ -534,36 +536,38 @@ $productListPath = $homePath . '#featured-products-title';
                     </div>
                 </article>
 
-                <article class="product-calendar-card" data-product-key="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
-                    <h2>Available Dates</h2>
+                <?php if (!$isAdminView): ?>
+                    <article class="product-calendar-card" data-product-key="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
+                        <h2>Available Dates</h2>
 
-                    <div class="calendar-toolbar">
-                        <label>
-                            <span class="sr-only">Month</span>
-                            <select id="calendar-month-select">
-                                <option value="0">January</option>
-                                <option value="1">February</option>
-                                <option value="2">March</option>
-                                <option value="3">April</option>
-                                <option value="4">May</option>
-                                <option value="5">June</option>
-                                <option value="6">July</option>
-                                <option value="7">August</option>
-                                <option value="8">September</option>
-                                <option value="9">October</option>
-                                <option value="10">November</option>
-                                <option value="11">December</option>
-                            </select>
-                        </label>
+                        <div class="calendar-toolbar">
+                            <label>
+                                <span class="sr-only">Month</span>
+                                <select id="calendar-month-select">
+                                    <option value="0">January</option>
+                                    <option value="1">February</option>
+                                    <option value="2">March</option>
+                                    <option value="3">April</option>
+                                    <option value="4">May</option>
+                                    <option value="5">June</option>
+                                    <option value="6">July</option>
+                                    <option value="7">August</option>
+                                    <option value="8">September</option>
+                                    <option value="9">October</option>
+                                    <option value="10">November</option>
+                                    <option value="11">December</option>
+                                </select>
+                            </label>
 
-                        <label>
-                            <span class="sr-only">Year</span>
-                            <select id="calendar-year-select"></select>
-                        </label>
-                    </div>
+                            <label>
+                                <span class="sr-only">Year</span>
+                                <select id="calendar-year-select"></select>
+                            </label>
+                        </div>
 
-                    <div class="calendar-grid" id="calendar-grid-container"></div>
-                </article>
+                        <div class="calendar-grid" id="calendar-grid-container"></div>
+                    </article>
+                <?php endif; ?>
             </section>
 
             <aside class="product-specs-card">
@@ -607,7 +611,7 @@ $productListPath = $homePath . '#featured-products-title';
                     </div>
 
                     <?php if ($isAdminView): ?>
-                        <form class="admin-edit-swap-panel" method="post" action="">
+                        <form class="admin-edit-swap-panel" method="post" action="" data-admin-spec-form>
                             <input type="hidden" name="admin_edit_scope" value="specifications">
                             <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
 
@@ -622,14 +626,41 @@ $productListPath = $homePath . '#featured-products-title';
                             <label for="admin-spec-name">Product Name</label>
                             <input id="admin-spec-name" type="text" name="name" value="<?php echo htmlspecialchars($selectedProductName, ENT_QUOTES, 'UTF-8'); ?>" required>
 
-                            <label for="admin-imaging-specs">Imaging and Performance (one per line)</label>
-                            <textarea id="admin-imaging-specs" name="imagingSpecs" rows="5" required><?php echo htmlspecialchars(implode("\n", $selectedImagingSpecs), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                            <label>Imaging and Performance</label>
+                            <div class="admin-line-list" data-admin-line-list data-line-name="imagingSpecs[]" data-line-label="Imaging and Performance">
+                                <?php $imagingRows = count($selectedImagingSpecs) > 0 ? $selectedImagingSpecs : ['']; ?>
+                                <?php foreach ($imagingRows as $line): ?>
+                                    <div class="admin-line-row" data-admin-line-row>
+                                        <input type="text" name="imagingSpecs[]" value="<?php echo htmlspecialchars((string) $line, ENT_QUOTES, 'UTF-8'); ?>" data-admin-line-input>
+                                        <button type="button" class="admin-line-remove" data-admin-line-remove aria-label="Remove line">&times;</button>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <button type="button" class="admin-line-add" data-admin-line-add data-target-name="imagingSpecs[]">+ Add line</button>
 
-                            <label for="admin-video-specs">Video (one per line)</label>
-                            <textarea id="admin-video-specs" name="videoSpecs" rows="4" required><?php echo htmlspecialchars(implode("\n", $selectedVideoSpecs), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                            <label>Video</label>
+                            <div class="admin-line-list" data-admin-line-list data-line-name="videoSpecs[]" data-line-label="Video">
+                                <?php $videoRows = count($selectedVideoSpecs) > 0 ? $selectedVideoSpecs : ['']; ?>
+                                <?php foreach ($videoRows as $line): ?>
+                                    <div class="admin-line-row" data-admin-line-row>
+                                        <input type="text" name="videoSpecs[]" value="<?php echo htmlspecialchars((string) $line, ENT_QUOTES, 'UTF-8'); ?>" data-admin-line-input>
+                                        <button type="button" class="admin-line-remove" data-admin-line-remove aria-label="Remove line">&times;</button>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <button type="button" class="admin-line-add" data-admin-line-add data-target-name="videoSpecs[]">+ Add line</button>
 
-                            <label for="admin-physical-specs">Physical Specifications (one per line)</label>
-                            <textarea id="admin-physical-specs" name="physicalSpecs" rows="4" required><?php echo htmlspecialchars(implode("\n", $selectedPhysicalSpecs), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                            <label>Physical Specifications</label>
+                            <div class="admin-line-list" data-admin-line-list data-line-name="physicalSpecs[]" data-line-label="Physical Specifications">
+                                <?php $physicalRows = count($selectedPhysicalSpecs) > 0 ? $selectedPhysicalSpecs : ['']; ?>
+                                <?php foreach ($physicalRows as $line): ?>
+                                    <div class="admin-line-row" data-admin-line-row>
+                                        <input type="text" name="physicalSpecs[]" value="<?php echo htmlspecialchars((string) $line, ENT_QUOTES, 'UTF-8'); ?>" data-admin-line-input>
+                                        <button type="button" class="admin-line-remove" data-admin-line-remove aria-label="Remove line">&times;</button>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <button type="button" class="admin-line-add" data-admin-line-add data-target-name="physicalSpecs[]">+ Add line</button>
 
                             <div class="admin-inline-edit-actions">
                                 <button type="button" class="admin-icon-action admin-icon-action-cancel" data-admin-cancel-edit="specifications" aria-label="Cancel" title="Cancel">
@@ -766,6 +797,160 @@ $productListPath = $homePath . '#featured-products-title';
                         var form = infoAddFileInput.closest('form');
                         if (form) {
                             form.submit();
+                        }
+                    });
+                }
+
+                function createSpecLineRow(fieldName, value) {
+                    var row = document.createElement('div');
+                    row.className = 'admin-line-row';
+                    row.setAttribute('data-admin-line-row', 'true');
+
+                    var input = document.createElement('input');
+                    input.type = 'text';
+                    input.name = fieldName;
+                    input.value = value || '';
+                    input.setAttribute('data-admin-line-input', 'true');
+
+                    var remove = document.createElement('button');
+                    remove.type = 'button';
+                    remove.className = 'admin-line-remove';
+                    remove.setAttribute('data-admin-line-remove', 'true');
+                    remove.setAttribute('aria-label', 'Remove line');
+                    remove.textContent = '\u00D7';
+
+                    row.appendChild(input);
+                    row.appendChild(remove);
+
+                    return row;
+                }
+
+                function ensureSpecListHasAtLeastOneRow(list) {
+                    if (!list) {
+                        return;
+                    }
+
+                    var existingRows = list.querySelectorAll('[data-admin-line-row]');
+                    if (existingRows.length > 0) {
+                        return;
+                    }
+
+                    var fieldName = list.getAttribute('data-line-name') || '';
+                    list.appendChild(createSpecLineRow(fieldName, ''));
+                }
+
+                function bindSpecLineList(list) {
+                    if (!list) {
+                        return;
+                    }
+
+                    ensureSpecListHasAtLeastOneRow(list);
+
+                    list.addEventListener('keydown', function (event) {
+                        var input = event.target.closest('[data-admin-line-input]');
+                        if (!input || event.key !== 'Enter') {
+                            return;
+                        }
+
+                        event.preventDefault();
+
+                        var row = input.closest('[data-admin-line-row]');
+                        var fieldName = list.getAttribute('data-line-name') || input.name || '';
+                        var nextRow = createSpecLineRow(fieldName, '');
+
+                        if (row && row.parentNode === list && row.nextSibling) {
+                            list.insertBefore(nextRow, row.nextSibling);
+                        } else {
+                            list.appendChild(nextRow);
+                        }
+
+                        var nextInput = nextRow.querySelector('[data-admin-line-input]');
+                        if (nextInput) {
+                            nextInput.focus();
+                        }
+                    });
+
+                    list.addEventListener('click', function (event) {
+                        var removeButton = event.target.closest('[data-admin-line-remove]');
+                        if (!removeButton) {
+                            return;
+                        }
+
+                        var row = removeButton.closest('[data-admin-line-row]');
+                        if (!row) {
+                            return;
+                        }
+
+                        row.remove();
+                        ensureSpecListHasAtLeastOneRow(list);
+                    });
+                }
+
+                var specForm = document.querySelector('[data-admin-spec-form]');
+                var specLineLists = document.querySelectorAll('[data-admin-line-list]');
+                specLineLists.forEach(bindSpecLineList);
+
+                document.querySelectorAll('[data-admin-line-add]').forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        var targetName = button.getAttribute('data-target-name') || '';
+                        if (!targetName) {
+                            return;
+                        }
+
+                        var targetList = document.querySelector('[data-admin-line-list][data-line-name="' + targetName + '"]');
+                        if (!targetList) {
+                            return;
+                        }
+
+                        var row = createSpecLineRow(targetName, '');
+                        targetList.appendChild(row);
+
+                        var input = row.querySelector('[data-admin-line-input]');
+                        if (input) {
+                            input.focus();
+                        }
+                    });
+                });
+
+                if (specForm) {
+                    specForm.addEventListener('submit', function (event) {
+                        var isValid = true;
+                        var invalidLabel = '';
+
+                        specLineLists.forEach(function (list) {
+                            var label = list.getAttribute('data-line-label') || 'This section';
+                            var nonEmptyCount = 0;
+
+                            list.querySelectorAll('[data-admin-line-input]').forEach(function (input) {
+                                var cleaned = String(input.value || '').trim();
+                                input.value = cleaned;
+
+                                if (cleaned === '') {
+                                    input.disabled = true;
+                                    return;
+                                }
+
+                                input.disabled = false;
+                                nonEmptyCount += 1;
+                            });
+
+                            if (nonEmptyCount < 1) {
+                                isValid = false;
+                                if (invalidLabel === '') {
+                                    invalidLabel = label;
+                                }
+                            }
+                        });
+
+                        if (!isValid) {
+                            specLineLists.forEach(function (list) {
+                                list.querySelectorAll('[data-admin-line-input]').forEach(function (input) {
+                                    input.disabled = false;
+                                });
+                            });
+
+                            window.alert((invalidLabel || 'This section') + ' requires at least one line.');
+                            event.preventDefault();
                         }
                     });
                 }

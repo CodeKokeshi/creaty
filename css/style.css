@@ -2184,6 +2184,64 @@ button {
     resize: vertical;
 }
 
+.admin-line-list {
+    display: grid;
+    gap: 0.42rem;
+}
+
+.admin-line-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 34px;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.admin-line-row input {
+    min-width: 0;
+}
+
+.admin-line-remove {
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(255, 120, 120, 0.35);
+    border-radius: 8px;
+    background: #6a1f1f;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: transform 140ms ease, filter 140ms ease, border-color 140ms ease;
+}
+
+.admin-line-remove:hover,
+.admin-line-remove:focus-visible {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+    border-color: rgba(255, 120, 120, 0.55);
+}
+
+.admin-line-add {
+    justify-self: start;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #f4f4f4;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0.35rem 0.65rem;
+    cursor: pointer;
+    transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+
+.admin-line-add:hover,
+.admin-line-add:focus-visible {
+    transform: translateY(-1px);
+    border-color: rgba(221, 229, 49, 0.7);
+    background: rgba(221, 229, 49, 0.14);
+}
+
 .admin-inline-edit-actions {
     display: flex;
     justify-content: flex-end;
