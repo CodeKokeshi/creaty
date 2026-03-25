@@ -424,7 +424,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         applyProductFilters();
 
                         if (archiveKey) {
-                            showAdminUndoToast(productName + " archived " + (archivedAt ? "(" + formatArchiveDateLabel(archivedAt) + ")" : ""), {
+                            showAdminUndoToast(productName + " archived" + (archivedAt ? " (" + formatArchiveDateLabel(archivedAt) + ")" : ""), {
                                 type: "product",
                                 archiveKey: archiveKey,
                                 card: card,
