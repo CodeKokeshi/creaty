@@ -643,7 +643,7 @@ button {
 }
 
 .step-card {
-    aspect-ratio: 444 / 290;
+    aspect-ratio: 3 / 2;
     background: #d7d7d7;
     overflow: hidden;
 }
