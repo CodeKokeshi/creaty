@@ -1802,12 +1802,20 @@ button {
     align-content: start;
 }
 
+.product-sidebar-admin .product-sidebar-header {
+    min-height: 2.75rem;
+    margin-bottom: 0;
+}
+
+.product-detail-layout-admin .product-main-column {
+    margin-top: calc(2.75rem + 0.8rem);
+}
+
 .product-specs-card-admin-left {
     padding: 0.85rem;
 }
 
-.product-specs-card-admin-left .admin-edit-swap-panel {
-    display: grid;
+.product-specs-card-admin-left .admin-edit-swap {
     margin-top: 0.7rem;
 }
 
@@ -4787,6 +4795,10 @@ button {
 
     .product-detail-layout-admin {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .product-detail-layout-admin .product-main-column {
+        margin-top: 0;
     }
 
     .admin-cover-identity-grid {

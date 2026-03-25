@@ -373,54 +373,81 @@ $productListPath = $homePath . '#featured-products-title';
                     <aside class="product-specs-card product-specs-card-admin-left">
                         <div class="admin-specs-head">
                             <h2>Full Specifications</h2>
+                            <button class="admin-pencil-chip" type="button" data-admin-toggle-edit="specifications" aria-label="Edit specifications">
+                                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
+                            </button>
                         </div>
 
-                        <form class="admin-edit-swap-panel" method="post" action="" data-admin-spec-form>
-                            <input type="hidden" name="admin_edit_scope" value="specifications">
-                            <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
+                        <div class="admin-edit-swap" data-admin-edit-swap="specifications">
+                            <div class="admin-static-view">
+                                <?php foreach ($selectedSpecs as $sectionTitle => $entries): ?>
+                                    <?php if (strtolower((string) $sectionTitle) === 'brand') { continue; } ?>
+                                    <section class="product-specs-section">
+                                        <h3><?php echo htmlspecialchars((string) $sectionTitle, ENT_QUOTES, 'UTF-8'); ?></h3>
 
-                            <label>Imaging and Performance</label>
-                            <div class="admin-line-list" data-admin-line-list data-line-name="imagingSpecs[]" data-line-label="Imaging and Performance">
-                                <?php $imagingRows = count($selectedImagingSpecs) > 0 ? $selectedImagingSpecs : ['']; ?>
-                                <?php foreach ($imagingRows as $line): ?>
-                                    <div class="admin-line-row" data-admin-line-row>
-                                        <input type="text" name="imagingSpecs[]" value="<?php echo htmlspecialchars((string) $line, ENT_QUOTES, 'UTF-8'); ?>" data-admin-line-input>
-                                        <button type="button" class="admin-line-remove" data-admin-line-remove aria-label="Remove line">&times;</button>
-                                    </div>
+                                        <?php if (count((array) $entries) === 1): ?>
+                                            <p><?php echo htmlspecialchars((string) $entries[0], ENT_QUOTES, 'UTF-8'); ?></p>
+                                        <?php else: ?>
+                                            <ul>
+                                                <?php foreach ((array) $entries as $entry): ?>
+                                                    <li><?php echo htmlspecialchars((string) $entry, ENT_QUOTES, 'UTF-8'); ?></li>
+                                                <?php endforeach; ?>
+                                            </ul>
+                                        <?php endif; ?>
+                                    </section>
                                 <?php endforeach; ?>
                             </div>
-                            <button type="button" class="admin-line-add" data-admin-line-add data-target-name="imagingSpecs[]">+ Add line</button>
 
-                            <label>Video</label>
-                            <div class="admin-line-list" data-admin-line-list data-line-name="videoSpecs[]" data-line-label="Video">
-                                <?php $videoRows = count($selectedVideoSpecs) > 0 ? $selectedVideoSpecs : ['']; ?>
-                                <?php foreach ($videoRows as $line): ?>
-                                    <div class="admin-line-row" data-admin-line-row>
-                                        <input type="text" name="videoSpecs[]" value="<?php echo htmlspecialchars((string) $line, ENT_QUOTES, 'UTF-8'); ?>" data-admin-line-input>
-                                        <button type="button" class="admin-line-remove" data-admin-line-remove aria-label="Remove line">&times;</button>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                            <button type="button" class="admin-line-add" data-admin-line-add data-target-name="videoSpecs[]">+ Add line</button>
+                            <form class="admin-edit-swap-panel" method="post" action="" data-admin-spec-form>
+                                <input type="hidden" name="admin_edit_scope" value="specifications">
+                                <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
 
-                            <label>Physical Specifications</label>
-                            <div class="admin-line-list" data-admin-line-list data-line-name="physicalSpecs[]" data-line-label="Physical Specifications">
-                                <?php $physicalRows = count($selectedPhysicalSpecs) > 0 ? $selectedPhysicalSpecs : ['']; ?>
-                                <?php foreach ($physicalRows as $line): ?>
-                                    <div class="admin-line-row" data-admin-line-row>
-                                        <input type="text" name="physicalSpecs[]" value="<?php echo htmlspecialchars((string) $line, ENT_QUOTES, 'UTF-8'); ?>" data-admin-line-input>
-                                        <button type="button" class="admin-line-remove" data-admin-line-remove aria-label="Remove line">&times;</button>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                            <button type="button" class="admin-line-add" data-admin-line-add data-target-name="physicalSpecs[]">+ Add line</button>
+                                <label>Imaging and Performance</label>
+                                <div class="admin-line-list" data-admin-line-list data-line-name="imagingSpecs[]" data-line-label="Imaging and Performance">
+                                    <?php $imagingRows = count($selectedImagingSpecs) > 0 ? $selectedImagingSpecs : ['']; ?>
+                                    <?php foreach ($imagingRows as $line): ?>
+                                        <div class="admin-line-row" data-admin-line-row>
+                                            <input type="text" name="imagingSpecs[]" value="<?php echo htmlspecialchars((string) $line, ENT_QUOTES, 'UTF-8'); ?>" data-admin-line-input>
+                                            <button type="button" class="admin-line-remove" data-admin-line-remove aria-label="Remove line">&times;</button>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <button type="button" class="admin-line-add" data-admin-line-add data-target-name="imagingSpecs[]">+ Add line</button>
 
-                            <div class="admin-inline-edit-actions">
-                                <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save" title="Save">
-                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
-                                </button>
-                            </div>
-                        </form>
+                                <label>Video</label>
+                                <div class="admin-line-list" data-admin-line-list data-line-name="videoSpecs[]" data-line-label="Video">
+                                    <?php $videoRows = count($selectedVideoSpecs) > 0 ? $selectedVideoSpecs : ['']; ?>
+                                    <?php foreach ($videoRows as $line): ?>
+                                        <div class="admin-line-row" data-admin-line-row>
+                                            <input type="text" name="videoSpecs[]" value="<?php echo htmlspecialchars((string) $line, ENT_QUOTES, 'UTF-8'); ?>" data-admin-line-input>
+                                            <button type="button" class="admin-line-remove" data-admin-line-remove aria-label="Remove line">&times;</button>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <button type="button" class="admin-line-add" data-admin-line-add data-target-name="videoSpecs[]">+ Add line</button>
+
+                                <label>Physical Specifications</label>
+                                <div class="admin-line-list" data-admin-line-list data-line-name="physicalSpecs[]" data-line-label="Physical Specifications">
+                                    <?php $physicalRows = count($selectedPhysicalSpecs) > 0 ? $selectedPhysicalSpecs : ['']; ?>
+                                    <?php foreach ($physicalRows as $line): ?>
+                                        <div class="admin-line-row" data-admin-line-row>
+                                            <input type="text" name="physicalSpecs[]" value="<?php echo htmlspecialchars((string) $line, ENT_QUOTES, 'UTF-8'); ?>" data-admin-line-input>
+                                            <button type="button" class="admin-line-remove" data-admin-line-remove aria-label="Remove line">&times;</button>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <button type="button" class="admin-line-add" data-admin-line-add data-target-name="physicalSpecs[]">+ Add line</button>
+
+                                <div class="admin-inline-edit-actions">
+                                    <button type="button" class="admin-icon-action admin-icon-action-cancel" data-admin-cancel-edit="specifications" aria-label="Cancel" title="Cancel">
+                                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cancel.svg" alt="">
+                                    </button>
+                                    <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save" title="Save">
+                                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </aside>
                 <?php else: ?>
                     <article class="product-primary-card">
@@ -550,29 +577,8 @@ $productListPath = $homePath . '#featured-products-title';
                         <button class="detail-gallery-arrow detail-gallery-arrow-right" type="button" data-gallery-direction="next" aria-label="Next sample image">&#10095;</button>
                     </div>
 
-                    <?php if ($isAdminView): ?>
-                        <form class="admin-edit-swap-panel" method="post" action="">
-                            <input type="hidden" name="admin_edit_scope" value="information">
-                            <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
-
-                            <label for="admin-info-price">Price</label>
-                            <input id="admin-info-price" type="number" min="0" step="0.01" name="price" value="<?php echo htmlspecialchars((string) ($selectedProduct['price'] ?? '0.00'), ENT_QUOTES, 'UTF-8'); ?>" required>
-
-                            <label for="admin-info-discount">Discount Percentage</label>
-                            <input id="admin-info-discount" type="number" min="0" max="95" step="1" name="discountPercent" value="<?php echo htmlspecialchars((string) ($selectedProduct['discountPercent'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" required>
-
-                            <label for="admin-info-tagline">Tagline</label>
-                            <textarea id="admin-info-tagline" name="tagline" rows="3" required><?php echo htmlspecialchars((string) ($selectedProduct['tagline'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
-
-                            <div class="admin-inline-edit-actions">
-                                <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save" title="Save">
-                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
-                                </button>
-                            </div>
-                        </form>
-                    <?php else: ?>
-                        <div class="admin-edit-swap" data-admin-edit-swap="information">
-                            <div class="admin-static-view">
+                    <div class="admin-edit-swap" data-admin-edit-swap="information">
+                        <div class="admin-static-view">
                             <div class="product-information-footer">
                                 <div class="product-information-texts">
                                     <div class="product-information-tagline-row">
@@ -617,8 +623,31 @@ $productListPath = $homePath . '#featured-products-title';
                             </div>
                         </div>
 
-                        </div>
-                    <?php endif; ?>
+                        <?php if ($isAdminView): ?>
+                            <form class="admin-edit-swap-panel" method="post" action="">
+                                <input type="hidden" name="admin_edit_scope" value="information">
+                                <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
+
+                                <label for="admin-info-price">Price</label>
+                                <input id="admin-info-price" type="number" min="0" step="0.01" name="price" value="<?php echo htmlspecialchars((string) ($selectedProduct['price'] ?? '0.00'), ENT_QUOTES, 'UTF-8'); ?>" required>
+
+                                <label for="admin-info-discount">Discount Percentage</label>
+                                <input id="admin-info-discount" type="number" min="0" max="95" step="1" name="discountPercent" value="<?php echo htmlspecialchars((string) ($selectedProduct['discountPercent'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>" required>
+
+                                <label for="admin-info-tagline">Tagline</label>
+                                <textarea id="admin-info-tagline" name="tagline" rows="3" required><?php echo htmlspecialchars((string) ($selectedProduct['tagline'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+
+                                <div class="admin-inline-edit-actions">
+                                    <button type="button" class="admin-icon-action admin-icon-action-cancel" data-admin-cancel-edit="information" aria-label="Cancel" title="Cancel">
+                                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cancel.svg" alt="">
+                                    </button>
+                                    <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save" title="Save">
+                                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                                    </button>
+                                </div>
+                            </form>
+                        <?php endif; ?>
+                    </div>
                 </article>
 
                 <?php if (!$isAdminView): ?>
