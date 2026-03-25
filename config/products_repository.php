@@ -625,3 +625,166 @@ function restore_archived_product_record($products, $archivedProducts, $archiveK
         'restoredEntry' => $entry
     ];
 }
+
+function archived_how_it_works_repository_path()
+{
+    return __DIR__ . '/archives/how_it_works_archived.json';
+}
+
+function load_archived_how_it_works_repository()
+{
+    $path = archived_how_it_works_repository_path();
+
+    if (!is_file($path)) {
+        return [];
+    }
+
+    $raw = file_get_contents($path);
+    if ($raw === false) {
+        return [];
+    }
+
+    $raw = preg_replace('/^\xEF\xBB\xBF/', '', (string) $raw);
+    $decoded = json_decode($raw, true);
+
+    return is_array($decoded) ? array_values($decoded) : [];
+}
+
+function save_archived_how_it_works_repository($archivedItems)
+{
+    $path = archived_how_it_works_repository_path();
+    $directory = dirname($path);
+
+    if (!is_dir($directory) && !mkdir($directory, 0777, true) && !is_dir($directory)) {
+        return false;
+    }
+
+    $encoded = json_encode(array_values((array) $archivedItems), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    if ($encoded === false) {
+        return false;
+    }
+
+    return file_put_contents($path, $encoded . PHP_EOL, LOCK_EX) !== false;
+}
+
+function archive_how_it_works_image($slot, $projectRoot)
+{
+    $slotNumber = (int) $slot;
+    if ($slotNumber < 1 || $slotNumber > 4) {
+        throw new RuntimeException('Slot must be between 1 and 4.');
+    }
+
+    $sourceRelativePath = 'assets/how_it_works/' . $slotNumber . '.png';
+    $sourceAbsolutePath = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $sourceRelativePath);
+
+    if (!is_file($sourceAbsolutePath)) {
+        throw new RuntimeException('How it works image was not found.');
+    }
+
+    $archiveKey = 'how-it-works-' . $slotNumber . '-' . date('Ymd-His');
+    $targetDirRelative = 'assets/how_it_works/_archived';
+    $targetDirAbsolute = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $targetDirRelative);
+
+    if (!is_dir($targetDirAbsolute) && !mkdir($targetDirAbsolute, 0777, true) && !is_dir($targetDirAbsolute)) {
+        throw new RuntimeException('Unable to create archive image directory.');
+    }
+
+    $rawName = sanitize_product_filename($archiveKey) . '.png';
+    if ($rawName === '.png') {
+        $rawName = 'how-it-works-' . $slotNumber . '-' . date('Ymd-His') . '.png';
+    }
+
+    $targetAbsolutePath = $targetDirAbsolute . DIRECTORY_SEPARATOR . $rawName;
+    $targetRelativePath = $targetDirRelative . '/' . rawurlencode($rawName);
+
+    if (!@rename($sourceAbsolutePath, $targetAbsolutePath)) {
+        if (!copy($sourceAbsolutePath, $targetAbsolutePath)) {
+            throw new RuntimeException('Unable to archive how it works image.');
+        }
+
+        @unlink($sourceAbsolutePath);
+    }
+
+    $archivedItems = load_archived_how_it_works_repository();
+    $archivedEntry = [
+        'archiveKey' => $archiveKey,
+        'archivedAt' => gmdate('c'),
+        'slot' => $slotNumber,
+        'imagePath' => $targetRelativePath
+    ];
+    $archivedItems[] = $archivedEntry;
+
+    if (!save_archived_how_it_works_repository($archivedItems)) {
+        throw new RuntimeException('Unable to save how it works archive data.');
+    }
+
+    return [
+        'archivedEntry' => $archivedEntry,
+        'archivedItems' => $archivedItems
+    ];
+}
+
+function restore_archived_how_it_works_image($archiveKey, $projectRoot)
+{
+    $targetArchiveKey = trim((string) $archiveKey);
+    if ($targetArchiveKey === '') {
+        throw new RuntimeException('Archive key is required.');
+    }
+
+    $archivedItems = load_archived_how_it_works_repository();
+    $matchIndex = null;
+
+    foreach ($archivedItems as $index => $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+
+        if (trim((string) ($entry['archiveKey'] ?? '')) === $targetArchiveKey) {
+            $matchIndex = $index;
+            break;
+        }
+    }
+
+    if ($matchIndex === null) {
+        throw new RuntimeException('Archived how it works image was not found.');
+    }
+
+    $entry = $archivedItems[$matchIndex];
+    $slotNumber = (int) ($entry['slot'] ?? 0);
+    if ($slotNumber < 1 || $slotNumber > 4) {
+        throw new RuntimeException('Archived slot is invalid.');
+    }
+
+    $sourceRelativePath = ltrim((string) ($entry['imagePath'] ?? ''), '/');
+    if ($sourceRelativePath === '') {
+        throw new RuntimeException('Archived image path is missing.');
+    }
+
+    $sourceAbsolutePath = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, rawurldecode($sourceRelativePath));
+    if (!is_file($sourceAbsolutePath)) {
+        throw new RuntimeException('Archived image file is missing.');
+    }
+
+    $targetRelativePath = 'assets/how_it_works/' . $slotNumber . '.png';
+    $targetAbsolutePath = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $targetRelativePath);
+
+    if (!@rename($sourceAbsolutePath, $targetAbsolutePath)) {
+        if (!copy($sourceAbsolutePath, $targetAbsolutePath)) {
+            throw new RuntimeException('Unable to restore how it works image.');
+        }
+
+        @unlink($sourceAbsolutePath);
+    }
+
+    array_splice($archivedItems, $matchIndex, 1);
+    if (!save_archived_how_it_works_repository($archivedItems)) {
+        throw new RuntimeException('Unable to save how it works archive data.');
+    }
+
+    return [
+        'restoredEntry' => $entry,
+        'slot' => $slotNumber,
+        'targetPath' => $targetRelativePath,
+        'archivedItems' => array_values($archivedItems)
+    ];
+}

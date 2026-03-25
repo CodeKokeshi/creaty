@@ -747,6 +747,91 @@ button {
     border-color: #d95a5a;
 }
 
+.step-card-admin {
+    position: relative;
+    border: 2px solid rgba(255, 255, 255, 0.72);
+    border-radius: 10px;
+    background: rgba(17, 18, 20, 0.88);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.24);
+    overflow: hidden;
+}
+
+.step-card-admin-remove {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    z-index: 3;
+    width: 30px;
+    height: 30px;
+    border: 1px solid #c83f3f;
+    border-radius: 8px;
+    background: #e04a4a;
+    color: #ffffff;
+    font-size: 1.08rem;
+    font-weight: 800;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+
+.step-card-admin-remove:hover,
+.step-card-admin-remove:focus-visible {
+    transform: scale(1.06);
+    background: #c83a3a;
+    border-color: #d95a5a;
+}
+
+.step-card-admin-image-button {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.step-card-admin-image-button:focus-visible {
+    outline: 2px solid rgba(221, 229, 49, 0.75);
+    outline-offset: -2px;
+}
+
+.step-card-admin-add-trigger {
+    width: 100%;
+    height: 100%;
+    border: 2px dashed rgba(255, 255, 255, 0.32);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    color: #d9dde4;
+    display: grid;
+    place-content: center;
+    gap: 0.2rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.step-card-admin-add-trigger:hover,
+.step-card-admin-add-trigger:focus-visible {
+    border-color: rgba(221, 229, 49, 0.72);
+    background: rgba(221, 229, 49, 0.08);
+    transform: translateY(-1px);
+}
+
+.step-card-admin-add-plus {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.step-card-admin.is-admin-busy {
+    opacity: 0.65;
+    pointer-events: none;
+}
+
 .product-card.is-admin-removing {
     opacity: 0;
     transform: scale(0.95);
@@ -968,6 +1053,10 @@ button {
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
 }
 
+.admin-how-edit-modal .admin-edit-image-preview {
+    aspect-ratio: 3 / 2;
+}
+
 .admin-edit-image-preview.is-crop-active {
     cursor: grab;
 }
@@ -1170,6 +1259,24 @@ button {
     box-shadow: 0 0 0 3px rgba(103, 194, 61, 0.22);
 }
 
+
+.admin-edit-image-preview img[hidden] {
+    display: none;
+}
+
+.admin-how-slot-note {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f4f4f4;
+}
+
+.admin-how-slot-help {
+    margin: 0;
+    color: #c7cdd6;
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
 .admin-edit-fields-column select {
     appearance: none;
     -webkit-appearance: none;

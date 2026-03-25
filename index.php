@@ -21,6 +21,18 @@ $products = load_products_repository();
 if (!is_array($products)) {
     $products = [];
 }
+
+$howItWorksSlots = [];
+for ($slot = 1; $slot <= 4; $slot++) {
+    $relativePath = 'assets/how_it_works/' . $slot . '.png';
+    $absolutePath = __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+
+    $howItWorksSlots[] = [
+        'slot' => $slot,
+        'relativePath' => $relativePath,
+        'exists' => is_file($absolutePath)
+    ];
+}
 ?>
 
 <!DOCTYPE html>
@@ -163,21 +175,20 @@ if (!is_array($products)) {
             <h2 class="landing-title" id="how-it-works-title">HOW IT WORKS</h2>
 
             <div class="steps-grid">
-                <article class="step-card">
-                    <img class="step-image" src="assets/how_it_works/1.png" alt="Step 1: Pick your camera or service">
-                </article>
-
-                <article class="step-card">
-                    <img class="step-image" src="assets/how_it_works/2.png" alt="Step 2: Select your preferred method">
-                </article>
-
-                <article class="step-card">
-                    <img class="step-image" src="assets/how_it_works/3.png" alt="Step 3: Confirm your order">
-                </article>
-
-                <article class="step-card">
-                    <img class="step-image" src="assets/how_it_works/4.png" alt="Step 4: Wait for order details">
-                </article>
+                <?php foreach ($howItWorksSlots as $step): ?>
+                    <?php
+                        $slot = (int) $step['slot'];
+                        $hasImage = (bool) $step['exists'];
+                        $stepPath = (string) $step['relativePath'];
+                    ?>
+                    <article class="step-card">
+                        <?php if ($hasImage): ?>
+                            <img class="step-image" src="<?php echo htmlspecialchars($stepPath, ENT_QUOTES, 'UTF-8'); ?>" alt="Step <?php echo htmlspecialchars((string) $slot, ENT_QUOTES, 'UTF-8'); ?> in the How it works section">
+                        <?php else: ?>
+                            <div class="step-placeholder">Step <?php echo htmlspecialchars((string) $slot, ENT_QUOTES, 'UTF-8'); ?> image will be added soon.</div>
+                        <?php endif; ?>
+                    </article>
+                <?php endforeach; ?>
             </div>
         </section>
 

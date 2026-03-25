@@ -47,7 +47,27 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEditPhysicalSpecs = document.querySelector("[data-admin-edit-physical-specs]");
     var adminEditCaptureSlides = document.querySelector("[data-admin-edit-capture-slides]");
     var adminEditZoom = document.querySelector("[data-admin-edit-zoom]");
+    var adminHowGrid = document.querySelector("[data-admin-how-grid]");
+    var adminHowEditBackdrop = document.querySelector("[data-admin-how-edit-backdrop]");
+    var adminHowForm = document.querySelector("[data-admin-how-form]");
+    var adminHowClose = document.querySelector("[data-admin-how-close]");
+    var adminHowCancel = document.querySelector("[data-admin-how-cancel]");
+    var adminHowBrowse = document.querySelector("[data-admin-how-browse]");
+    var adminHowRecrop = document.querySelector("[data-admin-how-recrop]");
+    var adminHowImageActions = document.querySelector("[data-admin-how-image-actions]");
+    var adminHowMainActions = document.querySelector("[data-admin-how-main-actions]");
+    var adminHowCropWorkspace = document.querySelector("[data-admin-how-crop-workspace]");
+    var adminHowCropCancel = document.querySelector("[data-admin-how-crop-cancel]");
+    var adminHowCropSave = document.querySelector("[data-admin-how-crop-save]");
+    var adminHowFileInput = document.querySelector("[data-admin-how-file]");
+    var adminHowPreviewWrap = document.querySelector("[data-admin-how-preview-wrap]");
+    var adminHowPreviewImage = document.querySelector("[data-admin-how-preview-img]");
+    var adminHowZoom = document.querySelector("[data-admin-how-zoom]");
+    var adminHowSlotNote = document.querySelector("[data-admin-how-slot-note]");
+    var adminHowRestoreEndpoint = adminHowGrid ? (adminHowGrid.getAttribute("data-admin-how-restore-endpoint") || "") : "";
+    var adminHowImageBase = adminHowGrid ? (adminHowGrid.getAttribute("data-admin-how-image-base") || "assets/how_it_works/") : "assets/how_it_works/";
     var activeAdminEditCard = null;
+    var activeAdminHowSlot = "";
     var adminCropState = {
         zoom: 1,
         offsetX: 0,
@@ -65,6 +85,24 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminCoverAspect = {
         width: 5,
         height: 4
+    };
+    var adminHowCropState = {
+        zoom: 1,
+        offsetX: 0,
+        offsetY: 0,
+        isCropping: false,
+        isDragging: false,
+        dragPointerId: null,
+        dragStartClientX: 0,
+        dragStartClientY: 0,
+        dragStartOffsetX: 0,
+        dragStartOffsetY: 0,
+        sourceImage: "",
+        previewBeforeCrop: ""
+    };
+    var adminHowAspect = {
+        width: 3,
+        height: 2
     };
     var adminUndoState = {
         timerId: null,
@@ -215,8 +253,18 @@ document.addEventListener("DOMContentLoaded", function () {
         adminUndoState.pending = null;
     }
 
-    function showAdminUndoToast(productName, pendingState) {
-        if (!adminUndoToast || !adminUndoMessage || !adminUndoAction || !pendingState || !adminRestoreEndpoint) {
+    function formatArchiveDateLabel(isoValue) {
+        var date = new Date(String(isoValue || ""));
+
+        if (Number.isNaN(date.getTime())) {
+            return String(isoValue || "");
+        }
+
+        return date.toLocaleString();
+    }
+
+    function showAdminUndoToast(message, pendingState) {
+        if (!adminUndoToast || !adminUndoMessage || !adminUndoAction || !pendingState) {
             return;
         }
 
@@ -226,7 +274,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         adminUndoState.pending = pendingState;
-        adminUndoMessage.textContent = productName ? (productName + " archived") : "Product archived";
+        adminUndoMessage.textContent = message || "Archived";
 
         adminUndoToast.hidden = false;
         window.requestAnimationFrame(function () {
@@ -241,8 +289,23 @@ document.addEventListener("DOMContentLoaded", function () {
     if (adminUndoAction) {
         adminUndoAction.addEventListener("click", function () {
             var pending = adminUndoState.pending;
+            var endpoint = "";
+            var fallbackError = "Unable to restore item.";
 
-            if (!pending || !adminRestoreEndpoint) {
+            if (!pending) {
+                hideAdminUndoToast();
+                return;
+            }
+
+            if (pending.type === "how") {
+                endpoint = adminHowRestoreEndpoint;
+                fallbackError = "Unable to restore How It Works image.";
+            } else {
+                endpoint = adminRestoreEndpoint;
+                fallbackError = "Unable to restore product.";
+            }
+
+            if (!endpoint) {
                 hideAdminUndoToast();
                 return;
             }
@@ -250,7 +313,7 @@ document.addEventListener("DOMContentLoaded", function () {
             adminUndoAction.disabled = true;
             adminUndoAction.textContent = "Restoring...";
 
-            fetch(adminRestoreEndpoint, {
+            fetch(endpoint, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -269,11 +332,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 })
                 .then(function (result) {
                     if (!result.ok || !result.payload || !result.payload.ok) {
-                        var message = result.payload && result.payload.message ? result.payload.message : "Unable to restore product.";
+                        var message = result.payload && result.payload.message ? result.payload.message : fallbackError;
                         throw new Error(message);
                     }
 
-                    if (pending.card) {
+                    if (pending.type === "how") {
+                        if (pending.onRestore && typeof pending.onRestore === "function") {
+                            pending.onRestore(result.payload);
+                        }
+                    } else if (pending.card) {
                         pending.card.removeAttribute("data-admin-removed");
                         pending.card.classList.remove("is-hidden");
                         pending.card.classList.remove("is-admin-removing");
@@ -287,11 +354,14 @@ document.addEventListener("DOMContentLoaded", function () {
                         pending.button.disabled = false;
                     }
 
-                    applyProductFilters();
+                    if (pending.type !== "how") {
+                        applyProductFilters();
+                    }
+
                     hideAdminUndoToast();
                 })
                 .catch(function (error) {
-                    window.alert(error.message || "Unable to restore product.");
+                    window.alert(error.message || fallbackError);
                     adminUndoAction.disabled = false;
                     adminUndoAction.textContent = "Undo";
                 });
@@ -340,6 +410,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     var titleLink = card.querySelector(".product-title-link");
                     var productName = titleLink ? titleLink.textContent.trim() : "Product";
+                    var archivedAt = result.payload.archivedEntry && result.payload.archivedEntry.archivedAt
+                        ? String(result.payload.archivedEntry.archivedAt)
+                        : "";
                     var archiveKey = result.payload.archivedEntry && result.payload.archivedEntry.archiveKey
                         ? String(result.payload.archivedEntry.archiveKey)
                         : "";
@@ -351,7 +424,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         applyProductFilters();
 
                         if (archiveKey) {
-                            showAdminUndoToast(productName, {
+                            showAdminUndoToast(productName + " archived " + (archivedAt ? "(" + formatArchiveDateLabel(archivedAt) + ")" : ""), {
+                                type: "product",
                                 archiveKey: archiveKey,
                                 card: card,
                                 button: button
@@ -1065,6 +1139,546 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 });
         });
+    }
+
+    function setAdminHowPreviewSource(source) {
+        if (!adminHowPreviewImage) {
+            return;
+        }
+
+        var nextSource = String(source || "").trim();
+
+        if (!nextSource) {
+            adminHowPreviewImage.hidden = true;
+            adminHowPreviewImage.removeAttribute("src");
+            return;
+        }
+
+        adminHowPreviewImage.hidden = false;
+        adminHowPreviewImage.src = nextSource;
+    }
+
+    function syncAdminHowPreviewTransform() {
+        if (!adminHowPreviewWrap || !adminHowPreviewImage || !adminHowZoom) {
+            return;
+        }
+
+        adminHowPreviewWrap.style.setProperty("--admin-crop-zoom", String(adminHowCropState.zoom));
+        adminHowPreviewWrap.style.setProperty("--admin-crop-x", String(adminHowCropState.offsetX) + "px");
+        adminHowPreviewWrap.style.setProperty("--admin-crop-y", String(adminHowCropState.offsetY) + "px");
+        adminHowPreviewWrap.classList.toggle("is-crop-active", adminHowCropState.isCropping);
+    }
+
+    function setAdminHowCropWorkspaceVisible(isVisible) {
+        adminHowCropState.isCropping = isVisible;
+
+        if (adminHowCropWorkspace) {
+            adminHowCropWorkspace.hidden = !isVisible;
+        }
+
+        if (adminHowImageActions) {
+            adminHowImageActions.hidden = isVisible;
+
+            Array.prototype.forEach.call(adminHowImageActions.querySelectorAll("button"), function (button) {
+                button.disabled = isVisible;
+            });
+        }
+
+        if (adminHowMainActions) {
+            adminHowMainActions.hidden = isVisible;
+
+            Array.prototype.forEach.call(adminHowMainActions.querySelectorAll("button"), function (button) {
+                button.disabled = isVisible;
+            });
+        }
+
+        syncAdminHowPreviewTransform();
+    }
+
+    function clampAdminHowCropOffsets(nextX, nextY) {
+        if (!adminHowPreviewWrap || !adminHowPreviewImage) {
+            return { x: nextX, y: nextY };
+        }
+
+        var rect = adminHowPreviewWrap.getBoundingClientRect();
+        var zoom = Math.max(1, adminHowCropState.zoom);
+        var maxShiftX = Math.max(0, ((rect.width * zoom) - rect.width) / 2);
+        var maxShiftY = Math.max(0, ((rect.height * zoom) - rect.height) / 2);
+        var clampedX = Math.min(maxShiftX, Math.max(-maxShiftX, nextX));
+        var clampedY = Math.min(maxShiftY, Math.max(-maxShiftY, nextY));
+
+        return {
+            x: clampedX,
+            y: clampedY
+        };
+    }
+
+    function resetAdminHowCropState() {
+        adminHowCropState.zoom = 1;
+        adminHowCropState.offsetX = 0;
+        adminHowCropState.offsetY = 0;
+        adminHowCropState.isDragging = false;
+        adminHowCropState.dragPointerId = null;
+
+        if (adminHowZoom) {
+            adminHowZoom.value = "1";
+        }
+
+        syncAdminHowPreviewTransform();
+    }
+
+    function buildAdminHowCropDataUrlFromPreview() {
+        if (!adminHowPreviewImage || adminHowPreviewImage.hidden || !adminHowPreviewImage.src || !adminHowPreviewImage.naturalWidth || !adminHowPreviewImage.naturalHeight) {
+            return null;
+        }
+
+        var outputWidth = 900;
+        var outputHeight = Math.round(outputWidth * (adminHowAspect.height / adminHowAspect.width));
+        var canvas = document.createElement("canvas");
+        canvas.width = outputWidth;
+        canvas.height = outputHeight;
+
+        var ctx = canvas.getContext("2d");
+        if (!ctx) {
+            return null;
+        }
+
+        var zoomValue = Math.max(1, Number(adminHowCropState.zoom || 1));
+        var scaleToCover = Math.max(outputWidth / adminHowPreviewImage.naturalWidth, outputHeight / adminHowPreviewImage.naturalHeight);
+        var scale = scaleToCover * zoomValue;
+        var drawWidth = adminHowPreviewImage.naturalWidth * scale;
+        var drawHeight = adminHowPreviewImage.naturalHeight * scale;
+        var drawX = ((outputWidth - drawWidth) / 2) + adminHowCropState.offsetX;
+        var drawY = ((outputHeight - drawHeight) / 2) + adminHowCropState.offsetY;
+
+        ctx.clearRect(0, 0, outputWidth, outputHeight);
+        ctx.drawImage(adminHowPreviewImage, drawX, drawY, drawWidth, drawHeight);
+
+        return canvas.toDataURL("image/png");
+    }
+
+    function updateAdminHowRecropState() {
+        if (!adminHowRecrop || !adminHowPreviewImage) {
+            return;
+        }
+
+        adminHowRecrop.disabled = adminHowPreviewImage.hidden || !adminHowPreviewImage.src;
+    }
+
+    function closeAdminHowEditModal() {
+        if (!adminHowEditBackdrop) {
+            return;
+        }
+
+        setAdminHowCropWorkspaceVisible(false);
+        resetAdminHowCropState();
+        adminHowCropState.previewBeforeCrop = "";
+        adminHowCropState.sourceImage = "";
+
+        if (adminHowFileInput) {
+            adminHowFileInput.value = "";
+        }
+
+        setAdminHowPreviewSource("");
+        updateAdminHowRecropState();
+        activeAdminHowSlot = "";
+        adminHowEditBackdrop.hidden = true;
+        document.body.classList.remove("admin-modal-open");
+    }
+
+    function openAdminHowEditModal(slot, currentSource) {
+        if (!adminHowEditBackdrop || !adminHowForm) {
+            return;
+        }
+
+        activeAdminHowSlot = String(slot || "").trim();
+        if (!activeAdminHowSlot) {
+            return;
+        }
+
+        if (adminHowSlotNote) {
+            adminHowSlotNote.textContent = "Slot " + activeAdminHowSlot + " image (3:2)";
+        }
+
+        setAdminHowPreviewSource(currentSource || "");
+        updateAdminHowRecropState();
+
+        if (adminHowFileInput) {
+            adminHowFileInput.value = "";
+        }
+
+        adminHowCropState.previewBeforeCrop = adminHowPreviewImage && !adminHowPreviewImage.hidden ? adminHowPreviewImage.src : "";
+        adminHowCropState.sourceImage = "";
+        resetAdminHowCropState();
+        setAdminHowCropWorkspaceVisible(false);
+
+        adminHowEditBackdrop.hidden = false;
+        document.body.classList.add("admin-modal-open");
+    }
+
+    function renderAdminHowCardAsEmpty(card, slotValue) {
+        if (!card) {
+            return;
+        }
+
+        var slot = String(slotValue || card.getAttribute("data-admin-how-slot") || "").trim();
+        card.classList.add("step-card-admin-add");
+        card.classList.remove("is-admin-busy");
+        card.setAttribute("data-admin-how-has-image", "false");
+        card.setAttribute("data-admin-how-image-src", "");
+        card.innerHTML = '' +
+            '<button class="step-card-admin-add-trigger" type="button" data-admin-how-edit aria-label="Add how it works image slot ' + slot + '">' +
+                '<span class="step-card-admin-add-plus">+</span>' +
+                '<span>Add Photo</span>' +
+            '</button>';
+    }
+
+    function renderAdminHowCardAsImage(card, slotValue, imageSource) {
+        if (!card) {
+            return;
+        }
+
+        var slot = String(slotValue || card.getAttribute("data-admin-how-slot") || "").trim();
+        var cacheBustedSource = String(imageSource || "");
+
+        card.classList.remove("step-card-admin-add");
+        card.classList.remove("is-admin-busy");
+        card.setAttribute("data-admin-how-has-image", "true");
+        card.setAttribute("data-admin-how-image-src", cacheBustedSource);
+        card.innerHTML = '' +
+            '<button class="step-card-admin-remove" type="button" data-admin-how-remove aria-label="Delete how it works image slot ' + slot + '">&times;</button>' +
+            '<button class="step-card-admin-image-button" type="button" data-admin-how-edit aria-label="Edit how it works image slot ' + slot + '">' +
+                '<img class="step-image" src="' + cacheBustedSource + '" alt="How it works step ' + slot + '">' +
+            '</button>';
+    }
+
+    if (adminHowGrid) {
+        var adminHowUpdateEndpoint = adminHowGrid.getAttribute("data-admin-how-update-endpoint") || "";
+        var adminHowDeleteEndpoint = adminHowGrid.getAttribute("data-admin-how-delete-endpoint") || "";
+
+        adminHowGrid.addEventListener("click", function (event) {
+            var removeButton = event.target.closest("[data-admin-how-remove]");
+            if (removeButton) {
+                var removeCard = removeButton.closest("[data-admin-how-slot]");
+                var removeSlot = removeCard ? (removeCard.getAttribute("data-admin-how-slot") || "") : "";
+
+                if (!removeCard || !removeSlot || !adminHowDeleteEndpoint) {
+                    return;
+                }
+
+                removeCard.classList.add("is-admin-busy");
+                removeButton.disabled = true;
+
+                fetch(adminHowDeleteEndpoint, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        slot: Number.parseInt(removeSlot, 10)
+                    })
+                })
+                    .then(function (response) {
+                        return response.json().then(function (payload) {
+                            return {
+                                ok: response.ok,
+                                payload: payload
+                            };
+                        });
+                    })
+                    .then(function (result) {
+                        if (!result.ok || !result.payload || !result.payload.ok) {
+                            var message = result.payload && result.payload.message ? result.payload.message : "Unable to archive image.";
+                            throw new Error(message);
+                        }
+
+                        var archivedEntry = result.payload.archivedEntry && typeof result.payload.archivedEntry === "object"
+                            ? result.payload.archivedEntry
+                            : null;
+                        var archivedAt = archivedEntry && archivedEntry.archivedAt ? String(archivedEntry.archivedAt) : "";
+                        var archiveKey = archivedEntry && archivedEntry.archiveKey ? String(archivedEntry.archiveKey) : "";
+
+                        renderAdminHowCardAsEmpty(removeCard, removeSlot);
+
+                        if (archiveKey) {
+                            showAdminUndoToast(
+                                "How It Works slot " + removeSlot + " archived" + (archivedAt ? " (" + formatArchiveDateLabel(archivedAt) + ")" : ""),
+                                {
+                                    type: "how",
+                                    archiveKey: archiveKey,
+                                    onRestore: function (payload) {
+                                        var restoredSlot = payload && payload.slot ? String(payload.slot) : removeSlot;
+                                        var restoredSource = adminHowImageBase + restoredSlot + ".png?t=" + String(Date.now());
+                                        renderAdminHowCardAsImage(removeCard, restoredSlot, restoredSource);
+                                    }
+                                }
+                            );
+                        }
+                    })
+                    .catch(function (error) {
+                        removeCard.classList.remove("is-admin-busy");
+                        removeButton.disabled = false;
+                        window.alert(error.message || "Unable to archive image.");
+                    });
+
+                return;
+            }
+
+            var editButton = event.target.closest("[data-admin-how-edit]");
+            if (!editButton) {
+                return;
+            }
+
+            var editCard = editButton.closest("[data-admin-how-slot]");
+            var editSlot = editCard ? (editCard.getAttribute("data-admin-how-slot") || "") : "";
+            var currentSource = editCard ? (editCard.getAttribute("data-admin-how-image-src") || "") : "";
+
+            openAdminHowEditModal(editSlot, currentSource);
+        });
+
+        if (adminHowZoom) {
+            adminHowZoom.addEventListener("input", function () {
+                adminHowCropState.zoom = Number.parseFloat(adminHowZoom.value) || 1;
+                var clamped = clampAdminHowCropOffsets(adminHowCropState.offsetX, adminHowCropState.offsetY);
+                adminHowCropState.offsetX = clamped.x;
+                adminHowCropState.offsetY = clamped.y;
+                syncAdminHowPreviewTransform();
+            });
+        }
+
+        if (adminHowBrowse && adminHowFileInput) {
+            adminHowBrowse.addEventListener("click", function () {
+                adminHowFileInput.click();
+            });
+        }
+
+        if (adminHowRecrop && adminHowPreviewImage) {
+            adminHowRecrop.addEventListener("click", function () {
+                if (adminHowPreviewImage.hidden || !adminHowPreviewImage.src) {
+                    return;
+                }
+
+                adminHowCropState.previewBeforeCrop = adminHowPreviewImage.src;
+                adminHowCropState.sourceImage = adminHowPreviewImage.src;
+                resetAdminHowCropState();
+                setAdminHowCropWorkspaceVisible(true);
+                syncAdminHowPreviewTransform();
+            });
+        }
+
+        if (adminHowFileInput && adminHowPreviewImage) {
+            adminHowPreviewImage.addEventListener("dragstart", function (event) {
+                event.preventDefault();
+            });
+
+            adminHowFileInput.addEventListener("change", function () {
+                var file = adminHowFileInput.files && adminHowFileInput.files[0] ? adminHowFileInput.files[0] : null;
+
+                if (!file) {
+                    return;
+                }
+
+                var reader = new FileReader();
+                reader.onload = function (loadEvent) {
+                    adminHowCropState.previewBeforeCrop = adminHowPreviewImage.hidden ? "" : (adminHowPreviewImage.src || "");
+                    adminHowCropState.sourceImage = String(loadEvent.target && loadEvent.target.result ? loadEvent.target.result : "");
+                    setAdminHowPreviewSource(adminHowCropState.sourceImage);
+                    updateAdminHowRecropState();
+                    resetAdminHowCropState();
+                    setAdminHowCropWorkspaceVisible(true);
+                    syncAdminHowPreviewTransform();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        if (adminHowPreviewWrap) {
+            adminHowPreviewWrap.addEventListener("wheel", function (event) {
+                if (!adminHowCropState.isCropping || !adminHowZoom) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                var minZoom = Number.parseFloat(adminHowZoom.min || "1");
+                var maxZoom = Number.parseFloat(adminHowZoom.max || "3");
+                var stepZoom = Number.parseFloat(adminHowZoom.step || "0.01");
+                var direction = event.deltaY < 0 ? 1 : -1;
+                var nextZoom = adminHowCropState.zoom + (direction * (stepZoom * 5));
+
+                nextZoom = Math.min(maxZoom, Math.max(minZoom, nextZoom));
+                nextZoom = Math.round(nextZoom * 100) / 100;
+
+                adminHowCropState.zoom = nextZoom;
+                adminHowZoom.value = String(nextZoom);
+
+                var clamped = clampAdminHowCropOffsets(adminHowCropState.offsetX, adminHowCropState.offsetY);
+                adminHowCropState.offsetX = clamped.x;
+                adminHowCropState.offsetY = clamped.y;
+                syncAdminHowPreviewTransform();
+            }, { passive: false });
+
+            adminHowPreviewWrap.addEventListener("pointerdown", function (event) {
+                if (!adminHowCropState.isCropping || event.button !== 0) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                adminHowCropState.isDragging = true;
+                adminHowCropState.dragPointerId = event.pointerId;
+                adminHowCropState.dragStartClientX = event.clientX;
+                adminHowCropState.dragStartClientY = event.clientY;
+                adminHowCropState.dragStartOffsetX = adminHowCropState.offsetX;
+                adminHowCropState.dragStartOffsetY = adminHowCropState.offsetY;
+                adminHowPreviewWrap.setPointerCapture(event.pointerId);
+            });
+
+            adminHowPreviewWrap.addEventListener("pointermove", function (event) {
+                if (!adminHowCropState.isCropping || !adminHowCropState.isDragging || adminHowCropState.dragPointerId !== event.pointerId) {
+                    return;
+                }
+
+                var nextX = adminHowCropState.dragStartOffsetX + (event.clientX - adminHowCropState.dragStartClientX);
+                var nextY = adminHowCropState.dragStartOffsetY + (event.clientY - adminHowCropState.dragStartClientY);
+                var clamped = clampAdminHowCropOffsets(nextX, nextY);
+                adminHowCropState.offsetX = clamped.x;
+                adminHowCropState.offsetY = clamped.y;
+                syncAdminHowPreviewTransform();
+            });
+
+            function stopAdminHowCropDrag(event) {
+                if (!adminHowCropState.isDragging || adminHowCropState.dragPointerId !== event.pointerId) {
+                    return;
+                }
+
+                adminHowCropState.isDragging = false;
+                adminHowCropState.dragPointerId = null;
+                adminHowPreviewWrap.releasePointerCapture(event.pointerId);
+            }
+
+            adminHowPreviewWrap.addEventListener("pointerup", stopAdminHowCropDrag);
+            adminHowPreviewWrap.addEventListener("pointercancel", stopAdminHowCropDrag);
+        }
+
+        if (adminHowCropCancel && adminHowPreviewImage) {
+            adminHowCropCancel.addEventListener("click", function () {
+                setAdminHowPreviewSource(adminHowCropState.previewBeforeCrop || "");
+                updateAdminHowRecropState();
+                adminHowCropState.sourceImage = "";
+                resetAdminHowCropState();
+                setAdminHowCropWorkspaceVisible(false);
+            });
+        }
+
+        if (adminHowCropSave && adminHowPreviewImage) {
+            adminHowCropSave.addEventListener("click", function () {
+                var croppedDataUrl = buildAdminHowCropDataUrlFromPreview();
+
+                if (!croppedDataUrl) {
+                    return;
+                }
+
+                setAdminHowPreviewSource(croppedDataUrl);
+                adminHowCropState.previewBeforeCrop = croppedDataUrl;
+                adminHowCropState.sourceImage = "";
+                updateAdminHowRecropState();
+                resetAdminHowCropState();
+                setAdminHowCropWorkspaceVisible(false);
+            });
+        }
+
+        if (adminHowClose) {
+            adminHowClose.addEventListener("click", closeAdminHowEditModal);
+        }
+
+        if (adminHowCancel) {
+            adminHowCancel.addEventListener("click", closeAdminHowEditModal);
+        }
+
+        if (adminHowEditBackdrop) {
+            adminHowEditBackdrop.addEventListener("click", function (event) {
+                if (event.target === adminHowEditBackdrop) {
+                    closeAdminHowEditModal();
+                }
+            });
+        }
+
+        if (adminHowForm) {
+            adminHowForm.addEventListener("submit", function (event) {
+                event.preventDefault();
+
+                if (!activeAdminHowSlot || !adminHowUpdateEndpoint) {
+                    return;
+                }
+
+                var finalPreviewSrc = adminHowPreviewImage && !adminHowPreviewImage.hidden ? adminHowPreviewImage.src : "";
+
+                if (adminHowCropState.isCropping) {
+                    var autoCroppedDataUrl = buildAdminHowCropDataUrlFromPreview();
+
+                    if (autoCroppedDataUrl) {
+                        finalPreviewSrc = autoCroppedDataUrl;
+                        setAdminHowPreviewSource(autoCroppedDataUrl);
+                        adminHowCropState.previewBeforeCrop = autoCroppedDataUrl;
+                    }
+
+                    adminHowCropState.sourceImage = "";
+                    resetAdminHowCropState();
+                    setAdminHowCropWorkspaceVisible(false);
+                }
+
+                if (!finalPreviewSrc) {
+                    window.alert("Please add an image first.");
+                    return;
+                }
+
+                var submitButton = adminHowForm.querySelector('button[type="submit"]');
+                var previousSubmitTitle = submitButton ? submitButton.getAttribute("title") : "";
+
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.setAttribute("title", "Saving...");
+                }
+
+                fetch(adminHowUpdateEndpoint, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        slot: Number.parseInt(activeAdminHowSlot, 10),
+                        imageDataUrl: finalPreviewSrc
+                    })
+                })
+                    .then(function (response) {
+                        return response.json().then(function (payload) {
+                            return {
+                                ok: response.ok,
+                                payload: payload
+                            };
+                        });
+                    })
+                    .then(function (result) {
+                        if (!result.ok || !result.payload || !result.payload.ok) {
+                            var message = result.payload && result.payload.message ? result.payload.message : "Unable to save image.";
+                            throw new Error(message);
+                        }
+
+                        window.location.reload();
+                    })
+                    .catch(function (error) {
+                        if (submitButton) {
+                            submitButton.disabled = false;
+                            submitButton.setAttribute("title", previousSubmitTitle || "Save Changes");
+                        }
+
+                        window.alert(error.message || "Unable to save image.");
+                    });
+            });
+        }
+
+        updateAdminHowRecropState();
     }
 
     function showPromoSlide(nextIndex) {

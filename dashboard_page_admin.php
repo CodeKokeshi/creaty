@@ -33,6 +33,18 @@ $products = load_products_repository();
 if (!is_array($products)) {
     $products = [];
 }
+
+$howItWorksSlots = [];
+for ($slot = 1; $slot <= 4; $slot++) {
+    $relativePath = 'assets/how_it_works/' . $slot . '.png';
+    $absolutePath = __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+
+    $howItWorksSlots[] = [
+        'slot' => $slot,
+        'relativePath' => $relativePath,
+        'exists' => is_file($absolutePath)
+    ];
+}
 ?>
 
 <!DOCTYPE html>
@@ -77,7 +89,7 @@ if (!is_array($products)) {
                 <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                     <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
                     <li><a class="dropdown-item" href="#">Manage Featured Products</a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived Products</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
                     <li><a class="dropdown-item" href="#">Manage Discounts</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
@@ -171,22 +183,27 @@ if (!is_array($products)) {
         <section class="landing-section reveal" aria-labelledby="how-it-works-title">
             <h2 class="landing-title" id="how-it-works-title">HOW IT WORKS</h2>
 
-            <div class="steps-grid">
-                <article class="step-card">
-                    <img class="step-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/how_it_works/1.png" alt="Step 1: Pick your camera or service">
-                </article>
-
-                <article class="step-card">
-                    <img class="step-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/how_it_works/2.png" alt="Step 2: Select your preferred method">
-                </article>
-
-                <article class="step-card">
-                    <img class="step-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/how_it_works/3.png" alt="Step 3: Confirm your order">
-                </article>
-
-                <article class="step-card">
-                    <img class="step-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/how_it_works/4.png" alt="Step 4: Wait for order details">
-                </article>
+            <div class="steps-grid" data-admin-how-grid data-admin-how-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_how_it_works.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-how-delete-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/delete_how_it_works.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-how-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_how_it_works.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-how-image-base="<?php echo htmlspecialchars($assetBase . 'assets/how_it_works/', ENT_QUOTES, 'UTF-8'); ?>">
+                <?php foreach ($howItWorksSlots as $step): ?>
+                    <?php
+                        $slot = (int) $step['slot'];
+                        $hasImage = (bool) $step['exists'];
+                        $stepPath = (string) $step['relativePath'];
+                    ?>
+                    <article class="step-card step-card-admin<?php echo $hasImage ? '' : ' step-card-admin-add'; ?>" data-admin-how-slot="<?php echo htmlspecialchars((string) $slot, ENT_QUOTES, 'UTF-8'); ?>" data-admin-how-has-image="<?php echo $hasImage ? 'true' : 'false'; ?>" data-admin-how-image-src="<?php echo $hasImage ? htmlspecialchars($assetBase . $stepPath, ENT_QUOTES, 'UTF-8') : ''; ?>">
+                        <?php if ($hasImage): ?>
+                            <button class="step-card-admin-remove" type="button" data-admin-how-remove aria-label="Delete how it works image slot <?php echo htmlspecialchars((string) $slot, ENT_QUOTES, 'UTF-8'); ?>">&times;</button>
+                            <button class="step-card-admin-image-button" type="button" data-admin-how-edit aria-label="Edit how it works image slot <?php echo htmlspecialchars((string) $slot, ENT_QUOTES, 'UTF-8'); ?>">
+                                <img class="step-image" src="<?php echo htmlspecialchars($assetBase . $stepPath, ENT_QUOTES, 'UTF-8'); ?>" alt="How it works step <?php echo htmlspecialchars((string) $slot, ENT_QUOTES, 'UTF-8'); ?>">
+                            </button>
+                        <?php else: ?>
+                            <button class="step-card-admin-add-trigger" type="button" data-admin-how-edit aria-label="Add how it works image slot <?php echo htmlspecialchars((string) $slot, ENT_QUOTES, 'UTF-8'); ?>">
+                                <span class="step-card-admin-add-plus">+</span>
+                                <span>Add Photo</span>
+                            </button>
+                        <?php endif; ?>
+                    </article>
+                <?php endforeach; ?>
             </div>
         </section>
 
@@ -354,7 +371,76 @@ if (!is_array($products)) {
         <button class="admin-undo-toast-button" type="button" data-admin-undo-action>Undo</button>
     </aside>
 
+    <div class="admin-edit-modal-backdrop" data-admin-how-edit-backdrop hidden>
+        <section class="admin-edit-modal admin-how-edit-modal" role="dialog" aria-modal="true" aria-labelledby="admin-how-edit-title">
+            <div class="admin-edit-modal-head">
+                <h2 id="admin-how-edit-title">Edit How It Works Image</h2>
+                <button class="admin-edit-close" type="button" data-admin-how-close aria-label="Close edit window">&times;</button>
+            </div>
+
+            <form class="admin-edit-form" data-admin-how-form>
+                <div class="admin-edit-grid">
+                    <div class="admin-edit-image-column">
+                        <div class="admin-edit-image-preview" data-admin-how-preview-wrap>
+                            <img src="" alt="How it works preview" data-admin-how-preview-img draggable="false" hidden>
+                            <div class="admin-crop-drag-badge" aria-hidden="true">
+                                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/drag_pan.svg" alt="">
+                                <span>Drag</span>
+                            </div>
+                        </div>
+
+                        <input type="file" accept="image/*" data-admin-how-file hidden>
+
+                        <div class="admin-edit-image-actions" data-admin-how-image-actions>
+                            <button type="button" class="admin-icon-action admin-icon-action-browse" data-admin-how-browse aria-label="Browse" title="Browse">
+                                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/folder_open.svg" alt="">
+                            </button>
+                            <button type="button" class="admin-icon-action admin-icon-action-edit" data-admin-how-recrop aria-label="Edit Crop" title="Edit Crop">
+                                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/crop.svg" alt="">
+                            </button>
+                        </div>
+
+                        <div class="admin-crop-workspace" data-admin-how-crop-workspace hidden>
+                            <div class="admin-crop-controls">
+                                <label class="admin-crop-zoom-label">
+                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/zoom_in_out.svg" alt="" aria-hidden="true">
+                                    <span class="sr-only">Zoom</span>
+                                    <input type="range" min="1" max="3" step="0.01" value="1" data-admin-how-zoom>
+                                </label>
+                            </div>
+
+                            <div class="admin-crop-actions">
+                                <button type="button" class="admin-icon-action admin-icon-action-cancel" data-admin-how-crop-cancel aria-label="Cancel" title="Cancel">
+                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cancel.svg" alt="">
+                                </button>
+                                <button type="button" class="admin-icon-action admin-icon-action-save" data-admin-how-crop-save aria-label="Save" title="Save">
+                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="admin-edit-fields-column">
+                        <p class="admin-how-slot-note" data-admin-how-slot-note>Slot 1 image (3:2)</p>
+                        <p class="admin-how-slot-help">Files are saved as <strong>1.png</strong>, <strong>2.png</strong>, <strong>3.png</strong>, and <strong>4.png</strong>.</p>
+                    </div>
+                </div>
+
+                <div class="admin-edit-actions" data-admin-how-main-actions>
+                    <div class="admin-edit-icon-actions">
+                        <button type="button" class="admin-icon-action admin-icon-action-cancel" data-admin-how-cancel aria-label="Cancel" title="Cancel">
+                            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cancel.svg" alt="">
+                        </button>
+                        <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save Changes" title="Save Changes">
+                            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </section>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260324-6"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260325-2"></script>
 </body>
 </html>
