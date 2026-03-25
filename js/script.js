@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var filterNav = document.querySelector(".section-nav-interactive");
     var filterToggles = filterNav ? filterNav.querySelectorAll(".filter-toggle") : [];
     var productCards = document.querySelectorAll('.product-grid .product-card:not([data-admin-add-card="true"])');
+    var adminAddCard = document.querySelector('[data-admin-add-card="true"]');
     var productEmpty = document.querySelector(".product-grid-empty");
     var adminRemoveButtons = document.querySelectorAll("[data-admin-remove-featured]");
     var adminEditButtons = document.querySelectorAll("[data-admin-edit-featured]");
@@ -365,6 +366,51 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
         });
     });
+
+    if (adminAddCard && adminEditBackdrop) {
+        adminAddCard.addEventListener("click", function () {
+            var createEndpoint = adminEditBackdrop.getAttribute("data-admin-create-endpoint") || "";
+            var productBaseUrl = adminEditBackdrop.getAttribute("data-admin-product-base-url") || "";
+
+            if (!createEndpoint || !productBaseUrl) {
+                return;
+            }
+
+            if (adminAddCard.classList.contains("is-admin-creating")) {
+                return;
+            }
+
+            adminAddCard.classList.add("is-admin-creating");
+
+            fetch(createEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({})
+            })
+                .then(function (response) {
+                    return response.json().then(function (payload) {
+                        return {
+                            ok: response.ok,
+                            payload: payload
+                        };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.payload || !result.payload.ok || !result.payload.newKey) {
+                        var message = result.payload && result.payload.message ? result.payload.message : "Unable to create product.";
+                        throw new Error(message);
+                    }
+
+                    window.location.href = productBaseUrl + encodeURIComponent(String(result.payload.newKey));
+                })
+                .catch(function (error) {
+                    adminAddCard.classList.remove("is-admin-creating");
+                    window.alert(error.message || "Unable to create product.");
+                });
+        });
+    }
 
     productCards.forEach(function (card) {
         ensureCardBrandNameData(card);

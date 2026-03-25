@@ -213,6 +213,70 @@ function duplicate_product_record($products, $sourceKey, $projectRoot)
     ];
 }
 
+function create_product_record($products, $projectRoot)
+{
+    $brand = 'Canon';
+    $baseName = 'New Product';
+    $newName = unique_product_name($products, $brand, $baseName);
+    $newKey = unique_product_key($products, $brand, $newName);
+
+    $imagePath = '';
+    $sourceImagePath = '';
+
+    foreach ($products as $product) {
+        if (!is_array($product)) {
+            continue;
+        }
+
+        $candidate = trim((string) ($product['cameraImage'] ?? ''));
+        if ($candidate === '') {
+            continue;
+        }
+
+        $absoluteCandidate = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, rawurldecode(ltrim($candidate, '/')));
+        if (is_file($absoluteCandidate)) {
+            $sourceImagePath = $candidate;
+            break;
+        }
+    }
+
+    if ($sourceImagePath !== '') {
+        try {
+            $imagePath = copy_product_image_for_duplicate($sourceImagePath, $brand, $newName, $projectRoot);
+        } catch (Throwable $error) {
+            $imagePath = $sourceImagePath;
+        }
+    }
+
+    $newProduct = [
+        'brand' => $brand,
+        'name' => $newName,
+        'price' => '0.00',
+        'discountPercent' => 0,
+        'spec1' => 'New camera specification 1',
+        'spec2' => 'New camera specification 2',
+        'tagline' => 'Add a short product tagline.',
+        'cameraImage' => $imagePath,
+        'informationImages' => [],
+        'captureSlides' => [],
+        'specs' => [
+            'Brand' => [$brand],
+            'Imaging and Performance' => ['Add imaging and performance details.'],
+            'Video' => ['Add video details.'],
+            'Physical Specifications' => ['Add physical specifications.']
+        ],
+        'recommendations' => []
+    ];
+
+    $products[$newKey] = $newProduct;
+
+    return [
+        'products' => $products,
+        'newKey' => $newKey,
+        'newProduct' => $newProduct
+    ];
+}
+
 function normalize_lines_array($value)
 {
     if (is_array($value)) {
