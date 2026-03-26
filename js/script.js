@@ -685,17 +685,42 @@ document.addEventListener("DOMContentLoaded", function () {
         syncAdminPreviewTransform();
     }
 
+    function getCoverRenderBounds(previewWrap, previewImage, zoomValue) {
+        if (!previewWrap || !previewImage || !previewImage.naturalWidth || !previewImage.naturalHeight) {
+            return {
+                rectWidth: 0,
+                rectHeight: 0,
+                renderedWidth: 0,
+                renderedHeight: 0,
+                maxShiftX: 0,
+                maxShiftY: 0
+            };
+        }
+
+        var rect = previewWrap.getBoundingClientRect();
+        var zoom = Math.max(1, Number(zoomValue || 1));
+        var baseScale = Math.max(rect.width / previewImage.naturalWidth, rect.height / previewImage.naturalHeight);
+        var renderedWidth = previewImage.naturalWidth * baseScale * zoom;
+        var renderedHeight = previewImage.naturalHeight * baseScale * zoom;
+
+        return {
+            rectWidth: rect.width,
+            rectHeight: rect.height,
+            renderedWidth: renderedWidth,
+            renderedHeight: renderedHeight,
+            maxShiftX: Math.max(0, (renderedWidth - rect.width) / 2),
+            maxShiftY: Math.max(0, (renderedHeight - rect.height) / 2)
+        };
+    }
+
     function clampAdminCropOffsets(nextX, nextY) {
         if (!adminEditPreviewWrap || !adminEditPreviewImage) {
             return { x: nextX, y: nextY };
         }
 
-        var rect = adminEditPreviewWrap.getBoundingClientRect();
-        var zoom = Math.max(1, adminCropState.zoom);
-        var maxShiftX = Math.max(0, ((rect.width * zoom) - rect.width) / 2);
-        var maxShiftY = Math.max(0, ((rect.height * zoom) - rect.height) / 2);
-        var clampedX = Math.min(maxShiftX, Math.max(-maxShiftX, nextX));
-        var clampedY = Math.min(maxShiftY, Math.max(-maxShiftY, nextY));
+        var bounds = getCoverRenderBounds(adminEditPreviewWrap, adminEditPreviewImage, adminCropState.zoom);
+        var clampedX = Math.min(bounds.maxShiftX, Math.max(-bounds.maxShiftX, nextX));
+        var clampedY = Math.min(bounds.maxShiftY, Math.max(-bounds.maxShiftY, nextY));
 
         return {
             x: clampedX,
@@ -734,12 +759,15 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         var zoomValue = Math.max(1, Number(adminCropState.zoom || 1));
+        var bounds = getCoverRenderBounds(adminEditPreviewWrap, adminEditPreviewImage, zoomValue);
+        var offsetScaleX = bounds.rectWidth > 0 ? (outputWidth / bounds.rectWidth) : 1;
+        var offsetScaleY = bounds.rectHeight > 0 ? (outputHeight / bounds.rectHeight) : 1;
         var scaleToCover = Math.max(outputWidth / adminEditPreviewImage.naturalWidth, outputHeight / adminEditPreviewImage.naturalHeight);
         var scale = scaleToCover * zoomValue;
         var drawWidth = adminEditPreviewImage.naturalWidth * scale;
         var drawHeight = adminEditPreviewImage.naturalHeight * scale;
-        var drawX = ((outputWidth - drawWidth) / 2) + adminCropState.offsetX;
-        var drawY = ((outputHeight - drawHeight) / 2) + adminCropState.offsetY;
+        var drawX = ((outputWidth - drawWidth) / 2) + (adminCropState.offsetX * offsetScaleX);
+        var drawY = ((outputHeight - drawHeight) / 2) + (adminCropState.offsetY * offsetScaleY);
 
         ctx.clearRect(0, 0, outputWidth, outputHeight);
         ctx.drawImage(adminEditPreviewImage, drawX, drawY, drawWidth, drawHeight);
@@ -1244,12 +1272,9 @@ document.addEventListener("DOMContentLoaded", function () {
             return { x: nextX, y: nextY };
         }
 
-        var rect = adminHowPreviewWrap.getBoundingClientRect();
-        var zoom = Math.max(1, adminHowCropState.zoom);
-        var maxShiftX = Math.max(0, ((rect.width * zoom) - rect.width) / 2);
-        var maxShiftY = Math.max(0, ((rect.height * zoom) - rect.height) / 2);
-        var clampedX = Math.min(maxShiftX, Math.max(-maxShiftX, nextX));
-        var clampedY = Math.min(maxShiftY, Math.max(-maxShiftY, nextY));
+        var bounds = getCoverRenderBounds(adminHowPreviewWrap, adminHowPreviewImage, adminHowCropState.zoom);
+        var clampedX = Math.min(bounds.maxShiftX, Math.max(-bounds.maxShiftX, nextX));
+        var clampedY = Math.min(bounds.maxShiftY, Math.max(-bounds.maxShiftY, nextY));
 
         return {
             x: clampedX,
@@ -1288,12 +1313,15 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         var zoomValue = Math.max(1, Number(adminHowCropState.zoom || 1));
+        var bounds = getCoverRenderBounds(adminHowPreviewWrap, adminHowPreviewImage, zoomValue);
+        var offsetScaleX = bounds.rectWidth > 0 ? (outputWidth / bounds.rectWidth) : 1;
+        var offsetScaleY = bounds.rectHeight > 0 ? (outputHeight / bounds.rectHeight) : 1;
         var scaleToCover = Math.max(outputWidth / adminHowPreviewImage.naturalWidth, outputHeight / adminHowPreviewImage.naturalHeight);
         var scale = scaleToCover * zoomValue;
         var drawWidth = adminHowPreviewImage.naturalWidth * scale;
         var drawHeight = adminHowPreviewImage.naturalHeight * scale;
-        var drawX = ((outputWidth - drawWidth) / 2) + adminHowCropState.offsetX;
-        var drawY = ((outputHeight - drawHeight) / 2) + adminHowCropState.offsetY;
+        var drawX = ((outputWidth - drawWidth) / 2) + (adminHowCropState.offsetX * offsetScaleX);
+        var drawY = ((outputHeight - drawHeight) / 2) + (adminHowCropState.offsetY * offsetScaleY);
 
         ctx.clearRect(0, 0, outputWidth, outputHeight);
         ctx.drawImage(adminHowPreviewImage, drawX, drawY, drawWidth, drawHeight);
@@ -2002,12 +2030,9 @@ document.addEventListener("DOMContentLoaded", function () {
             return { x: nextX, y: nextY };
         }
 
-        var rect = adminPromoPreviewWrap.getBoundingClientRect();
-        var zoom = Math.max(1, adminPromoCropState.zoom);
-        var maxShiftX = Math.max(0, ((rect.width * zoom) - rect.width) / 2);
-        var maxShiftY = Math.max(0, ((rect.height * zoom) - rect.height) / 2);
-        var clampedX = Math.min(maxShiftX, Math.max(-maxShiftX, nextX));
-        var clampedY = Math.min(maxShiftY, Math.max(-maxShiftY, nextY));
+        var bounds = getCoverRenderBounds(adminPromoPreviewWrap, adminPromoPreviewImage, adminPromoCropState.zoom);
+        var clampedX = Math.min(bounds.maxShiftX, Math.max(-bounds.maxShiftX, nextX));
+        var clampedY = Math.min(bounds.maxShiftY, Math.max(-bounds.maxShiftY, nextY));
 
         return {
             x: clampedX,
@@ -2054,12 +2079,15 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         var zoomValue = Math.max(1, Number(adminPromoCropState.zoom || 1));
+        var bounds = getCoverRenderBounds(adminPromoPreviewWrap, adminPromoPreviewImage, zoomValue);
+        var offsetScaleX = bounds.rectWidth > 0 ? (outputWidth / bounds.rectWidth) : 1;
+        var offsetScaleY = bounds.rectHeight > 0 ? (outputHeight / bounds.rectHeight) : 1;
         var scaleToCover = Math.max(outputWidth / adminPromoPreviewImage.naturalWidth, outputHeight / adminPromoPreviewImage.naturalHeight);
         var scale = scaleToCover * zoomValue;
         var drawWidth = adminPromoPreviewImage.naturalWidth * scale;
         var drawHeight = adminPromoPreviewImage.naturalHeight * scale;
-        var drawX = ((outputWidth - drawWidth) / 2) + adminPromoCropState.offsetX;
-        var drawY = ((outputHeight - drawHeight) / 2) + adminPromoCropState.offsetY;
+        var drawX = ((outputWidth - drawWidth) / 2) + (adminPromoCropState.offsetX * offsetScaleX);
+        var drawY = ((outputHeight - drawHeight) / 2) + (adminPromoCropState.offsetY * offsetScaleY);
 
         ctx.clearRect(0, 0, outputWidth, outputHeight);
         ctx.drawImage(adminPromoPreviewImage, drawX, drawY, drawWidth, drawHeight);
