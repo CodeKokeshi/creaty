@@ -32,18 +32,27 @@ if ($slot < 1) {
     exit;
 }
 
-$projectRoot = dirname(__DIR__, 2);
-
-try {
-    $result = archive_promo_banner_image($slot, $projectRoot);
-} catch (Throwable $error) {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'message' => $error->getMessage()]);
+$imageDataUrl = trim((string) ($payload['imageDataUrl'] ?? ''));
+if ($imageDataUrl === '') {
+    http_response_code(422);
+    echo json_encode(['ok' => false, 'message' => 'Image data is required']);
     exit;
 }
 
-echo json_encode([
-    'ok' => true,
-    'slot' => $slot,
-    'archivedEntry' => $result['archivedEntry']
-]);
+$projectRoot = dirname(__DIR__, 2);
+
+try {
+    $targetPath = save_promo_banner_image_from_data_url($slot, $imageDataUrl, $projectRoot);
+
+    echo json_encode([
+        'ok' => true,
+        'slot' => $slot,
+        'targetPath' => $targetPath
+    ]);
+} catch (Throwable $error) {
+    http_response_code(500);
+    echo json_encode([
+        'ok' => false,
+        'message' => $error->getMessage()
+    ]);
+}

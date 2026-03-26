@@ -624,6 +624,39 @@ button {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(17, 18, 20, 0.24));
 }
 
+.promo-slide-admin-add {
+    padding: 0.5rem;
+}
+
+.promo-admin-add-trigger {
+    width: 100%;
+    height: 100%;
+    border: 2px dashed rgba(255, 255, 255, 0.32);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    color: #d9dde4;
+    display: grid;
+    place-content: center;
+    gap: 0.24rem;
+    font-size: 0.98rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.promo-admin-add-trigger:hover,
+.promo-admin-add-trigger:focus-visible {
+    border-color: rgba(221, 229, 49, 0.72);
+    background: rgba(221, 229, 49, 0.08);
+    transform: translateY(-1px);
+}
+
+.promo-admin-add-plus {
+    font-size: 1.9rem;
+    line-height: 1;
+}
+
 .promo-image {
     width: 100%;
     height: 100%;
@@ -1073,6 +1106,10 @@ button {
 
 .admin-how-edit-modal .admin-edit-image-preview {
     aspect-ratio: 3 / 2;
+}
+
+.admin-promo-edit-modal .admin-edit-image-preview {
+    aspect-ratio: 3 / 1;
 }
 
 .admin-edit-image-preview.is-crop-active {

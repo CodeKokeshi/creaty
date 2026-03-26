@@ -47,21 +47,45 @@ for ($slot = 1; $slot <= 4; $slot++) {
 }
 
 $promoBannerSlots = [];
-for ($slot = 1; $slot <= 3; $slot++) {
-    $filename = str_pad((string) $slot, 4, '0', STR_PAD_LEFT) . '.png';
-    $relativePath = 'assets/promo_images/' . $filename;
-    $absolutePath = __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+$promoBannerDir = __DIR__ . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'promo_images';
 
-    $promoBannerSlots[] = [
-        'slot' => $slot,
-        'relativePath' => $relativePath,
-        'exists' => is_file($absolutePath)
-    ];
+if (is_dir($promoBannerDir)) {
+    $promoBannerEntries = scandir($promoBannerDir);
+
+    if (is_array($promoBannerEntries)) {
+        foreach ($promoBannerEntries as $entry) {
+            if (!is_string($entry)) {
+                continue;
+            }
+
+            if (!preg_match('/^(\d+)\.png$/i', $entry, $matches)) {
+                continue;
+            }
+
+            $slot = (int) ($matches[1] ?? 0);
+            if ($slot < 1) {
+                continue;
+            }
+
+            $promoBannerSlots[] = [
+                'slot' => $slot,
+                'relativePath' => 'assets/promo_images/' . $entry,
+                'exists' => true
+            ];
+        }
+    }
 }
 
-$activePromoBannerSlots = array_values(array_filter($promoBannerSlots, static function ($slot) {
-    return !empty($slot['exists']);
-}));
+usort($promoBannerSlots, static function ($left, $right) {
+    $leftSlot = (int) ($left['slot'] ?? 0);
+    $rightSlot = (int) ($right['slot'] ?? 0);
+
+    return $leftSlot <=> $rightSlot;
+});
+
+$activePromoBannerSlots = $promoBannerSlots;
+$lastPromoSlot = $activePromoBannerSlots ? (int) ($activePromoBannerSlots[count($activePromoBannerSlots) - 1]['slot'] ?? 0) : 0;
+$nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
 ?>
 
 <!DOCTYPE html>
@@ -177,7 +201,7 @@ $activePromoBannerSlots = array_values(array_filter($promoBannerSlots, static fu
     </header>
 
     <main class="landing-shell">
-        <section class="promo-banner promo-banner-admin reveal" aria-label="Promo carousel" data-admin-promo-banner data-admin-promo-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-image-base="<?php echo htmlspecialchars($assetBase . 'assets/promo_images/', ENT_QUOTES, 'UTF-8'); ?>">
+        <section class="promo-banner promo-banner-admin reveal" aria-label="Promo carousel" data-admin-promo-banner data-admin-promo-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-image-base="<?php echo htmlspecialchars($assetBase . 'assets/promo_images/', ENT_QUOTES, 'UTF-8'); ?>">
             <button class="step-card-admin-remove promo-banner-admin-remove" type="button" data-admin-promo-remove aria-label="Archive active promo banner">&times;</button>
             <button class="promo-arrow promo-arrow-left" type="button" aria-label="Previous promo">&#10094;</button>
 
@@ -195,11 +219,14 @@ $activePromoBannerSlots = array_values(array_filter($promoBannerSlots, static fu
                             <img class="promo-image" src="<?php echo htmlspecialchars($assetBase . $slotPath, ENT_QUOTES, 'UTF-8'); ?>" alt="Promo banner slot <?php echo htmlspecialchars((string) $slotNumber, ENT_QUOTES, 'UTF-8'); ?>">
                         </div>
                     <?php endforeach; ?>
-                <?php else: ?>
-                    <div class="promo-placeholder promo-placeholder-empty" data-promo-empty>
-                        <span>No promo banners available.</span>
-                    </div>
                 <?php endif; ?>
+
+                <div class="promo-slide promo-slide-admin-add<?php echo !$activePromoBannerSlots ? ' is-active' : ''; ?>" data-admin-promo-add-slide data-admin-promo-slot="<?php echo htmlspecialchars((string) $nextPromoBannerSlot, ENT_QUOTES, 'UTF-8'); ?>">
+                    <button class="promo-admin-add-trigger" type="button" data-admin-promo-add-trigger aria-label="Add promotion banner">
+                        <span class="promo-admin-add-plus">+</span>
+                        <span>Add Promotion Banner</span>
+                    </button>
+                </div>
             </div>
 
             <button class="promo-arrow promo-arrow-right" type="button" aria-label="Next promo">&#10095;</button>
@@ -465,7 +492,76 @@ $activePromoBannerSlots = array_values(array_filter($promoBannerSlots, static fu
         </section>
     </div>
 
+    <div class="admin-edit-modal-backdrop" data-admin-promo-edit-backdrop hidden>
+        <section class="admin-edit-modal admin-promo-edit-modal" role="dialog" aria-modal="true" aria-labelledby="admin-promo-edit-title">
+            <div class="admin-edit-modal-head">
+                <h2 id="admin-promo-edit-title">Add Promotion Banner</h2>
+                <button class="admin-edit-close" type="button" data-admin-promo-close aria-label="Close edit window">&times;</button>
+            </div>
+
+            <form class="admin-edit-form" data-admin-promo-form>
+                <div class="admin-edit-grid">
+                    <div class="admin-edit-image-column">
+                        <div class="admin-edit-image-preview" data-admin-promo-preview-wrap>
+                            <img src="" alt="Promotion banner preview" data-admin-promo-preview-img draggable="false" hidden>
+                            <div class="admin-crop-drag-badge" aria-hidden="true">
+                                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/drag_pan.svg" alt="">
+                                <span>Drag</span>
+                            </div>
+                        </div>
+
+                        <input type="file" accept="image/*" data-admin-promo-file hidden>
+
+                        <div class="admin-edit-image-actions" data-admin-promo-image-actions>
+                            <button type="button" class="admin-icon-action admin-icon-action-browse" data-admin-promo-browse aria-label="Browse" title="Browse">
+                                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/folder_open.svg" alt="">
+                            </button>
+                            <button type="button" class="admin-icon-action admin-icon-action-edit" data-admin-promo-recrop aria-label="Edit Crop" title="Edit Crop">
+                                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/crop.svg" alt="">
+                            </button>
+                        </div>
+
+                        <div class="admin-crop-workspace" data-admin-promo-crop-workspace hidden>
+                            <div class="admin-crop-controls">
+                                <label class="admin-crop-zoom-label">
+                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/zoom_in_out.svg" alt="" aria-hidden="true">
+                                    <span class="sr-only">Zoom</span>
+                                    <input type="range" min="1" max="3" step="0.01" value="1" data-admin-promo-zoom>
+                                </label>
+                            </div>
+
+                            <div class="admin-crop-actions">
+                                <button type="button" class="admin-icon-action admin-icon-action-cancel" data-admin-promo-crop-cancel aria-label="Cancel" title="Cancel">
+                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cancel.svg" alt="">
+                                </button>
+                                <button type="button" class="admin-icon-action admin-icon-action-save" data-admin-promo-crop-save aria-label="Save" title="Save">
+                                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="admin-edit-fields-column">
+                        <p class="admin-how-slot-note" data-admin-promo-slot-note>Promo slot 1 image (3:1)</p>
+                        <p class="admin-how-slot-help">Files are saved as <strong>0001.png</strong>, <strong>0002.png</strong>, and <strong>0003.png</strong>.</p>
+                    </div>
+                </div>
+
+                <div class="admin-edit-actions" data-admin-promo-main-actions>
+                    <div class="admin-edit-icon-actions">
+                        <button type="button" class="admin-icon-action admin-icon-action-cancel" data-admin-promo-cancel aria-label="Cancel" title="Cancel">
+                            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cancel.svg" alt="">
+                        </button>
+                        <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save Changes" title="Save Changes">
+                            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </section>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260326-1"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260326-2"></script>
 </body>
 </html>

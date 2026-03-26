@@ -10,7 +10,24 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminPromoRemove = document.querySelector("[data-admin-promo-remove]");
     var adminPromoArchiveEndpoint = adminPromoBanner ? (adminPromoBanner.getAttribute("data-admin-promo-archive-endpoint") || "") : "";
     var adminPromoRestoreEndpoint = adminPromoBanner ? (adminPromoBanner.getAttribute("data-admin-promo-restore-endpoint") || "") : "";
+    var adminPromoUpdateEndpoint = adminPromoBanner ? (adminPromoBanner.getAttribute("data-admin-promo-update-endpoint") || "") : "";
     var adminPromoImageBase = adminPromoBanner ? (adminPromoBanner.getAttribute("data-admin-promo-image-base") || "assets/promo_images/") : "assets/promo_images/";
+    var adminPromoEditBackdrop = document.querySelector("[data-admin-promo-edit-backdrop]");
+    var adminPromoForm = document.querySelector("[data-admin-promo-form]");
+    var adminPromoClose = document.querySelector("[data-admin-promo-close]");
+    var adminPromoCancel = document.querySelector("[data-admin-promo-cancel]");
+    var adminPromoBrowse = document.querySelector("[data-admin-promo-browse]");
+    var adminPromoRecrop = document.querySelector("[data-admin-promo-recrop]");
+    var adminPromoImageActions = document.querySelector("[data-admin-promo-image-actions]");
+    var adminPromoMainActions = document.querySelector("[data-admin-promo-main-actions]");
+    var adminPromoCropWorkspace = document.querySelector("[data-admin-promo-crop-workspace]");
+    var adminPromoCropCancel = document.querySelector("[data-admin-promo-crop-cancel]");
+    var adminPromoCropSave = document.querySelector("[data-admin-promo-crop-save]");
+    var adminPromoFileInput = document.querySelector("[data-admin-promo-file]");
+    var adminPromoPreviewWrap = document.querySelector("[data-admin-promo-preview-wrap]");
+    var adminPromoPreviewImage = document.querySelector("[data-admin-promo-preview-img]");
+    var adminPromoZoom = document.querySelector("[data-admin-promo-zoom]");
+    var adminPromoSlotNote = document.querySelector("[data-admin-promo-slot-note]");
     var promoIndex = 0;
     var promoTimer = null;
     var promoDelay = 3000;
@@ -108,6 +125,25 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminHowAspect = {
         width: 3,
         height: 2
+    };
+    var activeAdminPromoSlot = "";
+    var adminPromoCropState = {
+        zoom: 1,
+        offsetX: 0,
+        offsetY: 0,
+        isCropping: false,
+        isDragging: false,
+        dragPointerId: null,
+        dragStartClientX: 0,
+        dragStartClientY: 0,
+        dragStartOffsetX: 0,
+        dragStartOffsetY: 0,
+        sourceImage: "",
+        previewBeforeCrop: ""
+    };
+    var adminPromoAspect = {
+        width: 3,
+        height: 1
     };
     var adminUndoState = {
         timerId: null,
@@ -1689,11 +1725,51 @@ document.addEventListener("DOMContentLoaded", function () {
         updateAdminHowRecropState();
     }
 
+    function getPromoSlides() {
+        return promoBanner ? promoBanner.querySelectorAll(".promo-slide") : [];
+    }
+
+    function getPromoImageSlides() {
+        return promoBanner ? promoBanner.querySelectorAll(".promo-slide[data-promo-slot]") : [];
+    }
+
+    function getPromoAddSlide() {
+        return promoBanner ? promoBanner.querySelector("[data-admin-promo-add-slide]") : null;
+    }
+
+    function getActivePromoSlide() {
+        if (!promoBanner) {
+            return null;
+        }
+
+        var activeSlide = promoBanner.querySelector(".promo-slide.is-active");
+        if (activeSlide) {
+            return activeSlide;
+        }
+
+        var promoSlides = getPromoSlides();
+
+        return promoSlides.length ? promoSlides[0] : null;
+    }
+
+    function syncAdminPromoRemoveState() {
+        if (!adminPromoRemove) {
+            return;
+        }
+
+        var activeSlide = getActivePromoSlide();
+        var hasImageSlides = getPromoImageSlides().length > 0;
+        var activeHasSlot = !!(activeSlide && String(activeSlide.getAttribute("data-promo-slot") || "").trim());
+
+        adminPromoRemove.disabled = !hasImageSlides || !activeHasSlot;
+    }
+
     function showPromoSlide(nextIndex) {
-        var promoSlides = promoBanner ? promoBanner.querySelectorAll(".promo-slide") : [];
+        var promoSlides = getPromoSlides();
 
         if (!promoSlides.length) {
             promoIndex = 0;
+            syncAdminPromoRemoveState();
             return;
         }
 
@@ -1705,10 +1781,12 @@ document.addEventListener("DOMContentLoaded", function () {
             slide.classList.toggle("is-active", isActive);
             slide.setAttribute("aria-hidden", isActive ? "false" : "true");
         });
+
+        syncAdminPromoRemoveState();
     }
 
     function startPromoTimer() {
-        var promoSlides = promoBanner ? promoBanner.querySelectorAll(".promo-slide") : [];
+        var promoSlides = getPromoSlides();
 
         if (promoSlides.length < 2) {
             return;
@@ -1725,8 +1803,39 @@ document.addEventListener("DOMContentLoaded", function () {
         promoTimer = null;
     }
 
+    function getNextAvailablePromoSlot() {
+        var slots = [];
+
+        Array.prototype.forEach.call(getPromoImageSlides(), function (slide) {
+            var value = Number.parseInt(slide.getAttribute("data-promo-slot") || "0", 10);
+
+            if (Number.isFinite(value) && value >= 1) {
+                slots.push(value);
+            }
+        });
+
+        if (!slots.length) {
+            return 1;
+        }
+
+        return Math.max.apply(null, slots) + 1;
+    }
+
+    function updatePromoAddSlideSlot() {
+        var addSlide = getPromoAddSlide();
+
+        if (!addSlide) {
+            return;
+        }
+
+        var nextSlot = getNextAvailablePromoSlot();
+
+        addSlide.setAttribute("data-admin-promo-slot", String(nextSlot));
+    }
+
     function updatePromoControls() {
-        var promoSlides = promoBanner ? promoBanner.querySelectorAll(".promo-slide") : [];
+        var promoSlides = getPromoSlides();
+        var imageSlides = getPromoImageSlides();
         var hasSlides = promoSlides.length > 0;
         var isSingleSlide = promoSlides.length <= 1;
 
@@ -1738,11 +1847,8 @@ document.addEventListener("DOMContentLoaded", function () {
             promoNext.hidden = isSingleSlide;
         }
 
-        if (adminPromoRemove) {
-            adminPromoRemove.disabled = !hasSlides;
-        }
-
         if (!promoCarousel) {
+            syncAdminPromoRemoveState();
             return;
         }
 
@@ -1751,7 +1857,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!hasSlides) {
             stopPromoTimer();
 
-            if (!emptyNode) {
+            if (!adminPromoBanner && !emptyNode) {
                 emptyNode = document.createElement("div");
                 emptyNode.className = "promo-placeholder promo-placeholder-empty";
                 emptyNode.setAttribute("data-promo-empty", "true");
@@ -1759,11 +1865,24 @@ document.addEventListener("DOMContentLoaded", function () {
                 promoCarousel.appendChild(emptyNode);
             }
 
+            syncAdminPromoRemoveState();
             return;
         }
 
         if (emptyNode) {
             emptyNode.remove();
+        }
+
+        if (adminPromoBanner && !imageSlides.length) {
+            var addSlide = getPromoAddSlide();
+            var slidesArray = Array.prototype.slice.call(getPromoSlides());
+            var addSlideIndex = addSlide ? slidesArray.indexOf(addSlide) : -1;
+
+            if (addSlideIndex >= 0) {
+                showPromoSlide(addSlideIndex);
+            }
+        } else {
+            syncAdminPromoRemoveState();
         }
     }
 
@@ -1791,21 +1910,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return "promo-slide-three";
     }
 
-    function getActivePromoSlide() {
-        if (!promoBanner) {
-            return null;
-        }
-
-        var activeSlide = promoBanner.querySelector(".promo-slide.is-active");
-        if (activeSlide) {
-            return activeSlide;
-        }
-
-        var promoSlides = promoBanner.querySelectorAll(".promo-slide");
-
-        return promoSlides.length ? promoSlides[0] : null;
-    }
-
     function insertPromoSlideSorted(slideElement) {
         if (!promoCarousel || !slideElement) {
             return;
@@ -1814,6 +1918,12 @@ document.addEventListener("DOMContentLoaded", function () {
         var slotValue = Number.parseInt(slideElement.getAttribute("data-promo-slot") || "0", 10);
         var promoSlides = Array.prototype.slice.call(promoCarousel.querySelectorAll(".promo-slide"));
         var inserted = false;
+
+        var addSlide = getPromoAddSlide();
+        if (addSlide && addSlide !== slideElement) {
+            promoCarousel.insertBefore(slideElement, addSlide);
+            inserted = true;
+        }
 
         promoSlides.forEach(function (existingSlide) {
             if (inserted) {
@@ -1833,6 +1943,181 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function setAdminPromoPreviewSource(source) {
+        if (!adminPromoPreviewImage) {
+            return;
+        }
+
+        var nextSource = String(source || "").trim();
+
+        if (!nextSource) {
+            adminPromoPreviewImage.hidden = true;
+            adminPromoPreviewImage.removeAttribute("src");
+            return;
+        }
+
+        adminPromoPreviewImage.hidden = false;
+        adminPromoPreviewImage.src = nextSource;
+    }
+
+    function syncAdminPromoPreviewTransform() {
+        if (!adminPromoPreviewWrap || !adminPromoPreviewImage || !adminPromoZoom) {
+            return;
+        }
+
+        adminPromoPreviewWrap.style.setProperty("--admin-crop-zoom", String(adminPromoCropState.zoom));
+        adminPromoPreviewWrap.style.setProperty("--admin-crop-x", String(adminPromoCropState.offsetX) + "px");
+        adminPromoPreviewWrap.style.setProperty("--admin-crop-y", String(adminPromoCropState.offsetY) + "px");
+        adminPromoPreviewWrap.classList.toggle("is-crop-active", adminPromoCropState.isCropping);
+    }
+
+    function setAdminPromoCropWorkspaceVisible(isVisible) {
+        adminPromoCropState.isCropping = isVisible;
+
+        if (adminPromoCropWorkspace) {
+            adminPromoCropWorkspace.hidden = !isVisible;
+        }
+
+        if (adminPromoImageActions) {
+            adminPromoImageActions.hidden = isVisible;
+
+            Array.prototype.forEach.call(adminPromoImageActions.querySelectorAll("button"), function (button) {
+                button.disabled = isVisible;
+            });
+        }
+
+        if (adminPromoMainActions) {
+            adminPromoMainActions.hidden = isVisible;
+
+            Array.prototype.forEach.call(adminPromoMainActions.querySelectorAll("button"), function (button) {
+                button.disabled = isVisible;
+            });
+        }
+
+        syncAdminPromoPreviewTransform();
+    }
+
+    function clampAdminPromoCropOffsets(nextX, nextY) {
+        if (!adminPromoPreviewWrap || !adminPromoPreviewImage) {
+            return { x: nextX, y: nextY };
+        }
+
+        var rect = adminPromoPreviewWrap.getBoundingClientRect();
+        var zoom = Math.max(1, adminPromoCropState.zoom);
+        var maxShiftX = Math.max(0, ((rect.width * zoom) - rect.width) / 2);
+        var maxShiftY = Math.max(0, ((rect.height * zoom) - rect.height) / 2);
+        var clampedX = Math.min(maxShiftX, Math.max(-maxShiftX, nextX));
+        var clampedY = Math.min(maxShiftY, Math.max(-maxShiftY, nextY));
+
+        return {
+            x: clampedX,
+            y: clampedY
+        };
+    }
+
+    function resetAdminPromoCropState() {
+        adminPromoCropState.zoom = 1;
+        adminPromoCropState.offsetX = 0;
+        adminPromoCropState.offsetY = 0;
+        adminPromoCropState.isDragging = false;
+        adminPromoCropState.dragPointerId = null;
+
+        if (adminPromoZoom) {
+            adminPromoZoom.value = "1";
+        }
+
+        syncAdminPromoPreviewTransform();
+    }
+
+    function updateAdminPromoRecropState() {
+        if (!adminPromoRecrop || !adminPromoPreviewImage) {
+            return;
+        }
+
+        adminPromoRecrop.disabled = adminPromoPreviewImage.hidden || !adminPromoPreviewImage.src;
+    }
+
+    function buildAdminPromoCropDataUrlFromPreview() {
+        if (!adminPromoPreviewImage || adminPromoPreviewImage.hidden || !adminPromoPreviewImage.src || !adminPromoPreviewImage.naturalWidth || !adminPromoPreviewImage.naturalHeight) {
+            return null;
+        }
+
+        var outputWidth = 1500;
+        var outputHeight = Math.round(outputWidth * (adminPromoAspect.height / adminPromoAspect.width));
+        var canvas = document.createElement("canvas");
+        canvas.width = outputWidth;
+        canvas.height = outputHeight;
+
+        var ctx = canvas.getContext("2d");
+        if (!ctx) {
+            return null;
+        }
+
+        var zoomValue = Math.max(1, Number(adminPromoCropState.zoom || 1));
+        var scaleToCover = Math.max(outputWidth / adminPromoPreviewImage.naturalWidth, outputHeight / adminPromoPreviewImage.naturalHeight);
+        var scale = scaleToCover * zoomValue;
+        var drawWidth = adminPromoPreviewImage.naturalWidth * scale;
+        var drawHeight = adminPromoPreviewImage.naturalHeight * scale;
+        var drawX = ((outputWidth - drawWidth) / 2) + adminPromoCropState.offsetX;
+        var drawY = ((outputHeight - drawHeight) / 2) + adminPromoCropState.offsetY;
+
+        ctx.clearRect(0, 0, outputWidth, outputHeight);
+        ctx.drawImage(adminPromoPreviewImage, drawX, drawY, drawWidth, drawHeight);
+
+        return canvas.toDataURL("image/png");
+    }
+
+    function closeAdminPromoEditModal() {
+        if (!adminPromoEditBackdrop) {
+            return;
+        }
+
+        setAdminPromoCropWorkspaceVisible(false);
+        resetAdminPromoCropState();
+        adminPromoCropState.previewBeforeCrop = "";
+        adminPromoCropState.sourceImage = "";
+
+        if (adminPromoFileInput) {
+            adminPromoFileInput.value = "";
+        }
+
+        setAdminPromoPreviewSource("");
+        updateAdminPromoRecropState();
+        activeAdminPromoSlot = "";
+        adminPromoEditBackdrop.hidden = true;
+        document.body.classList.remove("admin-modal-open");
+    }
+
+    function openAdminPromoEditModal(slot) {
+        if (!adminPromoEditBackdrop || !adminPromoForm) {
+            return;
+        }
+
+        activeAdminPromoSlot = String(slot || "").trim();
+        if (!activeAdminPromoSlot) {
+            return;
+        }
+
+        if (adminPromoSlotNote) {
+            adminPromoSlotNote.textContent = "Promo slot " + activeAdminPromoSlot + " image (3:1)";
+        }
+
+        setAdminPromoPreviewSource("");
+        updateAdminPromoRecropState();
+
+        if (adminPromoFileInput) {
+            adminPromoFileInput.value = "";
+        }
+
+        adminPromoCropState.previewBeforeCrop = "";
+        adminPromoCropState.sourceImage = "";
+        resetAdminPromoCropState();
+        setAdminPromoCropWorkspaceVisible(false);
+
+        adminPromoEditBackdrop.hidden = false;
+        document.body.classList.add("admin-modal-open");
+    }
+
     if (adminPromoBanner && adminPromoRemove) {
         adminPromoRemove.addEventListener("click", function () {
             if (!adminPromoArchiveEndpoint) {
@@ -1848,7 +2133,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var slotValue = (activeSlide.getAttribute("data-promo-slot") || "").trim();
             var slotNumber = Number.parseInt(slotValue, 10);
 
-            if (!slotValue || !Number.isFinite(slotNumber) || slotNumber < 1 || slotNumber > 3) {
+            if (!slotValue || !Number.isFinite(slotNumber) || slotNumber < 1) {
                 return;
             }
 
@@ -1886,7 +2171,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     activeSlide.remove();
 
-                    var promoSlides = promoBanner ? promoBanner.querySelectorAll(".promo-slide") : [];
+                    updatePromoAddSlideSlot();
+
+                    var promoSlides = getPromoSlides();
                     if (promoSlides.length) {
                         showPromoSlide(Math.min(promoIndex, promoSlides.length - 1));
                         stopPromoTimer();
@@ -1918,8 +2205,9 @@ document.addEventListener("DOMContentLoaded", function () {
                                     slide.innerHTML = '<img class="promo-image" src="' + restoredSource + '" alt="Promo banner slot ' + restoredSlot + '">';
 
                                     insertPromoSlideSorted(slide);
+                                    updatePromoAddSlideSlot();
 
-                                    var slidesAfterRestore = promoBanner ? Array.prototype.slice.call(promoBanner.querySelectorAll(".promo-slide")) : [];
+                                    var slidesAfterRestore = Array.prototype.slice.call(getPromoSlides());
                                     var restoredIndex = slidesAfterRestore.indexOf(slide);
 
                                     updatePromoControls();
@@ -1937,6 +2225,301 @@ document.addEventListener("DOMContentLoaded", function () {
                     adminPromoBanner.classList.remove("is-admin-busy");
                     updatePromoControls();
                     window.alert(error.message || "Unable to archive promo banner.");
+                });
+        });
+    }
+
+    if (promoCarousel) {
+        promoCarousel.addEventListener("click", function (event) {
+            var addButton = event.target.closest("[data-admin-promo-add-trigger]");
+
+            if (!addButton) {
+                return;
+            }
+
+            var addSlide = addButton.closest("[data-admin-promo-add-slide]");
+            var slot = addSlide ? (addSlide.getAttribute("data-admin-promo-slot") || "") : "";
+
+            openAdminPromoEditModal(slot);
+        });
+    }
+
+    if (adminPromoZoom) {
+        adminPromoZoom.addEventListener("input", function () {
+            adminPromoCropState.zoom = Number.parseFloat(adminPromoZoom.value) || 1;
+            var clamped = clampAdminPromoCropOffsets(adminPromoCropState.offsetX, adminPromoCropState.offsetY);
+            adminPromoCropState.offsetX = clamped.x;
+            adminPromoCropState.offsetY = clamped.y;
+            syncAdminPromoPreviewTransform();
+        });
+    }
+
+    if (adminPromoBrowse && adminPromoFileInput) {
+        adminPromoBrowse.addEventListener("click", function () {
+            adminPromoFileInput.click();
+        });
+    }
+
+    if (adminPromoRecrop && adminPromoPreviewImage) {
+        adminPromoRecrop.addEventListener("click", function () {
+            if (adminPromoPreviewImage.hidden || !adminPromoPreviewImage.src) {
+                return;
+            }
+
+            adminPromoCropState.previewBeforeCrop = adminPromoPreviewImage.src;
+            adminPromoCropState.sourceImage = adminPromoPreviewImage.src;
+            resetAdminPromoCropState();
+            setAdminPromoCropWorkspaceVisible(true);
+            syncAdminPromoPreviewTransform();
+        });
+    }
+
+    if (adminPromoFileInput && adminPromoPreviewImage) {
+        adminPromoPreviewImage.addEventListener("dragstart", function (event) {
+            event.preventDefault();
+        });
+
+        adminPromoFileInput.addEventListener("change", function () {
+            var file = adminPromoFileInput.files && adminPromoFileInput.files[0] ? adminPromoFileInput.files[0] : null;
+
+            if (!file) {
+                return;
+            }
+
+            var reader = new FileReader();
+            reader.onload = function (loadEvent) {
+                adminPromoCropState.previewBeforeCrop = adminPromoPreviewImage.hidden ? "" : (adminPromoPreviewImage.src || "");
+                adminPromoCropState.sourceImage = String(loadEvent.target && loadEvent.target.result ? loadEvent.target.result : "");
+                setAdminPromoPreviewSource(adminPromoCropState.sourceImage);
+                updateAdminPromoRecropState();
+                resetAdminPromoCropState();
+                setAdminPromoCropWorkspaceVisible(true);
+                syncAdminPromoPreviewTransform();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (adminPromoPreviewWrap) {
+        adminPromoPreviewWrap.addEventListener("wheel", function (event) {
+            if (!adminPromoCropState.isCropping || !adminPromoZoom) {
+                return;
+            }
+
+            event.preventDefault();
+
+            var minZoom = Number.parseFloat(adminPromoZoom.min || "1");
+            var maxZoom = Number.parseFloat(adminPromoZoom.max || "3");
+            var stepZoom = Number.parseFloat(adminPromoZoom.step || "0.01");
+            var direction = event.deltaY < 0 ? 1 : -1;
+            var nextZoom = adminPromoCropState.zoom + (direction * (stepZoom * 5));
+
+            nextZoom = Math.min(maxZoom, Math.max(minZoom, nextZoom));
+            nextZoom = Math.round(nextZoom * 100) / 100;
+
+            adminPromoCropState.zoom = nextZoom;
+            adminPromoZoom.value = String(nextZoom);
+
+            var clamped = clampAdminPromoCropOffsets(adminPromoCropState.offsetX, adminPromoCropState.offsetY);
+            adminPromoCropState.offsetX = clamped.x;
+            adminPromoCropState.offsetY = clamped.y;
+            syncAdminPromoPreviewTransform();
+        }, { passive: false });
+
+        adminPromoPreviewWrap.addEventListener("pointerdown", function (event) {
+            if (!adminPromoCropState.isCropping || event.button !== 0) {
+                return;
+            }
+
+            event.preventDefault();
+
+            adminPromoCropState.isDragging = true;
+            adminPromoCropState.dragPointerId = event.pointerId;
+            adminPromoCropState.dragStartClientX = event.clientX;
+            adminPromoCropState.dragStartClientY = event.clientY;
+            adminPromoCropState.dragStartOffsetX = adminPromoCropState.offsetX;
+            adminPromoCropState.dragStartOffsetY = adminPromoCropState.offsetY;
+            adminPromoPreviewWrap.setPointerCapture(event.pointerId);
+        });
+
+        adminPromoPreviewWrap.addEventListener("pointermove", function (event) {
+            if (!adminPromoCropState.isCropping || !adminPromoCropState.isDragging || adminPromoCropState.dragPointerId !== event.pointerId) {
+                return;
+            }
+
+            var nextX = adminPromoCropState.dragStartOffsetX + (event.clientX - adminPromoCropState.dragStartClientX);
+            var nextY = adminPromoCropState.dragStartOffsetY + (event.clientY - adminPromoCropState.dragStartClientY);
+            var clamped = clampAdminPromoCropOffsets(nextX, nextY);
+            adminPromoCropState.offsetX = clamped.x;
+            adminPromoCropState.offsetY = clamped.y;
+            syncAdminPromoPreviewTransform();
+        });
+
+        function stopAdminPromoCropDrag(event) {
+            if (!adminPromoCropState.isDragging || adminPromoCropState.dragPointerId !== event.pointerId) {
+                return;
+            }
+
+            adminPromoCropState.isDragging = false;
+            adminPromoCropState.dragPointerId = null;
+            adminPromoPreviewWrap.releasePointerCapture(event.pointerId);
+        }
+
+        adminPromoPreviewWrap.addEventListener("pointerup", stopAdminPromoCropDrag);
+        adminPromoPreviewWrap.addEventListener("pointercancel", stopAdminPromoCropDrag);
+    }
+
+    if (adminPromoCropCancel && adminPromoPreviewImage) {
+        adminPromoCropCancel.addEventListener("click", function () {
+            setAdminPromoPreviewSource(adminPromoCropState.previewBeforeCrop || "");
+            updateAdminPromoRecropState();
+            adminPromoCropState.sourceImage = "";
+            resetAdminPromoCropState();
+            setAdminPromoCropWorkspaceVisible(false);
+        });
+    }
+
+    if (adminPromoCropSave && adminPromoPreviewImage) {
+        adminPromoCropSave.addEventListener("click", function () {
+            var croppedDataUrl = buildAdminPromoCropDataUrlFromPreview();
+
+            if (!croppedDataUrl) {
+                return;
+            }
+
+            setAdminPromoPreviewSource(croppedDataUrl);
+            adminPromoCropState.previewBeforeCrop = croppedDataUrl;
+            adminPromoCropState.sourceImage = "";
+            updateAdminPromoRecropState();
+            resetAdminPromoCropState();
+            setAdminPromoCropWorkspaceVisible(false);
+        });
+    }
+
+    if (adminPromoClose) {
+        adminPromoClose.addEventListener("click", closeAdminPromoEditModal);
+    }
+
+    if (adminPromoCancel) {
+        adminPromoCancel.addEventListener("click", closeAdminPromoEditModal);
+    }
+
+    if (adminPromoEditBackdrop) {
+        adminPromoEditBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminPromoEditBackdrop) {
+                closeAdminPromoEditModal();
+            }
+        });
+    }
+
+    if (adminPromoForm) {
+        adminPromoForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            if (!activeAdminPromoSlot || !adminPromoUpdateEndpoint) {
+                return;
+            }
+
+            var finalPreviewSrc = adminPromoPreviewImage && !adminPromoPreviewImage.hidden ? adminPromoPreviewImage.src : "";
+
+            if (adminPromoCropState.isCropping) {
+                var autoCroppedDataUrl = buildAdminPromoCropDataUrlFromPreview();
+
+                if (autoCroppedDataUrl) {
+                    finalPreviewSrc = autoCroppedDataUrl;
+                    setAdminPromoPreviewSource(autoCroppedDataUrl);
+                    adminPromoCropState.previewBeforeCrop = autoCroppedDataUrl;
+                }
+
+                adminPromoCropState.sourceImage = "";
+                resetAdminPromoCropState();
+                setAdminPromoCropWorkspaceVisible(false);
+            }
+
+            if (!finalPreviewSrc) {
+                window.alert("Please add an image first.");
+                return;
+            }
+
+            var submitButton = adminPromoForm.querySelector('button[type="submit"]');
+            var previousSubmitTitle = submitButton ? submitButton.getAttribute("title") : "";
+
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.setAttribute("title", "Saving...");
+            }
+
+            fetch(adminPromoUpdateEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    slot: Number.parseInt(activeAdminPromoSlot, 10),
+                    imageDataUrl: finalPreviewSrc
+                })
+            })
+                .then(function (response) {
+                    return response.json().then(function (payload) {
+                        return {
+                            ok: response.ok,
+                            payload: payload
+                        };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.payload || !result.payload.ok) {
+                        var message = result.payload && result.payload.message ? result.payload.message : "Unable to save promo banner.";
+                        throw new Error(message);
+                    }
+
+                    var savedSlot = result.payload && result.payload.slot ? String(result.payload.slot) : activeAdminPromoSlot;
+                    var savedFilename = buildPromoSlotFilename(savedSlot);
+                    var savedSource = adminPromoImageBase + savedFilename + "?t=" + String(Date.now());
+                    var existingSlide = promoBanner ? promoBanner.querySelector('.promo-slide[data-promo-slot="' + savedSlot + '"]') : null;
+                    var savedSlide = existingSlide;
+
+                    if (!savedSlide) {
+                        savedSlide = document.createElement("div");
+                        savedSlide.className = "promo-slide " + buildPromoSlideClass(savedSlot);
+                        savedSlide.setAttribute("data-promo-slot", savedSlot);
+                        savedSlide.innerHTML = '<img class="promo-image" src="' + savedSource + '" alt="Promo banner slot ' + savedSlot + '">';
+                        insertPromoSlideSorted(savedSlide);
+                    } else {
+                        var image = savedSlide.querySelector(".promo-image");
+
+                        if (!image) {
+                            savedSlide.innerHTML = '<img class="promo-image" src="' + savedSource + '" alt="Promo banner slot ' + savedSlot + '">';
+                        } else {
+                            image.src = savedSource;
+                            image.alt = "Promo banner slot " + savedSlot;
+                        }
+                    }
+
+                    updatePromoAddSlideSlot();
+
+                    var slidesAfterSave = Array.prototype.slice.call(getPromoSlides());
+                    var savedIndex = slidesAfterSave.indexOf(savedSlide);
+
+                    updatePromoControls();
+                    showPromoSlide(savedIndex >= 0 ? savedIndex : 0);
+                    stopPromoTimer();
+                    startPromoTimer();
+
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.setAttribute("title", previousSubmitTitle || "Save Changes");
+                    }
+
+                    closeAdminPromoEditModal();
+                })
+                .catch(function (error) {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.setAttribute("title", previousSubmitTitle || "Save Changes");
+                    }
+
+                    window.alert(error.message || "Unable to save promo banner.");
                 });
         });
     }
@@ -2481,14 +3064,15 @@ document.addEventListener("DOMContentLoaded", function () {
         };
     }
 
+    updatePromoAddSlideSlot();
     updatePromoControls();
 
     if (promoBanner) {
-        var promoSlides = promoBanner.querySelectorAll(".promo-slide");
+        var promoSlides = getPromoSlides();
 
         if (promoSlides.length) {
-        showPromoSlide(0);
-        startPromoTimer();
+            showPromoSlide(0);
+            startPromoTimer();
         }
 
         if (promoPrev) {

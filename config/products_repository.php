@@ -833,8 +833,8 @@ function save_archived_promo_banners_repository($archivedItems)
 function archive_promo_banner_image($slot, $projectRoot)
 {
     $slotNumber = (int) $slot;
-    if ($slotNumber < 1 || $slotNumber > 3) {
-        throw new RuntimeException('Slot must be between 1 and 3.');
+    if ($slotNumber < 1) {
+        throw new RuntimeException('Slot must be 1 or greater.');
     }
 
     $slotFilename = str_pad((string) $slotNumber, 4, '0', STR_PAD_LEFT) . '.png';
@@ -915,7 +915,7 @@ function restore_archived_promo_banner_image($archiveKey, $projectRoot)
 
     $entry = $archivedItems[$matchIndex];
     $slotNumber = (int) ($entry['slot'] ?? 0);
-    if ($slotNumber < 1 || $slotNumber > 3) {
+    if ($slotNumber < 1) {
         throw new RuntimeException('Archived promo slot is invalid.');
     }
 
@@ -952,4 +952,39 @@ function restore_archived_promo_banner_image($archiveKey, $projectRoot)
         'targetPath' => $targetRelativePath,
         'archivedItems' => array_values($archivedItems)
     ];
+}
+
+function save_promo_banner_image_from_data_url($slot, $dataUrl, $projectRoot)
+{
+    $slotNumber = (int) $slot;
+    if ($slotNumber < 1) {
+        throw new RuntimeException('Slot must be 1 or greater.');
+    }
+
+    $value = (string) $dataUrl;
+    if (!preg_match('/^data:image\/png;base64,(.+)$/i', $value, $matches)) {
+        throw new RuntimeException('Invalid image payload.');
+    }
+
+    $binary = base64_decode($matches[1], true);
+    if ($binary === false) {
+        throw new RuntimeException('Invalid base64 image payload.');
+    }
+
+    $targetDirRelative = 'assets/promo_images';
+    $targetDirAbsolute = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $targetDirRelative);
+
+    if (!is_dir($targetDirAbsolute) && !mkdir($targetDirAbsolute, 0777, true) && !is_dir($targetDirAbsolute)) {
+        throw new RuntimeException('Target promo image directory is missing.');
+    }
+
+    $slotFilename = str_pad((string) $slotNumber, 4, '0', STR_PAD_LEFT) . '.png';
+    $targetRelativePath = $targetDirRelative . '/' . $slotFilename;
+    $targetAbsolutePath = $targetDirAbsolute . DIRECTORY_SEPARATOR . $slotFilename;
+
+    if (file_put_contents($targetAbsolutePath, $binary, LOCK_EX) === false) {
+        throw new RuntimeException('Unable to save promo banner image asset.');
+    }
+
+    return $targetRelativePath;
 }

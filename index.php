@@ -35,21 +35,43 @@ for ($slot = 1; $slot <= 4; $slot++) {
 }
 
 $promoBannerSlots = [];
-for ($slot = 1; $slot <= 3; $slot++) {
-    $filename = str_pad((string) $slot, 4, '0', STR_PAD_LEFT) . '.png';
-    $relativePath = 'assets/promo_images/' . $filename;
-    $absolutePath = __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+$promoBannerDir = __DIR__ . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'promo_images';
 
-    $promoBannerSlots[] = [
-        'slot' => $slot,
-        'relativePath' => $relativePath,
-        'exists' => is_file($absolutePath)
-    ];
+if (is_dir($promoBannerDir)) {
+    $promoBannerEntries = scandir($promoBannerDir);
+
+    if (is_array($promoBannerEntries)) {
+        foreach ($promoBannerEntries as $entry) {
+            if (!is_string($entry)) {
+                continue;
+            }
+
+            if (!preg_match('/^(\d+)\.png$/i', $entry, $matches)) {
+                continue;
+            }
+
+            $slot = (int) ($matches[1] ?? 0);
+            if ($slot < 1) {
+                continue;
+            }
+
+            $promoBannerSlots[] = [
+                'slot' => $slot,
+                'relativePath' => 'assets/promo_images/' . $entry,
+                'exists' => true
+            ];
+        }
+    }
 }
 
-$activePromoBannerSlots = array_values(array_filter($promoBannerSlots, static function ($slot) {
-    return !empty($slot['exists']);
-}));
+usort($promoBannerSlots, static function ($left, $right) {
+    $leftSlot = (int) ($left['slot'] ?? 0);
+    $rightSlot = (int) ($right['slot'] ?? 0);
+
+    return $leftSlot <=> $rightSlot;
+});
+
+$activePromoBannerSlots = $promoBannerSlots;
 ?>
 
 <!DOCTYPE html>
@@ -270,6 +292,6 @@ $activePromoBannerSlots = array_values(array_filter($promoBannerSlots, static fu
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="js/script.js?v=20260326-1"></script>
+    <script src="js/script.js?v=20260326-2"></script>
 </body>
 </html>
