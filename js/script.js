@@ -653,9 +653,15 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        var bounds = getCoverRenderBounds(adminEditPreviewWrap, adminEditPreviewImage, adminCropState.zoom);
+        var coverScale = adminEditPreviewImage.naturalWidth > 0
+            ? (bounds.renderedWidth / adminEditPreviewImage.naturalWidth)
+            : 1;
+
         adminEditPreviewWrap.style.setProperty("--admin-crop-zoom", String(adminCropState.zoom));
         adminEditPreviewWrap.style.setProperty("--admin-crop-x", String(adminCropState.offsetX) + "px");
         adminEditPreviewWrap.style.setProperty("--admin-crop-y", String(adminCropState.offsetY) + "px");
+        adminEditPreviewWrap.style.setProperty("--admin-crop-scale", String(coverScale));
         adminEditPreviewWrap.classList.toggle("is-crop-active", adminCropState.isCropping);
     }
 
@@ -1235,9 +1241,15 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        var bounds = getCoverRenderBounds(adminHowPreviewWrap, adminHowPreviewImage, adminHowCropState.zoom);
+        var coverScale = adminHowPreviewImage.naturalWidth > 0
+            ? (bounds.renderedWidth / adminHowPreviewImage.naturalWidth)
+            : 1;
+
         adminHowPreviewWrap.style.setProperty("--admin-crop-zoom", String(adminHowCropState.zoom));
         adminHowPreviewWrap.style.setProperty("--admin-crop-x", String(adminHowCropState.offsetX) + "px");
         adminHowPreviewWrap.style.setProperty("--admin-crop-y", String(adminHowCropState.offsetY) + "px");
+        adminHowPreviewWrap.style.setProperty("--admin-crop-scale", String(coverScale));
         adminHowPreviewWrap.classList.toggle("is-crop-active", adminHowCropState.isCropping);
     }
 
@@ -1993,9 +2005,15 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        var bounds = getCoverRenderBounds(adminPromoPreviewWrap, adminPromoPreviewImage, adminPromoCropState.zoom);
+        var coverScale = adminPromoPreviewImage.naturalWidth > 0
+            ? (bounds.renderedWidth / adminPromoPreviewImage.naturalWidth)
+            : 1;
+
         adminPromoPreviewWrap.style.setProperty("--admin-crop-zoom", String(adminPromoCropState.zoom));
         adminPromoPreviewWrap.style.setProperty("--admin-crop-x", String(adminPromoCropState.offsetX) + "px");
         adminPromoPreviewWrap.style.setProperty("--admin-crop-y", String(adminPromoCropState.offsetY) + "px");
+        adminPromoPreviewWrap.style.setProperty("--admin-crop-scale", String(coverScale));
         adminPromoPreviewWrap.classList.toggle("is-crop-active", adminPromoCropState.isCropping);
     }
 
