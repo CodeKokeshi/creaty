@@ -45,6 +45,23 @@ for ($slot = 1; $slot <= 4; $slot++) {
         'exists' => is_file($absolutePath)
     ];
 }
+
+$promoBannerSlots = [];
+for ($slot = 1; $slot <= 3; $slot++) {
+    $filename = str_pad((string) $slot, 4, '0', STR_PAD_LEFT) . '.png';
+    $relativePath = 'assets/promo_images/' . $filename;
+    $absolutePath = __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+
+    $promoBannerSlots[] = [
+        'slot' => $slot,
+        'relativePath' => $relativePath,
+        'exists' => is_file($absolutePath)
+    ];
+}
+
+$activePromoBannerSlots = array_values(array_filter($promoBannerSlots, static function ($slot) {
+    return !empty($slot['exists']);
+}));
 ?>
 
 <!DOCTYPE html>
@@ -160,21 +177,29 @@ for ($slot = 1; $slot <= 4; $slot++) {
     </header>
 
     <main class="landing-shell">
-        <section class="promo-banner reveal" aria-label="Promo carousel">
+        <section class="promo-banner promo-banner-admin reveal" aria-label="Promo carousel" data-admin-promo-banner data-admin-promo-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-image-base="<?php echo htmlspecialchars($assetBase . 'assets/promo_images/', ENT_QUOTES, 'UTF-8'); ?>">
+            <button class="step-card-admin-remove promo-banner-admin-remove" type="button" data-admin-promo-remove aria-label="Archive active promo banner">&times;</button>
             <button class="promo-arrow promo-arrow-left" type="button" aria-label="Previous promo">&#10094;</button>
 
             <div class="promo-carousel" aria-live="polite">
-                <div class="promo-slide promo-slide-one is-active">
-                    <img class="promo-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/promo_images/0001.png" alt="Promo of the week for Fuji X-A3 with 30 percent off">
-                </div>
-
-                <div class="promo-slide promo-slide-two">
-                    <img class="promo-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/promo_images/0002.png" alt="Promo of the week for Canon 700D with 50 percent off">
-                </div>
-
-                <div class="promo-slide promo-slide-three">
-                    <img class="promo-image" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/promo_images/0003.png" alt="Promo of the week for Canon 1200D with 20 percent off">
-                </div>
+                <?php if ($activePromoBannerSlots): ?>
+                    <?php foreach ($activePromoBannerSlots as $index => $promoSlot): ?>
+                        <?php
+                            $slotNumber = (int) ($promoSlot['slot'] ?? 0);
+                            $slotPath = (string) ($promoSlot['relativePath'] ?? '');
+                            $slotClass = $slotNumber === 1
+                                ? 'promo-slide-one'
+                                : ($slotNumber === 2 ? 'promo-slide-two' : 'promo-slide-three');
+                        ?>
+                        <div class="promo-slide <?php echo htmlspecialchars($slotClass, ENT_QUOTES, 'UTF-8'); ?><?php echo $index === 0 ? ' is-active' : ''; ?>" data-promo-slot="<?php echo htmlspecialchars((string) $slotNumber, ENT_QUOTES, 'UTF-8'); ?>">
+                            <img class="promo-image" src="<?php echo htmlspecialchars($assetBase . $slotPath, ENT_QUOTES, 'UTF-8'); ?>" alt="Promo banner slot <?php echo htmlspecialchars((string) $slotNumber, ENT_QUOTES, 'UTF-8'); ?>">
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="promo-placeholder promo-placeholder-empty" data-promo-empty>
+                        <span>No promo banners available.</span>
+                    </div>
+                <?php endif; ?>
             </div>
 
             <button class="promo-arrow promo-arrow-right" type="button" aria-label="Next promo">&#10095;</button>
@@ -441,6 +466,6 @@ for ($slot = 1; $slot <= 4; $slot++) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260325-2"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260326-1"></script>
 </body>
 </html>

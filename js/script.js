@@ -3,9 +3,14 @@ document.addEventListener("DOMContentLoaded", function () {
     var toggleButtons = document.querySelectorAll(".toggle-visibility");
     var authSwitchLinks = document.querySelectorAll("[data-auth-switch]");
     var promoBanner = document.querySelector(".promo-banner");
-    var promoSlides = promoBanner ? promoBanner.querySelectorAll(".promo-slide") : [];
+    var promoCarousel = promoBanner ? promoBanner.querySelector(".promo-carousel") : null;
     var promoPrev = promoBanner ? promoBanner.querySelector(".promo-arrow-left") : null;
     var promoNext = promoBanner ? promoBanner.querySelector(".promo-arrow-right") : null;
+    var adminPromoBanner = document.querySelector("[data-admin-promo-banner]");
+    var adminPromoRemove = document.querySelector("[data-admin-promo-remove]");
+    var adminPromoArchiveEndpoint = adminPromoBanner ? (adminPromoBanner.getAttribute("data-admin-promo-archive-endpoint") || "") : "";
+    var adminPromoRestoreEndpoint = adminPromoBanner ? (adminPromoBanner.getAttribute("data-admin-promo-restore-endpoint") || "") : "";
+    var adminPromoImageBase = adminPromoBanner ? (adminPromoBanner.getAttribute("data-admin-promo-image-base") || "assets/promo_images/") : "assets/promo_images/";
     var promoIndex = 0;
     var promoTimer = null;
     var promoDelay = 3000;
@@ -300,6 +305,9 @@ document.addEventListener("DOMContentLoaded", function () {
             if (pending.type === "how") {
                 endpoint = adminHowRestoreEndpoint;
                 fallbackError = "Unable to restore How It Works image.";
+            } else if (pending.type === "promo") {
+                endpoint = adminPromoRestoreEndpoint;
+                fallbackError = "Unable to restore promo banner.";
             } else {
                 endpoint = adminRestoreEndpoint;
                 fallbackError = "Unable to restore product.";
@@ -336,7 +344,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         throw new Error(message);
                     }
 
-                    if (pending.type === "how") {
+                    if (pending.type === "how" || pending.type === "promo") {
                         if (pending.onRestore && typeof pending.onRestore === "function") {
                             pending.onRestore(result.payload);
                         }
@@ -354,7 +362,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         pending.button.disabled = false;
                     }
 
-                    if (pending.type !== "how") {
+                    if (pending.type === "product") {
                         applyProductFilters();
                     }
 
@@ -1682,7 +1690,10 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function showPromoSlide(nextIndex) {
+        var promoSlides = promoBanner ? promoBanner.querySelectorAll(".promo-slide") : [];
+
         if (!promoSlides.length) {
+            promoIndex = 0;
             return;
         }
 
@@ -1697,7 +1708,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function startPromoTimer() {
-        if (!promoSlides.length) {
+        var promoSlides = promoBanner ? promoBanner.querySelectorAll(".promo-slide") : [];
+
+        if (promoSlides.length < 2) {
             return;
         }
 
@@ -1710,6 +1723,222 @@ document.addEventListener("DOMContentLoaded", function () {
     function stopPromoTimer() {
         window.clearInterval(promoTimer);
         promoTimer = null;
+    }
+
+    function updatePromoControls() {
+        var promoSlides = promoBanner ? promoBanner.querySelectorAll(".promo-slide") : [];
+        var hasSlides = promoSlides.length > 0;
+        var isSingleSlide = promoSlides.length <= 1;
+
+        if (promoPrev) {
+            promoPrev.hidden = isSingleSlide;
+        }
+
+        if (promoNext) {
+            promoNext.hidden = isSingleSlide;
+        }
+
+        if (adminPromoRemove) {
+            adminPromoRemove.disabled = !hasSlides;
+        }
+
+        if (!promoCarousel) {
+            return;
+        }
+
+        var emptyNode = promoCarousel.querySelector("[data-promo-empty]");
+
+        if (!hasSlides) {
+            stopPromoTimer();
+
+            if (!emptyNode) {
+                emptyNode = document.createElement("div");
+                emptyNode.className = "promo-placeholder promo-placeholder-empty";
+                emptyNode.setAttribute("data-promo-empty", "true");
+                emptyNode.innerHTML = "<span>No promo banners available.</span>";
+                promoCarousel.appendChild(emptyNode);
+            }
+
+            return;
+        }
+
+        if (emptyNode) {
+            emptyNode.remove();
+        }
+    }
+
+    function buildPromoSlotFilename(slot) {
+        var slotNumber = Number.parseInt(slot, 10);
+
+        if (!Number.isFinite(slotNumber) || slotNumber < 1) {
+            slotNumber = 1;
+        }
+
+        return String(slotNumber).padStart(4, "0") + ".png";
+    }
+
+    function buildPromoSlideClass(slot) {
+        var slotNumber = Number.parseInt(slot, 10);
+
+        if (slotNumber === 1) {
+            return "promo-slide-one";
+        }
+
+        if (slotNumber === 2) {
+            return "promo-slide-two";
+        }
+
+        return "promo-slide-three";
+    }
+
+    function getActivePromoSlide() {
+        if (!promoBanner) {
+            return null;
+        }
+
+        var activeSlide = promoBanner.querySelector(".promo-slide.is-active");
+        if (activeSlide) {
+            return activeSlide;
+        }
+
+        var promoSlides = promoBanner.querySelectorAll(".promo-slide");
+
+        return promoSlides.length ? promoSlides[0] : null;
+    }
+
+    function insertPromoSlideSorted(slideElement) {
+        if (!promoCarousel || !slideElement) {
+            return;
+        }
+
+        var slotValue = Number.parseInt(slideElement.getAttribute("data-promo-slot") || "0", 10);
+        var promoSlides = Array.prototype.slice.call(promoCarousel.querySelectorAll(".promo-slide"));
+        var inserted = false;
+
+        promoSlides.forEach(function (existingSlide) {
+            if (inserted) {
+                return;
+            }
+
+            var existingSlot = Number.parseInt(existingSlide.getAttribute("data-promo-slot") || "0", 10);
+
+            if (Number.isFinite(existingSlot) && existingSlot > slotValue) {
+                promoCarousel.insertBefore(slideElement, existingSlide);
+                inserted = true;
+            }
+        });
+
+        if (!inserted) {
+            promoCarousel.appendChild(slideElement);
+        }
+    }
+
+    if (adminPromoBanner && adminPromoRemove) {
+        adminPromoRemove.addEventListener("click", function () {
+            if (!adminPromoArchiveEndpoint) {
+                return;
+            }
+
+            var activeSlide = getActivePromoSlide();
+            if (!activeSlide) {
+                updatePromoControls();
+                return;
+            }
+
+            var slotValue = (activeSlide.getAttribute("data-promo-slot") || "").trim();
+            var slotNumber = Number.parseInt(slotValue, 10);
+
+            if (!slotValue || !Number.isFinite(slotNumber) || slotNumber < 1 || slotNumber > 3) {
+                return;
+            }
+
+            adminPromoBanner.classList.add("is-admin-busy");
+            adminPromoRemove.disabled = true;
+
+            fetch(adminPromoArchiveEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    slot: slotNumber
+                })
+            })
+                .then(function (response) {
+                    return response.json().then(function (payload) {
+                        return {
+                            ok: response.ok,
+                            payload: payload
+                        };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.payload || !result.payload.ok) {
+                        var message = result.payload && result.payload.message ? result.payload.message : "Unable to archive promo banner.";
+                        throw new Error(message);
+                    }
+
+                    var archivedEntry = result.payload.archivedEntry && typeof result.payload.archivedEntry === "object"
+                        ? result.payload.archivedEntry
+                        : null;
+                    var archivedAt = archivedEntry && archivedEntry.archivedAt ? String(archivedEntry.archivedAt) : "";
+                    var archiveKey = archivedEntry && archivedEntry.archiveKey ? String(archivedEntry.archiveKey) : "";
+
+                    activeSlide.remove();
+
+                    var promoSlides = promoBanner ? promoBanner.querySelectorAll(".promo-slide") : [];
+                    if (promoSlides.length) {
+                        showPromoSlide(Math.min(promoIndex, promoSlides.length - 1));
+                        stopPromoTimer();
+                        startPromoTimer();
+                    }
+
+                    updatePromoControls();
+
+                    if (archiveKey) {
+                        showAdminUndoToast(
+                            "Promo banner slot " + slotValue + " archived" + (archivedAt ? " (" + formatArchiveDateLabel(archivedAt) + ")" : ""),
+                            {
+                                type: "promo",
+                                archiveKey: archiveKey,
+                                button: adminPromoRemove,
+                                onRestore: function (payload) {
+                                    if (!promoCarousel) {
+                                        return;
+                                    }
+
+                                    var restoredSlot = payload && payload.slot ? String(payload.slot) : slotValue;
+                                    var restoredFilename = buildPromoSlotFilename(restoredSlot);
+                                    var restoredSource = adminPromoImageBase + restoredFilename + "?t=" + String(Date.now());
+                                    var slide = document.createElement("div");
+                                    var slotClass = buildPromoSlideClass(restoredSlot);
+
+                                    slide.className = "promo-slide " + slotClass;
+                                    slide.setAttribute("data-promo-slot", restoredSlot);
+                                    slide.innerHTML = '<img class="promo-image" src="' + restoredSource + '" alt="Promo banner slot ' + restoredSlot + '">';
+
+                                    insertPromoSlideSorted(slide);
+
+                                    var slidesAfterRestore = promoBanner ? Array.prototype.slice.call(promoBanner.querySelectorAll(".promo-slide")) : [];
+                                    var restoredIndex = slidesAfterRestore.indexOf(slide);
+
+                                    updatePromoControls();
+                                    showPromoSlide(restoredIndex >= 0 ? restoredIndex : 0);
+                                    stopPromoTimer();
+                                    startPromoTimer();
+                                }
+                            }
+                        );
+                    }
+
+                    adminPromoBanner.classList.remove("is-admin-busy");
+                })
+                .catch(function (error) {
+                    adminPromoBanner.classList.remove("is-admin-busy");
+                    updatePromoControls();
+                    window.alert(error.message || "Unable to archive promo banner.");
+                });
+        });
     }
 
     function closeFilterPanels(exceptId) {
@@ -2252,9 +2481,15 @@ document.addEventListener("DOMContentLoaded", function () {
         };
     }
 
-    if (promoSlides.length) {
+    updatePromoControls();
+
+    if (promoBanner) {
+        var promoSlides = promoBanner.querySelectorAll(".promo-slide");
+
+        if (promoSlides.length) {
         showPromoSlide(0);
         startPromoTimer();
+        }
 
         if (promoPrev) {
             promoPrev.addEventListener("click", function () {

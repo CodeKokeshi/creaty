@@ -12,6 +12,7 @@ require __DIR__ . '/../config/products_repository.php';
 
 $productArchiveCount = count(load_archived_products_repository());
 $howArchiveCount = count(load_archived_how_it_works_repository());
+$promoBannerArchiveCount = count(load_archived_promo_banners_repository());
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -79,6 +80,12 @@ $howArchiveCount = count(load_archived_how_it_works_repository());
                 <span class="archive-pill"><?php echo htmlspecialchars((string) $howArchiveCount, ENT_QUOTES, 'UTF-8'); ?> item(s)</span>
                 <h2>Archived How It Works Images</h2>
                 <p>View and restore archived How It Works slot images.</p>
+            </a>
+
+            <a class="archive-link-card" href="promo-banners/">
+                <span class="archive-pill"><?php echo htmlspecialchars((string) $promoBannerArchiveCount, ENT_QUOTES, 'UTF-8'); ?> item(s)</span>
+                <h2>Archived Promo Banners</h2>
+                <p>View and restore archived promo banner slots.</p>
             </a>
         </section>
     </main>
