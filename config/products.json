@@ -200,6 +200,9 @@
             "fuji-x-a3",
             "sony-zv-e10",
             "canon-700d"
+        ],
+        "informationImages": [
+            "assets/cameras/product_information/Nikon%20D60%20Information.png"
         ]
     },
     "sony-zv-e10": {
@@ -240,71 +243,5 @@
             "canon-1200d",
             "canon-700d"
         ]
-    },
-    "canon-4000d-copy": {
-        "brand": "Canon",
-        "name": "4000D (Copy)",
-        "price": "600.00",
-        "discountPercent": 0,
-        "spec1": "18MP APS-C CMOS sensor",
-        "spec2": "ISO range of 100-6400 (expandable to 12800)",
-        "tagline": "Starter DSLR with a simple layout for casual rentals.",
-        "cameraImage": "assets/cameras/Canon%204000D%20%28Copy%29%202.png",
-        "captureSlides": [
-            "Lifestyle placeholder",
-            "Daylight placeholder",
-            "Landscape placeholder"
-        ],
-        "specs": {
-            "Brand": [
-                "Canon"
-            ],
-            "Imaging and Performance": [
-                "Sensor: 18MP APS-C CMOS sensor",
-                "ISO: 100-6400 expandable to 12800",
-                "Autofocus: 9-point AF",
-                "Continuous shooting: 3 fps"
-            ],
-            "Video": [
-                "Resolution: Full HD 1080p",
-                "Frame rates: 24 fps, 25 fps, 30 fps"
-            ],
-            "Physical Specifications": [
-                "Weight: 436g body only",
-                "Screen: 2.7-inch LCD"
-            ]
-        },
-        "recommendations": [
-            "canon-1200d",
-            "canon-700d",
-            "sony-zv-e10"
-        ]
-    },
-    "canon-new-product-copy": {
-        "brand": "Sony",
-        "name": "Assignment",
-        "price": "0.00",
-        "discountPercent": 0,
-        "spec1": "New camera specification 1",
-        "spec2": "New camera specification 2",
-        "tagline": "Add a short product tagline.",
-        "cameraImage": "assets/cameras/Canon%20New%20Product%20%28Copy%29%202.png",
-        "informationImages": [],
-        "captureSlides": [],
-        "specs": {
-            "Brand": [
-                "Sony"
-            ],
-            "Imaging and Performance": [
-                "Add imaging and performance details."
-            ],
-            "Video": [
-                "Add video details."
-            ],
-            "Physical Specifications": [
-                "Add physical specifications."
-            ]
-        },
-        "recommendations": []
     }
 }

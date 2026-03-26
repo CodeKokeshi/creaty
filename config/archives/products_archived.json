@@ -130,5 +130,157 @@
                 "sony-zv-e10"
             ]
         }
+    },
+    {
+        "archiveKey": "Canon Ardie 20260326-102446",
+        "archivedAt": "2026-03-26T10:24:46+00:00",
+        "originalKey": "canon-4000d-copy",
+        "product": {
+            "brand": "Canon",
+            "name": "Ardie",
+            "price": "600.00",
+            "discountPercent": 10,
+            "spec1": "Afasfasf",
+            "spec2": "SAafsafs",
+            "tagline": "Starter DSLR with a simple layout for casual rentals.",
+            "cameraImage": "assets/cameras/_archived/Canon%20Ardie%2020260326-102446.png",
+            "captureSlides": [
+                "Lifestyle placeholder",
+                "Daylight placeholder",
+                "Landscape placeholder"
+            ],
+            "specs": {
+                "Brand": [
+                    "Canon"
+                ],
+                "Imaging and Performance": [
+                    "Sensor: 18MP APS-C CMOS sensor",
+                    "ISO: 100-6400 expandable to 12800",
+                    "Autofocus: 9-point AF",
+                    "Continuous shooting: 3 fps"
+                ],
+                "Video": [
+                    "Resolution: Full HD 1080p",
+                    "Frame rates: 24 fps, 25 fps, 30 fps"
+                ],
+                "Physical Specifications": [
+                    "Weight: 436g body only",
+                    "Screen: 2.7-inch LCD"
+                ]
+            },
+            "recommendations": [
+                "canon-1200d",
+                "canon-700d",
+                "sony-zv-e10"
+            ]
+        }
+    },
+    {
+        "archiveKey": "Canon 4000D (Copy) 20260326-102550",
+        "archivedAt": "2026-03-26T10:25:50+00:00",
+        "originalKey": "canon-4000d-copy",
+        "product": {
+            "brand": "Canon",
+            "name": "4000D (Copy)",
+            "price": "600.00",
+            "discountPercent": 0,
+            "spec1": "18MP APS-C CMOS sensor",
+            "spec2": "ISO range of 100-6400 (expandable to 12800)",
+            "tagline": "Starter DSLR with a simple layout for casual rentals.",
+            "cameraImage": "assets/cameras/_archived/Canon%204000D%20%28Copy%29%2020260326-102550.png",
+            "captureSlides": [
+                "Lifestyle placeholder",
+                "Daylight placeholder",
+                "Landscape placeholder"
+            ],
+            "specs": {
+                "Brand": [
+                    "Canon"
+                ],
+                "Imaging and Performance": [
+                    "Sensor: 18MP APS-C CMOS sensor",
+                    "ISO: 100-6400 expandable to 12800",
+                    "Autofocus: 9-point AF",
+                    "Continuous shooting: 3 fps"
+                ],
+                "Video": [
+                    "Resolution: Full HD 1080p",
+                    "Frame rates: 24 fps, 25 fps, 30 fps"
+                ],
+                "Physical Specifications": [
+                    "Weight: 436g body only",
+                    "Screen: 2.7-inch LCD"
+                ]
+            },
+            "recommendations": [
+                "canon-1200d",
+                "canon-700d",
+                "sony-zv-e10"
+            ]
+        }
+    },
+    {
+        "archiveKey": "Canon New Product (Copy) 20260326-102551",
+        "archivedAt": "2026-03-26T10:25:51+00:00",
+        "originalKey": "canon-new-product-copy-1",
+        "product": {
+            "brand": "Canon",
+            "name": "New Product (Copy)",
+            "price": "100.00",
+            "discountPercent": 0,
+            "spec1": "New camera specification 1",
+            "spec2": "New camera specification 2",
+            "tagline": "Add a short product tagline.",
+            "cameraImage": "assets/cameras/_archived/Canon%20New%20Product%20%28Copy%29%2020260326-102551.png",
+            "informationImages": [],
+            "captureSlides": [],
+            "specs": {
+                "Brand": [
+                    "Canon"
+                ],
+                "Imaging and Performance": [
+                    "Add imaging and performance details."
+                ],
+                "Video": [
+                    "Add video details."
+                ],
+                "Physical Specifications": [
+                    "Add physical specifications."
+                ]
+            },
+            "recommendations": []
+        }
+    },
+    {
+        "archiveKey": "Sony Assignment 20260326-102553",
+        "archivedAt": "2026-03-26T10:25:53+00:00",
+        "originalKey": "canon-new-product-copy",
+        "product": {
+            "brand": "Sony",
+            "name": "Assignment",
+            "price": "0.00",
+            "discountPercent": 0,
+            "spec1": "New camera specification 1",
+            "spec2": "New camera specification 2",
+            "tagline": "Add a short product tagline.",
+            "cameraImage": "assets/cameras/_archived/Sony%20Assignment%2020260326-102553.png",
+            "informationImages": [],
+            "captureSlides": [],
+            "specs": {
+                "Brand": [
+                    "Sony"
+                ],
+                "Imaging and Performance": [
+                    "Add imaging and performance details."
+                ],
+                "Video": [
+                    "Add video details."
+                ],
+                "Physical Specifications": [
+                    "Add physical specifications."
+                ]
+            },
+            "recommendations": []
+        }
     }
 ]
