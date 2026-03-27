@@ -27,8 +27,47 @@ $accountLabel = 'Admin';
 $adminHomePath = $routeBase . 'dashboard/';
 $logoutPath = $routeBase . 'logout.php';
 
+require_once __DIR__ . '/config/db.php';
 require __DIR__ . '/config/products_repository.php';
 $products = load_products_repository();
+
+$dashboardUsers = [];
+
+$adminUsersResult = $conn->query("SELECT id, username FROM {$adminAccountsTable} ORDER BY id ASC");
+if ($adminUsersResult instanceof mysqli_result) {
+    while ($adminRow = $adminUsersResult->fetch_assoc()) {
+        $idValue = (int) ($adminRow['id'] ?? 0);
+        if ($idValue < 1) {
+            continue;
+        }
+
+        $dashboardUsers[] = [
+            'prefixedId' => 'ADMIN_' . str_pad((string) $idValue, 3, '0', STR_PAD_LEFT),
+            'name' => (string) ($adminRow['username'] ?? ''),
+            'email' => '-',
+            'role' => 'ADMIN'
+        ];
+    }
+}
+
+$customerUsersResult = $conn->query("SELECT id, first_name, last_name, email FROM {$customerAccountsTable} ORDER BY id ASC");
+if ($customerUsersResult instanceof mysqli_result) {
+    while ($customerRow = $customerUsersResult->fetch_assoc()) {
+        $idValue = (int) ($customerRow['id'] ?? 0);
+        if ($idValue < 1) {
+            continue;
+        }
+
+        $fullName = trim((string) ($customerRow['first_name'] ?? '') . ' ' . (string) ($customerRow['last_name'] ?? ''));
+
+        $dashboardUsers[] = [
+            'prefixedId' => 'CUSTOMER_' . str_pad((string) $idValue, 3, '0', STR_PAD_LEFT),
+            'name' => $fullName !== '' ? $fullName : 'Customer',
+            'email' => (string) ($customerRow['email'] ?? '-'),
+            'role' => 'CUSTOMER'
+        ];
+    }
+}
 
 if (!is_array($products)) {
     $products = [];
@@ -256,6 +295,44 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                         <tr><td><span class="admin-reports-month-pill">October</span></td><td>53</td><td>&#8369; 5,000</td></tr>
                         <tr><td><span class="admin-reports-month-pill">November</span></td><td>53</td><td>&#8369; 5,000</td></tr>
                         <tr><td><span class="admin-reports-month-pill">December</span></td><td>53</td><td>&#8369; 5,000</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="admin-users-shell" data-admin-dashboard-panel="users" hidden>
+            <div class="admin-users-head" role="group" aria-label="Users controls">
+                <h2>USERS</h2>
+
+                <label class="admin-users-filter-wrap" for="admin-users-role-filter">
+                    <span>FILTER:</span>
+                    <select id="admin-users-role-filter" class="admin-users-filter" data-admin-users-filter>
+                        <option value="all" selected>All Roles</option>
+                        <option value="admin">Admin</option>
+                        <option value="customer">Customer</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="admin-users-table-wrap" role="region" aria-label="Users list">
+                <table class="admin-users-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">ID</th>
+                            <th scope="col">NAME</th>
+                            <th scope="col">EMAIL</th>
+                            <th scope="col">ROLE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($dashboardUsers as $dashboardUser): ?>
+                            <tr data-admin-user-row data-role="<?php echo strtolower((string) ($dashboardUser['role'] ?? '')); ?>">
+                                <td><?php echo htmlspecialchars((string) ($dashboardUser['prefixedId'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars((string) ($dashboardUser['name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars((string) ($dashboardUser['email'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars((string) ($dashboardUser['role'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>

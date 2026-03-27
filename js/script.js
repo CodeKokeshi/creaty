@@ -3241,6 +3241,8 @@ document.addEventListener("DOMContentLoaded", function () {
     adminNavBars.forEach(function (nav) {
         var swapButton = nav.querySelector("[data-admin-nav-swap]");
         var adminNavPills = nav.querySelectorAll("[data-admin-nav-pill]");
+        var adminUsersFilter = nav.hasAttribute("data-admin-dashboard-nav") ? document.querySelector("[data-admin-users-filter]") : null;
+        var adminUserRows = nav.hasAttribute("data-admin-dashboard-nav") ? document.querySelectorAll("[data-admin-user-row]") : [];
         var dashboardDefaultSections = nav.hasAttribute("data-admin-dashboard-nav")
             ? document.querySelectorAll("[data-admin-dashboard-default]")
             : [];
@@ -3296,12 +3298,27 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
+        function applyAdminUsersFilter() {
+            if (!adminUsersFilter || !adminUserRows.length) {
+                return;
+            }
+
+            var selectedRole = String(adminUsersFilter.value || "all").toLowerCase();
+
+            adminUserRows.forEach(function (row) {
+                var rowRole = String(row.getAttribute("data-role") || "").toLowerCase();
+                var shouldShow = selectedRole === "all" || rowRole === selectedRole;
+                row.hidden = !shouldShow;
+            });
+        }
+
         if (!swapButton) {
             return;
         }
 
         setAdminNavSwapState(nav, false);
         updateDashboardPanels();
+        applyAdminUsersFilter();
 
         swapButton.addEventListener("click", function () {
             var shouldSwap = !nav.classList.contains("is-swapped");
@@ -3324,6 +3341,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 setActiveAdminPill(pill);
             });
         });
+
+        if (adminUsersFilter) {
+            adminUsersFilter.addEventListener("change", function () {
+                applyAdminUsersFilter();
+            });
+        }
     });
 
     detailGalleries.forEach(function (gallery) {

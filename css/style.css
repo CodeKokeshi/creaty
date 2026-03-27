@@ -4377,6 +4377,88 @@ button {
     font-weight: 700;
 }
 
+.admin-users-shell {
+    width: min(100%, 1280px);
+    margin: 0 auto;
+    padding: 1.2rem 1rem 2.4rem;
+}
+
+.admin-users-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.6rem;
+}
+
+.admin-users-head h2 {
+    margin: 0;
+    color: #f4f4f4;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.admin-users-filter-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    color: rgba(244, 244, 244, 0.92);
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.admin-users-filter {
+    min-width: 140px;
+    min-height: 34px;
+    border-radius: 999px;
+    border: 1px solid rgba(217, 217, 217, 0.24);
+    background: #d9d9d9;
+    color: #111214;
+    padding: 0 2rem 0 0.9rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+}
+
+.admin-users-filter:focus-visible {
+    outline: 2px solid rgba(217, 217, 217, 0.64);
+    outline-offset: 1px;
+}
+
+.admin-users-table-wrap {
+    border-top: 1px solid rgba(217, 217, 217, 0.45);
+}
+
+.admin-users-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-users-table th,
+.admin-users-table td {
+    border-bottom: 1px solid rgba(217, 217, 217, 0.42);
+    color: #f4f4f4;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 0.8rem 1rem;
+    text-align: center;
+}
+
+.admin-users-table th {
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgba(244, 244, 244, 0.94);
+}
+
+.admin-users-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
 .filter-group + .filter-group {
     margin-top: 0.6rem;
 }
