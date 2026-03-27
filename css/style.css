@@ -4039,8 +4039,10 @@ button {
 }
 
 .filter-toggle[aria-expanded="true"] {
-    background: rgba(17, 18, 20, 0.1);
+    background: #111214;
+    color: #f4f4f4;
     opacity: 1;
+    box-shadow: 0 0 0 1px rgba(17, 18, 20, 0.18);
 }
 
 .filter-panel {

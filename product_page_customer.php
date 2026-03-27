@@ -363,10 +363,10 @@ $productListPath = $homePath . '#featured-products-title';
             <span class="section-nav-section is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">EVENTS</span>
             <span class="section-nav-filter is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">DATE</span>
             <?php if ($isAdminView): ?>
-                <span class="section-nav-section is-disabled admin-nav-alt" data-admin-nav-item="swapped" aria-disabled="true" hidden>EQUIPMENTS</span>
-                <span class="section-nav-section is-disabled admin-nav-alt" data-admin-nav-item="swapped" aria-disabled="true" hidden>BOOKINGS</span>
-                <span class="section-nav-section is-disabled admin-nav-alt" data-admin-nav-item="swapped" aria-disabled="true" hidden>REPORTS</span>
-                <span class="section-nav-section is-disabled admin-nav-alt" data-admin-nav-item="swapped" aria-disabled="true" hidden>USERS</span>
+                <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill hidden>EQUIPMENTS</button>
+                <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill hidden>BOOKINGS</button>
+                <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill hidden>REPORTS</button>
+                <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill hidden>USERS</button>
 
                 <button class="section-nav-swap" type="button" data-admin-nav-swap aria-pressed="false" aria-label="Swap admin navigation" title="Show management bar">
                     <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/swap_horizontal_arrows.svg" alt="" aria-hidden="true">

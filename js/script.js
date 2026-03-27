@@ -3240,6 +3240,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
     adminNavBars.forEach(function (nav) {
         var swapButton = nav.querySelector("[data-admin-nav-swap]");
+        var adminNavPills = nav.querySelectorAll("[data-admin-nav-pill]");
+
+        function setActiveAdminPill(nextPill) {
+            adminNavPills.forEach(function (pill) {
+                var isActive = pill === nextPill;
+
+                pill.classList.toggle("is-active", isActive);
+
+                if (isActive) {
+                    pill.setAttribute("aria-current", "page");
+                } else {
+                    pill.removeAttribute("aria-current");
+                }
+            });
+        }
 
         if (!swapButton) {
             return;
@@ -3255,6 +3270,16 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             setAdminNavSwapState(nav, shouldSwap);
+
+            if (shouldSwap) {
+                setActiveAdminPill(adminNavPills[0] || null);
+            }
+        });
+
+        adminNavPills.forEach(function (pill) {
+            pill.addEventListener("click", function () {
+                setActiveAdminPill(pill);
+            });
         });
     });
 
