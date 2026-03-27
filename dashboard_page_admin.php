@@ -186,7 +186,7 @@ $equipmentStatusLabels = [
     'available' => 'AVAILABLE',
     'maintenance' => 'MAINTENANCE',
     'in-use' => 'IN USE',
-    'shelved' => 'SHELVED'
+    'retired' => 'RETIRED'
 ];
 
 $dashboardUsers = [];
@@ -226,6 +226,23 @@ if ($customerUsersResult instanceof mysqli_result) {
         ];
     }
 }
+
+$dashboardBookings = [
+    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'PENDING'],
+    ['starred' => true, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'PENDING'],
+    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'PENDING'],
+    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'PENDING'],
+    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'PENDING'],
+    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'CONFIRMED'],
+    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'CONFIRMED'],
+    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'CONFIRMED'],
+    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'CANCELED'],
+    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'CANCELED'],
+    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'PAST RETURN'],
+    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'ONGOING'],
+    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'ONGOING'],
+    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'COMPLETED'],
+];
 
 if (!is_array($products)) {
     $products = [];
@@ -483,6 +500,51 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             </div>
         </section>
 
+        <section class="admin-bookings-shell" data-admin-dashboard-panel="bookings" hidden>
+            <div class="admin-bookings-table-wrap" role="region" aria-label="Bookings list">
+                <table class="admin-bookings-table">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="admin-bookings-back-col">
+                                <a href="#" class="admin-bookings-back-btn">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="icon-back">
+                                        <path d="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z" fill="currentColor"/>
+                                    </svg>
+                                    BACK
+                                </a>
+                            </th>
+                            <th scope="col">NAME</th>
+                            <th scope="col">ORDER NUMBER</th>
+                            <th scope="col">TIME STAMP</th>
+                            <th scope="col">STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($dashboardBookings as $booking): ?>
+                            <tr>
+                                <td class="admin-bookings-star-col">
+                                    <?php if ($booking['starred']): ?>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?php echo htmlspecialchars($booking['name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars($booking['order'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars($booking['time'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td>
+                                    <?php 
+                                        $statusClass = 'status-' . strtolower(str_replace(' ', '-', $booking['status']));
+                                    ?>
+                                    <span class="admin-bookings-status <?php echo $statusClass; ?>">
+                                        <?php echo htmlspecialchars($booking['status'], ENT_QUOTES, 'UTF-8'); ?>
+                                    </span>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <section class="admin-reports-shell" data-admin-dashboard-panel="reports" hidden>
             <div class="admin-reports-head" role="group" aria-label="Report breakdown">
                 <p>Breakdown by:</p>
@@ -688,7 +750,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <div class="admin-users-create-backdrop" data-admin-users-create-backdrop hidden>
         <section class="admin-users-create-modal" role="dialog" aria-modal="true" aria-labelledby="admin-users-create-title">
             <div class="admin-users-create-head">
-                <h2 id="admin-users-create-title">Create User (Admin Bypass)</h2>
+                <h2 id="admin-users-create-title">Create User</h2>
                 <button class="admin-users-create-close" type="button" data-admin-users-close-modal aria-label="Close create user form">&times;</button>
             </div>
 
@@ -721,7 +783,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                 <label for="admin-create-user-email" id="email-label"><?php echo $adminCreateUserValues['role'] === 'admin' ? 'Username' : 'Email'; ?></label>
                 <input id="admin-create-user-email" name="email" type="text" value="<?php echo htmlspecialchars($adminCreateUserValues['email'], ENT_QUOTES, 'UTF-8'); ?>" required>
 
-                <fieldset class="admin-users-create-status-fieldset">
+                <fieldset class="admin-users-create-status-fieldset" id="admin-create-user-status-fieldset">
                     <legend>Account Status (Customer)</legend>
                     <label>
                         <input type="radio" name="account_status" value="active" <?php echo $adminCreateUserValues['account_status'] === 'active' ? 'checked' : ''; ?>>
@@ -739,7 +801,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                 <label for="admin-create-user-confirm-password">Confirm Password</label>
                 <input id="admin-create-user-confirm-password" name="confirm_password" type="password" required>
 
-                <p class="admin-users-create-note">Customer accounts created here bypass the normal signup verification flow when marked Active.</p>
+                <p class="admin-users-create-note">Customer accounts created here omit the normal signup verification flow when marked Active.</p>
 
                 <div class="admin-users-create-actions">
                     <button class="admin-users-create-cancel" type="button" data-admin-users-close-modal>Cancel</button>
@@ -988,24 +1050,34 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script>
         function updateFieldLabels() {
-            const roleRadios = document.querySelectorAll('input[name="role"]');
+            const roleRadios = document.querySelectorAll('input[name="role"]'); 
             const selectedRole = Array.from(roleRadios).find(r => r.checked)?.value || 'customer';
-            
-            const fullNameLabel = document.getElementById('full-name-label');
+
+            const fullNameLabel = document.getElementById('full-name-label');   
             const emailLabel = document.getElementById('email-label');
             const emailInput = document.getElementById('admin-create-user-email');
-            
+            const statusFieldset = document.getElementById('admin-create-user-status-fieldset');
+            const noteText = document.querySelector('.admin-users-create-note');
+
             if (selectedRole === 'admin') {
                 fullNameLabel.textContent = 'Employee Number';
                 emailLabel.textContent = 'Username';
                 emailInput.type = 'text';
+                if (statusFieldset) statusFieldset.style.display = 'none';
+                if (noteText) noteText.style.display = 'none';
             } else {
                 fullNameLabel.textContent = 'Full Name';
                 emailLabel.textContent = 'Email';
                 emailInput.type = 'text';
+                if (statusFieldset) statusFieldset.style.display = 'block';
+                if (noteText) noteText.style.display = 'block';
             }
         }
+        document.addEventListener('DOMContentLoaded', updateFieldLabels);
     </script>
     <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260327-1"></script>
 </body>
 </html>
+
+
+

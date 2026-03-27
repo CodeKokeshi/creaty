@@ -109,7 +109,7 @@ function allowed_equipment_statuses()
         'available',
         'maintenance',
         'in-use',
-        'shelved'
+        'retired'
     ];
 }
 

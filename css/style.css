@@ -4261,7 +4261,7 @@ button {
     font-weight: 600;
     letter-spacing: 0.01em;
     padding: 0.9rem 1rem;
-    text-align: left;
+    text-align: center;
 }
 
 .admin-equipments-table th {
@@ -4287,7 +4287,7 @@ button {
     font-weight: 700;
     letter-spacing: 0.02em;
     text-align: center;
-    padding: 0 2rem 0 0.9rem;
+    padding: 0 1rem;
     appearance: none;
     -webkit-appearance: none;
     cursor: pointer;
@@ -5621,3 +5621,117 @@ button {
     }
 }
 
+
+.admin-bookings-shell {
+    width: min(100%, 1280px);
+    margin: 0 auto;
+    padding: 1.2rem 1rem 2.4rem;
+}
+
+.admin-bookings-table-wrap {
+    border: 1px solid rgba(217, 217, 217, 0.45);
+    background: rgba(10, 10, 11, 0.55);
+}
+
+.admin-bookings-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-bookings-table th,
+.admin-bookings-table td {
+    border-bottom: 1px solid rgba(217, 217, 217, 0.42);
+    color: #f4f4f4;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 0.9rem 1rem;
+    text-align: center;
+}
+
+.admin-bookings-table th {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgba(244, 244, 244, 0.94);
+}
+
+.admin-bookings-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.admin-bookings-back-col {
+    width: 110px;
+    text-align: left;
+    padding-left: 1rem;
+}
+
+.admin-bookings-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #f4f4f4;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.admin-bookings-back-btn:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+.admin-bookings-star-col {
+    width: 80px;
+}
+
+.icon-star {
+    margin-right: -2rem; /* offset towards the name or adjust layout */
+    margin-left: 1rem;
+}
+
+.admin-bookings-status {
+    min-width: 140px;
+    min-height: 30px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0 1rem;
+    margin: 0 auto;
+}
+
+/* Colors matching the image */
+.admin-bookings-status.status-pending {
+    background-color: #d9d9d9;
+    color: #111214;
+}
+
+.admin-bookings-status.status-confirmed {
+    background-color: #f4e85c;
+    color: #111214;
+}
+
+.admin-bookings-status.status-canceled {
+    background-color: #a42c2c;
+    color: #111214;
+}
+
+.admin-bookings-status.status-past-return {
+    background-color: #d98a28;
+    color: #111214;
+}
+
+.admin-bookings-status.status-ongoing {
+    background-color: #2b458c;
+    color: #111214;
+}
+
+.admin-bookings-status.status-completed {
+    background-color: #2d8c36;
+    color: #111214;
+}
