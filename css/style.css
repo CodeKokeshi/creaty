@@ -4018,9 +4018,9 @@ button {
 .section-nav > .section-nav-item > .section-nav-filter.is-active,
 .section-nav > .section-nav-item > .section-nav-filter[aria-current="page"] {
     background: #111214;
-    color: #f4f4f4;
+    color: #d9d9d9;
     opacity: 1;
-    box-shadow: 0 0 0 1px rgba(17, 18, 20, 0.18);
+    box-shadow: 0 0 0 1px rgba(17, 18, 20, 0.28);
 }
 
 .section-nav > a.is-active::after,
@@ -4038,11 +4038,11 @@ button {
     cursor: pointer;
 }
 
-.filter-toggle[aria-expanded="true"] {
+.section-nav > .section-nav-item > .section-nav-filter.filter-toggle[aria-expanded="true"] {
     background: #111214;
-    color: #f4f4f4;
+    color: #d9d9d9;
     opacity: 1;
-    box-shadow: 0 0 0 1px rgba(17, 18, 20, 0.18);
+    box-shadow: 0 0 0 1px rgba(17, 18, 20, 0.28);
 }
 
 .filter-panel {
