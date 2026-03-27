@@ -109,9 +109,7 @@ function allowed_equipment_statuses()
         'available',
         'maintenance',
         'in-use',
-        'broken',
-        'missing',
-        'stolen'
+        'shelved'
     ];
 }
 

@@ -186,9 +186,7 @@ $equipmentStatusLabels = [
     'available' => 'AVAILABLE',
     'maintenance' => 'MAINTENANCE',
     'in-use' => 'IN USE',
-    'broken' => 'BROKEN',
-    'missing' => 'MISSING',
-    'stolen' => 'STOLEN'
+    'shelved' => 'SHELVED'
 ];
 
 $dashboardUsers = [];
