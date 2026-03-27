@@ -3918,11 +3918,12 @@ button {
 }
 
 .section-nav.section-nav-admin {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.75rem;
-    padding: 0 0.75rem;
+    padding: 0 3.2rem;
 }
 
 .section-nav.section-nav-admin.is-swapped {
@@ -3956,23 +3957,27 @@ button {
 }
 
 .section-nav > .section-nav-swap {
+    position: absolute;
+    top: 50%;
+    right: 0.75rem;
+    transform: translateY(-50%);
     min-width: 42px;
     width: 42px;
     height: 42px;
     padding: 0;
-    margin-left: auto;
+    margin-left: 0;
     border-radius: 10px;
-    border: 1px solid rgba(17, 18, 20, 0.2);
-    background: rgba(255, 255, 255, 0.58);
+    border: 1px solid rgba(217, 217, 217, 0.16);
+    background: #111214;
     opacity: 1;
     cursor: pointer;
 }
 
 .section-nav > .section-nav-swap:hover,
 .section-nav > .section-nav-swap:focus-visible {
-    background: rgba(255, 255, 255, 0.9);
-    border-color: rgba(17, 18, 20, 0.35);
-    box-shadow: 0 0 0 2px rgba(17, 18, 20, 0.12);
+    background: #1a1b1f;
+    border-color: rgba(217, 217, 217, 0.34);
+    box-shadow: 0 0 0 2px rgba(217, 217, 217, 0.2);
 }
 
 .section-nav > .section-nav-swap img {
@@ -4973,14 +4978,10 @@ button {
     }
 
     .section-nav.section-nav-admin {
-        justify-content: flex-start;
+        justify-content: center;
         flex-wrap: wrap;
         gap: 0.35rem;
-        padding: 0.5rem 0.6rem;
-    }
-
-    .section-nav.section-nav-admin > .section-nav-swap {
-        margin-left: auto;
+        padding: 0.5rem 2.9rem;
     }
 
     .section-nav-filter::after {
