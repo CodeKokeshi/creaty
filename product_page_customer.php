@@ -300,26 +300,32 @@ $productListPath = $homePath . '#featured-products-title';
 </head>
 <body class="product-page">
     <header class="site-header">
-        <div class="topbar">
+        <div class="topbar<?php echo $isAdminView ? ' topbar-admin' : ''; ?>">
             <a class="brand-badge" href="<?php echo htmlspecialchars($homePath, ENT_QUOTES, 'UTF-8'); ?>">
                 <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/images/main_logo.png" alt="The Nifty Fifty">
             </a>
 
-            <a class="topbar-link topbar-help" href="#">
-                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/help_icon.svg" alt="">
-                <span>Help</span>
-            </a>
+            <?php if (!$isAdminView): ?>
+                <a class="topbar-link topbar-help" href="#">
+                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/help_icon.svg" alt="">
+                    <span>Help</span>
+                </a>
+            <?php endif; ?>
 
             <form class="topbar-search" action="#" method="get">
                 <input type="search" name="q" placeholder="Search cameras, services, or rentals">
             </form>
 
-            <a class="topbar-cart" href="<?php echo htmlspecialchars($isAdminView ? $homePath : ($assetBase . 'customer-cart/'), ENT_QUOTES, 'UTF-8'); ?>" aria-label="Cart">
-                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cart_icon.svg" alt="">
-                <span class="cart-count"><?php echo $cartCount; ?></span>
-            </a>
+            <?php if (!$isAdminView): ?>
+                <a class="topbar-cart" href="<?php echo htmlspecialchars($assetBase . 'customer-cart/', ENT_QUOTES, 'UTF-8'); ?>" aria-label="Cart">
+                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cart_icon.svg" alt="">
+                    <span class="cart-count"><?php echo $cartCount; ?></span>
+                </a>
+            <?php endif; ?>
 
-            <a class="topbar-link" href="#">Message us</a>
+            <?php if (!$isAdminView): ?>
+                <a class="topbar-link" href="#">Message us</a>
+            <?php endif; ?>
             <?php if ($isAdminView): ?>
                 <div class="dropdown topbar-account-menu">
                     <button class="account-pill account-pill-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">

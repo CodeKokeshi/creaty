@@ -3429,6 +3429,15 @@ button {
     gap: 1.25rem;
 }
 
+.topbar-admin {
+    grid-template-columns: auto minmax(320px, 1fr) auto;
+}
+
+.topbar-admin .topbar-search {
+    max-width: 720px;
+    justify-self: center;
+}
+
 .brand-badge {
     width: 84px;
     height: 42px;
@@ -4769,6 +4778,12 @@ button {
             "help cart"
             "search search"
             "message message";
+    }
+
+    .topbar.topbar-admin {
+        grid-template-areas:
+            "logo account"
+            "search search";
     }
 
     .brand-badge {
