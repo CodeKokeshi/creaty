@@ -3241,6 +3241,12 @@ document.addEventListener("DOMContentLoaded", function () {
     adminNavBars.forEach(function (nav) {
         var swapButton = nav.querySelector("[data-admin-nav-swap]");
         var adminNavPills = nav.querySelectorAll("[data-admin-nav-pill]");
+        var dashboardDefaultSections = nav.hasAttribute("data-admin-dashboard-nav")
+            ? document.querySelectorAll("[data-admin-dashboard-default]")
+            : [];
+        var dashboardPanels = nav.hasAttribute("data-admin-dashboard-nav")
+            ? document.querySelectorAll("[data-admin-dashboard-panel]")
+            : [];
 
         function setActiveAdminPill(nextPill) {
             adminNavPills.forEach(function (pill) {
@@ -3254,6 +3260,40 @@ document.addEventListener("DOMContentLoaded", function () {
                     pill.removeAttribute("aria-current");
                 }
             });
+
+            if (nav.hasAttribute("data-admin-dashboard-nav")) {
+                updateDashboardPanels();
+            }
+        }
+
+        function updateDashboardPanels() {
+            if (!dashboardPanels.length && !dashboardDefaultSections.length) {
+                return;
+            }
+
+            if (!nav.classList.contains("is-swapped")) {
+                dashboardDefaultSections.forEach(function (section) {
+                    section.hidden = false;
+                });
+
+                dashboardPanels.forEach(function (panel) {
+                    panel.hidden = true;
+                });
+
+                return;
+            }
+
+            var activePill = nav.querySelector("[data-admin-nav-pill].is-active");
+            var activeTarget = activePill ? (activePill.getAttribute("data-admin-panel-target") || "") : "";
+
+            dashboardDefaultSections.forEach(function (section) {
+                section.hidden = true;
+            });
+
+            dashboardPanels.forEach(function (panel) {
+                var panelName = panel.getAttribute("data-admin-dashboard-panel") || "";
+                panel.hidden = panelName !== activeTarget;
+            });
         }
 
         if (!swapButton) {
@@ -3261,6 +3301,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         setAdminNavSwapState(nav, false);
+        updateDashboardPanels();
 
         swapButton.addEventListener("click", function () {
             var shouldSwap = !nav.classList.contains("is-swapped");
@@ -3273,6 +3314,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (shouldSwap) {
                 setActiveAdminPill(adminNavPills[0] || null);
+            } else {
+                updateDashboardPanels();
             }
         });
 

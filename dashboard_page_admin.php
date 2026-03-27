@@ -126,7 +126,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             </div>
         </div>
 
-        <nav class="section-nav section-nav-interactive section-nav-admin" aria-label="Catalog filters" data-admin-nav>
+        <nav class="section-nav section-nav-interactive section-nav-admin" aria-label="Catalog filters" data-admin-nav data-admin-dashboard-nav>
             <div class="section-nav-item section-nav-item-filter admin-nav-primary" data-admin-nav-item="primary">
                 <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="brands-filter-panel">
                     BRANDS
@@ -186,10 +186,10 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                 </div>
             </div>
 
-            <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill hidden>EQUIPMENTS</button>
-            <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill hidden>BOOKINGS</button>
-            <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill hidden>REPORTS</button>
-            <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill hidden>USERS</button>
+            <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="equipments" hidden>EQUIPMENTS</button>
+            <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="bookings" hidden>BOOKINGS</button>
+            <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="reports" hidden>REPORTS</button>
+            <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="users" hidden>USERS</button>
 
             <button class="section-nav-swap" type="button" data-admin-nav-swap aria-pressed="false" aria-label="Swap admin navigation" title="Show management bar">
                 <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/swap_horizontal_arrows.svg" alt="" aria-hidden="true">
@@ -198,7 +198,30 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     </header>
 
     <main class="landing-shell">
-        <section class="promo-banner promo-banner-admin reveal" aria-label="Promo carousel" data-admin-promo-banner data-admin-promo-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-image-base="<?php echo htmlspecialchars($assetBase . 'assets/promo_images/', ENT_QUOTES, 'UTF-8'); ?>">
+        <section class="admin-equipments-shell" data-admin-dashboard-panel="equipments" hidden>
+            <div class="admin-equipments-table-wrap" role="region" aria-label="Equipments list">
+                <table class="admin-equipments-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">UNIT-ID</th>
+                            <th scope="col">MODEL</th>
+                            <th scope="col">TIMES USED (last 30 days)</th>
+                            <th scope="col">STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>CAN1200D-01</td>
+                            <td>CANON_1200D</td>
+                            <td>12</td>
+                            <td><span class="admin-equipments-status">AVAILABLE</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="promo-banner promo-banner-admin reveal" data-admin-dashboard-default aria-label="Promo carousel" data-admin-promo-banner data-admin-promo-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-image-base="<?php echo htmlspecialchars($assetBase . 'assets/promo_images/', ENT_QUOTES, 'UTF-8'); ?>">
             <button class="step-card-admin-remove promo-banner-admin-remove" type="button" data-admin-promo-remove aria-label="Archive active promo banner">&times;</button>
             <button class="promo-arrow promo-arrow-left" type="button" aria-label="Previous promo">&#10094;</button>
 
@@ -229,7 +252,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             <button class="promo-arrow promo-arrow-right" type="button" aria-label="Next promo">&#10095;</button>
         </section>
 
-        <section class="landing-section reveal" aria-labelledby="how-it-works-title">
+        <section class="landing-section reveal" data-admin-dashboard-default aria-labelledby="how-it-works-title">
             <h2 class="landing-title" id="how-it-works-title">HOW IT WORKS</h2>
 
             <div class="steps-grid" data-admin-how-grid data-admin-how-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_how_it_works.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-how-delete-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/delete_how_it_works.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-how-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_how_it_works.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-how-image-base="<?php echo htmlspecialchars($assetBase . 'assets/how_it_works/', ENT_QUOTES, 'UTF-8'); ?>">
@@ -256,7 +279,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             </div>
         </section>
 
-        <section class="landing-section reveal" aria-labelledby="featured-products-title">
+        <section class="landing-section reveal" data-admin-dashboard-default aria-labelledby="featured-products-title">
             <h2 class="landing-title" id="featured-products-title">FEATURED PRODUCTS</h2>
 
             <div class="product-grid">
