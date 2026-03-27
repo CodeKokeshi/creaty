@@ -4391,39 +4391,18 @@ button {
     margin-bottom: 0.6rem;
 }
 
+.admin-users-head-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
 .admin-users-head h2 {
     margin: 0;
     color: #f4f4f4;
     font-size: 1.15rem;
     font-weight: 700;
     letter-spacing: 0.03em;
-}
-
-.admin-users-head-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.admin-users-create-trigger {
-    min-height: 34px;
-    padding: 0 0.95rem;
-    border-radius: 999px;
-    border: 1px solid rgba(217, 217, 217, 0.3);
-    background: rgba(255, 255, 255, 0.08);
-    color: #f4f4f4;
-    font-size: 0.85rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
-}
-
-.admin-users-create-trigger:hover,
-.admin-users-create-trigger:focus-visible {
-    background: rgba(255, 255, 255, 0.16);
-    border-color: rgba(217, 217, 217, 0.5);
-    transform: translateY(-1px);
 }
 
 .admin-users-filter-wrap {
@@ -4433,6 +4412,35 @@ button {
     color: rgba(244, 244, 244, 0.92);
     font-size: 0.95rem;
     font-weight: 700;
+}
+
+.admin-users-add-button {
+    min-height: 34px;
+    border: 1px solid rgba(217, 217, 217, 0.28);
+    border-radius: 999px;
+    background: rgba(217, 217, 217, 0.2);
+    color: #f4f4f4;
+    font-size: 0.84rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 0 0.9rem;
+    cursor: pointer;
+}
+
+.admin-users-add-button:hover,
+.admin-users-add-button:focus-visible {
+    background: rgba(217, 217, 217, 0.3);
+    border-color: rgba(217, 217, 217, 0.46);
+}
+
+.admin-users-flash-message {
+    margin: 0 0 0.7rem;
+    border: 1px solid rgba(89, 163, 109, 0.58);
+    background: rgba(57, 112, 72, 0.3);
+    color: #e0f7e6;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.55rem 0.7rem;
 }
 
 .admin-users-filter {
@@ -4486,87 +4494,139 @@ button {
     border-bottom: 0;
 }
 
-.admin-user-create-modal {
-    width: min(100%, 680px);
-}
-
-.admin-user-create-form {
+.admin-users-create-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    background: rgba(0, 0, 0, 0.6);
     display: grid;
-    gap: 0.9rem;
+    place-items: center;
+    padding: 1rem;
 }
 
-.admin-user-create-note {
-    margin: 0;
-    color: #b9bec8;
-    font-size: 0.85rem;
-    line-height: 1.45;
+.admin-users-create-modal {
+    width: min(100%, 760px);
+    background: #d9d9d9;
+    color: #111214;
+    border: 1px solid rgba(17, 18, 20, 0.22);
+    padding: 1rem;
 }
 
-.admin-user-form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-}
-
-.admin-user-field {
-    display: grid;
-    gap: 0.35rem;
-}
-
-.admin-user-field-wide {
-    grid-column: 1 / -1;
-}
-
-.admin-user-field span {
-    color: #d5dae2;
-    font-size: 0.82rem;
-    font-weight: 600;
-}
-
-.admin-user-field input,
-.admin-user-field select {
-    min-height: 40px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.26);
-    background: rgba(255, 255, 255, 0.04);
-    color: #f4f4f4;
-    padding: 0 0.8rem;
-}
-
-.admin-user-field input::placeholder {
-    color: rgba(244, 244, 244, 0.48);
-}
-
-.admin-user-field input:focus-visible,
-.admin-user-field select:focus-visible {
-    outline: 2px solid rgba(217, 217, 217, 0.56);
-    outline-offset: 1px;
-}
-
-.admin-user-create-feedback {
-    margin: 0;
-    border-radius: 10px;
-    padding: 0.65rem 0.75rem;
-    font-size: 0.84rem;
-    font-weight: 600;
-}
-
-.admin-user-create-feedback.is-error {
-    border: 1px solid rgba(206, 92, 92, 0.46);
-    background: rgba(140, 35, 35, 0.24);
-    color: #ffd1d1;
-}
-
-.admin-user-create-feedback.is-success {
-    border: 1px solid rgba(112, 187, 131, 0.42);
-    background: rgba(40, 88, 54, 0.28);
-    color: #dff5e3;
-}
-
-.admin-user-create-actions {
+.admin-users-create-head {
     display: flex;
-    justify-content: flex-end;
-    gap: 0.55rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.8rem;
+}
+
+.admin-users-create-head h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.admin-users-create-close {
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(17, 18, 20, 0.35);
+    background: transparent;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.admin-users-create-errors {
+    margin-bottom: 0.7rem;
+    border: 1px solid rgba(157, 50, 50, 0.5);
+    background: rgba(171, 70, 70, 0.25);
+    color: #5b0c0c;
+    padding: 0.5rem 0.65rem;
+}
+
+.admin-users-create-errors p {
+    margin: 0;
+    font-size: 0.86rem;
+}
+
+.admin-users-create-errors p + p {
+    margin-top: 0.35rem;
+}
+
+.admin-users-create-form {
+    display: grid;
+    gap: 0.7rem;
+}
+
+.admin-users-create-form label,
+.admin-users-create-form legend {
+    font-size: 0.96rem;
+    font-weight: 700;
+}
+
+.admin-users-create-role-fieldset,
+.admin-users-create-status-fieldset {
+    margin: 0;
+    border: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+
+.admin-users-create-role-fieldset label,
+.admin-users-create-status-fieldset label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.admin-users-create-form input[type="text"],
+.admin-users-create-form input[type="email"],
+.admin-users-create-form input[type="password"] {
+    min-height: 40px;
+    border: 1px solid rgba(17, 18, 20, 0.6);
+    border-radius: 999px;
+    background: #e4e4e4;
+    color: #111214;
+    padding: 0 0.9rem;
+}
+
+.admin-users-create-note {
+    margin: 0;
+    font-size: 0.84rem;
+    color: rgba(17, 18, 20, 0.78);
+}
+
+.admin-users-create-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.7rem;
+    margin-top: 0.2rem;
+}
+
+.admin-users-create-cancel,
+.admin-users-create-submit {
+    min-width: 132px;
+    min-height: 38px;
+    border-radius: 999px;
+    border: 1px solid rgba(17, 18, 20, 0.48);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+}
+
+.admin-users-create-cancel {
+    background: #bf2f2f;
+    color: #fff0f0;
+}
+
+.admin-users-create-submit {
+    background: #3b8f45;
+    color: #ecffef;
 }
 
 .filter-group + .filter-group {

@@ -34,6 +34,10 @@ document.addEventListener("DOMContentLoaded", function () {
     var filterNav = document.querySelector(".section-nav-interactive");
     var filterToggles = filterNav ? filterNav.querySelectorAll(".filter-toggle") : [];
     var adminNavBars = document.querySelectorAll("[data-admin-nav]");
+    var adminUsersCreateBackdrop = document.querySelector("[data-admin-users-create-backdrop]");
+    var adminUsersOpenModalButtons = document.querySelectorAll("[data-admin-users-open-modal]");
+    var adminUsersCloseModalButtons = document.querySelectorAll("[data-admin-users-close-modal]");
+    var shouldOpenAdminUsersCreateModal = document.body.getAttribute("data-admin-open-create-user-modal") === "true";
     var productCards = document.querySelectorAll('.product-grid .product-card:not([data-admin-add-card="true"])');
     var adminAddCard = document.querySelector('[data-admin-add-card="true"]');
     var productEmpty = document.querySelector(".product-grid-empty");
@@ -3243,6 +3247,9 @@ document.addEventListener("DOMContentLoaded", function () {
         var adminNavPills = nav.querySelectorAll("[data-admin-nav-pill]");
         var adminUsersFilter = nav.hasAttribute("data-admin-dashboard-nav") ? document.querySelector("[data-admin-users-filter]") : null;
         var adminUserRows = nav.hasAttribute("data-admin-dashboard-nav") ? document.querySelectorAll("[data-admin-user-row]") : [];
+        var initialPanelTarget = nav.hasAttribute("data-admin-dashboard-nav")
+            ? String(document.body.getAttribute("data-admin-initial-panel") || "").toLowerCase()
+            : "";
         var dashboardDefaultSections = nav.hasAttribute("data-admin-dashboard-nav")
             ? document.querySelectorAll("[data-admin-dashboard-default]")
             : [];
@@ -3316,8 +3323,15 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        setAdminNavSwapState(nav, false);
-        updateDashboardPanels();
+        if (initialPanelTarget) {
+            var initialPill = nav.querySelector('[data-admin-nav-pill][data-admin-panel-target="' + initialPanelTarget + '"]');
+            setAdminNavSwapState(nav, true);
+            setActiveAdminPill(initialPill || adminNavPills[0] || null);
+        } else {
+            setAdminNavSwapState(nav, false);
+            updateDashboardPanels();
+        }
+
         applyAdminUsersFilter();
 
         swapButton.addEventListener("click", function () {
@@ -3346,6 +3360,54 @@ document.addEventListener("DOMContentLoaded", function () {
             adminUsersFilter.addEventListener("change", function () {
                 applyAdminUsersFilter();
             });
+        }
+    });
+
+    function openAdminUsersCreateModal() {
+        if (!adminUsersCreateBackdrop) {
+            return;
+        }
+
+        adminUsersCreateBackdrop.hidden = false;
+        document.body.classList.add("admin-modal-open");
+    }
+
+    function closeAdminUsersCreateModal() {
+        if (!adminUsersCreateBackdrop) {
+            return;
+        }
+
+        adminUsersCreateBackdrop.hidden = true;
+        document.body.classList.remove("admin-modal-open");
+    }
+
+    adminUsersOpenModalButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            openAdminUsersCreateModal();
+        });
+    });
+
+    adminUsersCloseModalButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            closeAdminUsersCreateModal();
+        });
+    });
+
+    if (adminUsersCreateBackdrop) {
+        adminUsersCreateBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminUsersCreateBackdrop) {
+                closeAdminUsersCreateModal();
+            }
+        });
+    }
+
+    if (shouldOpenAdminUsersCreateModal) {
+        openAdminUsersCreateModal();
+    }
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && adminUsersCreateBackdrop && !adminUsersCreateBackdrop.hidden) {
+            closeAdminUsersCreateModal();
         }
     });
 

@@ -28,6 +28,166 @@ $adminHomePath = $routeBase . 'dashboard/';
 $logoutPath = $routeBase . 'logout.php';
 
 require_once __DIR__ . '/config/db.php';
+
+$initialAdminPanel = strtolower(trim((string) ($_GET['admin_view'] ?? '')));
+if (!in_array($initialAdminPanel, ['equipments', 'bookings', 'reports', 'users'], true)) {
+    $initialAdminPanel = '';
+}
+
+$adminUsersFlashMessage = (isset($_GET['created']) && (string) $_GET['created'] === '1')
+    ? 'User account created successfully.'
+    : '';
+
+$adminCreateUserErrors = [];
+$adminCreateUserValues = [
+    'role' => 'customer',
+    'full_name' => '',
+    'email' => '',
+    'account_status' => 'active'
+];
+$openAdminCreateUserModal = false;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['admin_action'] ?? '') === 'admin_create_user') {
+    $roleValue = strtolower(trim((string) ($_POST['role'] ?? 'customer')));
+    $fullNameValue = trim((string) ($_POST['full_name'] ?? ''));
+    $emailValue = trim((string) ($_POST['email'] ?? ''));
+    $accountStatusValue = strtolower(trim((string) ($_POST['account_status'] ?? 'active')));
+    $passwordValue = (string) ($_POST['password'] ?? '');
+    $confirmPasswordValue = (string) ($_POST['confirm_password'] ?? '');
+
+    $adminCreateUserValues = [
+        'role' => in_array($roleValue, ['admin', 'customer'], true) ? $roleValue : 'customer',
+        'full_name' => $fullNameValue,
+        'email' => $emailValue,
+        'account_status' => in_array($accountStatusValue, ['active', 'inactive'], true) ? $accountStatusValue : 'active'
+    ];
+
+    if (!in_array($adminCreateUserValues['role'], ['admin', 'customer'], true)) {
+        $adminCreateUserErrors[] = 'Please select a valid role.';
+    }
+
+    if ($fullNameValue === '') {
+        $adminCreateUserErrors[] = 'Full name is required.';
+    }
+
+    if (!filter_var($emailValue, FILTER_VALIDATE_EMAIL)) {
+        $adminCreateUserErrors[] = 'Please provide a valid email address.';
+    }
+
+    if ($passwordValue === '' || $confirmPasswordValue === '') {
+        $adminCreateUserErrors[] = 'Password and confirm password are required.';
+    } elseif ($passwordValue !== $confirmPasswordValue) {
+        $adminCreateUserErrors[] = 'Passwords do not match.';
+    }
+
+    if (!$adminCreateUserErrors) {
+        $hashedPassword = password_hash($passwordValue, PASSWORD_DEFAULT);
+
+        if ($adminCreateUserValues['role'] === 'customer') {
+            $nameParts = preg_split('/\s+/', $fullNameValue) ?: [];
+            $firstName = trim((string) array_shift($nameParts));
+            $lastName = trim(implode(' ', $nameParts));
+
+            if ($firstName === '') {
+                $adminCreateUserErrors[] = 'Customer first name could not be resolved.';
+            } else {
+                if ($lastName === '') {
+                    $lastName = 'Account';
+                }
+
+                $checkCustomerStmt = $conn->prepare("SELECT id FROM {$customerAccountsTable} WHERE email = ? LIMIT 1");
+                if ($checkCustomerStmt) {
+                    $checkCustomerStmt->bind_param('s', $emailValue);
+                    $checkCustomerStmt->execute();
+                    $existingCustomerResult = $checkCustomerStmt->get_result();
+                    $existingCustomer = $existingCustomerResult ? $existingCustomerResult->fetch_assoc() : null;
+                    $checkCustomerStmt->close();
+
+                    if ($existingCustomer) {
+                        $adminCreateUserErrors[] = 'Customer email already exists.';
+                    }
+                } else {
+                    $adminCreateUserErrors[] = 'Unable to validate customer email right now.';
+                }
+
+                if (!$adminCreateUserErrors) {
+                    $emailVerifiedAt = $adminCreateUserValues['account_status'] === 'active' ? date('Y-m-d H:i:s') : null;
+                    $insertCustomerStmt = $conn->prepare("INSERT INTO {$customerAccountsTable} (first_name, last_name, email, password, email_verified_at, privacy_policy_accepted_at) VALUES (?, ?, ?, ?, ?, NOW())");
+
+                    if ($insertCustomerStmt) {
+                        $insertCustomerStmt->bind_param('sssss', $firstName, $lastName, $emailValue, $hashedPassword, $emailVerifiedAt);
+
+                        if (!$insertCustomerStmt->execute()) {
+                            $adminCreateUserErrors[] = 'Unable to create customer account.';
+                        }
+
+                        $insertCustomerStmt->close();
+                    } else {
+                        $adminCreateUserErrors[] = 'Unable to prepare customer account creation.';
+                    }
+                }
+            }
+        } else {
+            $emailParts = explode('@', $emailValue);
+            $emailLocalPart = strtolower(trim((string) ($emailParts[0] ?? '')));
+            $fullNameSlug = strtolower(preg_replace('/[^a-z0-9]+/i', '_', $fullNameValue) ?: '');
+            $baseUsername = trim($emailLocalPart !== '' ? $emailLocalPart : $fullNameSlug, '_');
+
+            if ($baseUsername === '') {
+                $baseUsername = 'admin_user';
+            }
+
+            $candidateUsername = $baseUsername;
+            $suffix = 1;
+
+            while (true) {
+                $checkAdminStmt = $conn->prepare("SELECT id FROM {$adminAccountsTable} WHERE username = ? LIMIT 1");
+                if (!$checkAdminStmt) {
+                    $adminCreateUserErrors[] = 'Unable to validate admin username right now.';
+                    break;
+                }
+
+                $checkAdminStmt->bind_param('s', $candidateUsername);
+                $checkAdminStmt->execute();
+                $existingAdminResult = $checkAdminStmt->get_result();
+                $existingAdmin = $existingAdminResult ? $existingAdminResult->fetch_assoc() : null;
+                $checkAdminStmt->close();
+
+                if (!$existingAdmin) {
+                    break;
+                }
+
+                $suffix += 1;
+                $candidateUsername = $baseUsername . '_' . $suffix;
+            }
+
+            if (!$adminCreateUserErrors) {
+                $insertAdminStmt = $conn->prepare("INSERT INTO {$adminAccountsTable} (username, password) VALUES (?, ?)");
+
+                if ($insertAdminStmt) {
+                    $insertAdminStmt->bind_param('ss', $candidateUsername, $hashedPassword);
+
+                    if (!$insertAdminStmt->execute()) {
+                        $adminCreateUserErrors[] = 'Unable to create admin account.';
+                    }
+
+                    $insertAdminStmt->close();
+                } else {
+                    $adminCreateUserErrors[] = 'Unable to prepare admin account creation.';
+                }
+            }
+        }
+    }
+
+    if (!$adminCreateUserErrors) {
+        header('Location: ' . $adminHomePath . '?admin_view=users&created=1');
+        exit;
+    }
+
+    $openAdminCreateUserModal = true;
+    $initialAdminPanel = 'users';
+}
+
 require __DIR__ . '/config/products_repository.php';
 $products = load_products_repository();
 
@@ -137,9 +297,13 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260327-1">
 </head>
-<body class="home-page-customer">
+<body
+    class="home-page-customer"
+    <?php if ($initialAdminPanel !== ''): ?>data-admin-initial-panel="<?php echo htmlspecialchars($initialAdminPanel, ENT_QUOTES, 'UTF-8'); ?>"<?php endif; ?>
+    <?php if ($openAdminCreateUserModal): ?>data-admin-open-create-user-modal="true"<?php endif; ?>
+>
     <header class="site-header">
         <div class="topbar topbar-admin">
             <a class="brand-badge" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">
@@ -302,21 +466,24 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
 
         <section class="admin-users-shell" data-admin-dashboard-panel="users" hidden>
             <div class="admin-users-head" role="group" aria-label="Users controls">
-                <h2>USERS</h2>
-
-                <div class="admin-users-head-actions">
-                    <button class="admin-users-create-trigger" type="button" data-admin-user-open-modal>Add New User</button>
-
-                    <label class="admin-users-filter-wrap" for="admin-users-role-filter">
-                        <span>FILTER:</span>
-                        <select id="admin-users-role-filter" class="admin-users-filter" data-admin-users-filter>
-                            <option value="all" selected>All Roles</option>
-                            <option value="admin">Admin</option>
-                            <option value="customer">Customer</option>
-                        </select>
-                    </label>
+                <div class="admin-users-head-left">
+                    <h2>USERS</h2>
+                    <button class="admin-users-add-button" type="button" data-admin-users-open-modal>+ ADD NEW USER</button>
                 </div>
+
+                <label class="admin-users-filter-wrap" for="admin-users-role-filter">
+                    <span>FILTER:</span>
+                    <select id="admin-users-role-filter" class="admin-users-filter" data-admin-users-filter>
+                        <option value="all" selected>All Roles</option>
+                        <option value="admin">Admin</option>
+                        <option value="customer">Customer</option>
+                    </select>
+                </label>
             </div>
+
+            <?php if ($adminUsersFlashMessage !== ''): ?>
+                <p class="admin-users-flash-message"><?php echo htmlspecialchars($adminUsersFlashMessage, ENT_QUOTES, 'UTF-8'); ?></p>
+            <?php endif; ?>
 
             <div class="admin-users-table-wrap" role="region" aria-label="Users list">
                 <table class="admin-users-table">
@@ -466,59 +633,65 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         </section>
     </main>
 
-    <div class="admin-edit-modal-backdrop" data-admin-user-create-backdrop data-admin-user-create-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/create_user.php', ENT_QUOTES, 'UTF-8'); ?>" hidden>
-        <section class="admin-edit-modal admin-user-create-modal" role="dialog" aria-modal="true" aria-labelledby="admin-user-create-title">
-            <div class="admin-edit-modal-head">
-                <h2 id="admin-user-create-title">Create User</h2>
-                <button class="admin-edit-close" type="button" data-admin-user-close-modal aria-label="Close create user modal">&times;</button>
+    <div class="admin-users-create-backdrop" data-admin-users-create-backdrop hidden>
+        <section class="admin-users-create-modal" role="dialog" aria-modal="true" aria-labelledby="admin-users-create-title">
+            <div class="admin-users-create-head">
+                <h2 id="admin-users-create-title">Create User (Admin Bypass)</h2>
+                <button class="admin-users-create-close" type="button" data-admin-users-close-modal aria-label="Close create user form">&times;</button>
             </div>
 
-            <form class="admin-user-create-form" data-admin-user-create-form>
-                <p class="admin-user-create-note">Admin-only action. This creates an account directly and can bypass customer email verification.</p>
-
-                <div class="admin-user-form-grid">
-                    <label class="admin-user-field" for="admin-user-role">
-                        <span>Role</span>
-                        <select id="admin-user-role" name="role" data-admin-user-role>
-                            <option value="customer" selected>Customer</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </label>
-
-                    <label class="admin-user-field" for="admin-user-status">
-                        <span>Account Status</span>
-                        <select id="admin-user-status" name="accountStatus" data-admin-user-status>
-                            <option value="active" selected>Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </label>
-
-                    <label class="admin-user-field admin-user-field-wide" for="admin-user-fullname">
-                        <span>Full Name</span>
-                        <input id="admin-user-fullname" name="fullName" type="text" placeholder="Enter full name" required>
-                    </label>
-
-                    <label class="admin-user-field admin-user-field-wide" for="admin-user-email">
-                        <span>Email</span>
-                        <input id="admin-user-email" name="email" type="email" placeholder="Enter email" required>
-                    </label>
-
-                    <label class="admin-user-field" for="admin-user-password">
-                        <span>Password</span>
-                        <input id="admin-user-password" name="password" type="password" placeholder="Enter password" minlength="6" required>
-                    </label>
-
-                    <label class="admin-user-field" for="admin-user-confirm-password">
-                        <span>Confirm Password</span>
-                        <input id="admin-user-confirm-password" name="confirmPassword" type="password" placeholder="Confirm password" minlength="6" required>
-                    </label>
+            <?php if ($adminCreateUserErrors): ?>
+                <div class="admin-users-create-errors" role="alert">
+                    <?php foreach ($adminCreateUserErrors as $adminCreateUserError): ?>
+                        <p><?php echo htmlspecialchars((string) $adminCreateUserError, ENT_QUOTES, 'UTF-8'); ?></p>
+                    <?php endforeach; ?>
                 </div>
+            <?php endif; ?>
 
-                <p class="admin-user-create-feedback" data-admin-user-create-feedback hidden></p>
+            <form class="admin-users-create-form" method="post" action="">
+                <input type="hidden" name="admin_action" value="admin_create_user">
 
-                <div class="admin-user-create-actions">
-                    <button class="admin-edit-secondary" type="button" data-admin-user-cancel>Create Later</button>
-                    <button class="admin-edit-primary" type="submit" data-admin-user-submit>Create User</button>
+                <fieldset class="admin-users-create-role-fieldset">
+                    <legend>Role</legend>
+                    <label>
+                        <input type="radio" name="role" value="customer" <?php echo $adminCreateUserValues['role'] === 'customer' ? 'checked' : ''; ?>>
+                        <span>Customer</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="role" value="admin" <?php echo $adminCreateUserValues['role'] === 'admin' ? 'checked' : ''; ?>>
+                        <span>Admin</span>
+                    </label>
+                </fieldset>
+
+                <label for="admin-create-user-full-name">Full Name</label>
+                <input id="admin-create-user-full-name" name="full_name" type="text" value="<?php echo htmlspecialchars($adminCreateUserValues['full_name'], ENT_QUOTES, 'UTF-8'); ?>" required>
+
+                <label for="admin-create-user-email">Email</label>
+                <input id="admin-create-user-email" name="email" type="email" value="<?php echo htmlspecialchars($adminCreateUserValues['email'], ENT_QUOTES, 'UTF-8'); ?>" required>
+
+                <fieldset class="admin-users-create-status-fieldset">
+                    <legend>Account Status (Customer)</legend>
+                    <label>
+                        <input type="radio" name="account_status" value="active" <?php echo $adminCreateUserValues['account_status'] === 'active' ? 'checked' : ''; ?>>
+                        <span>Active</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="account_status" value="inactive" <?php echo $adminCreateUserValues['account_status'] === 'inactive' ? 'checked' : ''; ?>>
+                        <span>Inactive</span>
+                    </label>
+                </fieldset>
+
+                <label for="admin-create-user-password">Password</label>
+                <input id="admin-create-user-password" name="password" type="password" required>
+
+                <label for="admin-create-user-confirm-password">Confirm Password</label>
+                <input id="admin-create-user-confirm-password" name="confirm_password" type="password" required>
+
+                <p class="admin-users-create-note">Customer accounts created here bypass the normal signup verification flow when marked Active.</p>
+
+                <div class="admin-users-create-actions">
+                    <button class="admin-users-create-cancel" type="button" data-admin-users-close-modal>Cancel</button>
+                    <button class="admin-users-create-submit" type="submit">Create</button>
                 </div>
             </form>
         </section>
@@ -761,6 +934,6 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260326-2"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260327-1"></script>
 </body>
 </html>
