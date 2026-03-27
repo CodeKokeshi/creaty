@@ -33,6 +33,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var promoDelay = 3000;
     var filterNav = document.querySelector(".section-nav-interactive");
     var filterToggles = filterNav ? filterNav.querySelectorAll(".filter-toggle") : [];
+    var adminNavBars = document.querySelectorAll("[data-admin-nav]");
     var productCards = document.querySelectorAll('.product-grid .product-card:not([data-admin-add-card="true"])');
     var adminAddCard = document.querySelector('[data-admin-add-card="true"]');
     var productEmpty = document.querySelector(".product-grid-empty");
@@ -2584,6 +2585,27 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    function setAdminNavSwapState(nav, isSwapped) {
+        var primaryItems = nav.querySelectorAll('[data-admin-nav-item="primary"]');
+        var swappedItems = nav.querySelectorAll('[data-admin-nav-item="swapped"]');
+        var swapButton = nav.querySelector("[data-admin-nav-swap]");
+
+        nav.classList.toggle("is-swapped", isSwapped);
+
+        primaryItems.forEach(function (item) {
+            item.hidden = isSwapped;
+        });
+
+        swappedItems.forEach(function (item) {
+            item.hidden = !isSwapped;
+        });
+
+        if (swapButton) {
+            swapButton.setAttribute("aria-pressed", isSwapped ? "true" : "false");
+            swapButton.setAttribute("title", isSwapped ? "Show filters bar" : "Show management bar");
+        }
+    }
+
     function applyProductFilters() {
         if (!productCards.length) {
             return;
@@ -3215,6 +3237,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
         applyProductFilters();
     }
+
+    adminNavBars.forEach(function (nav) {
+        var swapButton = nav.querySelector("[data-admin-nav-swap]");
+
+        if (!swapButton) {
+            return;
+        }
+
+        setAdminNavSwapState(nav, false);
+
+        swapButton.addEventListener("click", function () {
+            var shouldSwap = !nav.classList.contains("is-swapped");
+
+            if (shouldSwap && nav.classList.contains("section-nav-interactive")) {
+                closeFilterPanels(null);
+            }
+
+            setAdminNavSwapState(nav, shouldSwap);
+        });
+    });
 
     detailGalleries.forEach(function (gallery) {
         setupDetailGallery(gallery);

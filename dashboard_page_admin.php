@@ -126,8 +126,8 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             </div>
         </div>
 
-        <nav class="section-nav section-nav-interactive" aria-label="Catalog filters">
-            <div class="section-nav-item section-nav-item-filter">
+        <nav class="section-nav section-nav-interactive section-nav-admin" aria-label="Catalog filters" data-admin-nav>
+            <div class="section-nav-item section-nav-item-filter admin-nav-primary" data-admin-nav-item="primary">
                 <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="brands-filter-panel">
                     BRANDS
                 </button>
@@ -141,9 +141,9 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                 </div>
             </div>
 
-            <a class="section-nav-section" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">EVENTS</a>
+            <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">EVENTS</a>
 
-            <div class="section-nav-item section-nav-item-filter">
+            <div class="section-nav-item section-nav-item-filter admin-nav-primary" data-admin-nav-item="primary">
                 <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="date-filter-panel">
                     DATE
                 </button>
@@ -185,6 +185,15 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     </div>
                 </div>
             </div>
+
+            <span class="section-nav-section admin-nav-alt" data-admin-nav-item="swapped" hidden>EQUIPMENTS</span>
+            <span class="section-nav-section admin-nav-alt" data-admin-nav-item="swapped" hidden>BOOKINGS</span>
+            <span class="section-nav-section admin-nav-alt" data-admin-nav-item="swapped" hidden>REPORTS</span>
+            <span class="section-nav-section admin-nav-alt" data-admin-nav-item="swapped" hidden>USERS</span>
+
+            <button class="section-nav-swap" type="button" data-admin-nav-swap aria-pressed="false" aria-label="Swap admin navigation" title="Show management bar">
+                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/swap_horizontal_arrows.svg" alt="" aria-hidden="true">
+            </button>
         </nav>
     </header>
 

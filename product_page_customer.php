@@ -358,10 +358,20 @@ $productListPath = $homePath . '#featured-products-title';
             <?php endif; ?>
         </div>
 
-        <nav class="section-nav section-nav-disabled" aria-label="Catalog filters">
-            <span class="section-nav-filter is-disabled" aria-disabled="true">BRANDS</span>
-            <span class="section-nav-section is-disabled" aria-disabled="true">EVENTS</span>
-            <span class="section-nav-filter is-disabled" aria-disabled="true">DATE</span>
+        <nav class="section-nav section-nav-disabled<?php echo $isAdminView ? ' section-nav-admin' : ''; ?>" aria-label="Catalog filters"<?php echo $isAdminView ? ' data-admin-nav' : ''; ?>>
+            <span class="section-nav-filter is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">BRANDS</span>
+            <span class="section-nav-section is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">EVENTS</span>
+            <span class="section-nav-filter is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">DATE</span>
+            <?php if ($isAdminView): ?>
+                <span class="section-nav-section is-disabled admin-nav-alt" data-admin-nav-item="swapped" aria-disabled="true" hidden>EQUIPMENTS</span>
+                <span class="section-nav-section is-disabled admin-nav-alt" data-admin-nav-item="swapped" aria-disabled="true" hidden>BOOKINGS</span>
+                <span class="section-nav-section is-disabled admin-nav-alt" data-admin-nav-item="swapped" aria-disabled="true" hidden>REPORTS</span>
+                <span class="section-nav-section is-disabled admin-nav-alt" data-admin-nav-item="swapped" aria-disabled="true" hidden>USERS</span>
+
+                <button class="section-nav-swap" type="button" data-admin-nav-swap aria-pressed="false" aria-label="Swap admin navigation" title="Show management bar">
+                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/swap_horizontal_arrows.svg" alt="" aria-hidden="true">
+                </button>
+            <?php endif; ?>
         </nav>
     </header>
 
