@@ -214,7 +214,14 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                             <td>CAN1200D-01</td>
                             <td>CANON_1200D</td>
                             <td>12</td>
-                            <td><span class="admin-equipments-status">AVAILABLE</span></td>
+                            <td>
+                                <label class="sr-only" for="equipment-status-1">Status</label>
+                                <select class="admin-equipments-status" id="equipment-status-1" name="equipmentStatusSample">
+                                    <option value="available" selected>AVAILABLE</option>
+                                    <option value="maintenance">MAINTENANCE</option>
+                                    <option value="in-use">IN USE</option>
+                                </select>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
