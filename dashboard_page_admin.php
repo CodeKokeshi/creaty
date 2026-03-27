@@ -67,10 +67,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['admin_action'] ??
     }
 
     if ($fullNameValue === '') {
-        $adminCreateUserErrors[] = 'Full name is required.';
+        if ($adminCreateUserValues['role'] === 'admin') {
+            $adminCreateUserErrors[] = 'Employee number is required.';
+        } else {
+            $adminCreateUserErrors[] = 'Full name is required.';
+        }
     }
 
-    if (!filter_var($emailValue, FILTER_VALIDATE_EMAIL)) {
+    if ($emailValue === '') {
+        $adminCreateUserErrors[] = 'Username/Email is required.';
+    }
+
+    if ($adminCreateUserValues['role'] === 'customer' && !filter_var($emailValue, FILTER_VALIDATE_EMAIL)) {
         $adminCreateUserErrors[] = 'Please provide a valid email address.';
     }
 
@@ -128,44 +136,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['admin_action'] ??
                 }
             }
         } else {
-            $emailParts = explode('@', $emailValue);
-            $emailLocalPart = strtolower(trim((string) ($emailParts[0] ?? '')));
-            $fullNameSlug = strtolower(preg_replace('/[^a-z0-9]+/i', '_', $fullNameValue) ?: '');
-            $baseUsername = trim($emailLocalPart !== '' ? $emailLocalPart : $fullNameSlug, '_');
-
-            if ($baseUsername === '') {
-                $baseUsername = 'admin_user';
-            }
-
-            $candidateUsername = $baseUsername;
-            $suffix = 1;
-
-            while (true) {
-                $checkAdminStmt = $conn->prepare("SELECT id FROM {$adminAccountsTable} WHERE username = ? LIMIT 1");
-                if (!$checkAdminStmt) {
-                    $adminCreateUserErrors[] = 'Unable to validate admin username right now.';
-                    break;
-                }
-
-                $checkAdminStmt->bind_param('s', $candidateUsername);
+            $checkAdminStmt = $conn->prepare("SELECT id FROM {$adminAccountsTable} WHERE username = ? LIMIT 1");
+            if (!$checkAdminStmt) {
+                $adminCreateUserErrors[] = 'Unable to validate admin username right now.';
+            } else {
+                $checkAdminStmt->bind_param('s', $emailValue);
                 $checkAdminStmt->execute();
                 $existingAdminResult = $checkAdminStmt->get_result();
                 $existingAdmin = $existingAdminResult ? $existingAdminResult->fetch_assoc() : null;
                 $checkAdminStmt->close();
 
-                if (!$existingAdmin) {
-                    break;
+                if ($existingAdmin) {
+                    $adminCreateUserErrors[] = 'Username already exists.';
                 }
-
-                $suffix += 1;
-                $candidateUsername = $baseUsername . '_' . $suffix;
             }
 
             if (!$adminCreateUserErrors) {
-                $insertAdminStmt = $conn->prepare("INSERT INTO {$adminAccountsTable} (username, password) VALUES (?, ?)");
+                $insertAdminStmt = $conn->prepare("INSERT INTO {$adminAccountsTable} (username, employee_number, password) VALUES (?, ?, ?)");
 
                 if ($insertAdminStmt) {
-                    $insertAdminStmt->bind_param('ss', $candidateUsername, $hashedPassword);
+                    $insertAdminStmt->bind_param('sss', $emailValue, $fullNameValue, $hashedPassword);
 
                     if (!$insertAdminStmt->execute()) {
                         $adminCreateUserErrors[] = 'Unable to create admin account.';
@@ -193,7 +183,7 @@ $products = load_products_repository();
 
 $dashboardUsers = [];
 
-$adminUsersResult = $conn->query("SELECT id, username FROM {$adminAccountsTable} ORDER BY id ASC");
+$adminUsersResult = $conn->query("SELECT id, username, employee_number FROM {$adminAccountsTable} ORDER BY id ASC");
 if ($adminUsersResult instanceof mysqli_result) {
     while ($adminRow = $adminUsersResult->fetch_assoc()) {
         $idValue = (int) ($adminRow['id'] ?? 0);
@@ -203,8 +193,8 @@ if ($adminUsersResult instanceof mysqli_result) {
 
         $dashboardUsers[] = [
             'prefixedId' => 'ADMIN_' . str_pad((string) $idValue, 3, '0', STR_PAD_LEFT),
-            'name' => (string) ($adminRow['username'] ?? ''),
-            'email' => '-',
+            'name' => (string) ($adminRow['employee_number'] ?? ''),
+            'email' => (string) ($adminRow['username'] ?? ''),
             'role' => 'ADMIN'
         ];
     }
@@ -490,8 +480,8 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <thead>
                         <tr>
                             <th scope="col">ID</th>
-                            <th scope="col">NAME</th>
-                            <th scope="col">EMAIL</th>
+                            <th scope="col">FULL NAME/EMPLOYEE NUMBER</th>
+                            <th scope="col">EMAIL/USERNAME</th>
                             <th scope="col">ROLE</th>
                         </tr>
                     </thead>
@@ -654,20 +644,20 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                 <fieldset class="admin-users-create-role-fieldset">
                     <legend>Role</legend>
                     <label>
-                        <input type="radio" name="role" value="customer" <?php echo $adminCreateUserValues['role'] === 'customer' ? 'checked' : ''; ?>>
+                        <input type="radio" name="role" value="customer" <?php echo $adminCreateUserValues['role'] === 'customer' ? 'checked' : ''; ?> onchange="updateFieldLabels()">
                         <span>Customer</span>
                     </label>
                     <label>
-                        <input type="radio" name="role" value="admin" <?php echo $adminCreateUserValues['role'] === 'admin' ? 'checked' : ''; ?>>
+                        <input type="radio" name="role" value="admin" <?php echo $adminCreateUserValues['role'] === 'admin' ? 'checked' : ''; ?> onchange="updateFieldLabels()">
                         <span>Admin</span>
                     </label>
                 </fieldset>
 
-                <label for="admin-create-user-full-name">Full Name</label>
+                <label for="admin-create-user-full-name" id="full-name-label"><?php echo $adminCreateUserValues['role'] === 'admin' ? 'Employee Number' : 'Full Name'; ?></label>
                 <input id="admin-create-user-full-name" name="full_name" type="text" value="<?php echo htmlspecialchars($adminCreateUserValues['full_name'], ENT_QUOTES, 'UTF-8'); ?>" required>
 
-                <label for="admin-create-user-email">Email</label>
-                <input id="admin-create-user-email" name="email" type="email" value="<?php echo htmlspecialchars($adminCreateUserValues['email'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                <label for="admin-create-user-email" id="email-label"><?php echo $adminCreateUserValues['role'] === 'admin' ? 'Username' : 'Email'; ?></label>
+                <input id="admin-create-user-email" name="email" type="text" value="<?php echo htmlspecialchars($adminCreateUserValues['email'], ENT_QUOTES, 'UTF-8'); ?>" required>
 
                 <fieldset class="admin-users-create-status-fieldset">
                     <legend>Account Status (Customer)</legend>
@@ -934,6 +924,26 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+        function updateFieldLabels() {
+            const roleRadios = document.querySelectorAll('input[name="role"]');
+            const selectedRole = Array.from(roleRadios).find(r => r.checked)?.value || 'customer';
+            
+            const fullNameLabel = document.getElementById('full-name-label');
+            const emailLabel = document.getElementById('email-label');
+            const emailInput = document.getElementById('admin-create-user-email');
+            
+            if (selectedRole === 'admin') {
+                fullNameLabel.textContent = 'Employee Number';
+                emailLabel.textContent = 'Username';
+                emailInput.type = 'text';
+            } else {
+                fullNameLabel.textContent = 'Full Name';
+                emailLabel.textContent = 'Email';
+                emailInput.type = 'text';
+            }
+        }
+    </script>
     <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260327-1"></script>
 </body>
 </html>
