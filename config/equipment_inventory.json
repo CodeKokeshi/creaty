@@ -1,0 +1,62 @@
+{
+    "canon-700d": {
+        "timesUsed": 12,
+        "nextSerial": 1,
+        "units": [
+            {
+                "serial": 0,
+                "status": "available"
+            }
+        ]
+    },
+    "canon-1200d": {
+        "timesUsed": 12,
+        "nextSerial": 5,
+        "units": [
+            {
+                "serial": 0,
+                "status": "available"
+            }
+        ]
+    },
+    "fuji-x-a3": {
+        "timesUsed": 12,
+        "nextSerial": 1,
+        "units": [
+            {
+                "serial": 0,
+                "status": "available"
+            }
+        ]
+    },
+    "canon-4000d": {
+        "timesUsed": 12,
+        "nextSerial": 1,
+        "units": [
+            {
+                "serial": 0,
+                "status": "available"
+            }
+        ]
+    },
+    "nikon-d60": {
+        "timesUsed": 12,
+        "nextSerial": 1,
+        "units": [
+            {
+                "serial": 0,
+                "status": "available"
+            }
+        ]
+    },
+    "sony-zv-e10": {
+        "timesUsed": 12,
+        "nextSerial": 1,
+        "units": [
+            {
+                "serial": 0,
+                "status": "available"
+            }
+        ]
+    }
+}

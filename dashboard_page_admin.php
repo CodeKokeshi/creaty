@@ -179,7 +179,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['admin_action'] ??
 }
 
 require __DIR__ . '/config/products_repository.php';
+require __DIR__ . '/config/equipment_inventory_repository.php';
 $products = load_products_repository();
+
+$equipmentStatusLabels = [
+    'available' => 'AVAILABLE',
+    'maintenance' => 'MAINTENANCE',
+    'in-use' => 'IN USE',
+    'broken' => 'BROKEN',
+    'missing' => 'MISSING',
+    'stolen' => 'STOLEN'
+];
 
 $dashboardUsers = [];
 
@@ -221,6 +231,52 @@ if ($customerUsersResult instanceof mysqli_result) {
 
 if (!is_array($products)) {
     $products = [];
+}
+
+$equipmentInventory = sync_equipment_inventory_with_products(
+    $products,
+    load_equipment_inventory_repository(),
+    12
+);
+
+$equipmentRows = [];
+
+foreach ($products as $productKey => $product) {
+    if (!is_array($product) || !isset($equipmentInventory[$productKey])) {
+        continue;
+    }
+
+    $modelLabel = equipment_model_label_from_product($product);
+    $inventoryEntry = normalize_equipment_inventory_entry($equipmentInventory[$productKey], 12);
+    $equipmentInventory[$productKey] = $inventoryEntry;
+    $units = is_array($inventoryEntry['units']) ? $inventoryEntry['units'] : [];
+
+    foreach ($units as $unit) {
+        $serial = max(0, (int) ($unit['serial'] ?? 0));
+        $statusValue = normalize_equipment_status($unit['status'] ?? 'available');
+
+        $equipmentRows[] = [
+            'productKey' => (string) $productKey,
+            'model' => $modelLabel,
+            'serial' => $serial,
+            'unitId' => equipment_unit_identifier($modelLabel, $serial),
+            'status' => $statusValue,
+            'timesUsed' => (int) ($inventoryEntry['timesUsed'] ?? 0)
+        ];
+    }
+}
+
+usort($equipmentRows, static function ($left, $right) {
+    $modelCompare = strcmp((string) ($left['model'] ?? ''), (string) ($right['model'] ?? ''));
+    if ($modelCompare !== 0) {
+        return $modelCompare;
+    }
+
+    return ((int) ($left['serial'] ?? 0)) <=> ((int) ($right['serial'] ?? 0));
+});
+
+if (!save_equipment_inventory_repository($equipmentInventory)) {
+    // Silent fail, just keep going
 }
 
 $howItWorksSlots = [];
@@ -403,19 +459,27 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>CAN1200D-01</td>
-                            <td>CANON_1200D</td>
-                            <td>12</td>
-                            <td>
-                                <label class="sr-only" for="equipment-status-1">Status</label>
-                                <select class="admin-equipments-status" id="equipment-status-1" name="equipmentStatusSample">
-                                    <option value="available" selected>AVAILABLE</option>
-                                    <option value="maintenance">MAINTENANCE</option>
-                                    <option value="in-use">IN USE</option>
-                                </select>
-                            </td>
-                        </tr>
+                        <?php if ($equipmentRows): ?>
+                            <?php foreach ($equipmentRows as $equipmentRow): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars((string) ($equipmentRow['unitId'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars((string) ($equipmentRow['model'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars((string) ((int) ($equipmentRow['timesUsed'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td>
+                                        <label class="sr-only" for="equipment-status-<?php echo htmlspecialchars((string) ($equipmentRow['productKey'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>-<?php echo htmlspecialchars((string) ((int) ($equipmentRow['serial'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?>">Status</label>
+                                        <select class="admin-equipments-status" id="equipment-status-<?php echo htmlspecialchars((string) ($equipmentRow['productKey'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>-<?php echo htmlspecialchars((string) ((int) ($equipmentRow['serial'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?>" data-product-key="<?php echo htmlspecialchars((string) ($equipmentRow['productKey'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-serial="<?php echo htmlspecialchars((string) ((int) ($equipmentRow['serial'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?>">
+                                            <?php foreach ($equipmentStatusLabels as $statusValue => $statusLabel): ?>
+                                                <option value="<?php echo htmlspecialchars((string) $statusValue, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ((string) ($equipmentRow['status'] ?? '') === (string) $statusValue) ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) $statusLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="4">No active equipment units.</td>
+                            </tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
