@@ -3913,7 +3913,7 @@ button {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 2.4rem;
+    gap: 5rem;
     padding: 0 1.5rem;
     min-height: 48px;
 }
@@ -3923,12 +3923,12 @@ button {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1.15rem;
+    gap: 5rem;
     padding: 0 3.2rem;
 }
 
 .section-nav.section-nav-admin.is-swapped {
-    gap: 1rem;
+    gap: 4.2rem;
 }
 
 .section-nav.section-nav-admin .admin-nav-primary[hidden],
@@ -3991,16 +3991,7 @@ button {
 }
 
 .section-nav-filter::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    right: -16px;
-    width: 0;
-    height: 0;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid currentColor;
-    transform: translateY(-30%);
+    display: none;
 }
 
 .section-nav-section::after {
