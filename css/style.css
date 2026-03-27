@@ -4399,6 +4399,33 @@ button {
     letter-spacing: 0.03em;
 }
 
+.admin-users-head-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.admin-users-create-trigger {
+    min-height: 34px;
+    padding: 0 0.95rem;
+    border-radius: 999px;
+    border: 1px solid rgba(217, 217, 217, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f4f4;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.admin-users-create-trigger:hover,
+.admin-users-create-trigger:focus-visible {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(217, 217, 217, 0.5);
+    transform: translateY(-1px);
+}
+
 .admin-users-filter-wrap {
     display: inline-flex;
     align-items: center;
@@ -4457,6 +4484,89 @@ button {
 
 .admin-users-table tbody tr:last-child td {
     border-bottom: 0;
+}
+
+.admin-user-create-modal {
+    width: min(100%, 680px);
+}
+
+.admin-user-create-form {
+    display: grid;
+    gap: 0.9rem;
+}
+
+.admin-user-create-note {
+    margin: 0;
+    color: #b9bec8;
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+
+.admin-user-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.admin-user-field {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.admin-user-field-wide {
+    grid-column: 1 / -1;
+}
+
+.admin-user-field span {
+    color: #d5dae2;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.admin-user-field input,
+.admin-user-field select {
+    min-height: 40px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    background: rgba(255, 255, 255, 0.04);
+    color: #f4f4f4;
+    padding: 0 0.8rem;
+}
+
+.admin-user-field input::placeholder {
+    color: rgba(244, 244, 244, 0.48);
+}
+
+.admin-user-field input:focus-visible,
+.admin-user-field select:focus-visible {
+    outline: 2px solid rgba(217, 217, 217, 0.56);
+    outline-offset: 1px;
+}
+
+.admin-user-create-feedback {
+    margin: 0;
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.84rem;
+    font-weight: 600;
+}
+
+.admin-user-create-feedback.is-error {
+    border: 1px solid rgba(206, 92, 92, 0.46);
+    background: rgba(140, 35, 35, 0.24);
+    color: #ffd1d1;
+}
+
+.admin-user-create-feedback.is-success {
+    border: 1px solid rgba(112, 187, 131, 0.42);
+    background: rgba(40, 88, 54, 0.28);
+    color: #dff5e3;
+}
+
+.admin-user-create-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.55rem;
 }
 
 .filter-group + .filter-group {

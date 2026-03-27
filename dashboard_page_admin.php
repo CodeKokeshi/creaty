@@ -304,14 +304,18 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             <div class="admin-users-head" role="group" aria-label="Users controls">
                 <h2>USERS</h2>
 
-                <label class="admin-users-filter-wrap" for="admin-users-role-filter">
-                    <span>FILTER:</span>
-                    <select id="admin-users-role-filter" class="admin-users-filter" data-admin-users-filter>
-                        <option value="all" selected>All Roles</option>
-                        <option value="admin">Admin</option>
-                        <option value="customer">Customer</option>
-                    </select>
-                </label>
+                <div class="admin-users-head-actions">
+                    <button class="admin-users-create-trigger" type="button" data-admin-user-open-modal>Add New User</button>
+
+                    <label class="admin-users-filter-wrap" for="admin-users-role-filter">
+                        <span>FILTER:</span>
+                        <select id="admin-users-role-filter" class="admin-users-filter" data-admin-users-filter>
+                            <option value="all" selected>All Roles</option>
+                            <option value="admin">Admin</option>
+                            <option value="customer">Customer</option>
+                        </select>
+                    </label>
+                </div>
             </div>
 
             <div class="admin-users-table-wrap" role="region" aria-label="Users list">
@@ -461,6 +465,64 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             <p class="product-grid-empty" hidden>No featured products match the selected filters.</p>
         </section>
     </main>
+
+    <div class="admin-edit-modal-backdrop" data-admin-user-create-backdrop data-admin-user-create-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/create_user.php', ENT_QUOTES, 'UTF-8'); ?>" hidden>
+        <section class="admin-edit-modal admin-user-create-modal" role="dialog" aria-modal="true" aria-labelledby="admin-user-create-title">
+            <div class="admin-edit-modal-head">
+                <h2 id="admin-user-create-title">Create User</h2>
+                <button class="admin-edit-close" type="button" data-admin-user-close-modal aria-label="Close create user modal">&times;</button>
+            </div>
+
+            <form class="admin-user-create-form" data-admin-user-create-form>
+                <p class="admin-user-create-note">Admin-only action. This creates an account directly and can bypass customer email verification.</p>
+
+                <div class="admin-user-form-grid">
+                    <label class="admin-user-field" for="admin-user-role">
+                        <span>Role</span>
+                        <select id="admin-user-role" name="role" data-admin-user-role>
+                            <option value="customer" selected>Customer</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </label>
+
+                    <label class="admin-user-field" for="admin-user-status">
+                        <span>Account Status</span>
+                        <select id="admin-user-status" name="accountStatus" data-admin-user-status>
+                            <option value="active" selected>Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </label>
+
+                    <label class="admin-user-field admin-user-field-wide" for="admin-user-fullname">
+                        <span>Full Name</span>
+                        <input id="admin-user-fullname" name="fullName" type="text" placeholder="Enter full name" required>
+                    </label>
+
+                    <label class="admin-user-field admin-user-field-wide" for="admin-user-email">
+                        <span>Email</span>
+                        <input id="admin-user-email" name="email" type="email" placeholder="Enter email" required>
+                    </label>
+
+                    <label class="admin-user-field" for="admin-user-password">
+                        <span>Password</span>
+                        <input id="admin-user-password" name="password" type="password" placeholder="Enter password" minlength="6" required>
+                    </label>
+
+                    <label class="admin-user-field" for="admin-user-confirm-password">
+                        <span>Confirm Password</span>
+                        <input id="admin-user-confirm-password" name="confirmPassword" type="password" placeholder="Confirm password" minlength="6" required>
+                    </label>
+                </div>
+
+                <p class="admin-user-create-feedback" data-admin-user-create-feedback hidden></p>
+
+                <div class="admin-user-create-actions">
+                    <button class="admin-edit-secondary" type="button" data-admin-user-cancel>Create Later</button>
+                    <button class="admin-edit-primary" type="submit" data-admin-user-submit>Create User</button>
+                </div>
+            </form>
+        </section>
+    </div>
 
     <div class="admin-edit-modal-backdrop" data-admin-edit-backdrop data-admin-duplicate-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/duplicate_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-create-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/create_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-product-base-url="<?php echo htmlspecialchars($routeBase . 'products/?product=', ENT_QUOTES, 'UTF-8'); ?>" hidden>
         <section class="admin-edit-modal" role="dialog" aria-modal="true" aria-labelledby="admin-edit-title">
