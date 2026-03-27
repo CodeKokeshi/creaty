@@ -228,6 +228,39 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             </div>
         </section>
 
+        <section class="admin-reports-shell" data-admin-dashboard-panel="reports" hidden>
+            <div class="admin-reports-head" role="group" aria-label="Report breakdown">
+                <p>Breakdown by:</p>
+                <span class="admin-reports-breakdown-value">Month</span>
+            </div>
+
+            <div class="admin-reports-table-wrap" role="region" aria-label="Reports list">
+                <table class="admin-reports-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">MONTH</th>
+                            <th scope="col">TRANSACTIONS</th>
+                            <th scope="col">REVENUE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><span class="admin-reports-month-pill">January</span></td><td>53</td><td>&#8369; 5,000</td></tr>
+                        <tr><td><span class="admin-reports-month-pill">February</span></td><td>53</td><td>&#8369; 5,000</td></tr>
+                        <tr><td><span class="admin-reports-month-pill">March</span></td><td>53</td><td>&#8369; 5,000</td></tr>
+                        <tr><td><span class="admin-reports-month-pill">April</span></td><td>53</td><td>&#8369; 5,000</td></tr>
+                        <tr><td><span class="admin-reports-month-pill">May</span></td><td>53</td><td>&#8369; 5,000</td></tr>
+                        <tr><td><span class="admin-reports-month-pill">June</span></td><td>53</td><td>&#8369; 5,000</td></tr>
+                        <tr><td><span class="admin-reports-month-pill">July</span></td><td>53</td><td>&#8369; 5,000</td></tr>
+                        <tr><td><span class="admin-reports-month-pill">August</span></td><td>53</td><td>&#8369; 5,000</td></tr>
+                        <tr><td><span class="admin-reports-month-pill">September</span></td><td>53</td><td>&#8369; 5,000</td></tr>
+                        <tr><td><span class="admin-reports-month-pill">October</span></td><td>53</td><td>&#8369; 5,000</td></tr>
+                        <tr><td><span class="admin-reports-month-pill">November</span></td><td>53</td><td>&#8369; 5,000</td></tr>
+                        <tr><td><span class="admin-reports-month-pill">December</span></td><td>53</td><td>&#8369; 5,000</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <section class="promo-banner promo-banner-admin reveal" data-admin-dashboard-default aria-label="Promo carousel" data-admin-promo-banner data-admin-promo-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-image-base="<?php echo htmlspecialchars($assetBase . 'assets/promo_images/', ENT_QUOTES, 'UTF-8'); ?>">
             <button class="step-card-admin-remove promo-banner-admin-remove" type="button" data-admin-promo-remove aria-label="Archive active promo banner">&times;</button>
             <button class="promo-arrow promo-arrow-left" type="button" aria-label="Previous promo">&#10094;</button>
