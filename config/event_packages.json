@@ -1,4 +1,4 @@
-﻿{
+{
     "wedding": {
         "title": "WEDDING PACKAGE",
         "price": "800.00",
@@ -53,7 +53,21 @@
         "price": "250.00",
         "discountPercent": 0,
         "folder": "business-shoots",
-        "thumbnail_images": []
+        "thumbnail_images": [
+            "assets/event_packages/business-shoots/business_JCRD-Builders/CLT02022.jpg",
+            "assets/event_packages/business-shoots/business_JCRD-Builders/CLT02102.jpg",
+            "assets/event_packages/business-shoots/business_JCRD-Builders/CLT02468.jpg",
+            "assets/event_packages/business-shoots/business_Romeo-must-be-smiling/IMG_6517.jpg",
+            "assets/event_packages/business-shoots/business_Romeo-must-be-smiling/IMG_6516.jpg",
+            "assets/event_packages/business-shoots/business_Romeo-must-be-smiling/IMG_6548.jpg",
+            "assets/event_packages/business-shoots/business_Romeo-must-be-smiling/IMG_6513.jpg",
+            "assets/event_packages/business-shoots/business_Romeo-must-be-smiling/IMG_6546.jpg",
+            "assets/event_packages/business-shoots/business_Romeo-must-be-smiling/IMG_6539.jpg",
+            "assets/event_packages/business-shoots/business_Romeo-must-be-smiling/IMG_6527.jpg",
+            "assets/event_packages/business-shoots/business_JCRD-Builders/CLT02028.jpg",
+            "assets/event_packages/business-shoots/business_JCRD-Builders/CLT02041.jpg",
+            "assets/event_packages/business-shoots/business_JCRD-Builders/CLT02061.jpg"
+        ]
     },
     "photo-video-services": {
         "title": "PHOTOGRAPHY AND VIDEOGRAPHY SERVICES",

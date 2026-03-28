@@ -101,7 +101,6 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEventEditName = document.querySelector("[data-admin-event-edit-name]");
     var adminEventEditPrice = document.querySelector("[data-admin-event-edit-price]");
     var adminEventEditDiscount = document.querySelector("[data-admin-event-edit-discount]");
-    var adminEventEditFolderPreview = document.querySelector("[data-admin-event-edit-folder-preview]");
     var adminEventSetThumbButtonInEdit = document.querySelector("[data-admin-event-set-thumbnails-edit]");
     var adminEventThumbsBackdrop = document.querySelector("[data-admin-event-thumbs-backdrop]");
     var adminEventThumbsForm = document.querySelector("[data-admin-event-thumbs-form]");
@@ -865,16 +864,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return Math.min(95, Math.max(0, parsed));
     }
 
-    function slugifyAdminEventPackageFolder(value) {
-        var slug = String(value || "")
-            .toLowerCase()
-            .trim()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-+|-+$/g, "");
-
-        return slug || "event-package";
-    }
-
     function closeAdminEventEditModal() {
         if (!adminEventEditBackdrop) {
             return;
@@ -896,7 +885,6 @@ document.addEventListener("DOMContentLoaded", function () {
         var packageTitle = String(card.getAttribute("data-admin-event-package-title") || "").trim();
         var packagePrice = Number.parseFloat(String(card.getAttribute("data-admin-event-package-price") || "0"));
         var packageDiscount = clampDiscount(card.getAttribute("data-admin-event-package-discount") || "0");
-        var packageFolder = String(card.getAttribute("data-admin-event-package-folder") || "").trim();
 
         if (adminEventEditKey) {
             adminEventEditKey.value = packageKey;
@@ -912,10 +900,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminEventEditDiscount) {
             adminEventEditDiscount.value = String(packageDiscount);
-        }
-
-        if (adminEventEditFolderPreview) {
-            adminEventEditFolderPreview.value = packageFolder || slugifyAdminEventPackageFolder(packageTitle);
         }
 
         adminEventEditBackdrop.hidden = false;
@@ -942,12 +926,6 @@ document.addEventListener("DOMContentLoaded", function () {
             if (event.target === adminEventEditBackdrop) {
                 closeAdminEventEditModal();
             }
-        });
-    }
-
-    if (adminEventEditName && adminEventEditFolderPreview) {
-        adminEventEditName.addEventListener("input", function () {
-            adminEventEditFolderPreview.value = slugifyAdminEventPackageFolder(adminEventEditName.value);
         });
     }
 

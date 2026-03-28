@@ -739,9 +739,6 @@ unset($eventPackage);
                         <label class="admin-edit-label" for="admin-event-edit-name">Package Name</label>
                         <input id="admin-event-edit-name" type="text" name="title" data-admin-event-edit-name required>
 
-                        <label class="admin-edit-label" for="admin-event-edit-folder-preview">Folder (Auto)</label>
-                        <input id="admin-event-edit-folder-preview" type="text" data-admin-event-edit-folder-preview readonly>
-
                         <label class="admin-edit-label" for="admin-event-edit-price">Price</label>
                         <div class="admin-edit-money-field">
                             <span class="admin-edit-currency" aria-hidden="true">&#8369;</span>
@@ -811,6 +808,6 @@ unset($eventPackage);
     <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260328-6"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260328-7"></script>
 </body>
 </html>
