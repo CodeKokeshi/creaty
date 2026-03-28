@@ -354,7 +354,6 @@ foreach ($eventPackagesRepository as $packageKey => $packageRecord) {
         'price_label' => formatEventPackagePrice($rawPrice),
         'discount_percent' => $discountPercent,
         'folder' => $folder,
-        'thumbnail_folder' => trim((string) ($packageRecord['thumbnail_folder'] ?? '')),
         'selected_thumbnail_images' => $selectedThumbnailImages,
     ];
 }
@@ -364,18 +363,21 @@ $eventGalleryImageCandidates = collect_all_event_gallery_images($projectRoot);
 /**
  * @return string[]
  */
-function collectEventThumbnailPaths(string $projectRoot, string $folder): array
+function collect_event_gallery_images_for_folder(string $projectRoot, string $folder, int $limit = 24): array
 {
-    $eventRoot = $projectRoot . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'event_packages' . DIRECTORY_SEPARATOR . '_thumbnails';
-    $targetDirectory = $eventRoot . DIRECTORY_SEPARATOR . $folder;
+    $targetFolder = trim($folder);
+    if ($targetFolder === '') {
+        return [];
+    }
 
-    if (!is_dir($targetDirectory)) {
+    $folderRoot = $projectRoot . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'event_packages' . DIRECTORY_SEPARATOR . $targetFolder;
+    if (!is_dir($folderRoot)) {
         return [];
     }
 
     $images = [];
     $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($targetDirectory, FilesystemIterator::SKIP_DOTS)
+        new RecursiveDirectoryIterator($folderRoot, FilesystemIterator::SKIP_DOTS)
     );
 
     foreach ($iterator as $fileInfo) {
@@ -383,24 +385,42 @@ function collectEventThumbnailPaths(string $projectRoot, string $folder): array
             continue;
         }
 
-        $extension = strtolower((string) pathinfo($fileInfo->getFilename(), PATHINFO_EXTENSION));
-        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
-            continue;
-        }
-
         $absolutePath = $fileInfo->getPathname();
         $relativePath = substr($absolutePath, strlen($projectRoot) + 1);
-
         if ($relativePath === false || $relativePath === '') {
             continue;
         }
 
-        $images[] = str_replace('\\', '/', $relativePath);
+        $normalizedPath = normalize_event_asset_path($relativePath);
+        if (!is_supported_event_image_extension($normalizedPath) || !is_event_gallery_asset_path($normalizedPath)) {
+            continue;
+        }
+
+        $segments = explode('/', $normalizedPath);
+        $skipAsset = false;
+
+        foreach ($segments as $segment) {
+            if ($segment !== '' && strpos($segment, '_') === 0) {
+                $skipAsset = true;
+                break;
+            }
+        }
+
+        if ($skipAsset) {
+            continue;
+        }
+
+        $images[$normalizedPath] = $normalizedPath;
     }
 
-    natcasesort($images);
+    $imageValues = array_values($images);
+    natcasesort($imageValues);
 
-    return array_values($images);
+    if ($limit > 0 && count($imageValues) > $limit) {
+        $imageValues = array_slice($imageValues, 0, $limit);
+    }
+
+    return array_values($imageValues);
 }
 
 /**
@@ -414,12 +434,7 @@ function resolve_event_package_slideshow_images(array $eventPackage, string $pro
         return $selectedImages;
     }
 
-    $thumbnailFolder = trim((string) ($eventPackage['thumbnail_folder'] ?? ''));
-    if ($thumbnailFolder === '') {
-        return [];
-    }
-
-    return collectEventThumbnailPaths($projectRoot, $thumbnailFolder);
+    return collect_event_gallery_images_for_folder($projectRoot, (string) ($eventPackage['folder'] ?? ''));
 }
 
 function buildAssetUrl(string $assetBasePath, string $relativePath): string

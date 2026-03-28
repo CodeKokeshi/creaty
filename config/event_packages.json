@@ -4,7 +4,6 @@
         "price": "800.00",
         "discountPercent": 0,
         "folder": "wedding",
-        "thumbnail_folder": "weddings",
         "thumbnail_images": [
             "assets/event_packages/wedding/civil-wedding_Jerome-and-Marian/CLT05321.jpg",
             "assets/event_packages/wedding/civil-wedding_Jerome-and-Marian/CLT05841.jpg",
@@ -20,7 +19,6 @@
         "price": "450.00",
         "discountPercent": 0,
         "folder": "birthdays",
-        "thumbnail_folder": "birthdays",
         "thumbnail_images": []
     },
     "debut": {
@@ -28,7 +26,6 @@
         "price": "450.00",
         "discountPercent": 0,
         "folder": "debut",
-        "thumbnail_folder": "debut",
         "thumbnail_images": []
     },
     "photo-shoot": {
@@ -36,7 +33,6 @@
         "price": "600.00",
         "discountPercent": 0,
         "folder": "photography-and-videography",
-        "thumbnail_folder": "photography-and-videography",
         "thumbnail_images": []
     },
     "business-shoots": {
@@ -44,7 +40,6 @@
         "price": "250.00",
         "discountPercent": 0,
         "folder": "business_promotion",
-        "thumbnail_folder": "business",
         "thumbnail_images": []
     },
     "photo-video-services": {
@@ -52,7 +47,6 @@
         "price": "899.00",
         "discountPercent": 0,
         "folder": "photography-and-videography",
-        "thumbnail_folder": "photography-and-videography",
         "thumbnail_images": []
     }
 }

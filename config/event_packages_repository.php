@@ -13,7 +13,6 @@ function event_packages_repository_defaults()
             'price' => '800.00',
             'discountPercent' => 0,
             'folder' => 'wedding',
-            'thumbnail_folder' => 'weddings',
             'thumbnail_images' => [],
         ],
         'birthdays' => [
@@ -21,7 +20,6 @@ function event_packages_repository_defaults()
             'price' => '450.00',
             'discountPercent' => 0,
             'folder' => 'birthdays',
-            'thumbnail_folder' => 'birthdays',
             'thumbnail_images' => [],
         ],
         'debut' => [
@@ -29,7 +27,6 @@ function event_packages_repository_defaults()
             'price' => '450.00',
             'discountPercent' => 0,
             'folder' => 'debut',
-            'thumbnail_folder' => 'debut',
             'thumbnail_images' => [],
         ],
         'photo-shoot' => [
@@ -37,7 +34,6 @@ function event_packages_repository_defaults()
             'price' => '600.00',
             'discountPercent' => 0,
             'folder' => 'photography-and-videography',
-            'thumbnail_folder' => 'photography-and-videography',
             'thumbnail_images' => [],
         ],
         'business-shoots' => [
@@ -45,7 +41,6 @@ function event_packages_repository_defaults()
             'price' => '250.00',
             'discountPercent' => 0,
             'folder' => 'business_promotion',
-            'thumbnail_folder' => 'business',
             'thumbnail_images' => [],
         ],
         'photo-video-services' => [
@@ -53,7 +48,6 @@ function event_packages_repository_defaults()
             'price' => '899.00',
             'discountPercent' => 0,
             'folder' => 'photography-and-videography',
-            'thumbnail_folder' => 'photography-and-videography',
             'thumbnail_images' => [],
         ],
     ];
@@ -77,7 +71,6 @@ function normalize_event_package_record($key, $record, $defaults)
             'price' => '0.00',
             'discountPercent' => 0,
             'folder' => '',
-            'thumbnail_folder' => '',
             'thumbnail_images' => [],
         ];
 
@@ -97,7 +90,6 @@ function normalize_event_package_record($key, $record, $defaults)
     $discountValue = max(0, min(95, $discountValue));
 
     $folder = trim((string) ($record['folder'] ?? $fallback['folder']));
-    $thumbnailFolder = trim((string) ($record['thumbnail_folder'] ?? $fallback['thumbnail_folder']));
     $thumbnailImagesInput = $record['thumbnail_images'] ?? $fallback['thumbnail_images'];
     $thumbnailImages = [];
 
@@ -119,7 +111,6 @@ function normalize_event_package_record($key, $record, $defaults)
         'price' => number_format($priceValue, 2, '.', ''),
         'discountPercent' => $discountValue,
         'folder' => $folder,
-        'thumbnail_folder' => $thumbnailFolder,
         'thumbnail_images' => array_values($thumbnailImages),
     ];
 }
