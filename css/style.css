@@ -5290,10 +5290,6 @@ button {
     background: rgba(17, 18, 20, 0.92);
 }
 
-.package-card-admin-no-thumb .package-body {
-    padding-top: 3.1rem;
-}
-
 .admin-events-flash-message {
     margin: 0 0 0.85rem;
     padding: 0.65rem 0.75rem;

@@ -108,6 +108,111 @@ function filter_thumbnail_paths_for_folder(array $paths, string $folder): array
     return array_values($filtered);
 }
 
+function generate_event_package_folder_slug(string $title): string
+{
+    $slug = normalize_event_package_key($title);
+
+    return $slug !== '' ? $slug : 'event-package';
+}
+
+function resolve_unique_event_package_folder_slug(string $baseSlug, string $packageKey, array $repository): string
+{
+    $candidate = trim($baseSlug);
+    if ($candidate === '') {
+        $candidate = 'event-package';
+    }
+
+    $used = [];
+
+    foreach ($repository as $key => $record) {
+        if (!is_array($record) || (string) $key === $packageKey) {
+            continue;
+        }
+
+        $folder = trim((string) ($record['folder'] ?? ''));
+        if ($folder === '') {
+            continue;
+        }
+
+        $used[$folder] = true;
+    }
+
+    if (!isset($used[$candidate])) {
+        return $candidate;
+    }
+
+    $suffix = 2;
+
+    while (isset($used[$candidate . '-' . $suffix])) {
+        $suffix += 1;
+    }
+
+    return $candidate . '-' . $suffix;
+}
+
+/**
+ * @param string[] $paths
+ * @return string[]
+ */
+function remap_selected_thumbnail_paths_for_folder(array $paths, string $oldFolder, string $newFolder): array
+{
+    $normalizedOld = trim($oldFolder);
+    $normalizedNew = trim($newFolder);
+
+    if ($normalizedOld === '' || $normalizedNew === '' || $normalizedOld === $normalizedNew) {
+        return array_values($paths);
+    }
+
+    $oldPrefix = 'assets/event_packages/' . $normalizedOld . '/';
+    $newPrefix = 'assets/event_packages/' . $normalizedNew . '/';
+    $updated = [];
+
+    foreach ($paths as $path) {
+        $entry = normalize_event_asset_path((string) $path);
+
+        if (strpos($entry, $oldPrefix) === 0) {
+            $entry = $newPrefix . substr($entry, strlen($oldPrefix));
+        }
+
+        $updated[] = $entry;
+    }
+
+    return array_values($updated);
+}
+
+function rename_event_package_folder_directory(string $projectRoot, string $oldFolder, string $newFolder): bool
+{
+    $normalizedOld = trim($oldFolder);
+    $normalizedNew = trim($newFolder);
+
+    if ($normalizedNew === '') {
+        return false;
+    }
+
+    if ($normalizedOld === $normalizedNew) {
+        return true;
+    }
+
+    $assetsRoot = $projectRoot . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'event_packages';
+    $newPath = $assetsRoot . DIRECTORY_SEPARATOR . $normalizedNew;
+
+    if ($normalizedOld === '') {
+        return is_dir($newPath) || @mkdir($newPath, 0777, true);
+    }
+
+    $oldPath = $assetsRoot . DIRECTORY_SEPARATOR . $normalizedOld;
+
+    if (!is_dir($oldPath)) {
+        return is_dir($newPath) || @mkdir($newPath, 0777, true);
+    }
+
+    if (is_dir($newPath)) {
+        return true;
+    }
+
+    return @rename($oldPath, $newPath);
+}
+
 /**
  * @return string[]
  */
@@ -249,20 +354,48 @@ if ($isAdminView && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') 
         $titleValue = trim((string) ($_POST['title'] ?? ''));
         $priceValue = (float) ($_POST['price'] ?? 0);
         $discountValue = (int) ($_POST['discountPercent'] ?? 0);
-        $folderValue = trim((string) ($_POST['folder'] ?? ''));
 
         $updated = false;
 
         if ($packageKey !== '' && isset($eventPackagesRepository[$packageKey]) && is_array($eventPackagesRepository[$packageKey])) {
-            $availableFolders = collectEventPackageFolders(__DIR__);
+            if ($titleValue !== '' && $priceValue >= 0) {
+                $currentFolder = trim((string) ($eventPackagesRepository[$packageKey]['folder'] ?? ''));
+                $targetFolder = resolve_unique_event_package_folder_slug(
+                    generate_event_package_folder_slug($titleValue),
+                    $packageKey,
+                    $eventPackagesRepository
+                );
 
-            if ($titleValue !== '' && $priceValue >= 0 && in_array($folderValue, $availableFolders, true)) {
+                $folderReady = rename_event_package_folder_directory(__DIR__, $currentFolder, $targetFolder);
+
+                if ($folderReady) {
+                    $currentSelectedThumbnails = sanitize_selected_thumbnail_paths(
+                        $eventPackagesRepository[$packageKey]['thumbnail_images'] ?? [],
+                        __DIR__
+                    );
+
+                    $currentSelectedThumbnails = remap_selected_thumbnail_paths_for_folder(
+                        $currentSelectedThumbnails,
+                        $currentFolder,
+                        $targetFolder
+                    );
+
+                    $currentSelectedThumbnails = sanitize_selected_thumbnail_paths($currentSelectedThumbnails, __DIR__);
+
+                    $eventPackagesRepository[$packageKey]['thumbnail_images'] = filter_thumbnail_paths_for_folder(
+                        $currentSelectedThumbnails,
+                        $targetFolder
+                    );
+                }
+
+                if ($folderReady) {
                 $eventPackagesRepository[$packageKey]['title'] = $titleValue;
                 $eventPackagesRepository[$packageKey]['price'] = number_format($priceValue, 2, '.', '');
                 $eventPackagesRepository[$packageKey]['discountPercent'] = max(0, min(95, $discountValue));
-                $eventPackagesRepository[$packageKey]['folder'] = $folderValue;
+                $eventPackagesRepository[$packageKey]['folder'] = $targetFolder;
 
                 $updated = save_event_packages_repository($eventPackagesRepository);
+                }
             }
         }
 
@@ -358,70 +491,7 @@ foreach ($eventPackagesRepository as $packageKey => $packageRecord) {
     ];
 }
 
-$eventGalleryImageCandidates = collect_all_event_gallery_images($projectRoot);
-
-/**
- * @return string[]
- */
-function collect_event_gallery_images_for_folder(string $projectRoot, string $folder, int $limit = 24): array
-{
-    $targetFolder = trim($folder);
-    if ($targetFolder === '') {
-        return [];
-    }
-
-    $folderRoot = $projectRoot . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'event_packages' . DIRECTORY_SEPARATOR . $targetFolder;
-    if (!is_dir($folderRoot)) {
-        return [];
-    }
-
-    $images = [];
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($folderRoot, FilesystemIterator::SKIP_DOTS)
-    );
-
-    foreach ($iterator as $fileInfo) {
-        if (!$fileInfo->isFile()) {
-            continue;
-        }
-
-        $absolutePath = $fileInfo->getPathname();
-        $relativePath = substr($absolutePath, strlen($projectRoot) + 1);
-        if ($relativePath === false || $relativePath === '') {
-            continue;
-        }
-
-        $normalizedPath = normalize_event_asset_path($relativePath);
-        if (!is_supported_event_image_extension($normalizedPath) || !is_event_gallery_asset_path($normalizedPath)) {
-            continue;
-        }
-
-        $segments = explode('/', $normalizedPath);
-        $skipAsset = false;
-
-        foreach ($segments as $segment) {
-            if ($segment !== '' && strpos($segment, '_') === 0) {
-                $skipAsset = true;
-                break;
-            }
-        }
-
-        if ($skipAsset) {
-            continue;
-        }
-
-        $images[$normalizedPath] = $normalizedPath;
-    }
-
-    $imageValues = array_values($images);
-    natcasesort($imageValues);
-
-    if ($limit > 0 && count($imageValues) > $limit) {
-        $imageValues = array_slice($imageValues, 0, $limit);
-    }
-
-    return array_values($imageValues);
-}
+$eventGalleryImageCandidates = $isAdminView ? collect_all_event_gallery_images($projectRoot) : [];
 
 /**
  * @return string[]
@@ -430,11 +500,8 @@ function resolve_event_package_slideshow_images(array $eventPackage, string $pro
 {
     $selectedImages = sanitize_selected_thumbnail_paths($eventPackage['selected_thumbnail_images'] ?? [], $projectRoot);
     $selectedImages = filter_thumbnail_paths_for_folder($selectedImages, (string) ($eventPackage['folder'] ?? ''));
-    if ($selectedImages !== []) {
-        return $selectedImages;
-    }
 
-    return collect_event_gallery_images_for_folder($projectRoot, (string) ($eventPackage['folder'] ?? ''));
+    return $selectedImages;
 }
 
 function buildAssetUrl(string $assetBasePath, string $relativePath): string
@@ -462,7 +529,7 @@ unset($eventPackage);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260328-3">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260328-5">
 </head>
 <body class="events-page">
     <header class="site-header">
@@ -560,7 +627,7 @@ unset($eventPackage);
                     $detailPageUrl = $assetBase . $eventDetailPath . '?package=' . urlencode($eventPackage['key']);
                     ?>
                     <article
-                        class="package-card<?php echo $isAdminView ? ' package-card-admin-no-thumb' : ''; ?>"
+                        class="package-card"
                         data-admin-event-package
                         data-admin-event-package-key="<?php echo htmlspecialchars((string) $eventPackage['key'], ENT_QUOTES, 'UTF-8'); ?>"
                         data-admin-event-package-title="<?php echo htmlspecialchars((string) $title, ENT_QUOTES, 'UTF-8'); ?>"
@@ -576,32 +643,30 @@ unset($eventPackage);
                             <button class="product-card-admin-remove" type="button" aria-label="Close <?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?> package">&times;</button>
                         <?php endif; ?>
 
-                        <?php if (!$isAdminView): ?>
-                            <div
-                                class="package-thumb<?php echo $images !== [] ? ' package-slideshow' : ''; ?>"
-                                <?php if ($images !== []): ?>
-                                    data-package-slideshow
-                                    data-autoplay-ms="6200"
-                                <?php endif; ?>
-                                aria-label="<?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?> sample photos"
-                            >
-                                <?php if ($images !== []): ?>
-                                    <div class="package-slides">
-                                        <?php foreach ($images as $imageIndex => $imagePath): ?>
-                                            <img
-                                                class="package-slide<?php echo $imageIndex === 0 ? ' is-active' : ''; ?>"
-                                                src="<?php echo htmlspecialchars(buildAssetUrl($assetBase, $imagePath), ENT_QUOTES, 'UTF-8'); ?>"
-                                                alt="<?php echo htmlspecialchars($title . ' sample ' . ($imageIndex + 1), ENT_QUOTES, 'UTF-8'); ?>"
-                                                loading="<?php echo $index === 0 && $imageIndex === 0 ? 'eager' : 'lazy'; ?>"
-                                                aria-hidden="<?php echo $imageIndex === 0 ? 'false' : 'true'; ?>"
-                                            >
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php else: ?>
-                                    <div class="package-empty-state">Thumbnail coming soon.</div>
-                                <?php endif; ?>
-                            </div>
-                        <?php endif; ?>
+                        <div
+                            class="package-thumb<?php echo $images !== [] ? ' package-slideshow' : ''; ?>"
+                            <?php if ($images !== []): ?>
+                                data-package-slideshow
+                                data-autoplay-ms="6200"
+                            <?php endif; ?>
+                            aria-label="<?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?> sample photos"
+                        >
+                            <?php if ($images !== []): ?>
+                                <div class="package-slides">
+                                    <?php foreach ($images as $imageIndex => $imagePath): ?>
+                                        <img
+                                            class="package-slide<?php echo $imageIndex === 0 ? ' is-active' : ''; ?>"
+                                            src="<?php echo htmlspecialchars(buildAssetUrl($assetBase, $imagePath), ENT_QUOTES, 'UTF-8'); ?>"
+                                            alt="<?php echo htmlspecialchars($title . ' sample ' . ($imageIndex + 1), ENT_QUOTES, 'UTF-8'); ?>"
+                                            loading="<?php echo $index === 0 && $imageIndex === 0 ? 'eager' : 'lazy'; ?>"
+                                            aria-hidden="<?php echo $imageIndex === 0 ? 'false' : 'true'; ?>"
+                                        >
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="package-empty-state">Thumbnail coming soon.</div>
+                            <?php endif; ?>
+                        </div>
 
                         <div class="package-body">
                             <h2>
@@ -674,12 +739,8 @@ unset($eventPackage);
                         <label class="admin-edit-label" for="admin-event-edit-name">Package Name</label>
                         <input id="admin-event-edit-name" type="text" name="title" data-admin-event-edit-name required>
 
-                        <label class="admin-edit-label" for="admin-event-edit-folder">Product/Folder Source</label>
-                        <select id="admin-event-edit-folder" name="folder" data-admin-event-edit-folder required>
-                            <?php foreach ($availableEventFolders as $availableFolder): ?>
-                                <option value="<?php echo htmlspecialchars((string) $availableFolder, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) $availableFolder, ENT_QUOTES, 'UTF-8'); ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label class="admin-edit-label" for="admin-event-edit-folder-preview">Folder (Auto)</label>
+                        <input id="admin-event-edit-folder-preview" type="text" data-admin-event-edit-folder-preview readonly>
 
                         <label class="admin-edit-label" for="admin-event-edit-price">Price</label>
                         <div class="admin-edit-money-field">
