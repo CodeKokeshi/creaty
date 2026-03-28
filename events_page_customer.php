@@ -108,111 +108,6 @@ function filter_thumbnail_paths_for_folder(array $paths, string $folder): array
     return array_values($filtered);
 }
 
-function generate_event_package_folder_slug(string $title): string
-{
-    $slug = normalize_event_package_key($title);
-
-    return $slug !== '' ? $slug : 'event-package';
-}
-
-function resolve_unique_event_package_folder_slug(string $baseSlug, string $packageKey, array $repository): string
-{
-    $candidate = trim($baseSlug);
-    if ($candidate === '') {
-        $candidate = 'event-package';
-    }
-
-    $used = [];
-
-    foreach ($repository as $key => $record) {
-        if (!is_array($record) || (string) $key === $packageKey) {
-            continue;
-        }
-
-        $folder = trim((string) ($record['folder'] ?? ''));
-        if ($folder === '') {
-            continue;
-        }
-
-        $used[$folder] = true;
-    }
-
-    if (!isset($used[$candidate])) {
-        return $candidate;
-    }
-
-    $suffix = 2;
-
-    while (isset($used[$candidate . '-' . $suffix])) {
-        $suffix += 1;
-    }
-
-    return $candidate . '-' . $suffix;
-}
-
-/**
- * @param string[] $paths
- * @return string[]
- */
-function remap_selected_thumbnail_paths_for_folder(array $paths, string $oldFolder, string $newFolder): array
-{
-    $normalizedOld = trim($oldFolder);
-    $normalizedNew = trim($newFolder);
-
-    if ($normalizedOld === '' || $normalizedNew === '' || $normalizedOld === $normalizedNew) {
-        return array_values($paths);
-    }
-
-    $oldPrefix = 'assets/event_packages/' . $normalizedOld . '/';
-    $newPrefix = 'assets/event_packages/' . $normalizedNew . '/';
-    $updated = [];
-
-    foreach ($paths as $path) {
-        $entry = normalize_event_asset_path((string) $path);
-
-        if (strpos($entry, $oldPrefix) === 0) {
-            $entry = $newPrefix . substr($entry, strlen($oldPrefix));
-        }
-
-        $updated[] = $entry;
-    }
-
-    return array_values($updated);
-}
-
-function rename_event_package_folder_directory(string $projectRoot, string $oldFolder, string $newFolder): bool
-{
-    $normalizedOld = trim($oldFolder);
-    $normalizedNew = trim($newFolder);
-
-    if ($normalizedNew === '') {
-        return false;
-    }
-
-    if ($normalizedOld === $normalizedNew) {
-        return true;
-    }
-
-    $assetsRoot = $projectRoot . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'event_packages';
-    $newPath = $assetsRoot . DIRECTORY_SEPARATOR . $normalizedNew;
-
-    if ($normalizedOld === '') {
-        return is_dir($newPath) || @mkdir($newPath, 0777, true);
-    }
-
-    $oldPath = $assetsRoot . DIRECTORY_SEPARATOR . $normalizedOld;
-
-    if (!is_dir($oldPath)) {
-        return is_dir($newPath) || @mkdir($newPath, 0777, true);
-    }
-
-    if (is_dir($newPath)) {
-        return true;
-    }
-
-    return @rename($oldPath, $newPath);
-}
-
 /**
  * @return string[]
  */
@@ -359,43 +254,11 @@ if ($isAdminView && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') 
 
         if ($packageKey !== '' && isset($eventPackagesRepository[$packageKey]) && is_array($eventPackagesRepository[$packageKey])) {
             if ($titleValue !== '' && $priceValue >= 0) {
-                $currentFolder = trim((string) ($eventPackagesRepository[$packageKey]['folder'] ?? ''));
-                $targetFolder = resolve_unique_event_package_folder_slug(
-                    generate_event_package_folder_slug($titleValue),
-                    $packageKey,
-                    $eventPackagesRepository
-                );
-
-                $folderReady = rename_event_package_folder_directory(__DIR__, $currentFolder, $targetFolder);
-
-                if ($folderReady) {
-                    $currentSelectedThumbnails = sanitize_selected_thumbnail_paths(
-                        $eventPackagesRepository[$packageKey]['thumbnail_images'] ?? [],
-                        __DIR__
-                    );
-
-                    $currentSelectedThumbnails = remap_selected_thumbnail_paths_for_folder(
-                        $currentSelectedThumbnails,
-                        $currentFolder,
-                        $targetFolder
-                    );
-
-                    $currentSelectedThumbnails = sanitize_selected_thumbnail_paths($currentSelectedThumbnails, __DIR__);
-
-                    $eventPackagesRepository[$packageKey]['thumbnail_images'] = filter_thumbnail_paths_for_folder(
-                        $currentSelectedThumbnails,
-                        $targetFolder
-                    );
-                }
-
-                if ($folderReady) {
                 $eventPackagesRepository[$packageKey]['title'] = $titleValue;
                 $eventPackagesRepository[$packageKey]['price'] = number_format($priceValue, 2, '.', '');
                 $eventPackagesRepository[$packageKey]['discountPercent'] = max(0, min(95, $discountValue));
-                $eventPackagesRepository[$packageKey]['folder'] = $targetFolder;
 
                 $updated = save_event_packages_repository($eventPackagesRepository);
-                }
             }
         }
 
