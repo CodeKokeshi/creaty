@@ -11,14 +11,10 @@
     },
     "canon-1200d": {
         "timesUsed": 12,
-        "nextSerial": 5,
+        "nextSerial": 6,
         "units": [
             {
                 "serial": 0,
-                "status": "available"
-            },
-            {
-                "serial": 1,
                 "status": "available"
             }
         ]
@@ -54,16 +50,6 @@
         ]
     },
     "sony-zv-e10": {
-        "timesUsed": 12,
-        "nextSerial": 1,
-        "units": [
-            {
-                "serial": 0,
-                "status": "available"
-            }
-        ]
-    },
-    "canon-new-product-copy": {
         "timesUsed": 12,
         "nextSerial": 1,
         "units": [

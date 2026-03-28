@@ -1,7 +1,41 @@
 [
     {
-        "archiveKey": "CANON_1200D_002_20260327-093440",
-        "archivedAt": "2026-03-27T09:34:40+00:00",
+        "archiveKey": "CANON_NEWPRODUCTCOPY_000_20260327-093924",
+        "archivedAt": "2026-03-27T09:39:24+00:00",
+        "productKey": "canon-new-product-copy",
+        "model": "CANON_NEWPRODUCTCOPY",
+        "reason": "Removed from active inventory",
+        "unit": {
+            "serial": 0,
+            "status": "available"
+        }
+    },
+    {
+        "archiveKey": "CANON_NEWPRODUCTCOPY_000_20260328-085817-1332",
+        "archivedAt": "2026-03-28T08:58:17+00:00",
+        "productKey": "canon-new-product-copy",
+        "model": "CANON_NEWPRODUCTCOPY",
+        "reason": "Archived because last active quantity was removed.",
+        "unit": {
+            "serial": 0,
+            "status": "available"
+        },
+        "productArchiveKey": "Canon New Product (Copy) 20260328-085817"
+    },
+    {
+        "archiveKey": "CANON_1200D_001_20260328-085855",
+        "archivedAt": "2026-03-28T08:58:55+00:00",
+        "productKey": "canon-1200d",
+        "model": "CANON_1200D",
+        "reason": "Removed from active inventory",
+        "unit": {
+            "serial": 1,
+            "status": "available"
+        }
+    },
+    {
+        "archiveKey": "CANON_1200D_002_20260328-085857",
+        "archivedAt": "2026-03-28T08:58:57+00:00",
         "productKey": "canon-1200d",
         "model": "CANON_1200D",
         "reason": "Removed from active inventory",
@@ -11,8 +45,8 @@
         }
     },
     {
-        "archiveKey": "CANON_1200D_003_20260327-093458",
-        "archivedAt": "2026-03-27T09:34:58+00:00",
+        "archiveKey": "CANON_1200D_003_20260328-085859",
+        "archivedAt": "2026-03-28T08:58:59+00:00",
         "productKey": "canon-1200d",
         "model": "CANON_1200D",
         "reason": "Removed from active inventory",
@@ -22,8 +56,8 @@
         }
     },
     {
-        "archiveKey": "CANON_1200D_004_20260327-093500",
-        "archivedAt": "2026-03-27T09:35:00+00:00",
+        "archiveKey": "CANON_1200D_004_20260328-085901",
+        "archivedAt": "2026-03-28T08:59:01+00:00",
         "productKey": "canon-1200d",
         "model": "CANON_1200D",
         "reason": "Removed from active inventory",
@@ -33,13 +67,13 @@
         }
     },
     {
-        "archiveKey": "CANON_NEWPRODUCTCOPY_000_20260327-093924",
-        "archivedAt": "2026-03-27T09:39:24+00:00",
-        "productKey": "canon-new-product-copy",
-        "model": "CANON_NEWPRODUCTCOPY",
+        "archiveKey": "CANON_1200D_005_20260328-085904",
+        "archivedAt": "2026-03-28T08:59:04+00:00",
+        "productKey": "canon-1200d",
+        "model": "CANON_1200D",
         "reason": "Removed from active inventory",
         "unit": {
-            "serial": 0,
+            "serial": 5,
             "status": "available"
         }
     }

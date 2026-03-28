@@ -41,8 +41,16 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEquipmentArchiveBackdrop = document.querySelector("[data-admin-equipment-archive-backdrop]");
     var adminEquipmentArchiveOpenButtons = document.querySelectorAll("[data-admin-equipment-archive-open]");
     var adminEquipmentArchiveCloseButtons = document.querySelectorAll("[data-admin-equipment-archive-close]");
+    var adminEquipmentAddButtons = document.querySelectorAll("[data-admin-equipment-add]");
     var adminEquipmentRemoveButtons = document.querySelectorAll("[data-admin-equipment-remove]");
     var shouldOpenAdminEquipmentArchiveModal = document.body.getAttribute("data-admin-open-equipment-archive-modal") === "true";
+    var adminActionModalBackdrop = document.querySelector("[data-admin-action-modal-backdrop]");
+    var adminActionModalTitle = document.querySelector("[data-admin-action-modal-title]");
+    var adminActionModalMessage = document.querySelector("[data-admin-action-modal-message]");
+    var adminActionModalQuantityWrap = document.querySelector("[data-admin-action-modal-quantity-wrap]");
+    var adminActionModalQuantityInput = document.querySelector("[data-admin-action-modal-quantity-input]");
+    var adminActionModalConfirm = document.querySelector("[data-admin-action-modal-confirm]");
+    var adminActionModalCancelButtons = document.querySelectorAll("[data-admin-action-modal-cancel], [data-admin-action-modal-close]");
     var productCards = document.querySelectorAll('.product-grid .product-card:not([data-admin-add-card="true"])');
     var adminAddCard = document.querySelector('[data-admin-add-card="true"]');
     var productEmpty = document.querySelector(".product-grid-empty");
@@ -158,6 +166,11 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminUndoState = {
         timerId: null,
         pending: null
+    };
+    var adminActionModalState = {
+        onConfirm: null,
+        onClose: null,
+        quantityRequired: false
     };
     var detailGalleries = document.querySelectorAll("[data-gallery]");
     var packageSlideshows = document.querySelectorAll("[data-package-slideshow]");
@@ -422,6 +435,78 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    function archiveFeaturedProduct(card, button, archiveEndpoint) {
+        if (!card || !button || !archiveEndpoint) {
+            return;
+        }
+
+        var productKey = card.getAttribute("data-product-key") || "";
+        if (!productKey) {
+            return;
+        }
+
+        card.classList.add("is-admin-removing");
+        button.disabled = true;
+
+        fetch(archiveEndpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                productKey: productKey
+            })
+        })
+            .then(function (response) {
+                return response.json().then(function (payload) {
+                    return {
+                        ok: response.ok,
+                        payload: payload
+                    };
+                });
+            })
+            .then(function (result) {
+                if (!result.ok || !result.payload || !result.payload.ok) {
+                    var message = result.payload && result.payload.message ? result.payload.message : "Unable to archive product.";
+                    throw new Error(message);
+                }
+
+                var titleLink = card.querySelector(".product-title-link");
+                var productName = titleLink ? titleLink.textContent.trim() : "Product";
+                var archivedAt = result.payload.archivedEntry && result.payload.archivedEntry.archivedAt
+                    ? String(result.payload.archivedEntry.archivedAt)
+                    : "";
+                var archiveKey = result.payload.archivedEntry && result.payload.archivedEntry.archiveKey
+                    ? String(result.payload.archivedEntry.archiveKey)
+                    : "";
+
+                window.setTimeout(function () {
+                    card.setAttribute("data-admin-removed", "true");
+                    card.classList.remove("is-admin-removing");
+                    card.classList.add("is-hidden");
+                    applyProductFilters();
+
+                    if (archiveKey) {
+                        showAdminUndoToast(productName + " archived" + (archivedAt ? " (" + formatArchiveDateLabel(archivedAt) + ")" : ""), {
+                            type: "product",
+                            archiveKey: archiveKey,
+                            card: card,
+                            button: button
+                        });
+                    }
+                }, 160);
+            })
+            .catch(function (error) {
+                openAdminActionModal({
+                    title: "Archive Failed",
+                    message: error.message || "Unable to archive product.",
+                    confirmLabel: "OK"
+                });
+                card.classList.remove("is-admin-removing");
+                button.disabled = false;
+            });
+    }
+
     adminRemoveButtons.forEach(function (button) {
         button.addEventListener("click", function () {
             var card = button.closest(".product-card");
@@ -431,72 +516,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            var productKey = card.getAttribute("data-product-key") || "";
-            if (!productKey) {
-                return;
-            }
+            var titleLink = card.querySelector(".product-title-link");
+            var productName = titleLink ? titleLink.textContent.trim() : "This featured product";
 
-            var archiveConfirmation = "Archiving this featured product will archive all of its equipment inventory units. Continue?";
-            if (!window.confirm(archiveConfirmation)) {
-                return;
-            }
-
-            card.classList.add("is-admin-removing");
-            button.disabled = true;
-
-            fetch(archiveEndpoint, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    productKey: productKey
-                })
-            })
-                .then(function (response) {
-                    return response.json().then(function (payload) {
-                        return {
-                            ok: response.ok,
-                            payload: payload
-                        };
-                    });
-                })
-                .then(function (result) {
-                    if (!result.ok || !result.payload || !result.payload.ok) {
-                        var message = result.payload && result.payload.message ? result.payload.message : "Unable to archive product.";
-                        throw new Error(message);
-                    }
-
-                    var titleLink = card.querySelector(".product-title-link");
-                    var productName = titleLink ? titleLink.textContent.trim() : "Product";
-                    var archivedAt = result.payload.archivedEntry && result.payload.archivedEntry.archivedAt
-                        ? String(result.payload.archivedEntry.archivedAt)
-                        : "";
-                    var archiveKey = result.payload.archivedEntry && result.payload.archivedEntry.archiveKey
-                        ? String(result.payload.archivedEntry.archiveKey)
-                        : "";
-
-                    window.setTimeout(function () {
-                        card.setAttribute("data-admin-removed", "true");
-                        card.classList.remove("is-admin-removing");
-                        card.classList.add("is-hidden");
-                        applyProductFilters();
-
-                        if (archiveKey) {
-                            showAdminUndoToast(productName + " archived" + (archivedAt ? " (" + formatArchiveDateLabel(archivedAt) + ")" : ""), {
-                                type: "product",
-                                archiveKey: archiveKey,
-                                card: card,
-                                button: button
-                            });
-                        }
-                    }, 160);
-                })
-                .catch(function (error) {
-                    window.alert(error.message || "Unable to archive product.");
-                    card.classList.remove("is-admin-removing");
-                    button.disabled = false;
-                });
+            openAdminActionModal({
+                title: "Archive Featured Product",
+                message: productName + " will be archived together with all of its equipment inventory units.",
+                confirmLabel: "Archive Product",
+                onConfirm: function () {
+                    archiveFeaturedProduct(card, button, archiveEndpoint);
+                }
+            });
         });
     });
 
@@ -3388,7 +3418,91 @@ document.addEventListener("DOMContentLoaded", function () {
     function syncAdminModalBodyLock() {
         var hasVisibleUsersModal = Boolean(adminUsersCreateBackdrop && !adminUsersCreateBackdrop.hidden);
         var hasVisibleEquipmentArchiveModal = Boolean(adminEquipmentArchiveBackdrop && !adminEquipmentArchiveBackdrop.hidden);
-        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal);
+        var hasVisibleActionModal = Boolean(adminActionModalBackdrop && !adminActionModalBackdrop.hidden);
+        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleActionModal);
+    }
+
+    function closeAdminActionModal(invokeOnClose) {
+        if (!adminActionModalBackdrop) {
+            return;
+        }
+
+        adminActionModalBackdrop.hidden = true;
+        syncAdminModalBodyLock();
+
+        var onCloseCallback = adminActionModalState.onClose;
+        adminActionModalState.onConfirm = null;
+        adminActionModalState.onClose = null;
+        adminActionModalState.quantityRequired = false;
+
+        if (adminActionModalConfirm) {
+            adminActionModalConfirm.disabled = false;
+            adminActionModalConfirm.textContent = "Confirm";
+        }
+
+        if (invokeOnClose && typeof onCloseCallback === "function") {
+            onCloseCallback();
+        }
+    }
+
+    function openAdminActionModal(options) {
+        if (!adminActionModalBackdrop || !adminActionModalTitle || !adminActionModalMessage || !adminActionModalConfirm) {
+            return;
+        }
+
+        var config = options || {};
+        var requiresQuantity = Boolean(config.quantityRequired);
+        var confirmLabel = String(config.confirmLabel || "Confirm");
+
+        adminActionModalState.onConfirm = typeof config.onConfirm === "function" ? config.onConfirm : null;
+        adminActionModalState.onClose = typeof config.onClose === "function" ? config.onClose : null;
+        adminActionModalState.quantityRequired = requiresQuantity;
+
+        adminActionModalTitle.textContent = String(config.title || "Confirm Action");
+        adminActionModalMessage.textContent = String(config.message || "Please confirm this action.");
+        adminActionModalConfirm.textContent = confirmLabel;
+        adminActionModalConfirm.disabled = false;
+
+        if (adminActionModalQuantityWrap && adminActionModalQuantityInput) {
+            adminActionModalQuantityWrap.hidden = !requiresQuantity;
+
+            if (requiresQuantity) {
+                var minValue = Number.parseInt(String(config.quantityMin || "1"), 10);
+                var maxValue = Number.parseInt(String(config.quantityMax || "200"), 10);
+                var initialValue = Number.parseInt(String(config.quantityInitial || "1"), 10);
+
+                if (!Number.isFinite(minValue) || minValue < 1) {
+                    minValue = 1;
+                }
+
+                if (!Number.isFinite(maxValue) || maxValue < minValue) {
+                    maxValue = 200;
+                }
+
+                if (!Number.isFinite(initialValue)) {
+                    initialValue = minValue;
+                }
+
+                initialValue = Math.max(minValue, Math.min(maxValue, initialValue));
+
+                adminActionModalQuantityInput.min = String(minValue);
+                adminActionModalQuantityInput.max = String(maxValue);
+                adminActionModalQuantityInput.value = String(initialValue);
+            }
+        }
+
+        adminActionModalBackdrop.hidden = false;
+        syncAdminModalBodyLock();
+
+        window.requestAnimationFrame(function () {
+            if (requiresQuantity && adminActionModalQuantityInput) {
+                adminActionModalQuantityInput.focus();
+                adminActionModalQuantityInput.select();
+                return;
+            }
+
+            adminActionModalConfirm.focus();
+        });
     }
 
     function openAdminUsersCreateModal() {
@@ -3467,16 +3581,128 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    if (adminActionModalBackdrop) {
+        adminActionModalBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminActionModalBackdrop) {
+                closeAdminActionModal(true);
+            }
+        });
+    }
+
+    adminActionModalCancelButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            closeAdminActionModal(true);
+        });
+    });
+
+    if (adminActionModalConfirm) {
+        adminActionModalConfirm.addEventListener("click", function () {
+            var onConfirmCallback = adminActionModalState.onConfirm;
+            var onCloseCallback = adminActionModalState.onClose;
+            var quantityValue = 1;
+
+            if (adminActionModalState.quantityRequired && adminActionModalQuantityInput) {
+                var parsedQuantity = Number.parseInt(String(adminActionModalQuantityInput.value || "1"), 10);
+                var minQuantity = Number.parseInt(String(adminActionModalQuantityInput.min || "1"), 10);
+                var maxQuantity = Number.parseInt(String(adminActionModalQuantityInput.max || "200"), 10);
+
+                if (!Number.isFinite(minQuantity) || minQuantity < 1) {
+                    minQuantity = 1;
+                }
+
+                if (!Number.isFinite(maxQuantity) || maxQuantity < minQuantity) {
+                    maxQuantity = 200;
+                }
+
+                if (!Number.isFinite(parsedQuantity)) {
+                    parsedQuantity = minQuantity;
+                }
+
+                parsedQuantity = Math.max(minQuantity, Math.min(maxQuantity, parsedQuantity));
+                adminActionModalQuantityInput.value = String(parsedQuantity);
+                quantityValue = parsedQuantity;
+            }
+
+            closeAdminActionModal(false);
+
+            if (typeof onConfirmCallback === "function") {
+                onConfirmCallback(quantityValue);
+            }
+
+            if (typeof onCloseCallback === "function") {
+                onCloseCallback();
+            }
+        });
+    }
+
+    if (adminActionModalQuantityInput) {
+        adminActionModalQuantityInput.addEventListener("keydown", function (event) {
+            if (event.key === "Enter" && adminActionModalConfirm && !adminActionModalConfirm.disabled) {
+                event.preventDefault();
+                adminActionModalConfirm.click();
+            }
+        });
+    }
+
+    adminEquipmentAddButtons.forEach(function (button) {
+        button.addEventListener("click", function (event) {
+            event.preventDefault();
+
+            var form = button.closest("form");
+            if (!form) {
+                return;
+            }
+
+            var quantityInput = form.querySelector('input[name="quantity"]');
+            var modelName = String(button.getAttribute("data-model") || "this model");
+
+            openAdminActionModal({
+                title: "Add Equipment Quantity",
+                message: "How many units do you want to add for " + modelName + "? Removed IDs will be reused first.",
+                confirmLabel: "Add",
+                quantityRequired: true,
+                quantityMin: 1,
+                quantityMax: 200,
+                quantityInitial: 1,
+                onConfirm: function (quantityValue) {
+                    if (quantityInput) {
+                        quantityInput.value = String(quantityValue);
+                    }
+
+                    form.submit();
+                }
+            });
+        });
+    });
+
     adminEquipmentRemoveButtons.forEach(function (button) {
         button.addEventListener("click", function (event) {
+            event.preventDefault();
+
+            var form = button.closest("form");
+            if (!form) {
+                return;
+            }
+
             var willArchive = button.getAttribute("data-will-archive") === "true";
+            var unitId = String(button.getAttribute("data-unit-id") || "this unit");
+            var modelName = String(button.getAttribute("data-model") || "the selected model");
             var confirmMessage = willArchive
                 ? "Removing the last quantity will archive the featured product and all of its equipment units. Continue?"
-                : "Remove this equipment unit from active inventory?";
+                : "Remove " + unitId + " from active inventory?";
+            var title = willArchive ? "Archive Product Warning" : "Remove Equipment Unit";
+            var description = willArchive
+                ? modelName + " only has one active unit left. Removing it will archive the featured product and all related inventory units."
+                : confirmMessage;
 
-            if (!window.confirm(confirmMessage)) {
-                event.preventDefault();
-            }
+            openAdminActionModal({
+                title: title,
+                message: description,
+                confirmLabel: willArchive ? "Archive Product" : "Remove Unit",
+                onConfirm: function () {
+                    form.submit();
+                }
+            });
         });
     });
 
@@ -3499,6 +3725,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminEquipmentArchiveBackdrop && !adminEquipmentArchiveBackdrop.hidden) {
             closeAdminEquipmentArchiveModal();
+        }
+
+        if (adminActionModalBackdrop && !adminActionModalBackdrop.hidden) {
+            closeAdminActionModal(true);
         }
     });
 

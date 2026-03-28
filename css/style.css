@@ -4516,6 +4516,129 @@ button {
     filter: brightness(1.08);
 }
 
+.admin-action-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1720;
+    background: rgba(7, 8, 11, 0.72);
+    backdrop-filter: blur(2px);
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+}
+
+.admin-action-modal {
+    width: min(100%, 460px);
+    border: 1px solid rgba(217, 217, 217, 0.34);
+    border-radius: 14px;
+    background: #111825;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.44);
+    padding: 0.95rem;
+    display: grid;
+    gap: 0.8rem;
+}
+
+.admin-action-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.admin-action-modal-head h2 {
+    margin: 0;
+    color: #f4f4f4;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.admin-action-modal-close {
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(217, 217, 217, 0.22);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.07);
+    color: #f4f4f4;
+    font-size: 1.32rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+.admin-action-modal-copy {
+    margin: 0;
+    color: rgba(244, 244, 244, 0.9);
+    font-size: 0.86rem;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.admin-action-modal-quantity {
+    display: grid;
+    gap: 0.4rem;
+}
+
+.admin-action-modal-quantity span {
+    color: rgba(244, 244, 244, 0.86);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.admin-action-modal-quantity input {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid rgba(217, 217, 217, 0.24);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f4f4;
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 0.45rem 0.65rem;
+}
+
+.admin-action-modal-quantity input:focus-visible {
+    outline: 2px solid rgba(217, 217, 217, 0.42);
+    outline-offset: 1px;
+}
+
+.admin-action-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.55rem;
+}
+
+.admin-action-modal-cancel,
+.admin-action-modal-confirm {
+    min-height: 34px;
+    border-radius: 9px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0.42rem 0.82rem;
+    cursor: pointer;
+}
+
+.admin-action-modal-cancel {
+    border: 1px solid rgba(217, 217, 217, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f4f4;
+}
+
+.admin-action-modal-confirm {
+    border: 1px solid rgba(103, 194, 61, 0.56);
+    background: #4b9f32;
+    color: #fff;
+}
+
+.admin-action-modal-cancel:hover,
+.admin-action-modal-cancel:focus-visible,
+.admin-action-modal-confirm:hover,
+.admin-action-modal-confirm:focus-visible {
+    filter: brightness(1.08);
+}
+
 .admin-reports-shell {
     width: min(100%, 1280px);
     margin: 0 auto;

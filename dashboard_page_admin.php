@@ -282,6 +282,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             if ($adminAction === 'equipment_add_quantity') {
                 $productKey = trim((string) ($_POST['product_key'] ?? ''));
+                $requestedCount = max(1, min(200, (int) ($_POST['quantity'] ?? 1)));
 
                 if ($productKey === '' || !isset($products[$productKey]) || !is_array($products[$productKey])) {
                     throw new RuntimeException('Featured product was not found.');
@@ -317,9 +318,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     return strcmp((string) ($left['archivedAt'] ?? ''), (string) ($right['archivedAt'] ?? ''));
                 });
 
-                $restoredFromArchive = false;
+                $restoredCount = 0;
 
                 foreach ($restoreCandidates as $candidate) {
+                    if ($restoredCount >= $requestedCount) {
+                        break;
+                    }
+
                     try {
                         $restoreResult = restore_archived_equipment_unit(
                             $equipmentInventory,
@@ -330,22 +335,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         $equipmentInventory = $restoreResult['inventory'];
                         $archivedEquipmentUnits = $restoreResult['archivedUnits'];
-                        $restoredFromArchive = true;
-                        break;
+                        $restoredCount++;
                     } catch (Throwable $restoreError) {
                         continue;
                     }
                 }
 
-                if ($restoredFromArchive) {
+                $newlyCreatedCount = max(0, $requestedCount - $restoredCount);
+
+                if ($newlyCreatedCount > 0) {
+                    $equipmentInventory = add_equipment_inventory_units($equipmentInventory, $productKey, $newlyCreatedCount);
+                }
+
+                if ($restoredCount > 0) {
                     if (!save_archived_equipment_units_repository($archivedEquipmentUnits)) {
                         throw new RuntimeException('Unable to save removed equipment list.');
                     }
 
-                    $flashMessage = 'Quantity added by restoring a previously removed unit ID.';
+                    if ($newlyCreatedCount > 0) {
+                        $flashMessage = 'Added ' . $requestedCount . ' unit(s): ' . $restoredCount . ' restored ID(s), ' . $newlyCreatedCount . ' new ID(s).';
+                    } else {
+                        $flashMessage = 'Added ' . $requestedCount . ' unit(s) by restoring removed ID(s).';
+                    }
                 } else {
-                    $equipmentInventory = add_equipment_inventory_units($equipmentInventory, $productKey, 1);
-                    $flashMessage = 'Quantity added successfully.';
+                    $flashMessage = 'Added ' . $requestedCount . ' unit(s) with new ID(s).';
                 }
 
                 $equipmentInventory = sync_equipment_inventory_with_products($products, $equipmentInventory, 12);
@@ -755,7 +768,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260328-2">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260328-3">
 </head>
 <body
     class="home-page-customer"
@@ -916,7 +929,15 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                                             <form method="post" action="" class="admin-equipments-action-form">
                                                 <input type="hidden" name="admin_action" value="equipment_add_quantity">
                                                 <input type="hidden" name="product_key" value="<?php echo htmlspecialchars($equipmentProductKey, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <button class="admin-equipments-action admin-equipments-action-add" type="submit" title="Add quantity" aria-label="Add quantity to <?php echo htmlspecialchars((string) ($equipmentRow['model'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">+</button>
+                                                <input type="hidden" name="quantity" value="1">
+                                                <button
+                                                    class="admin-equipments-action admin-equipments-action-add"
+                                                    type="submit"
+                                                    data-admin-equipment-add
+                                                    data-model="<?php echo htmlspecialchars((string) ($equipmentRow['model'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                    title="Add quantity"
+                                                    aria-label="Add quantity to <?php echo htmlspecialchars((string) ($equipmentRow['model'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                >+</button>
                                             </form>
 
                                             <form method="post" action="" class="admin-equipments-action-form">
@@ -928,6 +949,8 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                                                     type="submit"
                                                     data-admin-equipment-remove
                                                     data-will-archive="<?php echo $equipmentUnitCount <= 1 ? 'true' : 'false'; ?>"
+                                                    data-model="<?php echo htmlspecialchars((string) ($equipmentRow['model'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                    data-unit-id="<?php echo htmlspecialchars((string) ($equipmentRow['unitId'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                                     title="<?php echo $equipmentUnitCount <= 1 ? 'Remove last quantity and archive featured product' : 'Remove quantity'; ?>"
                                                     aria-label="<?php echo $equipmentUnitCount <= 1 ? 'Remove last quantity and archive featured product' : 'Remove quantity'; ?>"
                                                 >&times;</button>
@@ -1248,6 +1271,27 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             <?php else: ?>
                 <p class="admin-equipments-archive-empty">No removed units yet.</p>
             <?php endif; ?>
+        </section>
+    </div>
+
+    <div class="admin-action-modal-backdrop" data-admin-action-modal-backdrop hidden>
+        <section class="admin-action-modal" role="dialog" aria-modal="true" aria-labelledby="admin-action-modal-title">
+            <div class="admin-action-modal-head">
+                <h2 id="admin-action-modal-title" data-admin-action-modal-title>Confirm Action</h2>
+                <button class="admin-action-modal-close" type="button" data-admin-action-modal-close aria-label="Close confirmation modal">&times;</button>
+            </div>
+
+            <p class="admin-action-modal-copy" data-admin-action-modal-message>Please confirm this action.</p>
+
+            <label class="admin-action-modal-quantity" data-admin-action-modal-quantity-wrap hidden>
+                <span>Quantity</span>
+                <input type="number" min="1" max="200" step="1" value="1" data-admin-action-modal-quantity-input>
+            </label>
+
+            <div class="admin-action-modal-actions">
+                <button class="admin-action-modal-cancel" type="button" data-admin-action-modal-cancel>Cancel</button>
+                <button class="admin-action-modal-confirm" type="button" data-admin-action-modal-confirm>Confirm</button>
+            </div>
         </section>
     </div>
 
@@ -1579,7 +1623,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         }
         document.addEventListener('DOMContentLoaded', updateFieldLabels);
     </script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260328-2"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260328-3"></script>
 </body>
 </html>
 
