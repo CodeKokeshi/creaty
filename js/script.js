@@ -3290,6 +3290,7 @@ document.addEventListener("DOMContentLoaded", function () {
     adminNavBars.forEach(function (nav) {
         var swapButton = nav.querySelector("[data-admin-nav-swap]");
         var adminNavPills = nav.querySelectorAll("[data-admin-nav-pill]");
+        var adminDashboardBaseUrl = String(nav.getAttribute("data-admin-dashboard-base-url") || "");
         var adminUsersFilter = nav.hasAttribute("data-admin-dashboard-nav") ? document.querySelector("[data-admin-users-filter]") : null;
         var adminUserRows = nav.hasAttribute("data-admin-dashboard-nav") ? document.querySelectorAll("[data-admin-user-row]") : [];
         var initialPanelTarget = nav.hasAttribute("data-admin-dashboard-nav")
@@ -3323,6 +3324,22 @@ document.addEventListener("DOMContentLoaded", function () {
                     var url = new URL(window.location.href);
                     url.searchParams.set("admin_view", panelTarget);
                     window.history.replaceState({ path: url.href }, "", url.href);
+                }
+            } else {
+                var nextPanelTarget = nextPill ? String(nextPill.getAttribute("data-admin-panel-target") || "").toLowerCase() : "";
+
+                if (nextPanelTarget && adminDashboardBaseUrl) {
+                    var normalizedBase = adminDashboardBaseUrl;
+                    var hasQuery = normalizedBase.indexOf("?") >= 0;
+                    var hasHash = normalizedBase.indexOf("#") >= 0;
+
+                    if (hasHash) {
+                        normalizedBase = normalizedBase.split("#")[0];
+                        hasQuery = normalizedBase.indexOf("?") >= 0;
+                    }
+
+                    var delimiter = hasQuery ? "&" : "?";
+                    window.location.href = normalizedBase + delimiter + "admin_view=" + encodeURIComponent(nextPanelTarget);
                 }
             }
         }
@@ -3396,7 +3413,9 @@ document.addEventListener("DOMContentLoaded", function () {
             setAdminNavSwapState(nav, shouldSwap);
 
             if (shouldSwap) {
-                setActiveAdminPill(adminNavPills[0] || null);
+                if (nav.hasAttribute("data-admin-dashboard-nav")) {
+                    setActiveAdminPill(adminNavPills[0] || null);
+                }
             } else {
                 updateDashboardPanels();
                 if (nav.hasAttribute("data-admin-dashboard-nav")) {
