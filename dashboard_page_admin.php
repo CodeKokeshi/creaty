@@ -46,6 +46,21 @@ $adminCreateUserValues = [
     'account_status' => 'active'
 ];
 $openAdminCreateUserModal = false;
+$openEquipmentArchiveModal = (string) ($_GET['equipment_archive'] ?? '') === 'open';
+
+$adminEquipmentFlash = isset($_SESSION['admin_equipment_flash']) && is_array($_SESSION['admin_equipment_flash'])
+    ? $_SESSION['admin_equipment_flash']
+    : [];
+
+$adminEquipmentFlashType = strtolower(trim((string) ($adminEquipmentFlash['type'] ?? '')));
+if (!in_array($adminEquipmentFlashType, ['success', 'warning', 'danger'], true)) {
+    $adminEquipmentFlashType = '';
+}
+
+$adminEquipmentFlashMessage = trim((string) ($adminEquipmentFlash['message'] ?? ''));
+if (isset($_SESSION['admin_equipment_flash'])) {
+    unset($_SESSION['admin_equipment_flash']);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['admin_action'] ?? '') === 'admin_create_user') {
     $roleValue = strtolower(trim((string) ($_POST['role'] ?? 'customer')));
@@ -254,7 +269,339 @@ $equipmentInventory = sync_equipment_inventory_with_products(
     12
 );
 
+$archivedEquipmentUnits = load_archived_equipment_units_repository();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $adminAction = (string) ($_POST['admin_action'] ?? '');
+
+    if (strpos($adminAction, 'equipment_') === 0) {
+        $flashType = 'success';
+        $flashMessage = '';
+        $openArchiveOnRedirect = false;
+
+        try {
+            if ($adminAction === 'equipment_add_quantity') {
+                $productKey = trim((string) ($_POST['product_key'] ?? ''));
+
+                if ($productKey === '' || !isset($products[$productKey]) || !is_array($products[$productKey])) {
+                    throw new RuntimeException('Featured product was not found.');
+                }
+
+                $restoreCandidates = [];
+
+                foreach ($archivedEquipmentUnits as $archivedUnitEntry) {
+                    if (!is_array($archivedUnitEntry)) {
+                        continue;
+                    }
+
+                    $archivedProductKey = trim((string) ($archivedUnitEntry['productKey'] ?? ''));
+                    $archivedKey = trim((string) ($archivedUnitEntry['archiveKey'] ?? ''));
+
+                    if ($archivedProductKey !== $productKey || $archivedKey === '') {
+                        continue;
+                    }
+
+                    $restoreCandidates[] = [
+                        'archiveKey' => $archivedKey,
+                        'serial' => max(0, (int) (($archivedUnitEntry['unit']['serial'] ?? 0))),
+                        'archivedAt' => trim((string) ($archivedUnitEntry['archivedAt'] ?? ''))
+                    ];
+                }
+
+                usort($restoreCandidates, static function ($left, $right) {
+                    $serialCompare = ((int) ($left['serial'] ?? 0)) <=> ((int) ($right['serial'] ?? 0));
+                    if ($serialCompare !== 0) {
+                        return $serialCompare;
+                    }
+
+                    return strcmp((string) ($left['archivedAt'] ?? ''), (string) ($right['archivedAt'] ?? ''));
+                });
+
+                $restoredFromArchive = false;
+
+                foreach ($restoreCandidates as $candidate) {
+                    try {
+                        $restoreResult = restore_archived_equipment_unit(
+                            $equipmentInventory,
+                            $archivedEquipmentUnits,
+                            $products,
+                            (string) ($candidate['archiveKey'] ?? '')
+                        );
+
+                        $equipmentInventory = $restoreResult['inventory'];
+                        $archivedEquipmentUnits = $restoreResult['archivedUnits'];
+                        $restoredFromArchive = true;
+                        break;
+                    } catch (Throwable $restoreError) {
+                        continue;
+                    }
+                }
+
+                if ($restoredFromArchive) {
+                    if (!save_archived_equipment_units_repository($archivedEquipmentUnits)) {
+                        throw new RuntimeException('Unable to save removed equipment list.');
+                    }
+
+                    $flashMessage = 'Quantity added by restoring a previously removed unit ID.';
+                } else {
+                    $equipmentInventory = add_equipment_inventory_units($equipmentInventory, $productKey, 1);
+                    $flashMessage = 'Quantity added successfully.';
+                }
+
+                $equipmentInventory = sync_equipment_inventory_with_products($products, $equipmentInventory, 12);
+
+                if (!save_equipment_inventory_repository($equipmentInventory)) {
+                    throw new RuntimeException('Unable to save equipment inventory.');
+                }
+            } elseif ($adminAction === 'equipment_remove_unit') {
+                $productKey = trim((string) ($_POST['product_key'] ?? ''));
+                $serial = (int) ($_POST['serial'] ?? -1);
+
+                if ($productKey === '' || !isset($products[$productKey]) || !is_array($products[$productKey])) {
+                    throw new RuntimeException('Featured product was not found.');
+                }
+
+                if (!isset($equipmentInventory[$productKey]) || !is_array($equipmentInventory[$productKey])) {
+                    throw new RuntimeException('Equipment model was not found in inventory.');
+                }
+
+                $activeUnits = isset($equipmentInventory[$productKey]['units']) && is_array($equipmentInventory[$productKey]['units'])
+                    ? array_values($equipmentInventory[$productKey]['units'])
+                    : [];
+
+                if (!$activeUnits) {
+                    throw new RuntimeException('No active equipment units found for this product.');
+                }
+
+                if (count($activeUnits) <= 1) {
+                    $archiveProductResult = archive_product_record($products, $productKey, __DIR__);
+                    $archiveProductKey = trim((string) ($archiveProductResult['archivedEntry']['archiveKey'] ?? ''));
+
+                    $archiveInventoryResult = archive_all_equipment_units_for_product(
+                        $equipmentInventory,
+                        $archivedEquipmentUnits,
+                        $products,
+                        $productKey,
+                        'Archived because last active quantity was removed.',
+                        $archiveProductKey
+                    );
+
+                    $equipmentInventory = $archiveInventoryResult['inventory'];
+                    $archivedEquipmentUnits = $archiveInventoryResult['archivedUnits'];
+                    $products = $archiveProductResult['products'];
+
+                    if (!save_archived_products_repository($archiveProductResult['archivedProducts'])) {
+                        throw new RuntimeException('Unable to save archived products.');
+                    }
+
+                    if (!save_products_repository($products)) {
+                        throw new RuntimeException('Unable to save active products.');
+                    }
+
+                    if (!save_archived_equipment_units_repository($archivedEquipmentUnits)) {
+                        throw new RuntimeException('Unable to save removed equipment list.');
+                    }
+
+                    $equipmentInventory = sync_equipment_inventory_with_products($products, $equipmentInventory, 12);
+
+                    if (!save_equipment_inventory_repository($equipmentInventory)) {
+                        throw new RuntimeException('Unable to save equipment inventory.');
+                    }
+
+                    $flashType = 'warning';
+                    $flashMessage = 'Last quantity removed. Featured product was archived together with all equipment units.';
+                } else {
+                    $archiveUnitResult = archive_equipment_unit(
+                        $equipmentInventory,
+                        $archivedEquipmentUnits,
+                        $products,
+                        $productKey,
+                        $serial,
+                        'Removed from active inventory'
+                    );
+
+                    $equipmentInventory = $archiveUnitResult['inventory'];
+                    $archivedEquipmentUnits = $archiveUnitResult['archivedUnits'];
+
+                    if (!save_archived_equipment_units_repository($archivedEquipmentUnits)) {
+                        throw new RuntimeException('Unable to save removed equipment list.');
+                    }
+
+                    $equipmentInventory = sync_equipment_inventory_with_products($products, $equipmentInventory, 12);
+
+                    if (!save_equipment_inventory_repository($equipmentInventory)) {
+                        throw new RuntimeException('Unable to save equipment inventory.');
+                    }
+
+                    $flashMessage = 'Equipment unit removed from active inventory.';
+                }
+            } elseif ($adminAction === 'equipment_restore_unit') {
+                $openArchiveOnRedirect = true;
+                $archiveKey = trim((string) ($_POST['archive_key'] ?? ''));
+
+                if ($archiveKey === '') {
+                    throw new RuntimeException('Archive key is required.');
+                }
+
+                $targetArchivedEntry = null;
+
+                foreach ($archivedEquipmentUnits as $archivedUnitEntry) {
+                    if (!is_array($archivedUnitEntry)) {
+                        continue;
+                    }
+
+                    if (trim((string) ($archivedUnitEntry['archiveKey'] ?? '')) === $archiveKey) {
+                        $targetArchivedEntry = $archivedUnitEntry;
+                        break;
+                    }
+                }
+
+                if (!is_array($targetArchivedEntry)) {
+                    throw new RuntimeException('Archived equipment unit was not found.');
+                }
+
+                $targetProductKey = trim((string) ($targetArchivedEntry['productKey'] ?? ''));
+                $productWasRestored = false;
+
+                if ($targetProductKey === '') {
+                    throw new RuntimeException('Archived equipment record is missing the product key.');
+                }
+
+                if (!isset($products[$targetProductKey]) || !is_array($products[$targetProductKey])) {
+                    $archivedProducts = load_archived_products_repository();
+                    $matchingProductArchiveKey = '';
+                    $matchingArchivedAt = '';
+
+                    foreach ($archivedProducts as $archivedProductEntry) {
+                        if (!is_array($archivedProductEntry)) {
+                            continue;
+                        }
+
+                        $originalKey = trim((string) ($archivedProductEntry['originalKey'] ?? ''));
+                        $candidateArchiveKey = trim((string) ($archivedProductEntry['archiveKey'] ?? ''));
+                        $candidateArchivedAt = trim((string) ($archivedProductEntry['archivedAt'] ?? ''));
+
+                        if ($originalKey !== $targetProductKey || $candidateArchiveKey === '') {
+                            continue;
+                        }
+
+                        if ($matchingArchivedAt === '' || strcmp($candidateArchivedAt, $matchingArchivedAt) > 0) {
+                            $matchingArchivedAt = $candidateArchivedAt;
+                            $matchingProductArchiveKey = $candidateArchiveKey;
+                        }
+                    }
+
+                    if ($matchingProductArchiveKey === '') {
+                        throw new RuntimeException('Cannot restore this unit because its featured product is no longer available.');
+                    }
+
+                    $restoreProductResult = restore_archived_product_record(
+                        $products,
+                        $archivedProducts,
+                        $matchingProductArchiveKey,
+                        __DIR__
+                    );
+
+                    $products = $restoreProductResult['products'];
+                    $archivedProducts = $restoreProductResult['archivedProducts'];
+                    $restoredProductKey = trim((string) ($restoreProductResult['restoredKey'] ?? ''));
+
+                    if ($restoredProductKey !== '' && $restoredProductKey !== $targetProductKey) {
+                        foreach ($archivedEquipmentUnits as &$archivedUnitRef) {
+                            if (!is_array($archivedUnitRef)) {
+                                continue;
+                            }
+
+                            if (trim((string) ($archivedUnitRef['productKey'] ?? '')) !== $targetProductKey) {
+                                continue;
+                            }
+
+                            $archivedUnitRef['productKey'] = $restoredProductKey;
+                        }
+                        unset($archivedUnitRef);
+
+                        $targetProductKey = $restoredProductKey;
+                    }
+
+                    if (!save_products_repository($products)) {
+                        throw new RuntimeException('Unable to save active products.');
+                    }
+
+                    if (!save_archived_products_repository($archivedProducts)) {
+                        throw new RuntimeException('Unable to save archived products.');
+                    }
+
+                    $productWasRestored = true;
+                }
+
+                $restoreUnitResult = restore_archived_equipment_unit(
+                    $equipmentInventory,
+                    $archivedEquipmentUnits,
+                    $products,
+                    $archiveKey
+                );
+
+                $equipmentInventory = $restoreUnitResult['inventory'];
+                $archivedEquipmentUnits = $restoreUnitResult['archivedUnits'];
+
+                if (!save_archived_equipment_units_repository($archivedEquipmentUnits)) {
+                    throw new RuntimeException('Unable to save removed equipment list.');
+                }
+
+                $equipmentInventory = sync_equipment_inventory_with_products($products, $equipmentInventory, 12);
+
+                if (!save_equipment_inventory_repository($equipmentInventory)) {
+                    throw new RuntimeException('Unable to save equipment inventory.');
+                }
+
+                $flashMessage = $productWasRestored
+                    ? 'Equipment unit restored. Featured product was restored automatically.'
+                    : 'Equipment unit restored successfully.';
+            } elseif ($adminAction === 'equipment_update_status') {
+                $productKey = trim((string) ($_POST['product_key'] ?? ''));
+                $serial = (int) ($_POST['serial'] ?? -1);
+                $status = strtolower(trim((string) ($_POST['status'] ?? 'available')));
+
+                $equipmentInventory = update_equipment_unit_status(
+                    $equipmentInventory,
+                    $productKey,
+                    $serial,
+                    $status
+                );
+
+                $equipmentInventory = sync_equipment_inventory_with_products($products, $equipmentInventory, 12);
+
+                if (!save_equipment_inventory_repository($equipmentInventory)) {
+                    throw new RuntimeException('Unable to save equipment inventory.');
+                }
+
+                $flashMessage = 'Equipment status updated.';
+            }
+        } catch (Throwable $equipmentError) {
+            $flashType = 'danger';
+            $flashMessage = $equipmentError->getMessage();
+        }
+
+        $_SESSION['admin_equipment_flash'] = [
+            'type' => $flashType,
+            'message' => $flashMessage
+        ];
+
+        $redirectParams = [
+            'admin_view' => 'equipments'
+        ];
+
+        if ($openArchiveOnRedirect) {
+            $redirectParams['equipment_archive'] = 'open';
+        }
+
+        header('Location: ' . $adminHomePath . '?' . http_build_query($redirectParams));
+        exit;
+    }
+}
+
 $equipmentRows = [];
+$equipmentUnitCountsByProduct = [];
 
 foreach ($products as $productKey => $product) {
     if (!is_array($product) || !isset($equipmentInventory[$productKey])) {
@@ -262,9 +609,11 @@ foreach ($products as $productKey => $product) {
     }
 
     $modelLabel = equipment_model_label_from_product($product);
-    $inventoryEntry = normalize_equipment_inventory_entry($equipmentInventory[$productKey], 12);
+    $inventoryEntry = normalize_equipment_inventory_entry($equipmentInventory[$productKey], 12, false);
     $equipmentInventory[$productKey] = $inventoryEntry;
     $units = is_array($inventoryEntry['units']) ? $inventoryEntry['units'] : [];
+
+    $equipmentUnitCountsByProduct[$productKey] = count($units);
 
     foreach ($units as $unit) {
         $serial = max(0, (int) ($unit['serial'] ?? 0));
@@ -289,6 +638,54 @@ usort($equipmentRows, static function ($left, $right) {
 
     return ((int) ($left['serial'] ?? 0)) <=> ((int) ($right['serial'] ?? 0));
 });
+
+$archivedEquipmentRows = [];
+
+foreach ($archivedEquipmentUnits as $archivedEquipmentEntry) {
+    if (!is_array($archivedEquipmentEntry)) {
+        continue;
+    }
+
+    $archiveKey = trim((string) ($archivedEquipmentEntry['archiveKey'] ?? ''));
+    $productKey = trim((string) ($archivedEquipmentEntry['productKey'] ?? ''));
+    $modelLabel = trim((string) ($archivedEquipmentEntry['model'] ?? ''));
+    $archivedAt = trim((string) ($archivedEquipmentEntry['archivedAt'] ?? ''));
+    $reason = trim((string) ($archivedEquipmentEntry['reason'] ?? 'Removed from active inventory'));
+    $unitData = isset($archivedEquipmentEntry['unit']) && is_array($archivedEquipmentEntry['unit'])
+        ? $archivedEquipmentEntry['unit']
+        : [];
+    $serial = max(0, (int) ($unitData['serial'] ?? 0));
+    $status = normalize_equipment_status($unitData['status'] ?? 'available');
+
+    if ($archiveKey === '' || $productKey === '') {
+        continue;
+    }
+
+    if ($modelLabel === '' && isset($products[$productKey]) && is_array($products[$productKey])) {
+        $modelLabel = equipment_model_label_from_product($products[$productKey]);
+    }
+
+    if ($modelLabel === '') {
+        $modelLabel = 'MODEL';
+    }
+
+    $archivedEquipmentRows[] = [
+        'archiveKey' => $archiveKey,
+        'productKey' => $productKey,
+        'model' => $modelLabel,
+        'unitId' => equipment_unit_identifier($modelLabel, $serial),
+        'status' => $status,
+        'reason' => $reason,
+        'archivedAt' => $archivedAt,
+        'hasActiveProduct' => isset($products[$productKey]) && is_array($products[$productKey])
+    ];
+}
+
+usort($archivedEquipmentRows, static function ($left, $right) {
+    return strcmp((string) ($right['archivedAt'] ?? ''), (string) ($left['archivedAt'] ?? ''));
+});
+
+$archivedEquipmentCount = count($archivedEquipmentRows);
 
 if (!save_equipment_inventory_repository($equipmentInventory)) {
     // Silent fail, just keep going
@@ -358,12 +755,13 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260327-1">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260328-2">
 </head>
 <body
     class="home-page-customer"
     <?php if ($initialAdminPanel !== ''): ?>data-admin-initial-panel="<?php echo htmlspecialchars($initialAdminPanel, ENT_QUOTES, 'UTF-8'); ?>"<?php endif; ?>
     <?php if ($openAdminCreateUserModal): ?>data-admin-open-create-user-modal="true"<?php endif; ?>
+    <?php if ($openEquipmentArchiveModal): ?>data-admin-open-equipment-archive-modal="true"<?php endif; ?>
 >
     <header class="site-header">
         <div class="topbar topbar-admin">
@@ -463,6 +861,19 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
 
     <main class="landing-shell">
         <section class="admin-equipments-shell" data-admin-dashboard-panel="equipments" hidden>
+            <div class="admin-equipments-head">
+                <h2>Equipment Inventory</h2>
+                <button class="admin-equipments-archive-open" type="button" data-admin-equipment-archive-open>
+                    Removed Items (<?php echo htmlspecialchars((string) $archivedEquipmentCount, ENT_QUOTES, 'UTF-8'); ?>)
+                </button>
+            </div>
+
+            <?php if ($adminEquipmentFlashMessage !== ''): ?>
+                <p class="admin-equipments-flash-message<?php echo $adminEquipmentFlashType !== '' ? ' is-' . htmlspecialchars($adminEquipmentFlashType, ENT_QUOTES, 'UTF-8') : ''; ?>">
+                    <?php echo htmlspecialchars($adminEquipmentFlashMessage, ENT_QUOTES, 'UTF-8'); ?>
+                </p>
+            <?php endif; ?>
+
             <div class="admin-equipments-table-wrap" role="region" aria-label="Equipments list">
                 <table class="admin-equipments-table">
                     <thead>
@@ -471,28 +882,63 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                             <th scope="col">MODEL</th>
                             <th scope="col">TIMES USED (last 30 days)</th>
                             <th scope="col">STATUS</th>
+                            <th scope="col">ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if ($equipmentRows): ?>
                             <?php foreach ($equipmentRows as $equipmentRow): ?>
+                                <?php
+                                    $equipmentProductKey = (string) ($equipmentRow['productKey'] ?? '');
+                                    $equipmentSerial = (int) ($equipmentRow['serial'] ?? 0);
+                                    $equipmentUnitCount = (int) ($equipmentUnitCountsByProduct[$equipmentProductKey] ?? 0);
+                                ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars((string) ($equipmentRow['unitId'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                     <td><?php echo htmlspecialchars((string) ($equipmentRow['model'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                     <td><?php echo htmlspecialchars((string) ((int) ($equipmentRow['timesUsed'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?></td>
                                     <td>
-                                        <label class="sr-only" for="equipment-status-<?php echo htmlspecialchars((string) ($equipmentRow['productKey'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>-<?php echo htmlspecialchars((string) ((int) ($equipmentRow['serial'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?>">Status</label>
-                                        <select class="admin-equipments-status" id="equipment-status-<?php echo htmlspecialchars((string) ($equipmentRow['productKey'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>-<?php echo htmlspecialchars((string) ((int) ($equipmentRow['serial'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?>" data-product-key="<?php echo htmlspecialchars((string) ($equipmentRow['productKey'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" data-serial="<?php echo htmlspecialchars((string) ((int) ($equipmentRow['serial'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?>">
-                                            <?php foreach ($equipmentStatusLabels as $statusValue => $statusLabel): ?>
-                                                <option value="<?php echo htmlspecialchars((string) $statusValue, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ((string) ($equipmentRow['status'] ?? '') === (string) $statusValue) ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) $statusLabel, ENT_QUOTES, 'UTF-8'); ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                        <form class="admin-equipments-status-form" method="post" action="">
+                                            <input type="hidden" name="admin_action" value="equipment_update_status">
+                                            <input type="hidden" name="product_key" value="<?php echo htmlspecialchars($equipmentProductKey, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <input type="hidden" name="serial" value="<?php echo htmlspecialchars((string) $equipmentSerial, ENT_QUOTES, 'UTF-8'); ?>">
+
+                                            <label class="sr-only" for="equipment-status-<?php echo htmlspecialchars($equipmentProductKey, ENT_QUOTES, 'UTF-8'); ?>-<?php echo htmlspecialchars((string) $equipmentSerial, ENT_QUOTES, 'UTF-8'); ?>">Status</label>
+                                            <select class="admin-equipments-status" id="equipment-status-<?php echo htmlspecialchars($equipmentProductKey, ENT_QUOTES, 'UTF-8'); ?>-<?php echo htmlspecialchars((string) $equipmentSerial, ENT_QUOTES, 'UTF-8'); ?>" name="status" onchange="this.form.submit()">
+                                                <?php foreach ($equipmentStatusLabels as $statusValue => $statusLabel): ?>
+                                                    <option value="<?php echo htmlspecialchars((string) $statusValue, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ((string) ($equipmentRow['status'] ?? '') === (string) $statusValue) ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) $statusLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </form>
+                                    </td>
+                                    <td>
+                                        <div class="admin-equipments-actions">
+                                            <form method="post" action="" class="admin-equipments-action-form">
+                                                <input type="hidden" name="admin_action" value="equipment_add_quantity">
+                                                <input type="hidden" name="product_key" value="<?php echo htmlspecialchars($equipmentProductKey, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <button class="admin-equipments-action admin-equipments-action-add" type="submit" title="Add quantity" aria-label="Add quantity to <?php echo htmlspecialchars((string) ($equipmentRow['model'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">+</button>
+                                            </form>
+
+                                            <form method="post" action="" class="admin-equipments-action-form">
+                                                <input type="hidden" name="admin_action" value="equipment_remove_unit">
+                                                <input type="hidden" name="product_key" value="<?php echo htmlspecialchars($equipmentProductKey, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="serial" value="<?php echo htmlspecialchars((string) $equipmentSerial, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <button
+                                                    class="admin-equipments-action admin-equipments-action-remove"
+                                                    type="submit"
+                                                    data-admin-equipment-remove
+                                                    data-will-archive="<?php echo $equipmentUnitCount <= 1 ? 'true' : 'false'; ?>"
+                                                    title="<?php echo $equipmentUnitCount <= 1 ? 'Remove last quantity and archive featured product' : 'Remove quantity'; ?>"
+                                                    aria-label="<?php echo $equipmentUnitCount <= 1 ? 'Remove last quantity and archive featured product' : 'Remove quantity'; ?>"
+                                                >&times;</button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="4">No active equipment units.</td>
+                                <td colspan="5">No active equipment units.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -746,6 +1192,64 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             <p class="product-grid-empty" hidden>No featured products match the selected filters.</p>
         </section>
     </main>
+
+    <div class="admin-equipments-archive-backdrop" data-admin-equipment-archive-backdrop hidden>
+        <section class="admin-equipments-archive-modal" role="dialog" aria-modal="true" aria-labelledby="admin-equipment-archive-title">
+            <div class="admin-equipments-archive-head">
+                <h2 id="admin-equipment-archive-title">Removed Equipment Units</h2>
+                <button class="admin-equipments-archive-close" type="button" data-admin-equipment-archive-close aria-label="Close removed equipment list">&times;</button>
+            </div>
+
+            <p class="admin-equipments-archive-meta"><?php echo htmlspecialchars((string) $archivedEquipmentCount, ENT_QUOTES, 'UTF-8'); ?> unit(s) currently removed from active inventory.</p>
+
+            <?php if ($archivedEquipmentRows): ?>
+                <div class="admin-equipments-archive-table-wrap" role="region" aria-label="Removed equipment list">
+                    <table class="admin-equipments-archive-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">UNIT-ID</th>
+                                <th scope="col">MODEL</th>
+                                <th scope="col">STATUS</th>
+                                <th scope="col">FEATURED PRODUCT</th>
+                                <th scope="col">REMOVED AT</th>
+                                <th scope="col">REASON</th>
+                                <th scope="col">ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($archivedEquipmentRows as $archivedEquipmentRow): ?>
+                                <?php
+                                    $archivedTimestamp = strtotime((string) ($archivedEquipmentRow['archivedAt'] ?? ''));
+                                    $archivedAtLabel = $archivedTimestamp
+                                        ? date('M d, Y h:i A', $archivedTimestamp)
+                                        : (string) ($archivedEquipmentRow['archivedAt'] ?? '-');
+                                    $archivedStatus = (string) ($archivedEquipmentRow['status'] ?? 'available');
+                                    $archivedStatusLabel = (string) ($equipmentStatusLabels[$archivedStatus] ?? strtoupper(str_replace('-', ' ', $archivedStatus)));
+                                ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars((string) ($archivedEquipmentRow['unitId'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars((string) ($archivedEquipmentRow['model'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($archivedStatusLabel, ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo !empty($archivedEquipmentRow['hasActiveProduct']) ? 'Active' : 'Archived'; ?></td>
+                                    <td><?php echo htmlspecialchars($archivedAtLabel, ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars((string) ($archivedEquipmentRow['reason'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td>
+                                        <form method="post" action="">
+                                            <input type="hidden" name="admin_action" value="equipment_restore_unit">
+                                            <input type="hidden" name="archive_key" value="<?php echo htmlspecialchars((string) ($archivedEquipmentRow['archiveKey'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                            <button class="admin-equipments-restore-button" type="submit">Restore</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php else: ?>
+                <p class="admin-equipments-archive-empty">No removed units yet.</p>
+            <?php endif; ?>
+        </section>
+    </div>
 
     <div class="admin-users-create-backdrop" data-admin-users-create-backdrop hidden>
         <section class="admin-users-create-modal" role="dialog" aria-modal="true" aria-labelledby="admin-users-create-title">
@@ -1075,7 +1579,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         }
         document.addEventListener('DOMContentLoaded', updateFieldLabels);
     </script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260327-1"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260328-2"></script>
 </body>
 </html>
 

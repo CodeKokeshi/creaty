@@ -4243,6 +4243,67 @@ button {
     padding: 1.2rem 1rem 2.4rem;
 }
 
+.admin-equipments-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.admin-equipments-head h2 {
+    margin: 0;
+    color: #f4f4f4;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.admin-equipments-archive-open {
+    min-height: 34px;
+    border: 1px solid rgba(217, 217, 217, 0.38);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f4f4;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0.45rem 0.95rem;
+    cursor: pointer;
+    transition: transform 150ms ease, background-color 150ms ease;
+}
+
+.admin-equipments-archive-open:hover,
+.admin-equipments-archive-open:focus-visible {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.admin-equipments-flash-message {
+    margin: 0 0 0.8rem;
+    border: 1px solid rgba(217, 217, 217, 0.3);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f4f4;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.6rem 0.8rem;
+}
+
+.admin-equipments-flash-message.is-success {
+    border-color: rgba(96, 190, 112, 0.55);
+    background: rgba(96, 190, 112, 0.18);
+}
+
+.admin-equipments-flash-message.is-warning {
+    border-color: rgba(234, 182, 66, 0.58);
+    background: rgba(234, 182, 66, 0.16);
+}
+
+.admin-equipments-flash-message.is-danger {
+    border-color: rgba(222, 86, 86, 0.58);
+    background: rgba(222, 86, 86, 0.18);
+}
+
 .admin-equipments-table-wrap {
     border: 1px solid rgba(217, 217, 217, 0.45);
     background: rgba(10, 10, 11, 0.55);
@@ -4293,9 +4354,166 @@ button {
     cursor: pointer;
 }
 
+.admin-equipments-status-form {
+    margin: 0;
+}
+
 .admin-equipments-status:focus-visible {
     outline: 2px solid rgba(217, 217, 217, 0.64);
     outline-offset: 1px;
+}
+
+.admin-equipments-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.admin-equipments-action-form {
+    margin: 0;
+}
+
+.admin-equipments-action {
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 150ms ease, filter 150ms ease, border-color 150ms ease;
+}
+
+.admin-equipments-action:hover,
+.admin-equipments-action:focus-visible {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+}
+
+.admin-equipments-action-add {
+    background: #4b9f32;
+    border-color: rgba(103, 194, 61, 0.62);
+}
+
+.admin-equipments-action-remove {
+    background: #c84d4d;
+    border-color: rgba(215, 112, 112, 0.66);
+}
+
+.admin-equipments-archive-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1700;
+    background: rgba(7, 8, 11, 0.72);
+    backdrop-filter: blur(2px);
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+}
+
+.admin-equipments-archive-modal {
+    width: min(100%, 1240px);
+    max-height: calc(100vh - 2rem);
+    overflow: auto;
+    border: 1px solid rgba(217, 217, 217, 0.36);
+    border-radius: 14px;
+    background: #111825;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+    padding: 0.9rem;
+}
+
+.admin-equipments-archive-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    margin-bottom: 0.5rem;
+}
+
+.admin-equipments-archive-head h2 {
+    margin: 0;
+    color: #f4f4f4;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.admin-equipments-archive-close {
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(217, 217, 217, 0.24);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f4f4;
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+.admin-equipments-archive-meta,
+.admin-equipments-archive-empty {
+    margin: 0 0 0.7rem;
+    color: rgba(244, 244, 244, 0.84);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.admin-equipments-archive-table-wrap {
+    border: 1px solid rgba(217, 217, 217, 0.24);
+    background: rgba(8, 10, 14, 0.58);
+}
+
+.admin-equipments-archive-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-equipments-archive-table th,
+.admin-equipments-archive-table td {
+    border-bottom: 1px solid rgba(217, 217, 217, 0.24);
+    color: #f4f4f4;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 0.58rem 0.62rem;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.admin-equipments-archive-table th {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgba(244, 244, 244, 0.9);
+}
+
+.admin-equipments-archive-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.admin-equipments-restore-button {
+    min-height: 30px;
+    border: 1px solid rgba(103, 194, 61, 0.6);
+    border-radius: 8px;
+    background: #4b9f32;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.35rem 0.62rem;
+    cursor: pointer;
+}
+
+.admin-equipments-restore-button:hover,
+.admin-equipments-restore-button:focus-visible {
+    filter: brightness(1.08);
 }
 
 .admin-reports-shell {

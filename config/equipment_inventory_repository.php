@@ -97,10 +97,12 @@ function equipment_model_label_from_product($product)
 
 function equipment_unit_identifier($modelLabel, $serial)
 {
-    $prefix = str_replace('_', '', (string) $modelLabel);
+    $prefix = strtoupper((string) $modelLabel);
+    $prefix = preg_replace('/[^A-Z0-9]+/', '', $prefix);
+    $prefix = $prefix !== '' ? $prefix : 'MODEL';
     $serialValue = max(0, (int) $serial);
 
-    return $prefix . '_' . str_pad((string) $serialValue, 3, '0', STR_PAD_LEFT);
+    return $prefix . '-' . str_pad((string) $serialValue, 3, '0', STR_PAD_LEFT);
 }
 
 function allowed_equipment_statuses()
@@ -120,7 +122,7 @@ function normalize_equipment_status($status)
     return in_array($value, allowed_equipment_statuses(), true) ? $value : 'available';
 }
 
-function normalize_equipment_inventory_entry($entry, $defaultTimesUsed)
+function normalize_equipment_inventory_entry($entry, $defaultTimesUsed, $ensureAtLeastOneUnit = true)
 {
     $timesUsed = isset($entry['timesUsed']) ? (int) $entry['timesUsed'] : (int) $defaultTimesUsed;
     $timesUsed = max(0, $timesUsed);
@@ -147,7 +149,7 @@ function normalize_equipment_inventory_entry($entry, $defaultTimesUsed)
         ];
     }
 
-    if (!$units) {
+    if (!$units && $ensureAtLeastOneUnit) {
         $units[0] = [
             'serial' => 0,
             'status' => 'available'
@@ -182,14 +184,67 @@ function sync_equipment_inventory_with_products($products, $inventory, $defaultT
             continue;
         }
 
-        $existingEntry = isset($inventory[$productKey]) && is_array($inventory[$productKey])
+        $hasExistingEntry = array_key_exists($productKey, $inventory) && is_array($inventory[$productKey]);
+        $existingEntry = $hasExistingEntry
             ? $inventory[$productKey]
             : [];
 
-        $synced[$productKey] = normalize_equipment_inventory_entry($existingEntry, $defaultTimesUsed);
+        $synced[$productKey] = normalize_equipment_inventory_entry($existingEntry, $defaultTimesUsed, !$hasExistingEntry);
     }
 
     return $synced;
+}
+
+function archive_all_equipment_units_for_product($inventory, $archivedUnits, $products, $productKey, $reason, $productArchiveKey = '')
+{
+    if (!isset($products[$productKey]) || !is_array($products[$productKey])) {
+        throw new RuntimeException('Featured product was not found for this equipment inventory.');
+    }
+
+    if (!isset($inventory[$productKey]) || !is_array($inventory[$productKey])) {
+        return [
+            'inventory' => $inventory,
+            'archivedUnits' => array_values((array) $archivedUnits),
+            'archivedEntries' => []
+        ];
+    }
+
+    $entry = $inventory[$productKey];
+    $units = isset($entry['units']) && is_array($entry['units']) ? array_values($entry['units']) : [];
+    $model = equipment_model_label_from_product($products[$productKey]);
+    $archiveContextKey = trim((string) $productArchiveKey);
+    $archivedEntries = [];
+
+    foreach ($units as $unit) {
+        $serial = max(0, (int) ($unit['serial'] ?? 0));
+
+        $archivedEntry = [
+            'archiveKey' => $model . '_' . str_pad((string) $serial, 3, '0', STR_PAD_LEFT) . '_' . date('Ymd-His') . '-' . str_pad((string) mt_rand(0, 9999), 4, '0', STR_PAD_LEFT),
+            'archivedAt' => gmdate('c'),
+            'productKey' => (string) $productKey,
+            'model' => $model,
+            'reason' => trim((string) $reason),
+            'unit' => [
+                'serial' => $serial,
+                'status' => normalize_equipment_status($unit['status'] ?? 'available')
+            ]
+        ];
+
+        if ($archiveContextKey !== '') {
+            $archivedEntry['productArchiveKey'] = $archiveContextKey;
+        }
+
+        $archivedUnits[] = $archivedEntry;
+        $archivedEntries[] = $archivedEntry;
+    }
+
+    unset($inventory[$productKey]);
+
+    return [
+        'inventory' => $inventory,
+        'archivedUnits' => array_values($archivedUnits),
+        'archivedEntries' => $archivedEntries
+    ];
 }
 
 function add_equipment_inventory_units($inventory, $productKey, $count)
@@ -347,7 +402,11 @@ function restore_archived_equipment_unit($inventory, $archivedUnits, $products, 
     }
 
     if (!isset($inventory[$productKey]) || !is_array($inventory[$productKey])) {
-        $inventory[$productKey] = normalize_equipment_inventory_entry([], 12);
+        $inventory[$productKey] = [
+            'timesUsed' => 12,
+            'nextSerial' => 0,
+            'units' => []
+        ];
     }
 
     $unitPayload = isset($entry['unit']) && is_array($entry['unit']) ? $entry['unit'] : [];

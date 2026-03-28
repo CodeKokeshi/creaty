@@ -16,6 +16,10 @@
             {
                 "serial": 0,
                 "status": "available"
+            },
+            {
+                "serial": 1,
+                "status": "available"
             }
         ]
     },

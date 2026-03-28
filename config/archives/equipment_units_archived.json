@@ -1,16 +1,5 @@
 [
     {
-        "archiveKey": "CANON_1200D_001_20260327-093437",
-        "archivedAt": "2026-03-27T09:34:37+00:00",
-        "productKey": "canon-1200d",
-        "model": "CANON_1200D",
-        "reason": "Removed from active inventory",
-        "unit": {
-            "serial": 1,
-            "status": "available"
-        }
-    },
-    {
         "archiveKey": "CANON_1200D_002_20260327-093440",
         "archivedAt": "2026-03-27T09:34:40+00:00",
         "productKey": "canon-1200d",

@@ -38,6 +38,11 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminUsersOpenModalButtons = document.querySelectorAll("[data-admin-users-open-modal]");
     var adminUsersCloseModalButtons = document.querySelectorAll("[data-admin-users-close-modal]");
     var shouldOpenAdminUsersCreateModal = document.body.getAttribute("data-admin-open-create-user-modal") === "true";
+    var adminEquipmentArchiveBackdrop = document.querySelector("[data-admin-equipment-archive-backdrop]");
+    var adminEquipmentArchiveOpenButtons = document.querySelectorAll("[data-admin-equipment-archive-open]");
+    var adminEquipmentArchiveCloseButtons = document.querySelectorAll("[data-admin-equipment-archive-close]");
+    var adminEquipmentRemoveButtons = document.querySelectorAll("[data-admin-equipment-remove]");
+    var shouldOpenAdminEquipmentArchiveModal = document.body.getAttribute("data-admin-open-equipment-archive-modal") === "true";
     var productCards = document.querySelectorAll('.product-grid .product-card:not([data-admin-add-card="true"])');
     var adminAddCard = document.querySelector('[data-admin-add-card="true"]');
     var productEmpty = document.querySelector(".product-grid-empty");
@@ -428,6 +433,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
             var productKey = card.getAttribute("data-product-key") || "";
             if (!productKey) {
+                return;
+            }
+
+            var archiveConfirmation = "Archiving this featured product will archive all of its equipment inventory units. Continue?";
+            if (!window.confirm(archiveConfirmation)) {
                 return;
             }
 
@@ -3375,13 +3385,19 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    function syncAdminModalBodyLock() {
+        var hasVisibleUsersModal = Boolean(adminUsersCreateBackdrop && !adminUsersCreateBackdrop.hidden);
+        var hasVisibleEquipmentArchiveModal = Boolean(adminEquipmentArchiveBackdrop && !adminEquipmentArchiveBackdrop.hidden);
+        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal);
+    }
+
     function openAdminUsersCreateModal() {
         if (!adminUsersCreateBackdrop) {
             return;
         }
 
         adminUsersCreateBackdrop.hidden = false;
-        document.body.classList.add("admin-modal-open");
+        syncAdminModalBodyLock();
     }
 
     function closeAdminUsersCreateModal() {
@@ -3390,7 +3406,25 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         adminUsersCreateBackdrop.hidden = true;
-        document.body.classList.remove("admin-modal-open");
+        syncAdminModalBodyLock();
+    }
+
+    function openAdminEquipmentArchiveModal() {
+        if (!adminEquipmentArchiveBackdrop) {
+            return;
+        }
+
+        adminEquipmentArchiveBackdrop.hidden = false;
+        syncAdminModalBodyLock();
+    }
+
+    function closeAdminEquipmentArchiveModal() {
+        if (!adminEquipmentArchiveBackdrop) {
+            return;
+        }
+
+        adminEquipmentArchiveBackdrop.hidden = true;
+        syncAdminModalBodyLock();
     }
 
     adminUsersOpenModalButtons.forEach(function (button) {
@@ -3413,13 +3447,58 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    adminEquipmentArchiveOpenButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            openAdminEquipmentArchiveModal();
+        });
+    });
+
+    adminEquipmentArchiveCloseButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            closeAdminEquipmentArchiveModal();
+        });
+    });
+
+    if (adminEquipmentArchiveBackdrop) {
+        adminEquipmentArchiveBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminEquipmentArchiveBackdrop) {
+                closeAdminEquipmentArchiveModal();
+            }
+        });
+    }
+
+    adminEquipmentRemoveButtons.forEach(function (button) {
+        button.addEventListener("click", function (event) {
+            var willArchive = button.getAttribute("data-will-archive") === "true";
+            var confirmMessage = willArchive
+                ? "Removing the last quantity will archive the featured product and all of its equipment units. Continue?"
+                : "Remove this equipment unit from active inventory?";
+
+            if (!window.confirm(confirmMessage)) {
+                event.preventDefault();
+            }
+        });
+    });
+
     if (shouldOpenAdminUsersCreateModal) {
         openAdminUsersCreateModal();
     }
 
+    if (shouldOpenAdminEquipmentArchiveModal) {
+        openAdminEquipmentArchiveModal();
+    }
+
     document.addEventListener("keydown", function (event) {
-        if (event.key === "Escape" && adminUsersCreateBackdrop && !adminUsersCreateBackdrop.hidden) {
+        if (event.key !== "Escape") {
+            return;
+        }
+
+        if (adminUsersCreateBackdrop && !adminUsersCreateBackdrop.hidden) {
             closeAdminUsersCreateModal();
+        }
+
+        if (adminEquipmentArchiveBackdrop && !adminEquipmentArchiveBackdrop.hidden) {
+            closeAdminEquipmentArchiveModal();
         }
     });
 
