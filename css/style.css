@@ -4258,6 +4258,34 @@ button {
     font-weight: 700;
 }
 
+.admin-equipments-status-head {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.38rem;
+}
+
+.admin-equipments-status-manage {
+    width: 24px;
+    height: 24px;
+    border: 1px solid rgba(217, 217, 217, 0.34);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f4f4;
+    font-size: 0.8rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+}
+
+.admin-equipments-status-manage:hover,
+.admin-equipments-status-manage:focus-visible {
+    filter: brightness(1.08);
+}
+
 .admin-equipments-archive-open {
     min-height: 34px;
     border: 1px solid rgba(217, 217, 217, 0.38);
@@ -4514,6 +4542,173 @@ button {
 .admin-equipments-restore-button:hover,
 .admin-equipments-restore-button:focus-visible {
     filter: brightness(1.08);
+}
+
+.admin-equipments-status-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1710;
+    background: rgba(7, 8, 11, 0.72);
+    backdrop-filter: blur(2px);
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+}
+
+.admin-equipments-status-modal {
+    width: min(100%, 780px);
+    max-height: calc(100vh - 2rem);
+    overflow: auto;
+    border: 1px solid rgba(217, 217, 217, 0.34);
+    border-radius: 14px;
+    background: #111825;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+    padding: 0.95rem;
+}
+
+.admin-equipments-status-head-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.45rem;
+}
+
+.admin-equipments-status-head-wrap h2 {
+    margin: 0;
+    color: #f4f4f4;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.admin-equipments-status-close {
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(217, 217, 217, 0.24);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f4f4;
+    font-size: 1.35rem;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+}
+
+.admin-equipments-status-meta {
+    margin: 0 0 0.7rem;
+    color: rgba(244, 244, 244, 0.84);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.admin-equipments-status-table-wrap {
+    border: 1px solid rgba(217, 217, 217, 0.24);
+    background: rgba(8, 10, 14, 0.58);
+}
+
+.admin-equipments-status-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-equipments-status-table th,
+.admin-equipments-status-table td {
+    border-bottom: 1px solid rgba(217, 217, 217, 0.24);
+    color: #f4f4f4;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 0.6rem 0.7rem;
+    text-align: center;
+}
+
+.admin-equipments-status-table th {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.admin-equipments-status-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.admin-equipments-status-row-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.45rem;
+    align-items: center;
+    margin: 0;
+}
+
+.admin-equipments-status-row-form input {
+    min-width: 0;
+    border: 1px solid rgba(217, 217, 217, 0.24);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f4f4;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.42rem 0.62rem;
+}
+
+.admin-equipments-status-row-form button,
+.admin-equipments-status-remove,
+.admin-equipments-status-add-row button {
+    min-height: 32px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.35rem 0.62rem;
+    cursor: pointer;
+}
+
+.admin-equipments-status-row-form button,
+.admin-equipments-status-add-row button {
+    border: 1px solid rgba(103, 194, 61, 0.58);
+    background: #4b9f32;
+    color: #fff;
+}
+
+.admin-equipments-status-remove {
+    border: 1px solid rgba(215, 112, 112, 0.66);
+    background: #c84d4d;
+    color: #fff;
+}
+
+.admin-equipments-status-remove:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.admin-equipments-status-add-form {
+    margin-top: 0.85rem;
+    display: grid;
+    gap: 0.42rem;
+}
+
+.admin-equipments-status-add-form label {
+    color: rgba(244, 244, 244, 0.86);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.admin-equipments-status-add-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.45rem;
+}
+
+.admin-equipments-status-add-row input {
+    min-width: 0;
+    border: 1px solid rgba(217, 217, 217, 0.24);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f4f4;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.42rem 0.62rem;
 }
 
 .admin-action-modal-backdrop {

@@ -41,9 +41,14 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEquipmentArchiveBackdrop = document.querySelector("[data-admin-equipment-archive-backdrop]");
     var adminEquipmentArchiveOpenButtons = document.querySelectorAll("[data-admin-equipment-archive-open]");
     var adminEquipmentArchiveCloseButtons = document.querySelectorAll("[data-admin-equipment-archive-close]");
+    var adminEquipmentStatusBackdrop = document.querySelector("[data-admin-equipment-status-backdrop]");
+    var adminEquipmentStatusOpenButtons = document.querySelectorAll("[data-admin-equipment-status-open]");
+    var adminEquipmentStatusCloseButtons = document.querySelectorAll("[data-admin-equipment-status-close]");
+    var adminEquipmentStatusDeleteButtons = document.querySelectorAll("[data-admin-equipment-status-delete]");
     var adminEquipmentAddButtons = document.querySelectorAll("[data-admin-equipment-add]");
     var adminEquipmentRemoveButtons = document.querySelectorAll("[data-admin-equipment-remove]");
     var shouldOpenAdminEquipmentArchiveModal = document.body.getAttribute("data-admin-open-equipment-archive-modal") === "true";
+    var shouldOpenAdminEquipmentStatusModal = document.body.getAttribute("data-admin-open-equipment-status-modal") === "true";
     var adminActionModalBackdrop = document.querySelector("[data-admin-action-modal-backdrop]");
     var adminActionModalTitle = document.querySelector("[data-admin-action-modal-title]");
     var adminActionModalMessage = document.querySelector("[data-admin-action-modal-message]");
@@ -3418,8 +3423,9 @@ document.addEventListener("DOMContentLoaded", function () {
     function syncAdminModalBodyLock() {
         var hasVisibleUsersModal = Boolean(adminUsersCreateBackdrop && !adminUsersCreateBackdrop.hidden);
         var hasVisibleEquipmentArchiveModal = Boolean(adminEquipmentArchiveBackdrop && !adminEquipmentArchiveBackdrop.hidden);
+        var hasVisibleEquipmentStatusModal = Boolean(adminEquipmentStatusBackdrop && !adminEquipmentStatusBackdrop.hidden);
         var hasVisibleActionModal = Boolean(adminActionModalBackdrop && !adminActionModalBackdrop.hidden);
-        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleActionModal);
+        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal);
     }
 
     function closeAdminActionModal(invokeOnClose) {
@@ -3541,6 +3547,24 @@ document.addEventListener("DOMContentLoaded", function () {
         syncAdminModalBodyLock();
     }
 
+    function openAdminEquipmentStatusModal() {
+        if (!adminEquipmentStatusBackdrop) {
+            return;
+        }
+
+        adminEquipmentStatusBackdrop.hidden = false;
+        syncAdminModalBodyLock();
+    }
+
+    function closeAdminEquipmentStatusModal() {
+        if (!adminEquipmentStatusBackdrop) {
+            return;
+        }
+
+        adminEquipmentStatusBackdrop.hidden = true;
+        syncAdminModalBodyLock();
+    }
+
     adminUsersOpenModalButtons.forEach(function (button) {
         button.addEventListener("click", function () {
             openAdminUsersCreateModal();
@@ -3577,6 +3601,26 @@ document.addEventListener("DOMContentLoaded", function () {
         adminEquipmentArchiveBackdrop.addEventListener("click", function (event) {
             if (event.target === adminEquipmentArchiveBackdrop) {
                 closeAdminEquipmentArchiveModal();
+            }
+        });
+    }
+
+    adminEquipmentStatusOpenButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            openAdminEquipmentStatusModal();
+        });
+    });
+
+    adminEquipmentStatusCloseButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            closeAdminEquipmentStatusModal();
+        });
+    });
+
+    if (adminEquipmentStatusBackdrop) {
+        adminEquipmentStatusBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminEquipmentStatusBackdrop) {
+                closeAdminEquipmentStatusModal();
             }
         });
     }
@@ -3706,12 +3750,42 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    adminEquipmentStatusDeleteButtons.forEach(function (button) {
+        button.addEventListener("click", function (event) {
+            if (button.disabled) {
+                return;
+            }
+
+            event.preventDefault();
+
+            var form = button.closest("form");
+            if (!form) {
+                return;
+            }
+
+            var statusLabel = String(button.getAttribute("data-status-label") || "this status");
+
+            openAdminActionModal({
+                title: "Remove Status",
+                message: "Remove status \"" + statusLabel + "\"? Equipment using this status will be reassigned automatically.",
+                confirmLabel: "Remove Status",
+                onConfirm: function () {
+                    form.submit();
+                }
+            });
+        });
+    });
+
     if (shouldOpenAdminUsersCreateModal) {
         openAdminUsersCreateModal();
     }
 
     if (shouldOpenAdminEquipmentArchiveModal) {
         openAdminEquipmentArchiveModal();
+    }
+
+    if (shouldOpenAdminEquipmentStatusModal) {
+        openAdminEquipmentStatusModal();
     }
 
     document.addEventListener("keydown", function (event) {
@@ -3725,6 +3799,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminEquipmentArchiveBackdrop && !adminEquipmentArchiveBackdrop.hidden) {
             closeAdminEquipmentArchiveModal();
+        }
+
+        if (adminEquipmentStatusBackdrop && !adminEquipmentStatusBackdrop.hidden) {
+            closeAdminEquipmentStatusModal();
         }
 
         if (adminActionModalBackdrop && !adminActionModalBackdrop.hidden) {

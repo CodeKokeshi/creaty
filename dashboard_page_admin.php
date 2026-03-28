@@ -47,6 +47,7 @@ $adminCreateUserValues = [
 ];
 $openAdminCreateUserModal = false;
 $openEquipmentArchiveModal = (string) ($_GET['equipment_archive'] ?? '') === 'open';
+$openEquipmentStatusModal = (string) ($_GET['equipment_statuses'] ?? '') === 'open';
 
 $adminEquipmentFlash = isset($_SESSION['admin_equipment_flash']) && is_array($_SESSION['admin_equipment_flash'])
     ? $_SESSION['admin_equipment_flash']
@@ -197,12 +198,18 @@ require __DIR__ . '/config/products_repository.php';
 require __DIR__ . '/config/equipment_inventory_repository.php';
 $products = load_products_repository();
 
-$equipmentStatusLabels = [
-    'available' => 'AVAILABLE',
-    'maintenance' => 'MAINTENANCE',
-    'in-use' => 'IN USE',
-    'retired' => 'RETIRED'
-];
+$equipmentStatuses = load_equipment_statuses_repository();
+$equipmentStatusLabels = [];
+
+foreach ($equipmentStatuses as $equipmentStatusValue) {
+    $normalizedStatusValue = normalize_equipment_status_token($equipmentStatusValue);
+
+    if (isset($equipmentStatusLabels[$normalizedStatusValue])) {
+        continue;
+    }
+
+    $equipmentStatusLabels[$normalizedStatusValue] = strtoupper(str_replace('-', ' ', $normalizedStatusValue));
+}
 
 $dashboardUsers = [];
 
@@ -278,9 +285,111 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $flashType = 'success';
         $flashMessage = '';
         $openArchiveOnRedirect = false;
+        $openStatusOnRedirect = false;
 
         try {
-            if ($adminAction === 'equipment_add_quantity') {
+            if ($adminAction === 'equipment_add_status') {
+                $openStatusOnRedirect = true;
+                $statusLabel = trim((string) ($_POST['status_label'] ?? ''));
+                $statusToken = normalize_equipment_status_token($statusLabel);
+
+                if ($statusLabel === '') {
+                    throw new RuntimeException('Status name is required.');
+                }
+
+                if (in_array($statusToken, $equipmentStatuses, true)) {
+                    throw new RuntimeException('Status already exists.');
+                }
+
+                $equipmentStatuses[] = $statusToken;
+                $equipmentStatuses = normalize_equipment_statuses_collection($equipmentStatuses);
+
+                if (!save_equipment_statuses_repository($equipmentStatuses)) {
+                    throw new RuntimeException('Unable to save equipment statuses.');
+                }
+
+                $flashMessage = 'Status added: ' . strtoupper(str_replace('-', ' ', $statusToken)) . '.';
+            } elseif ($adminAction === 'equipment_rename_status') {
+                $openStatusOnRedirect = true;
+                $oldStatus = normalize_equipment_status_token($_POST['old_status'] ?? '');
+                $statusLabel = trim((string) ($_POST['status_label'] ?? ''));
+                $newStatus = normalize_equipment_status_token($statusLabel);
+
+                if ($statusLabel === '') {
+                    throw new RuntimeException('Status name is required.');
+                }
+
+                if (!in_array($oldStatus, $equipmentStatuses, true)) {
+                    throw new RuntimeException('Original status was not found.');
+                }
+
+                if ($newStatus !== $oldStatus && in_array($newStatus, $equipmentStatuses, true)) {
+                    throw new RuntimeException('A status with that name already exists.');
+                }
+
+                foreach ($equipmentStatuses as &$equipmentStatusRef) {
+                    if ($equipmentStatusRef === $oldStatus) {
+                        $equipmentStatusRef = $newStatus;
+                    }
+                }
+                unset($equipmentStatusRef);
+
+                $equipmentStatuses = normalize_equipment_statuses_collection($equipmentStatuses);
+                $equipmentInventory = remap_equipment_status_in_inventory($equipmentInventory, $oldStatus, $newStatus);
+                $archivedEquipmentUnits = remap_equipment_status_in_archived_units($archivedEquipmentUnits, $oldStatus, $newStatus);
+
+                if (!save_equipment_statuses_repository($equipmentStatuses)) {
+                    throw new RuntimeException('Unable to save equipment statuses.');
+                }
+
+                if (!save_equipment_inventory_repository($equipmentInventory)) {
+                    throw new RuntimeException('Unable to save equipment inventory.');
+                }
+
+                if (!save_archived_equipment_units_repository($archivedEquipmentUnits)) {
+                    throw new RuntimeException('Unable to save removed equipment list.');
+                }
+
+                $flashMessage = 'Status renamed to ' . strtoupper(str_replace('-', ' ', $newStatus)) . '.';
+            } elseif ($adminAction === 'equipment_delete_status') {
+                $openStatusOnRedirect = true;
+                $statusToDelete = normalize_equipment_status_token($_POST['status'] ?? '');
+
+                if (!in_array($statusToDelete, $equipmentStatuses, true)) {
+                    throw new RuntimeException('Status was not found.');
+                }
+
+                if (count($equipmentStatuses) <= 1) {
+                    throw new RuntimeException('At least one status must remain.');
+                }
+
+                $remainingStatuses = array_values(array_filter($equipmentStatuses, static function ($statusValue) use ($statusToDelete) {
+                    return $statusValue !== $statusToDelete;
+                }));
+
+                $replacementStatus = in_array('available', $remainingStatuses, true)
+                    ? 'available'
+                    : ($remainingStatuses[0] ?? 'available');
+
+                $equipmentStatuses = normalize_equipment_statuses_collection($remainingStatuses);
+                $equipmentInventory = remap_equipment_status_in_inventory($equipmentInventory, $statusToDelete, $replacementStatus);
+                $archivedEquipmentUnits = remap_equipment_status_in_archived_units($archivedEquipmentUnits, $statusToDelete, $replacementStatus);
+
+                if (!save_equipment_statuses_repository($equipmentStatuses)) {
+                    throw new RuntimeException('Unable to save equipment statuses.');
+                }
+
+                if (!save_equipment_inventory_repository($equipmentInventory)) {
+                    throw new RuntimeException('Unable to save equipment inventory.');
+                }
+
+                if (!save_archived_equipment_units_repository($archivedEquipmentUnits)) {
+                    throw new RuntimeException('Unable to save removed equipment list.');
+                }
+
+                $flashType = 'warning';
+                $flashMessage = 'Status removed and reassigned to ' . strtoupper(str_replace('-', ' ', $replacementStatus)) . '.';
+            } elseif ($adminAction === 'equipment_add_quantity') {
                 $productKey = trim((string) ($_POST['product_key'] ?? ''));
                 $requestedCount = max(1, min(200, (int) ($_POST['quantity'] ?? 1)));
 
@@ -573,7 +682,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif ($adminAction === 'equipment_update_status') {
                 $productKey = trim((string) ($_POST['product_key'] ?? ''));
                 $serial = (int) ($_POST['serial'] ?? -1);
-                $status = strtolower(trim((string) ($_POST['status'] ?? 'available')));
+                $status = normalize_equipment_status_token($_POST['status'] ?? 'available');
+
+                if (!in_array($status, $equipmentStatuses, true)) {
+                    throw new RuntimeException('Selected status is no longer available.');
+                }
 
                 $equipmentInventory = update_equipment_unit_status(
                     $equipmentInventory,
@@ -606,6 +719,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($openArchiveOnRedirect) {
             $redirectParams['equipment_archive'] = 'open';
+        }
+
+        if ($openStatusOnRedirect) {
+            $redirectParams['equipment_statuses'] = 'open';
         }
 
         header('Location: ' . $adminHomePath . '?' . http_build_query($redirectParams));
@@ -768,13 +885,14 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260328-3">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260328-4">
 </head>
 <body
     class="home-page-customer"
     <?php if ($initialAdminPanel !== ''): ?>data-admin-initial-panel="<?php echo htmlspecialchars($initialAdminPanel, ENT_QUOTES, 'UTF-8'); ?>"<?php endif; ?>
     <?php if ($openAdminCreateUserModal): ?>data-admin-open-create-user-modal="true"<?php endif; ?>
     <?php if ($openEquipmentArchiveModal): ?>data-admin-open-equipment-archive-modal="true"<?php endif; ?>
+    <?php if ($openEquipmentStatusModal): ?>data-admin-open-equipment-status-modal="true"<?php endif; ?>
 >
     <header class="site-header">
         <div class="topbar topbar-admin">
@@ -894,7 +1012,12 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                             <th scope="col">UNIT-ID</th>
                             <th scope="col">MODEL</th>
                             <th scope="col">TIMES USED (last 30 days)</th>
-                            <th scope="col">STATUS</th>
+                            <th scope="col">
+                                <span class="admin-equipments-status-head">
+                                    <span>STATUS</span>
+                                    <button class="admin-equipments-status-manage" type="button" data-admin-equipment-status-open aria-label="Manage equipment statuses" title="Manage statuses">&#9881;</button>
+                                </span>
+                            </th>
                             <th scope="col">ACTIONS</th>
                         </tr>
                     </thead>
@@ -1274,6 +1397,65 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         </section>
     </div>
 
+    <div class="admin-equipments-status-backdrop" data-admin-equipment-status-backdrop hidden>
+        <section class="admin-equipments-status-modal" role="dialog" aria-modal="true" aria-labelledby="admin-equipment-status-title">
+            <div class="admin-equipments-status-head-wrap">
+                <h2 id="admin-equipment-status-title">Manage Equipment Statuses</h2>
+                <button class="admin-equipments-status-close" type="button" data-admin-equipment-status-close aria-label="Close status management">&times;</button>
+            </div>
+
+            <p class="admin-equipments-status-meta">Edit, remove, or add statuses used by equipment dropdowns.</p>
+
+            <div class="admin-equipments-status-table-wrap" role="region" aria-label="Status list">
+                <table class="admin-equipments-status-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">STATUS NAME</th>
+                            <th scope="col">REMOVE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($equipmentStatuses as $equipmentStatusValue): ?>
+                            <?php $statusDisplay = ucwords(str_replace('-', ' ', (string) $equipmentStatusValue)); ?>
+                            <tr>
+                                <td>
+                                    <form class="admin-equipments-status-row-form" method="post" action="">
+                                        <input type="hidden" name="admin_action" value="equipment_rename_status">
+                                        <input type="hidden" name="old_status" value="<?php echo htmlspecialchars((string) $equipmentStatusValue, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <input type="text" name="status_label" value="<?php echo htmlspecialchars($statusDisplay, ENT_QUOTES, 'UTF-8'); ?>" maxlength="40" required>
+                                        <button type="submit">Save</button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form method="post" action="">
+                                        <input type="hidden" name="admin_action" value="equipment_delete_status">
+                                        <input type="hidden" name="status" value="<?php echo htmlspecialchars((string) $equipmentStatusValue, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <button
+                                            class="admin-equipments-status-remove"
+                                            type="submit"
+                                            data-admin-equipment-status-delete
+                                            data-status-label="<?php echo htmlspecialchars($statusDisplay, ENT_QUOTES, 'UTF-8'); ?>"
+                                            <?php echo count($equipmentStatuses) <= 1 ? 'disabled' : ''; ?>
+                                        >Remove</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <form class="admin-equipments-status-add-form" method="post" action="">
+                <input type="hidden" name="admin_action" value="equipment_add_status">
+                <label for="admin-equipment-status-add-input">Add New Status</label>
+                <div class="admin-equipments-status-add-row">
+                    <input id="admin-equipment-status-add-input" type="text" name="status_label" placeholder="ex. Cleaning" maxlength="40" required>
+                    <button type="submit">Add</button>
+                </div>
+            </form>
+        </section>
+    </div>
+
     <div class="admin-action-modal-backdrop" data-admin-action-modal-backdrop hidden>
         <section class="admin-action-modal" role="dialog" aria-modal="true" aria-labelledby="admin-action-modal-title">
             <div class="admin-action-modal-head">
@@ -1623,7 +1805,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         }
         document.addEventListener('DOMContentLoaded', updateFieldLabels);
     </script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260328-3"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260328-4"></script>
 </body>
 </html>
 

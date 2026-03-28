@@ -12,6 +12,85 @@ function archived_equipment_units_repository_path()
     return __DIR__ . '/archives/equipment_units_archived.json';
 }
 
+function equipment_statuses_repository_path()
+{
+    return __DIR__ . '/equipment_statuses.json';
+}
+
+function default_equipment_statuses()
+{
+    return [
+        'available',
+        'maintenance',
+        'in-use',
+        'retired'
+    ];
+}
+
+function normalize_equipment_status_token($value)
+{
+    $normalized = strtolower(trim((string) $value));
+    $normalized = preg_replace('/[^a-z0-9]+/', '-', $normalized);
+    $normalized = trim((string) $normalized, '-');
+
+    return $normalized !== '' ? $normalized : 'available';
+}
+
+function normalize_equipment_statuses_collection($statuses)
+{
+    $normalizedStatuses = [];
+
+    foreach ((array) $statuses as $status) {
+        $token = normalize_equipment_status_token($status);
+
+        if (!in_array($token, $normalizedStatuses, true)) {
+            $normalizedStatuses[] = $token;
+        }
+    }
+
+    if (!$normalizedStatuses) {
+        $normalizedStatuses = default_equipment_statuses();
+    }
+
+    return array_values($normalizedStatuses);
+}
+
+function load_equipment_statuses_repository()
+{
+    $path = equipment_statuses_repository_path();
+
+    if (!is_file($path)) {
+        return default_equipment_statuses();
+    }
+
+    $raw = file_get_contents($path);
+    if ($raw === false) {
+        return default_equipment_statuses();
+    }
+
+    $raw = preg_replace('/^\xEF\xBB\xBF/', '', (string) $raw);
+    $decoded = json_decode($raw, true);
+
+    if (!is_array($decoded)) {
+        return default_equipment_statuses();
+    }
+
+    return normalize_equipment_statuses_collection($decoded);
+}
+
+function save_equipment_statuses_repository($statuses)
+{
+    $path = equipment_statuses_repository_path();
+    $normalized = normalize_equipment_statuses_collection($statuses);
+    $encoded = json_encode($normalized, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+    if ($encoded === false) {
+        return false;
+    }
+
+    return file_put_contents($path, $encoded . PHP_EOL, LOCK_EX) !== false;
+}
+
 function load_equipment_inventory_repository()
 {
     $path = equipment_inventory_repository_path();
@@ -107,19 +186,16 @@ function equipment_unit_identifier($modelLabel, $serial)
 
 function allowed_equipment_statuses()
 {
-    return [
-        'available',
-        'maintenance',
-        'in-use',
-        'retired'
-    ];
+    return load_equipment_statuses_repository();
 }
 
-function normalize_equipment_status($status)
+function normalize_equipment_status($status, $allowedStatuses = null)
 {
-    $value = strtolower(trim((string) $status));
+    $value = normalize_equipment_status_token($status);
+    $statuses = is_array($allowedStatuses) ? normalize_equipment_statuses_collection($allowedStatuses) : allowed_equipment_statuses();
+    $fallback = $statuses[0] ?? 'available';
 
-    return in_array($value, allowed_equipment_statuses(), true) ? $value : 'available';
+    return in_array($value, $statuses, true) ? $value : $fallback;
 }
 
 function normalize_equipment_inventory_entry($entry, $defaultTimesUsed, $ensureAtLeastOneUnit = true)
@@ -312,6 +388,65 @@ function update_equipment_unit_status($inventory, $productKey, $serial, $status)
     $inventory[$productKey] = $entry;
 
     return $inventory;
+}
+
+function remap_equipment_status_in_inventory($inventory, $fromStatus, $toStatus)
+{
+    $fromToken = normalize_equipment_status_token($fromStatus);
+    $toToken = normalize_equipment_status_token($toStatus);
+
+    foreach ($inventory as $productKey => $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+
+        $units = isset($entry['units']) && is_array($entry['units']) ? $entry['units'] : [];
+        $changed = false;
+
+        foreach ($units as &$unit) {
+            if (!is_array($unit)) {
+                continue;
+            }
+
+            $currentStatus = normalize_equipment_status_token($unit['status'] ?? '');
+            if ($currentStatus !== $fromToken) {
+                continue;
+            }
+
+            $unit['status'] = $toToken;
+            $changed = true;
+        }
+        unset($unit);
+
+        if ($changed) {
+            $entry['units'] = array_values($units);
+            $inventory[$productKey] = $entry;
+        }
+    }
+
+    return $inventory;
+}
+
+function remap_equipment_status_in_archived_units($archivedUnits, $fromStatus, $toStatus)
+{
+    $fromToken = normalize_equipment_status_token($fromStatus);
+    $toToken = normalize_equipment_status_token($toStatus);
+
+    foreach ($archivedUnits as &$entry) {
+        if (!is_array($entry) || !isset($entry['unit']) || !is_array($entry['unit'])) {
+            continue;
+        }
+
+        $currentStatus = normalize_equipment_status_token($entry['unit']['status'] ?? '');
+        if ($currentStatus !== $fromToken) {
+            continue;
+        }
+
+        $entry['unit']['status'] = $toToken;
+    }
+    unset($entry);
+
+    return array_values((array) $archivedUnits);
 }
 
 function archive_equipment_unit($inventory, $archivedUnits, $products, $productKey, $serial, $reason)
