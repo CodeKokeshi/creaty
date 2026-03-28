@@ -9,10 +9,20 @@ if (!isset($_SESSION['user_id']) || isset($_SESSION['customer_id'])) {
 }
 
 require __DIR__ . '/../config/products_repository.php';
+require __DIR__ . '/../config/event_packages_repository.php';
 
 $productArchiveCount = count(load_archived_products_repository());
 $howArchiveCount = count(load_archived_how_it_works_repository());
 $promoBannerArchiveCount = count(load_archived_promo_banners_repository());
+$eventPackageArchiveCount = 0;
+
+foreach (load_event_packages_repository() as $eventPackageRecord) {
+    if (!is_array($eventPackageRecord) || empty($eventPackageRecord['archived'])) {
+        continue;
+    }
+
+    $eventPackageArchiveCount++;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -86,6 +96,12 @@ $promoBannerArchiveCount = count(load_archived_promo_banners_repository());
                 <span class="archive-pill"><?php echo htmlspecialchars((string) $promoBannerArchiveCount, ENT_QUOTES, 'UTF-8'); ?> item(s)</span>
                 <h2>Archived Promo Banners</h2>
                 <p>View and restore archived promo banner slots.</p>
+            </a>
+
+            <a class="archive-link-card" href="events-packages/">
+                <span class="archive-pill"><?php echo htmlspecialchars((string) $eventPackageArchiveCount, ENT_QUOTES, 'UTF-8'); ?> item(s)</span>
+                <h2>Archived Event Packages</h2>
+                <p>View and restore archived event packages without moving media files.</p>
             </a>
         </section>
     </main>

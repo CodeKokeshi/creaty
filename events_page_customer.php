@@ -252,7 +252,7 @@ if ($isAdminView && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') 
 
         $updated = false;
 
-        if ($packageKey !== '' && isset($eventPackagesRepository[$packageKey]) && is_array($eventPackagesRepository[$packageKey])) {
+        if ($packageKey !== '' && isset($eventPackagesRepository[$packageKey]) && is_array($eventPackagesRepository[$packageKey]) && empty($eventPackagesRepository[$packageKey]['archived'])) {
             if ($titleValue !== '' && $priceValue >= 0) {
                 $eventPackagesRepository[$packageKey]['title'] = $titleValue;
                 $eventPackagesRepository[$packageKey]['price'] = number_format($priceValue, 2, '.', '');
@@ -277,7 +277,7 @@ if ($isAdminView && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') 
         $selectedPaths = sanitize_selected_thumbnail_paths($_POST['selected_paths_json'] ?? '[]', __DIR__);
         $updated = false;
 
-        if ($packageKey !== '' && isset($eventPackagesRepository[$packageKey]) && is_array($eventPackagesRepository[$packageKey])) {
+        if ($packageKey !== '' && isset($eventPackagesRepository[$packageKey]) && is_array($eventPackagesRepository[$packageKey]) && empty($eventPackagesRepository[$packageKey]['archived'])) {
             $packageFolder = trim((string) ($eventPackagesRepository[$packageKey]['folder'] ?? ''));
             $eventPackagesRepository[$packageKey]['thumbnail_images'] = filter_thumbnail_paths_for_folder($selectedPaths, $packageFolder);
             $updated = save_event_packages_repository($eventPackagesRepository);
@@ -329,6 +329,10 @@ $eventPackages = [];
 
 foreach ($eventPackagesRepository as $packageKey => $packageRecord) {
     if (!is_array($packageRecord)) {
+        continue;
+    }
+
+    if (!empty($packageRecord['archived'])) {
         continue;
     }
 
@@ -503,7 +507,7 @@ unset($eventPackage);
                             <button class="product-card-admin-edit" type="button" data-admin-event-edit aria-label="Edit <?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?> package">
                                 <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
                             </button>
-                            <button class="product-card-admin-remove" type="button" aria-label="Close <?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?> package">&times;</button>
+                            <button class="product-card-admin-remove" type="button" data-admin-remove-event-package aria-label="Archive <?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?> package">&times;</button>
                         <?php endif; ?>
 
                         <div
@@ -587,7 +591,7 @@ unset($eventPackage);
     </main>
 
     <?php if ($isAdminView): ?>
-        <div class="admin-edit-modal-backdrop admin-event-edit-modal-backdrop" data-admin-event-edit-backdrop hidden>
+        <div class="admin-edit-modal-backdrop admin-event-edit-modal-backdrop" data-admin-event-edit-backdrop data-admin-event-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_event_package.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-event-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_event_package.php', ENT_QUOTES, 'UTF-8'); ?>" hidden>
             <section class="admin-edit-modal admin-event-edit-modal" role="dialog" aria-modal="true" aria-labelledby="admin-event-edit-title">
                 <div class="admin-edit-modal-head">
                     <h2 id="admin-event-edit-title">Edit Event Package</h2>
@@ -668,9 +672,14 @@ unset($eventPackage);
                 </form>
             </section>
         </div>
+
+        <aside class="admin-undo-toast" data-admin-undo-toast hidden aria-live="polite" aria-atomic="true">
+            <p class="admin-undo-toast-message" data-admin-undo-message>Event package archived.</p>
+            <button class="admin-undo-toast-button" type="button" data-admin-undo-action>Undo</button>
+        </aside>
     <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260328-7"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260328-9"></script>
 </body>
 </html>

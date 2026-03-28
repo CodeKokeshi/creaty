@@ -1,4 +1,4 @@
-﻿{
+{
     "wedding": {
         "title": "WEDDING PACKAGE",
         "price": "800.00",
@@ -12,7 +12,9 @@
             "assets/event_packages/0000/wedding_Jeanne-and-Nilo/CLT05491.jpg",
             "assets/event_packages/0000/wedding_Jeanne-and-Nilo/CLT04842.jpg",
             "assets/event_packages/0000/wedding_Jeanne-and-Nilo/CLT04801.jpg"
-        ]
+        ],
+        "archived": false,
+        "archivedAt": ""
     },
     "birthdays": {
         "title": "BIRTHDAY PACKAGE",
@@ -24,7 +26,9 @@
             "assets/event_packages/0001/birthday-Xth_Willow/DSC02165.JPG",
             "assets/event_packages/0001/baptism_Padua-Silang-Baptism/CLT04304.jpg",
             "assets/event_packages/0001/birthday-Xth_Zofia/CLT00760.jpg"
-        ]
+        ],
+        "archived": false,
+        "archivedAt": ""
     },
     "debut": {
         "title": "DEBUT PACKAGE",
@@ -39,14 +43,18 @@
             "assets/event_packages/0002/pre-debut_Sina/DSC00125.jpg",
             "assets/event_packages/0002/debut_Janna/IMG_6377.jpg",
             "assets/event_packages/0002/pre-debut_Sina/IMG_1878.jpg"
-        ]
+        ],
+        "archived": false,
+        "archivedAt": ""
     },
     "photo-shoot": {
         "title": "PHOTO SHOOT",
         "price": "600.00",
         "discountPercent": 0,
         "folder": "0003",
-        "thumbnail_images": []
+        "thumbnail_images": [],
+        "archived": false,
+        "archivedAt": ""
     },
     "business-shoots": {
         "title": "BUSINESS SHOOTS",
@@ -67,13 +75,17 @@
             "assets/event_packages/0004/business_JCRD-Builders/CLT02028.jpg",
             "assets/event_packages/0004/business_JCRD-Builders/CLT02041.jpg",
             "assets/event_packages/0004/business_JCRD-Builders/CLT02061.jpg"
-        ]
+        ],
+        "archived": false,
+        "archivedAt": ""
     },
     "photo-video-services": {
         "title": "PHOTOGRAPHY AND VIDEOGRAPHY SERVICES",
         "price": "899.00",
         "discountPercent": 0,
         "folder": "0005",
-        "thumbnail_images": []
+        "thumbnail_images": [],
+        "archived": false,
+        "archivedAt": ""
     }
 }

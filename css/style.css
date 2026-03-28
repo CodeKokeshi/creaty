@@ -5290,6 +5290,16 @@ button {
     background: rgba(17, 18, 20, 0.92);
 }
 
+.package-card.is-admin-removing {
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.package-card.is-hidden {
+    display: none !important;
+}
+
 .admin-events-flash-message {
     margin: 0 0 0.85rem;
     padding: 0.65rem 0.75rem;

@@ -14,6 +14,8 @@ function event_packages_repository_defaults()
             'discountPercent' => 0,
             'folder' => '0000',
             'thumbnail_images' => [],
+            'archived' => false,
+            'archivedAt' => '',
         ],
         'birthdays' => [
             'title' => 'BIRTHDAY PACKAGE',
@@ -21,6 +23,8 @@ function event_packages_repository_defaults()
             'discountPercent' => 0,
             'folder' => '0001',
             'thumbnail_images' => [],
+            'archived' => false,
+            'archivedAt' => '',
         ],
         'debut' => [
             'title' => 'DEBUT PACKAGE',
@@ -28,6 +32,8 @@ function event_packages_repository_defaults()
             'discountPercent' => 0,
             'folder' => '0002',
             'thumbnail_images' => [],
+            'archived' => false,
+            'archivedAt' => '',
         ],
         'photo-shoot' => [
             'title' => 'PHOTO SHOOT',
@@ -35,6 +41,8 @@ function event_packages_repository_defaults()
             'discountPercent' => 0,
             'folder' => '0003',
             'thumbnail_images' => [],
+            'archived' => false,
+            'archivedAt' => '',
         ],
         'business-shoots' => [
             'title' => 'BUSINESS SHOOTS',
@@ -42,6 +50,8 @@ function event_packages_repository_defaults()
             'discountPercent' => 0,
             'folder' => '0004',
             'thumbnail_images' => [],
+            'archived' => false,
+            'archivedAt' => '',
         ],
         'photo-video-services' => [
             'title' => 'PHOTOGRAPHY AND VIDEOGRAPHY SERVICES',
@@ -49,6 +59,8 @@ function event_packages_repository_defaults()
             'discountPercent' => 0,
             'folder' => '0005',
             'thumbnail_images' => [],
+            'archived' => false,
+            'archivedAt' => '',
         ],
     ];
 }
@@ -72,6 +84,8 @@ function normalize_event_package_record($key, $record, $defaults)
             'discountPercent' => 0,
             'folder' => '',
             'thumbnail_images' => [],
+            'archived' => false,
+            'archivedAt' => '',
         ];
 
     if (!is_array($record)) {
@@ -90,6 +104,13 @@ function normalize_event_package_record($key, $record, $defaults)
     $discountValue = max(0, min(95, $discountValue));
 
     $folder = trim((string) ($record['folder'] ?? $fallback['folder']));
+    $isArchived = (bool) ($record['archived'] ?? $fallback['archived'] ?? false);
+    $archivedAt = trim((string) ($record['archivedAt'] ?? $fallback['archivedAt'] ?? ''));
+
+    if (!$isArchived) {
+        $archivedAt = '';
+    }
+
     $thumbnailImagesInput = $record['thumbnail_images'] ?? $fallback['thumbnail_images'];
     $thumbnailImages = [];
 
@@ -112,6 +133,8 @@ function normalize_event_package_record($key, $record, $defaults)
         'discountPercent' => $discountValue,
         'folder' => $folder,
         'thumbnail_images' => array_values($thumbnailImages),
+        'archived' => $isArchived,
+        'archivedAt' => $archivedAt,
     ];
 }
 

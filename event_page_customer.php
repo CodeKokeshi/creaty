@@ -48,6 +48,10 @@ foreach ($eventPackagesRepository as $packageKey => $packageRecord) {
         continue;
     }
 
+    if (!empty($packageRecord['archived'])) {
+        continue;
+    }
+
     $priceValue = parseEventPackagePrice($packageRecord['price'] ?? 0);
     $discountPercent = max(0, min(95, (int) ($packageRecord['discountPercent'] ?? 0)));
 
@@ -62,7 +66,8 @@ foreach ($eventPackagesRepository as $packageKey => $packageRecord) {
 
 $selectedPackageKey = strtolower(trim((string) ($_GET['package'] ?? 'wedding')));
 if (!isset($eventPackages[$selectedPackageKey])) {
-    $selectedPackageKey = 'wedding';
+    $availablePackageKeys = array_keys($eventPackages);
+    $selectedPackageKey = $availablePackageKeys !== [] ? (string) $availablePackageKeys[0] : '';
 }
 
 if (!$isAdminView && isset($_GET['add_package'])) {
@@ -93,7 +98,15 @@ $logoutPath = $isAdminView ? ($assetBase . 'admin/logout.php') : ($assetBase . '
 $cartPath = $assetBase . 'customer-cart/';
 $eventsPath = $isAdminView ? ($assetBase . 'admin/events/') : ($assetBase . 'customer-events/');
 $eventDetailPath = $isAdminView ? 'admin/event/' : 'customer-event/';
-$selectedPackage = $eventPackages[$selectedPackageKey];
+$selectedPackage = $selectedPackageKey !== ''
+    ? $eventPackages[$selectedPackageKey]
+    : [
+        'title' => 'EVENT PACKAGE',
+        'price_value' => 0,
+        'price_label' => formatEventPackagePrice(0),
+        'discount_percent' => 0,
+        'folder' => ''
+    ];
 $selectedPackagePriceValue = (float) ($selectedPackage['price_value'] ?? 0);
 $selectedPackageDiscount = max(0, min(95, (int) ($selectedPackage['discount_percent'] ?? 0)));
 $selectedPackageDiscountedValue = calculateDiscountedEventPackagePrice($selectedPackagePriceValue, $selectedPackageDiscount);

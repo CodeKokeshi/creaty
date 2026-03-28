@@ -101,6 +101,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEventEditName = document.querySelector("[data-admin-event-edit-name]");
     var adminEventEditPrice = document.querySelector("[data-admin-event-edit-price]");
     var adminEventEditDiscount = document.querySelector("[data-admin-event-edit-discount]");
+    var adminEventRemoveButtons = document.querySelectorAll("[data-admin-remove-event-package]");
     var adminEventSetThumbButtonInEdit = document.querySelector("[data-admin-event-set-thumbnails-edit]");
     var adminEventThumbsBackdrop = document.querySelector("[data-admin-event-thumbs-backdrop]");
     var adminEventThumbsForm = document.querySelector("[data-admin-event-thumbs-form]");
@@ -111,6 +112,8 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEventThumbItems = document.querySelectorAll("[data-admin-event-thumb-item]");
     var adminEventThumbsPackageTitle = document.querySelector("[data-admin-event-thumbs-package-title]");
     var adminEventThumbsFolderEmpty = document.querySelector("[data-admin-event-thumbs-folder-empty]");
+    var adminEventArchiveEndpoint = adminEventEditBackdrop ? (adminEventEditBackdrop.getAttribute("data-admin-event-archive-endpoint") || "") : "";
+    var adminEventRestoreEndpoint = adminEventEditBackdrop ? (adminEventEditBackdrop.getAttribute("data-admin-event-restore-endpoint") || "") : "";
     var adminHowGrid = document.querySelector("[data-admin-how-grid]");
     var adminHowEditBackdrop = document.querySelector("[data-admin-how-edit-backdrop]");
     var adminHowForm = document.querySelector("[data-admin-how-form]");
@@ -395,6 +398,9 @@ document.addEventListener("DOMContentLoaded", function () {
             } else if (pending.type === "promo") {
                 endpoint = adminPromoRestoreEndpoint;
                 fallbackError = "Unable to restore promo banner.";
+            } else if (pending.type === "event-package") {
+                endpoint = adminEventRestoreEndpoint;
+                fallbackError = "Unable to restore event package.";
             } else {
                 endpoint = adminRestoreEndpoint;
                 fallbackError = "Unable to restore product.";
@@ -413,9 +419,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({
-                    archiveKey: pending.archiveKey
-                })
+                body: JSON.stringify(
+                    pending.type === "event-package"
+                        ? { packageKey: pending.packageKey || pending.archiveKey || "" }
+                        : { archiveKey: pending.archiveKey }
+                )
             })
                 .then(function (response) {
                     return response.json().then(function (payload) {
@@ -435,6 +443,10 @@ document.addEventListener("DOMContentLoaded", function () {
                         if (pending.onRestore && typeof pending.onRestore === "function") {
                             pending.onRestore(result.payload);
                         }
+                    } else if (pending.type === "event-package" && pending.card) {
+                        pending.card.hidden = false;
+                        pending.card.classList.remove("is-hidden");
+                        pending.card.classList.remove("is-admin-removing");
                     } else if (pending.card) {
                         pending.card.removeAttribute("data-admin-removed");
                         pending.card.classList.remove("is-hidden");
@@ -555,6 +567,84 @@ document.addEventListener("DOMContentLoaded", function () {
                     archiveFeaturedProduct(card, button, archiveEndpoint);
                 }
             });
+        });
+    });
+
+    function archiveEventPackage(card, button) {
+        if (!card || !button || !adminEventArchiveEndpoint) {
+            return;
+        }
+
+        var packageKey = String(card.getAttribute("data-admin-event-package-key") || "").trim();
+        if (!packageKey) {
+            return;
+        }
+
+        card.classList.add("is-admin-removing");
+        button.disabled = true;
+
+        fetch(adminEventArchiveEndpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                packageKey: packageKey
+            })
+        })
+            .then(function (response) {
+                return response.json().then(function (payload) {
+                    return {
+                        ok: response.ok,
+                        payload: payload
+                    };
+                });
+            })
+            .then(function (result) {
+                if (!result.ok || !result.payload || !result.payload.ok) {
+                    var message = result.payload && result.payload.message ? result.payload.message : "Unable to archive event package.";
+                    throw new Error(message);
+                }
+
+                var packageTitle = String(card.getAttribute("data-admin-event-package-title") || "Event package").trim();
+                var archivedAt = result.payload.archivedEntry && result.payload.archivedEntry.archivedAt
+                    ? String(result.payload.archivedEntry.archivedAt)
+                    : "";
+
+                window.setTimeout(function () {
+                    card.classList.remove("is-admin-removing");
+                    card.classList.add("is-hidden");
+                    card.hidden = true;
+
+                    showAdminUndoToast(packageTitle + " archived" + (archivedAt ? " (" + formatArchiveDateLabel(archivedAt) + ")" : ""), {
+                        type: "event-package",
+                        packageKey: packageKey,
+                        archiveKey: packageKey,
+                        card: card,
+                        button: button
+                    });
+                }, 160);
+            })
+            .catch(function (error) {
+                openAdminActionModal({
+                    title: "Archive Failed",
+                    message: error.message || "Unable to archive event package.",
+                    confirmLabel: "OK"
+                });
+                card.classList.remove("is-admin-removing");
+                button.disabled = false;
+            });
+    }
+
+    adminEventRemoveButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            var card = button.closest("[data-admin-event-package]");
+
+            if (!card || !adminEventArchiveEndpoint) {
+                return;
+            }
+
+            archiveEventPackage(card, button);
         });
     });
 
