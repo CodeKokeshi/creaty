@@ -1,71 +1,65 @@
 ﻿{
-    "wedding":  {
-                    "title":  "WEDDING PACKAGE",
-                    "price":  "800.00",
-                    "discountPercent":  0,
-                    "folder":  "wedding-package",
-                    "thumbnail_images":  [
-                                             "assets/event_packages/wedding-package/civil-wedding_Jerome-and-Marian/CLT05321.jpg",
-                                             "assets/event_packages/wedding-package/civil-wedding_Jerome-and-Marian/CLT05841.jpg",
-                                             "assets/event_packages/wedding-package/civil-wedding_Jerome-and-Marian/CLT05823.jpg",
-                                             "assets/event_packages/wedding-package/civil-wedding_Jerome-and-Marian/CLT05969.jpg",
-                                             "assets/event_packages/wedding-package/wedding_Jeanne-and-Nilo/CLT05491.jpg",
-                                             "assets/event_packages/wedding-package/wedding_Jeanne-and-Nilo/CLT04842.jpg",
-                                             "assets/event_packages/wedding-package/wedding_Jeanne-and-Nilo/CLT04801.jpg"
-                                         ]
-                },
-    "birthdays":  {
-                      "title":  "BIRTHDAY PACKAGE",
-                      "price":  "450.00",
-                      "discountPercent":  0,
-                      "folder":  "birthday-package",
-                      "thumbnail_images":  [
-                                               "assets/event_packages/birthday-package/birthday-60th_Delia/IMG_8545.jpg",
-                                               "assets/event_packages/birthday-package/birthday-Xth_Willow/DSC02165.JPG",
-                                               "assets/event_packages/birthday-package/baptism_Padua-Silang-Baptism/CLT04304.jpg",
-                                               "assets/event_packages/birthday-package/birthday-Xth_Zofia/CLT00760.jpg"
-                                           ]
-                  },
-    "debut":  {
-                  "title":  "DEBUT PACKAGE",
-                  "price":  "450.00",
-                  "discountPercent":  0,
-                  "folder":  "debut-package",
-                  "thumbnail_images":  [
-                                           "assets/event_packages/debut-package/debut_Janna/IMG_6407.jpg",
-                                           "assets/event_packages/debut-package/debut_Abishai/IMG_5516.jpg",
-                                           "assets/event_packages/debut-package/debut_Janna/IMG_6577 (1).jpg",
-                                           "assets/event_packages/debut-package/debut_Janna/IMG_6539 (1).jpg",
-                                           "assets/event_packages/debut-package/pre-debut_Sina/DSC00125.jpg",
-                                           "assets/event_packages/debut-package/debut_Janna/IMG_6377.jpg",
-                                           "assets/event_packages/debut-package/pre-debut_Sina/IMG_1878.jpg"
-                                       ]
-              },
-    "photo-shoot":  {
-                        "title":  "PHOTO SHOOT",
-                        "price":  "600.00",
-                        "discountPercent":  0,
-                        "folder":  "photo-shoot",
-                        "thumbnail_images":  [
-
-                                             ]
-                    },
-    "business-shoots":  {
-                            "title":  "BUSINESS SHOOTS",
-                            "price":  "250.00",
-                            "discountPercent":  0,
-                            "folder":  "business-shoots",
-                            "thumbnail_images":  [
-
-                                                 ]
-                        },
-    "photo-video-services":  {
-                                 "title":  "PHOTOGRAPHY AND VIDEOGRAPHY SERVICES",
-                                 "price":  "899.00",
-                                 "discountPercent":  0,
-                                 "folder":  "photography-and-videography-services",
-                                 "thumbnail_images":  [
-
-                                                      ]
-                             }
+    "wedding": {
+        "title": "WEDDING PACKAGE",
+        "price": "800.00",
+        "discountPercent": 0,
+        "folder": "wedding-package",
+        "thumbnail_images": [
+            "assets/event_packages/wedding-package/civil-wedding_Jerome-and-Marian/CLT05321.jpg",
+            "assets/event_packages/wedding-package/civil-wedding_Jerome-and-Marian/CLT05841.jpg",
+            "assets/event_packages/wedding-package/civil-wedding_Jerome-and-Marian/CLT05823.jpg",
+            "assets/event_packages/wedding-package/civil-wedding_Jerome-and-Marian/CLT05969.jpg",
+            "assets/event_packages/wedding-package/wedding_Jeanne-and-Nilo/CLT05491.jpg",
+            "assets/event_packages/wedding-package/wedding_Jeanne-and-Nilo/CLT04842.jpg",
+            "assets/event_packages/wedding-package/wedding_Jeanne-and-Nilo/CLT04801.jpg"
+        ]
+    },
+    "birthdays": {
+        "title": "BIRTHDAY PACKAGE",
+        "price": "450.00",
+        "discountPercent": 0,
+        "folder": "birthday-package",
+        "thumbnail_images": [
+            "assets/event_packages/birthday-package/birthday-60th_Delia/IMG_8545.jpg",
+            "assets/event_packages/birthday-package/birthday-Xth_Willow/DSC02165.JPG",
+            "assets/event_packages/birthday-package/baptism_Padua-Silang-Baptism/CLT04304.jpg",
+            "assets/event_packages/birthday-package/birthday-Xth_Zofia/CLT00760.jpg"
+        ]
+    },
+    "debut": {
+        "title": "DEBUT PACKAGE",
+        "price": "450.00",
+        "discountPercent": 0,
+        "folder": "debut-package",
+        "thumbnail_images": [
+            "assets/event_packages/debut-package/debut_Janna/IMG_6407.jpg",
+            "assets/event_packages/debut-package/debut_Abishai/IMG_5516.jpg",
+            "assets/event_packages/debut-package/debut_Janna/IMG_6577 (1).jpg",
+            "assets/event_packages/debut-package/debut_Janna/IMG_6539 (1).jpg",
+            "assets/event_packages/debut-package/pre-debut_Sina/DSC00125.jpg",
+            "assets/event_packages/debut-package/debut_Janna/IMG_6377.jpg",
+            "assets/event_packages/debut-package/pre-debut_Sina/IMG_1878.jpg"
+        ]
+    },
+    "photo-shoot": {
+        "title": "PHOTO SHOOT",
+        "price": "600.00",
+        "discountPercent": 0,
+        "folder": "photo-shoot",
+        "thumbnail_images": []
+    },
+    "business-shoots": {
+        "title": "BUSINESS SHOOTS",
+        "price": "250.00",
+        "discountPercent": 0,
+        "folder": "business-shoots",
+        "thumbnail_images": []
+    },
+    "photo-video-services": {
+        "title": "PHOTOGRAPHY AND VIDEOGRAPHY SERVICES",
+        "price": "899.00",
+        "discountPercent": 0,
+        "folder": "photography-and-videography-services",
+        "thumbnail_images": []
+    }
 }
