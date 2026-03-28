@@ -207,6 +207,7 @@ if ($isAdminView && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') 
         $priceValue = (float) ($_POST['price'] ?? 0);
         $discountValue = (int) ($_POST['discountPercent'] ?? 0);
         $folderValue = trim((string) ($_POST['folder'] ?? ''));
+        $selectedPaths = sanitize_selected_thumbnail_paths($_POST['selected_paths_json'] ?? '[]', __DIR__);
 
         $updated = false;
 
@@ -218,6 +219,7 @@ if ($isAdminView && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') 
                 $eventPackagesRepository[$packageKey]['price'] = number_format($priceValue, 2, '.', '');
                 $eventPackagesRepository[$packageKey]['discountPercent'] = max(0, min(95, $discountValue));
                 $eventPackagesRepository[$packageKey]['folder'] = $folderValue;
+                $eventPackagesRepository[$packageKey]['thumbnail_images'] = $selectedPaths;
 
                 $updated = save_event_packages_repository($eventPackagesRepository);
             }
@@ -227,26 +229,6 @@ if ($isAdminView && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') 
         $redirectPath = strtok($redirectTarget, '?') ?: $redirectTarget;
         $query = $_GET;
         $query['event_updated'] = $updated ? '1' : '0';
-        $queryString = http_build_query($query);
-
-        header('Location: ' . $redirectPath . ($queryString !== '' ? '?' . $queryString : ''));
-        exit;
-    }
-
-    if ($adminEventAction === 'update_event_package_thumbnails') {
-        $packageKey = normalize_event_package_key((string) ($_POST['package_key'] ?? ''));
-        $selectedPaths = sanitize_selected_thumbnail_paths($_POST['selected_paths_json'] ?? '[]', __DIR__);
-        $updated = false;
-
-        if ($packageKey !== '' && isset($eventPackagesRepository[$packageKey]) && is_array($eventPackagesRepository[$packageKey])) {
-            $eventPackagesRepository[$packageKey]['thumbnail_images'] = $selectedPaths;
-            $updated = save_event_packages_repository($eventPackagesRepository);
-        }
-
-        $redirectTarget = $_SERVER['REQUEST_URI'] ?? ($assetBase . 'admin/events/');
-        $redirectPath = strtok($redirectTarget, '?') ?: $redirectTarget;
-        $query = $_GET;
-        $query['event_thumb_updated'] = $updated ? '1' : '0';
         $queryString = http_build_query($query);
 
         header('Location: ' . $redirectPath . ($queryString !== '' ? '?' . $queryString : ''));
@@ -476,12 +458,6 @@ unset($eventPackage);
                 </p>
             <?php endif; ?>
 
-            <?php if ($isAdminView && isset($_GET['event_thumb_updated'])): ?>
-                <p class="admin-events-flash-message<?php echo (string) $_GET['event_thumb_updated'] === '1' ? ' is-success' : ' is-error'; ?>">
-                    <?php echo (string) $_GET['event_thumb_updated'] === '1' ? 'Slideshow thumbnails updated.' : 'Unable to update slideshow thumbnails.'; ?>
-                </p>
-            <?php endif; ?>
-
             <div class="package-grid">
                 <?php foreach ($eventPackages as $index => $eventPackage): ?>
                     <?php
@@ -557,9 +533,6 @@ unset($eventPackage);
                                 </span>
                                 <?php if ($isAdminView): ?>
                                     <div class="package-admin-actions">
-                                        <button type="button" class="package-admin-set-thumbs" data-admin-event-set-thumbnails>
-                                            SET THUMBNAILS
-                                        </button>
                                         <button
                                             type="button"
                                             onclick="window.location.href='<?php echo htmlspecialchars($detailPageUrl, ENT_QUOTES, 'UTF-8'); ?>'"
@@ -609,6 +582,7 @@ unset($eventPackage);
                 <form class="admin-edit-form admin-event-edit-form" method="post" action="" data-admin-event-edit-form>
                     <input type="hidden" name="admin_event_action" value="update_event_package">
                     <input type="hidden" name="package_key" value="" data-admin-event-edit-key>
+                    <input type="hidden" name="selected_paths_json" value="[]" data-admin-event-edit-thumbs-input>
 
                     <div class="admin-edit-fields-column admin-event-edit-fields">
                         <label class="admin-edit-label" for="admin-event-edit-name">Package Name</label>
@@ -629,6 +603,33 @@ unset($eventPackage);
 
                         <label class="admin-edit-label" for="admin-event-edit-discount">Discount Percentage</label>
                         <input id="admin-event-edit-discount" type="number" min="0" max="95" step="1" name="discountPercent" data-admin-event-edit-discount>
+
+                        <div class="admin-event-thumbs-picker">
+                            <p class="admin-event-thumbs-note">
+                                Set slideshow thumbnails below in the exact order you want. Click selected items again to remove and re-order.
+                            </p>
+
+                            <?php if ($eventGalleryImageCandidates === []): ?>
+                                <p class="admin-event-thumbs-empty">No event gallery images found.</p>
+                            <?php else: ?>
+                                <div class="admin-event-thumbs-grid" data-admin-event-thumbs-grid>
+                                    <?php foreach ($eventGalleryImageCandidates as $candidatePath): ?>
+                                        <?php $candidateLabel = str_replace('assets/event_packages/', '', (string) $candidatePath); ?>
+                                        <button
+                                            class="admin-event-thumb-item"
+                                            type="button"
+                                            data-admin-event-thumb-item
+                                            data-image-path="<?php echo htmlspecialchars((string) $candidatePath, ENT_QUOTES, 'UTF-8'); ?>"
+                                            aria-label="Toggle thumbnail <?php echo htmlspecialchars((string) $candidateLabel, ENT_QUOTES, 'UTF-8'); ?>"
+                                        >
+                                            <span class="admin-event-thumb-order" data-admin-event-thumb-order hidden></span>
+                                            <img src="<?php echo htmlspecialchars(buildAssetUrl($assetBase, (string) $candidatePath), ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars((string) $candidateLabel, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <span class="admin-event-thumb-meta"><?php echo htmlspecialchars((string) $candidateLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </button>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
 
                     <div class="admin-edit-actions">
@@ -638,54 +639,9 @@ unset($eventPackage);
                 </form>
             </section>
         </div>
-
-        <div class="admin-edit-modal-backdrop admin-event-thumbs-modal-backdrop" data-admin-event-thumbs-backdrop hidden>
-            <section class="admin-edit-modal admin-event-thumbs-modal" role="dialog" aria-modal="true" aria-labelledby="admin-event-thumbs-title">
-                <div class="admin-edit-modal-head">
-                    <h2 id="admin-event-thumbs-title">Set Slideshow Thumbnails</h2>
-                    <button class="admin-edit-close" type="button" data-admin-event-thumbs-close aria-label="Close thumbnail selector">&times;</button>
-                </div>
-
-                <form class="admin-edit-form admin-event-thumbs-form" method="post" action="" data-admin-event-thumbs-form>
-                    <input type="hidden" name="admin_event_action" value="update_event_package_thumbnails">
-                    <input type="hidden" name="package_key" value="" data-admin-event-thumbs-key>
-                    <input type="hidden" name="selected_paths_json" value="[]" data-admin-event-thumbs-input>
-
-                    <p class="admin-event-thumbs-note">
-                        Select images in order. The number badge shows slideshow order for <strong data-admin-event-thumbs-package-title>this package</strong>.
-                    </p>
-
-                    <?php if ($eventGalleryImageCandidates === []): ?>
-                        <p class="admin-event-thumbs-empty">No event gallery images found.</p>
-                    <?php else: ?>
-                        <div class="admin-event-thumbs-grid" data-admin-event-thumbs-grid>
-                            <?php foreach ($eventGalleryImageCandidates as $candidatePath): ?>
-                                <?php $candidateLabel = str_replace('assets/event_packages/', '', (string) $candidatePath); ?>
-                                <button
-                                    class="admin-event-thumb-item"
-                                    type="button"
-                                    data-admin-event-thumb-item
-                                    data-image-path="<?php echo htmlspecialchars((string) $candidatePath, ENT_QUOTES, 'UTF-8'); ?>"
-                                    aria-label="Toggle thumbnail <?php echo htmlspecialchars((string) $candidateLabel, ENT_QUOTES, 'UTF-8'); ?>"
-                                >
-                                    <span class="admin-event-thumb-order" data-admin-event-thumb-order hidden></span>
-                                    <img src="<?php echo htmlspecialchars(buildAssetUrl($assetBase, (string) $candidatePath), ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars((string) $candidateLabel, ENT_QUOTES, 'UTF-8'); ?>">
-                                    <span class="admin-event-thumb-meta"><?php echo htmlspecialchars((string) $candidateLabel, ENT_QUOTES, 'UTF-8'); ?></span>
-                                </button>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-
-                    <div class="admin-edit-actions">
-                        <button type="button" class="admin-edit-secondary" data-admin-event-thumbs-cancel>Cancel</button>
-                        <button type="submit" class="admin-edit-primary">Save Thumbnails</button>
-                    </div>
-                </form>
-            </section>
-        </div>
     <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260328-2"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260328-3"></script>
 </body>
 </html>

@@ -5453,16 +5453,6 @@ button {
     gap: 0.45rem;
 }
 
-.package-admin-actions .package-admin-set-thumbs {
-    background: #ece4ab;
-    color: #141519;
-}
-
-.package-admin-actions .package-admin-set-thumbs:hover,
-.package-admin-actions .package-admin-set-thumbs:focus-visible {
-    background: #f3ebb9;
-}
-
 .event-detail-shell {
     width: min(100%, 1380px);
 }
@@ -5540,8 +5530,8 @@ button {
     min-width: 120px;
 }
 
-.admin-event-thumbs-modal {
-    width: min(100%, 1060px);
+.admin-event-thumbs-picker {
+    margin-top: 1.05rem;
 }
 
 .admin-event-thumbs-note {
