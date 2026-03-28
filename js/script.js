@@ -102,8 +102,16 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEventEditPrice = document.querySelector("[data-admin-event-edit-price]");
     var adminEventEditDiscount = document.querySelector("[data-admin-event-edit-discount]");
     var adminEventEditFolder = document.querySelector("[data-admin-event-edit-folder]");
-    var adminEventEditThumbsInput = document.querySelector("[data-admin-event-edit-thumbs-input]");
+    var adminEventSetThumbButtonInEdit = document.querySelector("[data-admin-event-set-thumbnails-edit]");
+    var adminEventThumbsBackdrop = document.querySelector("[data-admin-event-thumbs-backdrop]");
+    var adminEventThumbsForm = document.querySelector("[data-admin-event-thumbs-form]");
+    var adminEventThumbsClose = document.querySelector("[data-admin-event-thumbs-close]");
+    var adminEventThumbsCancel = document.querySelector("[data-admin-event-thumbs-cancel]");
+    var adminEventThumbsKey = document.querySelector("[data-admin-event-thumbs-key]");
+    var adminEventThumbsInput = document.querySelector("[data-admin-event-thumbs-input]");
     var adminEventThumbItems = document.querySelectorAll("[data-admin-event-thumb-item]");
+    var adminEventThumbsPackageTitle = document.querySelector("[data-admin-event-thumbs-package-title]");
+    var adminEventThumbsFolderEmpty = document.querySelector("[data-admin-event-thumbs-folder-empty]");
     var adminHowGrid = document.querySelector("[data-admin-how-grid]");
     var adminHowEditBackdrop = document.querySelector("[data-admin-how-edit-backdrop]");
     var adminHowForm = document.querySelector("[data-admin-how-form]");
@@ -125,6 +133,8 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminHowImageBase = adminHowGrid ? (adminHowGrid.getAttribute("data-admin-how-image-base") || "assets/how_it_works/") : "assets/how_it_works/";
     var activeAdminEditCard = null;
     var activeAdminEventPackageCard = null;
+    var activeAdminEventThumbsCard = null;
+    var activeAdminEventThumbFolder = "";
     var adminEventThumbSelection = [];
     var activeAdminHowSlot = "";
     var adminCropState = {
@@ -862,8 +872,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         adminEventEditBackdrop.hidden = true;
         activeAdminEventPackageCard = null;
-        adminEventThumbSelection = [];
-        syncAdminEventThumbSelectionUI();
         syncAdminModalBodyLock();
     }
 
@@ -879,7 +887,6 @@ document.addEventListener("DOMContentLoaded", function () {
         var packagePrice = Number.parseFloat(String(card.getAttribute("data-admin-event-package-price") || "0"));
         var packageDiscount = clampDiscount(card.getAttribute("data-admin-event-package-discount") || "0");
         var packageFolder = String(card.getAttribute("data-admin-event-package-folder") || "").trim();
-        var selectedRaw = String(card.getAttribute("data-admin-event-selected-thumbnails") || "[]");
 
         if (adminEventEditKey) {
             adminEventEditKey.value = packageKey;
@@ -907,9 +914,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        adminEventThumbSelection = parseAdminEventThumbSelection(selectedRaw);
-        syncAdminEventThumbSelectionUI();
-
         adminEventEditBackdrop.hidden = false;
         syncAdminModalBodyLock();
     }
@@ -934,12 +938,6 @@ document.addEventListener("DOMContentLoaded", function () {
             if (event.target === adminEventEditBackdrop) {
                 closeAdminEventEditModal();
             }
-        });
-    }
-
-    if (adminEventEditForm) {
-        adminEventEditForm.addEventListener("submit", function () {
-            syncAdminEventThumbSelectionUI();
         });
     }
 
@@ -975,20 +973,52 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function getAdminEventImageFolder(imagePath) {
+        var normalizedPath = String(imagePath || "").replace(/\\/g, "/").replace(/^\/+/, "");
+        var prefix = "assets/event_packages/";
+
+        if (normalizedPath.indexOf(prefix) !== 0) {
+            return "";
+        }
+
+        var remainder = normalizedPath.slice(prefix.length);
+        var slashIndex = remainder.indexOf("/");
+
+        return (slashIndex >= 0 ? remainder.slice(0, slashIndex) : remainder).trim();
+    }
+
     function syncAdminEventThumbSelectionUI() {
         if (!adminEventThumbItems.length) {
-            if (adminEventEditThumbsInput) {
-                adminEventEditThumbsInput.value = JSON.stringify(adminEventThumbSelection);
+            if (adminEventThumbsInput) {
+                adminEventThumbsInput.value = JSON.stringify(adminEventThumbSelection);
             }
 
             return;
         }
 
+        var visibleCount = 0;
+
         adminEventThumbItems.forEach(function (item) {
             var path = String(item.getAttribute("data-image-path") || "");
+            var itemFolder = String(item.getAttribute("data-image-folder") || "").trim();
+            var isVisible = activeAdminEventThumbFolder === "" || itemFolder === activeAdminEventThumbFolder;
             var orderBadge = item.querySelector("[data-admin-event-thumb-order]");
             var selectedIndex = adminEventThumbSelection.indexOf(path);
             var isSelected = selectedIndex >= 0;
+
+            item.hidden = !isVisible;
+
+            if (!isVisible) {
+                item.classList.remove("is-selected");
+                if (orderBadge) {
+                    orderBadge.hidden = true;
+                    orderBadge.textContent = "";
+                }
+
+                return;
+            }
+
+            visibleCount += 1;
 
             item.classList.toggle("is-selected", isSelected);
 
@@ -1003,9 +1033,66 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        if (adminEventEditThumbsInput) {
-            adminEventEditThumbsInput.value = JSON.stringify(adminEventThumbSelection);
+        if (adminEventThumbsFolderEmpty) {
+            adminEventThumbsFolderEmpty.hidden = visibleCount > 0;
         }
+
+        if (adminEventThumbsInput) {
+            adminEventThumbsInput.value = JSON.stringify(adminEventThumbSelection);
+        }
+    }
+
+    function closeAdminEventThumbsModal() {
+        if (!adminEventThumbsBackdrop) {
+            return;
+        }
+
+        adminEventThumbsBackdrop.hidden = true;
+        activeAdminEventThumbsCard = null;
+        activeAdminEventThumbFolder = "";
+        adminEventThumbSelection = [];
+        syncAdminModalBodyLock();
+    }
+
+    function openAdminEventThumbsModal(card, folderOverride) {
+        if (!adminEventThumbsBackdrop || !card) {
+            return;
+        }
+
+        activeAdminEventThumbsCard = card;
+
+        var packageKey = String(card.getAttribute("data-admin-event-package-key") || "").trim();
+        var packageTitle = String(card.getAttribute("data-admin-event-package-title") || "").trim();
+        var packageFolder = String(folderOverride || card.getAttribute("data-admin-event-package-folder") || "").trim();
+        var selectedRaw = String(card.getAttribute("data-admin-event-selected-thumbnails") || "[]");
+
+        activeAdminEventThumbFolder = packageFolder;
+        adminEventThumbSelection = parseAdminEventThumbSelection(selectedRaw).filter(function (path) {
+            return getAdminEventImageFolder(path) === activeAdminEventThumbFolder;
+        });
+
+        if (adminEventThumbsKey) {
+            adminEventThumbsKey.value = packageKey;
+        }
+
+        if (adminEventThumbsPackageTitle) {
+            adminEventThumbsPackageTitle.textContent = packageTitle || "this package";
+        }
+
+        syncAdminEventThumbSelectionUI();
+
+        adminEventThumbsBackdrop.hidden = false;
+        syncAdminModalBodyLock();
+    }
+
+    if (adminEventSetThumbButtonInEdit) {
+        adminEventSetThumbButtonInEdit.addEventListener("click", function () {
+            if (!activeAdminEventPackageCard) {
+                return;
+            }
+
+            openAdminEventThumbsModal(activeAdminEventPackageCard);
+        });
     }
 
     adminEventThumbItems.forEach(function (item) {
@@ -1027,6 +1114,28 @@ document.addEventListener("DOMContentLoaded", function () {
             syncAdminEventThumbSelectionUI();
         });
     });
+
+    if (adminEventThumbsClose) {
+        adminEventThumbsClose.addEventListener("click", closeAdminEventThumbsModal);
+    }
+
+    if (adminEventThumbsCancel) {
+        adminEventThumbsCancel.addEventListener("click", closeAdminEventThumbsModal);
+    }
+
+    if (adminEventThumbsBackdrop) {
+        adminEventThumbsBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminEventThumbsBackdrop) {
+                closeAdminEventThumbsModal();
+            }
+        });
+    }
+
+    if (adminEventThumbsForm) {
+        adminEventThumbsForm.addEventListener("submit", function () {
+            syncAdminEventThumbSelectionUI();
+        });
+    }
 
     function closeAdminEditModal() {
         if (!adminEditBackdrop) {
@@ -3632,7 +3741,8 @@ document.addEventListener("DOMContentLoaded", function () {
         var hasVisibleEquipmentStatusModal = Boolean(adminEquipmentStatusBackdrop && !adminEquipmentStatusBackdrop.hidden);
         var hasVisibleActionModal = Boolean(adminActionModalBackdrop && !adminActionModalBackdrop.hidden);
         var hasVisibleEventEditModal = Boolean(adminEventEditBackdrop && !adminEventEditBackdrop.hidden);
-        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal || hasVisibleEventEditModal);
+        var hasVisibleEventThumbsModal = Boolean(adminEventThumbsBackdrop && !adminEventThumbsBackdrop.hidden);
+        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal || hasVisibleEventEditModal || hasVisibleEventThumbsModal);
     }
 
     function closeAdminActionModal(invokeOnClose) {
