@@ -21,38 +21,44 @@ if ($isAdminView && !$isAdminLoggedIn) {
     exit;
 }
 
-$eventPackages = [
-    'wedding' => [
-        'title' => 'WEDDING PACKAGE',
-        'price' => 'P 800.00',
-        'folder' => 'wedding',
-    ],
-    'birthdays' => [
-        'title' => 'BIRTHDAY PACKAGE',
-        'price' => 'P 450.00',
-        'folder' => 'birthdays',
-    ],
-    'debut' => [
-        'title' => 'DEBUT PACKAGE',
-        'price' => 'P 450.00',
-        'folder' => 'debut',
-    ],
-    'photo-shoot' => [
-        'title' => 'PHOTO SHOOT',
-        'price' => 'P 600.00',
-        'folder' => 'photography-and-videography',
-    ],
-    'business-shoots' => [
-        'title' => 'BUSINESS SHOOTS',
-        'price' => 'P 250.00',
-        'folder' => 'business_promotion',
-    ],
-    'photo-video-services' => [
-        'title' => 'PHOTOGRAPHY AND VIDEOGRAPHY SERVICES',
-        'price' => 'P 899.00',
-        'folder' => 'photography-and-videography',
-    ],
-];
+require __DIR__ . '/config/event_packages_repository.php';
+
+function parseEventPackagePrice($value): float
+{
+    return max(0, (float) $value);
+}
+
+function formatEventPackagePrice(float $value): string
+{
+    return 'P ' . number_format(max(0, $value), 2);
+}
+
+function calculateDiscountedEventPackagePrice(float $basePrice, int $discountPercent): float
+{
+    $normalizedDiscount = max(0, min(95, $discountPercent));
+
+    return max(0, $basePrice * (1 - ($normalizedDiscount / 100)));
+}
+
+$eventPackagesRepository = load_event_packages_repository();
+$eventPackages = [];
+
+foreach ($eventPackagesRepository as $packageKey => $packageRecord) {
+    if (!is_array($packageRecord)) {
+        continue;
+    }
+
+    $priceValue = parseEventPackagePrice($packageRecord['price'] ?? 0);
+    $discountPercent = max(0, min(95, (int) ($packageRecord['discountPercent'] ?? 0)));
+
+    $eventPackages[(string) $packageKey] = [
+        'title' => trim((string) ($packageRecord['title'] ?? strtoupper(str_replace('-', ' ', (string) $packageKey)))),
+        'price_value' => $priceValue,
+        'price_label' => formatEventPackagePrice($priceValue),
+        'discount_percent' => $discountPercent,
+        'folder' => trim((string) ($packageRecord['folder'] ?? '')),
+    ];
+}
 
 $selectedPackageKey = strtolower(trim((string) ($_GET['package'] ?? 'wedding')));
 if (!isset($eventPackages[$selectedPackageKey])) {
@@ -88,6 +94,11 @@ $cartPath = $assetBase . 'customer-cart/';
 $eventsPath = $isAdminView ? ($assetBase . 'admin/events/') : ($assetBase . 'customer-events/');
 $eventDetailPath = $isAdminView ? 'admin/event/' : 'customer-event/';
 $selectedPackage = $eventPackages[$selectedPackageKey];
+$selectedPackagePriceValue = (float) ($selectedPackage['price_value'] ?? 0);
+$selectedPackageDiscount = max(0, min(95, (int) ($selectedPackage['discount_percent'] ?? 0)));
+$selectedPackageDiscountedValue = calculateDiscountedEventPackagePrice($selectedPackagePriceValue, $selectedPackageDiscount);
+$selectedPackageFinalValue = $selectedPackageDiscount > 0 ? $selectedPackageDiscountedValue : $selectedPackagePriceValue;
+$selectedPackageFinalLabel = formatEventPackagePrice($selectedPackageFinalValue);
 
 function formatEventLabel(string $raw): string
 {
@@ -320,7 +331,14 @@ foreach ($packageEvents as $event) {
                 </div>
 
                 <div class="event-package-cta-actions">
-                    <span><?php echo htmlspecialchars($selectedPackage['price'], ENT_QUOTES, 'UTF-8'); ?></span>
+                    <span class="package-price-stack">
+                        <?php if ($selectedPackageDiscount > 0): ?>
+                            <span class="package-price-original"><?php echo htmlspecialchars(formatEventPackagePrice($selectedPackagePriceValue), ENT_QUOTES, 'UTF-8'); ?></span>
+                            <span class="package-price-discounted"><?php echo htmlspecialchars(formatEventPackagePrice($selectedPackageDiscountedValue), ENT_QUOTES, 'UTF-8'); ?></span>
+                        <?php else: ?>
+                            <span class="package-price-discounted"><?php echo htmlspecialchars(formatEventPackagePrice($selectedPackagePriceValue), ENT_QUOTES, 'UTF-8'); ?></span>
+                        <?php endif; ?>
+                    </span>
                     <?php if ($isAdminView): ?>
                         <button
                             type="button"
@@ -344,7 +362,7 @@ foreach ($packageEvents as $event) {
                             data-item-name="<?php echo htmlspecialchars($selectedPackage['title'], ENT_QUOTES, 'UTF-8'); ?>"
                             data-item-copy="Package booking for <?php echo htmlspecialchars($selectedPackage['title'], ENT_QUOTES, 'UTF-8'); ?> sample galleries."
                             data-item-image="<?php echo htmlspecialchars($packagePreview, ENT_QUOTES, 'UTF-8'); ?>"
-                            data-item-price="<?php echo htmlspecialchars($selectedPackage['price'], ENT_QUOTES, 'UTF-8'); ?>"
+                            data-item-price="<?php echo htmlspecialchars($selectedPackageFinalLabel, ENT_QUOTES, 'UTF-8'); ?>"
                             <?php if (!$isCustomerLoggedIn): ?>
                                 data-login-url="<?php echo htmlspecialchars($eventDetailLoginUrl, ENT_QUOTES, 'UTF-8'); ?>"
                             <?php endif; ?>

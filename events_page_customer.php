@@ -21,6 +21,239 @@ if ($isAdminView && !$isAdminLoggedIn) {
     exit;
 }
 
+require __DIR__ . '/config/event_packages_repository.php';
+
+function parseEventPackagePrice($value): float
+{
+    return max(0, (float) $value);
+}
+
+function formatEventPackagePrice(float $value): string
+{
+    return 'P ' . number_format(max(0, $value), 2);
+}
+
+function calculateDiscountedEventPackagePrice(float $basePrice, int $discountPercent): float
+{
+    $normalizedDiscount = max(0, min(95, $discountPercent));
+
+    return max(0, $basePrice * (1 - ($normalizedDiscount / 100)));
+}
+
+function is_supported_event_image_extension(string $path): bool
+{
+    $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+
+    return in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
+}
+
+function normalize_event_asset_path(string $path): string
+{
+    $normalized = trim(str_replace('\\', '/', rawurldecode($path)));
+    $normalized = ltrim($normalized, '/');
+    $normalized = preg_replace('#/+#', '/', $normalized) ?? $normalized;
+
+    return trim($normalized);
+}
+
+function is_event_gallery_asset_path(string $path): bool
+{
+    if (strpos($path, '..') !== false) {
+        return false;
+    }
+
+    return strpos($path, 'assets/event_packages/') === 0;
+}
+
+/**
+ * @return string[]
+ */
+function collect_all_event_gallery_images(string $projectRoot): array
+{
+    $galleryRoot = $projectRoot . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'event_packages';
+    if (!is_dir($galleryRoot)) {
+        return [];
+    }
+
+    $images = [];
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($galleryRoot, FilesystemIterator::SKIP_DOTS)
+    );
+
+    foreach ($iterator as $fileInfo) {
+        if (!$fileInfo->isFile()) {
+            continue;
+        }
+
+        $absolutePath = $fileInfo->getPathname();
+        $relativePath = substr($absolutePath, strlen($projectRoot) + 1);
+        if ($relativePath === false || $relativePath === '') {
+            continue;
+        }
+
+        $normalizedPath = normalize_event_asset_path($relativePath);
+        if (!is_supported_event_image_extension($normalizedPath) || !is_event_gallery_asset_path($normalizedPath)) {
+            continue;
+        }
+
+        $segments = explode('/', $normalizedPath);
+        $skipAsset = false;
+
+        foreach ($segments as $segment) {
+            if ($segment !== '' && strpos($segment, '_') === 0) {
+                $skipAsset = true;
+                break;
+            }
+        }
+
+        if ($skipAsset) {
+            continue;
+        }
+
+        $images[$normalizedPath] = $normalizedPath;
+    }
+
+    $imageValues = array_values($images);
+    natcasesort($imageValues);
+
+    return array_values($imageValues);
+}
+
+/**
+ * @param mixed $input
+ * @return string[]
+ */
+function sanitize_selected_thumbnail_paths($input, string $projectRoot): array
+{
+    $paths = $input;
+
+    if (is_string($paths)) {
+        $decoded = json_decode($paths, true);
+
+        if (is_array($decoded)) {
+            $paths = $decoded;
+        } else {
+            $paths = [];
+        }
+    }
+
+    if (!is_array($paths)) {
+        return [];
+    }
+
+    $selected = [];
+
+    foreach ($paths as $path) {
+        $normalizedPath = normalize_event_asset_path((string) $path);
+
+        if ($normalizedPath === '' || !is_event_gallery_asset_path($normalizedPath) || !is_supported_event_image_extension($normalizedPath)) {
+            continue;
+        }
+
+        if (isset($selected[$normalizedPath])) {
+            continue;
+        }
+
+        $absolutePath = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $normalizedPath);
+        if (!is_file($absolutePath)) {
+            continue;
+        }
+
+        $selected[$normalizedPath] = $normalizedPath;
+    }
+
+    return array_values($selected);
+}
+
+/**
+ * @return string[]
+ */
+function collectEventPackageFolders(string $projectRoot): array
+{
+    $packagesRoot = $projectRoot . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'event_packages';
+    if (!is_dir($packagesRoot)) {
+        return [];
+    }
+
+    $folders = [];
+    $iterator = new DirectoryIterator($packagesRoot);
+
+    foreach ($iterator as $entry) {
+        if (!$entry->isDir() || $entry->isDot()) {
+            continue;
+        }
+
+        $folderName = $entry->getFilename();
+        if ($folderName === '' || $folderName[0] === '_') {
+            continue;
+        }
+
+        $folders[] = $folderName;
+    }
+
+    natcasesort($folders);
+
+    return array_values($folders);
+}
+
+$eventPackagesRepository = load_event_packages_repository();
+
+if ($isAdminView && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    $adminEventAction = trim((string) ($_POST['admin_event_action'] ?? ''));
+
+    if ($adminEventAction === 'update_event_package') {
+        $packageKey = normalize_event_package_key((string) ($_POST['package_key'] ?? ''));
+        $titleValue = trim((string) ($_POST['title'] ?? ''));
+        $priceValue = (float) ($_POST['price'] ?? 0);
+        $discountValue = (int) ($_POST['discountPercent'] ?? 0);
+        $folderValue = trim((string) ($_POST['folder'] ?? ''));
+
+        $updated = false;
+
+        if ($packageKey !== '' && isset($eventPackagesRepository[$packageKey]) && is_array($eventPackagesRepository[$packageKey])) {
+            $availableFolders = collectEventPackageFolders(__DIR__);
+
+            if ($titleValue !== '' && $priceValue >= 0 && in_array($folderValue, $availableFolders, true)) {
+                $eventPackagesRepository[$packageKey]['title'] = $titleValue;
+                $eventPackagesRepository[$packageKey]['price'] = number_format($priceValue, 2, '.', '');
+                $eventPackagesRepository[$packageKey]['discountPercent'] = max(0, min(95, $discountValue));
+                $eventPackagesRepository[$packageKey]['folder'] = $folderValue;
+
+                $updated = save_event_packages_repository($eventPackagesRepository);
+            }
+        }
+
+        $redirectTarget = $_SERVER['REQUEST_URI'] ?? ($assetBase . 'admin/events/');
+        $redirectPath = strtok($redirectTarget, '?') ?: $redirectTarget;
+        $query = $_GET;
+        $query['event_updated'] = $updated ? '1' : '0';
+        $queryString = http_build_query($query);
+
+        header('Location: ' . $redirectPath . ($queryString !== '' ? '?' . $queryString : ''));
+        exit;
+    }
+
+    if ($adminEventAction === 'update_event_package_thumbnails') {
+        $packageKey = normalize_event_package_key((string) ($_POST['package_key'] ?? ''));
+        $selectedPaths = sanitize_selected_thumbnail_paths($_POST['selected_paths_json'] ?? '[]', __DIR__);
+        $updated = false;
+
+        if ($packageKey !== '' && isset($eventPackagesRepository[$packageKey]) && is_array($eventPackagesRepository[$packageKey])) {
+            $eventPackagesRepository[$packageKey]['thumbnail_images'] = $selectedPaths;
+            $updated = save_event_packages_repository($eventPackagesRepository);
+        }
+
+        $redirectTarget = $_SERVER['REQUEST_URI'] ?? ($assetBase . 'admin/events/');
+        $redirectPath = strtok($redirectTarget, '?') ?: $redirectTarget;
+        $query = $_GET;
+        $query['event_thumb_updated'] = $updated ? '1' : '0';
+        $queryString = http_build_query($query);
+
+        header('Location: ' . $redirectPath . ($queryString !== '' ? '?' . $queryString : ''));
+        exit;
+    }
+}
+
 if (!$isAdminView && isset($_GET['add_event'])) {
     if (!$isCustomerLoggedIn) {
         $currentPageUrl = $_SERVER['REQUEST_URI'] ?? ($assetBase . 'customer-events/');
@@ -50,44 +283,36 @@ $cartPath = $assetBase . 'customer-cart/';
 $eventsPath = $isAdminView ? ($assetBase . 'admin/events/') : ($assetBase . 'customer-events/');
 $eventDetailPath = $isAdminView ? 'admin/event/' : 'customer-event/';
 
-$eventPackages = [
-    [
-        'key' => 'wedding',
-        'title' => 'WEDDING PACKAGE',
-        'price' => 'P 800.00',
-        'thumbnail_folder' => 'weddings',
-    ],
-    [
-        'key' => 'birthdays',
-        'title' => 'BIRTHDAY PACKAGE',
-        'price' => 'P 450.00',
-        'thumbnail_folder' => 'birthdays',
-    ],
-    [
-        'key' => 'debut',
-        'title' => 'DEBUT PACKAGE',
-        'price' => 'P 450.00',
-        'thumbnail_folder' => 'debut',
-    ],
-    [
-        'key' => 'photo-shoot',
-        'title' => 'PHOTO SHOOT',
-        'price' => 'P 600.00',
-        'thumbnail_folder' => 'photography-and-videography',
-    ],
-    [
-        'key' => 'business-shoots',
-        'title' => 'BUSINESS SHOOTS',
-        'price' => 'P 250.00',
-        'thumbnail_folder' => 'business',
-    ],
-    [
-        'key' => 'photo-video-services',
-        'title' => 'PHOTOGRAPHY AND VIDEOGRAPHY SERVICES',
-        'price' => 'P 899.00',
-        'thumbnail_folder' => 'photography-and-videography',
-    ],
-];
+$projectRoot = __DIR__;
+$availableEventFolders = collectEventPackageFolders($projectRoot);
+$eventPackages = [];
+
+foreach ($eventPackagesRepository as $packageKey => $packageRecord) {
+    if (!is_array($packageRecord)) {
+        continue;
+    }
+
+    $rawPrice = parseEventPackagePrice($packageRecord['price'] ?? 0);
+    $discountPercent = max(0, min(95, (int) ($packageRecord['discountPercent'] ?? 0)));
+    $folder = trim((string) ($packageRecord['folder'] ?? ''));
+
+    if ($folder === '' && $availableEventFolders !== []) {
+        $folder = (string) $availableEventFolders[0];
+    }
+
+    $eventPackages[] = [
+        'key' => (string) $packageKey,
+        'title' => trim((string) ($packageRecord['title'] ?? strtoupper(str_replace('-', ' ', (string) $packageKey)))),
+        'price_value' => $rawPrice,
+        'price_label' => formatEventPackagePrice($rawPrice),
+        'discount_percent' => $discountPercent,
+        'folder' => $folder,
+        'thumbnail_folder' => trim((string) ($packageRecord['thumbnail_folder'] ?? '')),
+        'selected_thumbnail_images' => sanitize_selected_thumbnail_paths($packageRecord['thumbnail_images'] ?? [], $projectRoot),
+    ];
+}
+
+$eventGalleryImageCandidates = collect_all_event_gallery_images($projectRoot);
 
 /**
  * @return string[]
@@ -131,6 +356,24 @@ function collectEventThumbnailPaths(string $projectRoot, string $folder): array
     return array_values($images);
 }
 
+/**
+ * @return string[]
+ */
+function resolve_event_package_slideshow_images(array $eventPackage, string $projectRoot): array
+{
+    $selectedImages = sanitize_selected_thumbnail_paths($eventPackage['selected_thumbnail_images'] ?? [], $projectRoot);
+    if ($selectedImages !== []) {
+        return $selectedImages;
+    }
+
+    $thumbnailFolder = trim((string) ($eventPackage['thumbnail_folder'] ?? ''));
+    if ($thumbnailFolder === '') {
+        return [];
+    }
+
+    return collectEventThumbnailPaths($projectRoot, $thumbnailFolder);
+}
+
 function buildAssetUrl(string $assetBasePath, string $relativePath): string
 {
     $segments = explode('/', str_replace('\\', '/', $relativePath));
@@ -140,9 +383,8 @@ function buildAssetUrl(string $assetBasePath, string $relativePath): string
     return $normalizedBase . $encodedPath;
 }
 
-$projectRoot = __DIR__;
 foreach ($eventPackages as &$eventPackage) {
-    $eventPackage['images'] = collectEventThumbnailPaths($projectRoot, $eventPackage['thumbnail_folder']);
+    $eventPackage['images'] = resolve_event_package_slideshow_images($eventPackage, $projectRoot);
 }
 unset($eventPackage);
 ?>
@@ -157,7 +399,7 @@ unset($eventPackage);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260312-4">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260328-3">
 </head>
 <body class="events-page">
     <header class="site-header">
@@ -228,39 +470,75 @@ unset($eventPackage);
                 <h1>EVENTS</h1>
             </div>
 
+            <?php if ($isAdminView && isset($_GET['event_updated'])): ?>
+                <p class="admin-events-flash-message<?php echo (string) $_GET['event_updated'] === '1' ? ' is-success' : ' is-error'; ?>">
+                    <?php echo (string) $_GET['event_updated'] === '1' ? 'Event package updated.' : 'Unable to update event package.'; ?>
+                </p>
+            <?php endif; ?>
+
+            <?php if ($isAdminView && isset($_GET['event_thumb_updated'])): ?>
+                <p class="admin-events-flash-message<?php echo (string) $_GET['event_thumb_updated'] === '1' ? ' is-success' : ' is-error'; ?>">
+                    <?php echo (string) $_GET['event_thumb_updated'] === '1' ? 'Slideshow thumbnails updated.' : 'Unable to update slideshow thumbnails.'; ?>
+                </p>
+            <?php endif; ?>
+
             <div class="package-grid">
                 <?php foreach ($eventPackages as $index => $eventPackage): ?>
                     <?php
                     $images = $eventPackage['images'];
                     $title = $eventPackage['title'];
-                    $price = $eventPackage['price'];
+                    $basePriceValue = (float) ($eventPackage['price_value'] ?? 0);
+                    $discountPercent = max(0, min(95, (int) ($eventPackage['discount_percent'] ?? 0)));
+                    $discountedPriceValue = calculateDiscountedEventPackagePrice($basePriceValue, $discountPercent);
+                    $finalPriceValue = $discountPercent > 0 ? $discountedPriceValue : $basePriceValue;
+                    $basePriceLabel = formatEventPackagePrice($basePriceValue);
+                    $discountedPriceLabel = formatEventPackagePrice($discountedPriceValue);
+                    $finalPriceLabel = formatEventPackagePrice($finalPriceValue);
                     $detailPageUrl = $assetBase . $eventDetailPath . '?package=' . urlencode($eventPackage['key']);
                     ?>
-                    <article class="package-card">
-                        <div
-                            class="package-thumb<?php echo $images !== [] ? ' package-slideshow' : ''; ?>"
-                            <?php if ($images !== []): ?>
-                                data-package-slideshow
-                                data-autoplay-ms="6200"
-                            <?php endif; ?>
-                            aria-label="<?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?> sample photos"
-                        >
-                            <?php if ($images !== []): ?>
-                                <div class="package-slides">
-                                    <?php foreach ($images as $imageIndex => $imagePath): ?>
-                                        <img
-                                            class="package-slide<?php echo $imageIndex === 0 ? ' is-active' : ''; ?>"
-                                            src="<?php echo htmlspecialchars(buildAssetUrl($assetBase, $imagePath), ENT_QUOTES, 'UTF-8'); ?>"
-                                            alt="<?php echo htmlspecialchars($title . ' sample ' . ($imageIndex + 1), ENT_QUOTES, 'UTF-8'); ?>"
-                                            loading="<?php echo $index === 0 && $imageIndex === 0 ? 'eager' : 'lazy'; ?>"
-                                            aria-hidden="<?php echo $imageIndex === 0 ? 'false' : 'true'; ?>"
-                                        >
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php else: ?>
-                                <div class="package-empty-state">Thumbnail coming soon.</div>
-                            <?php endif; ?>
-                        </div>
+                    <article
+                        class="package-card<?php echo $isAdminView ? ' package-card-admin-no-thumb' : ''; ?>"
+                        data-admin-event-package
+                        data-admin-event-package-key="<?php echo htmlspecialchars((string) $eventPackage['key'], ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-event-package-title="<?php echo htmlspecialchars((string) $title, ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-event-package-price="<?php echo htmlspecialchars(number_format($basePriceValue, 2, '.', ''), ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-event-package-discount="<?php echo htmlspecialchars((string) $discountPercent, ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-event-package-folder="<?php echo htmlspecialchars((string) ($eventPackage['folder'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-event-selected-thumbnails="<?php echo htmlspecialchars((string) json_encode(array_values((array) ($eventPackage['selected_thumbnail_images'] ?? [])), JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8'); ?>"
+                    >
+                        <?php if ($isAdminView): ?>
+                            <button class="product-card-admin-edit" type="button" data-admin-event-edit aria-label="Edit <?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?> package">
+                                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
+                            </button>
+                            <button class="product-card-admin-remove" type="button" aria-label="Close <?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?> package">&times;</button>
+                        <?php endif; ?>
+
+                        <?php if (!$isAdminView): ?>
+                            <div
+                                class="package-thumb<?php echo $images !== [] ? ' package-slideshow' : ''; ?>"
+                                <?php if ($images !== []): ?>
+                                    data-package-slideshow
+                                    data-autoplay-ms="6200"
+                                <?php endif; ?>
+                                aria-label="<?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?> sample photos"
+                            >
+                                <?php if ($images !== []): ?>
+                                    <div class="package-slides">
+                                        <?php foreach ($images as $imageIndex => $imagePath): ?>
+                                            <img
+                                                class="package-slide<?php echo $imageIndex === 0 ? ' is-active' : ''; ?>"
+                                                src="<?php echo htmlspecialchars(buildAssetUrl($assetBase, $imagePath), ENT_QUOTES, 'UTF-8'); ?>"
+                                                alt="<?php echo htmlspecialchars($title . ' sample ' . ($imageIndex + 1), ENT_QUOTES, 'UTF-8'); ?>"
+                                                loading="<?php echo $index === 0 && $imageIndex === 0 ? 'eager' : 'lazy'; ?>"
+                                                aria-hidden="<?php echo $imageIndex === 0 ? 'false' : 'true'; ?>"
+                                            >
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="package-empty-state">Thumbnail coming soon.</div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
 
                         <div class="package-body">
                             <h2>
@@ -269,14 +547,26 @@ unset($eventPackage);
                                 </a>
                             </h2>
                             <div class="package-footer">
-                                <span><?php echo htmlspecialchars($price, ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span class="package-price-stack">
+                                    <?php if ($discountPercent > 0): ?>
+                                        <span class="package-price-original"><?php echo htmlspecialchars($basePriceLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                                        <span class="package-price-discounted"><?php echo htmlspecialchars($discountedPriceLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <?php else: ?>
+                                        <span class="package-price-discounted"><?php echo htmlspecialchars($basePriceLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <?php endif; ?>
+                                </span>
                                 <?php if ($isAdminView): ?>
-                                    <button
-                                        type="button"
-                                        onclick="window.location.href='<?php echo htmlspecialchars($detailPageUrl, ENT_QUOTES, 'UTF-8'); ?>'"
-                                    >
-                                        OPEN PACKAGE
-                                    </button>
+                                    <div class="package-admin-actions">
+                                        <button type="button" class="package-admin-set-thumbs" data-admin-event-set-thumbnails>
+                                            SET THUMBNAILS
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onclick="window.location.href='<?php echo htmlspecialchars($detailPageUrl, ENT_QUOTES, 'UTF-8'); ?>'"
+                                        >
+                                            OPEN PACKAGE
+                                        </button>
+                                    </div>
                                 <?php else: ?>
                                     <?php
                                     $eventPreview = $images !== []
@@ -292,7 +582,7 @@ unset($eventPackage);
                                         data-item-name="<?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?>"
                                         data-item-copy="Event package with curated coverage style and sample gallery references."
                                         data-item-image="<?php echo htmlspecialchars($eventPreview, ENT_QUOTES, 'UTF-8'); ?>"
-                                        data-item-price="<?php echo htmlspecialchars($price, ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-item-price="<?php echo htmlspecialchars($finalPriceLabel, ENT_QUOTES, 'UTF-8'); ?>"
                                         <?php if (!$isCustomerLoggedIn): ?>
                                             data-login-url="<?php echo htmlspecialchars($eventLoginUrl, ENT_QUOTES, 'UTF-8'); ?>"
                                         <?php endif; ?>
@@ -308,7 +598,94 @@ unset($eventPackage);
         </section>
     </main>
 
+    <?php if ($isAdminView): ?>
+        <div class="admin-edit-modal-backdrop admin-event-edit-modal-backdrop" data-admin-event-edit-backdrop hidden>
+            <section class="admin-edit-modal admin-event-edit-modal" role="dialog" aria-modal="true" aria-labelledby="admin-event-edit-title">
+                <div class="admin-edit-modal-head">
+                    <h2 id="admin-event-edit-title">Edit Event Package</h2>
+                    <button class="admin-edit-close" type="button" data-admin-event-edit-close aria-label="Close edit window">&times;</button>
+                </div>
+
+                <form class="admin-edit-form admin-event-edit-form" method="post" action="" data-admin-event-edit-form>
+                    <input type="hidden" name="admin_event_action" value="update_event_package">
+                    <input type="hidden" name="package_key" value="" data-admin-event-edit-key>
+
+                    <div class="admin-edit-fields-column admin-event-edit-fields">
+                        <label class="admin-edit-label" for="admin-event-edit-name">Package Name</label>
+                        <input id="admin-event-edit-name" type="text" name="title" data-admin-event-edit-name required>
+
+                        <label class="admin-edit-label" for="admin-event-edit-folder">Product/Folder Source</label>
+                        <select id="admin-event-edit-folder" name="folder" data-admin-event-edit-folder required>
+                            <?php foreach ($availableEventFolders as $availableFolder): ?>
+                                <option value="<?php echo htmlspecialchars((string) $availableFolder, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) $availableFolder, ENT_QUOTES, 'UTF-8'); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <label class="admin-edit-label" for="admin-event-edit-price">Price</label>
+                        <div class="admin-edit-money-field">
+                            <span class="admin-edit-currency" aria-hidden="true">&#8369;</span>
+                            <input id="admin-event-edit-price" type="number" min="0" step="0.01" name="price" data-admin-event-edit-price required>
+                        </div>
+
+                        <label class="admin-edit-label" for="admin-event-edit-discount">Discount Percentage</label>
+                        <input id="admin-event-edit-discount" type="number" min="0" max="95" step="1" name="discountPercent" data-admin-event-edit-discount>
+                    </div>
+
+                    <div class="admin-edit-actions">
+                        <button type="button" class="admin-edit-secondary" data-admin-event-edit-cancel>Cancel</button>
+                        <button type="submit" class="admin-edit-primary">Save</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+
+        <div class="admin-edit-modal-backdrop admin-event-thumbs-modal-backdrop" data-admin-event-thumbs-backdrop hidden>
+            <section class="admin-edit-modal admin-event-thumbs-modal" role="dialog" aria-modal="true" aria-labelledby="admin-event-thumbs-title">
+                <div class="admin-edit-modal-head">
+                    <h2 id="admin-event-thumbs-title">Set Slideshow Thumbnails</h2>
+                    <button class="admin-edit-close" type="button" data-admin-event-thumbs-close aria-label="Close thumbnail selector">&times;</button>
+                </div>
+
+                <form class="admin-edit-form admin-event-thumbs-form" method="post" action="" data-admin-event-thumbs-form>
+                    <input type="hidden" name="admin_event_action" value="update_event_package_thumbnails">
+                    <input type="hidden" name="package_key" value="" data-admin-event-thumbs-key>
+                    <input type="hidden" name="selected_paths_json" value="[]" data-admin-event-thumbs-input>
+
+                    <p class="admin-event-thumbs-note">
+                        Select images in order. The number badge shows slideshow order for <strong data-admin-event-thumbs-package-title>this package</strong>.
+                    </p>
+
+                    <?php if ($eventGalleryImageCandidates === []): ?>
+                        <p class="admin-event-thumbs-empty">No event gallery images found.</p>
+                    <?php else: ?>
+                        <div class="admin-event-thumbs-grid" data-admin-event-thumbs-grid>
+                            <?php foreach ($eventGalleryImageCandidates as $candidatePath): ?>
+                                <?php $candidateLabel = str_replace('assets/event_packages/', '', (string) $candidatePath); ?>
+                                <button
+                                    class="admin-event-thumb-item"
+                                    type="button"
+                                    data-admin-event-thumb-item
+                                    data-image-path="<?php echo htmlspecialchars((string) $candidatePath, ENT_QUOTES, 'UTF-8'); ?>"
+                                    aria-label="Toggle thumbnail <?php echo htmlspecialchars((string) $candidateLabel, ENT_QUOTES, 'UTF-8'); ?>"
+                                >
+                                    <span class="admin-event-thumb-order" data-admin-event-thumb-order hidden></span>
+                                    <img src="<?php echo htmlspecialchars(buildAssetUrl($assetBase, (string) $candidatePath), ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars((string) $candidateLabel, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <span class="admin-event-thumb-meta"><?php echo htmlspecialchars((string) $candidateLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="admin-edit-actions">
+                        <button type="button" class="admin-edit-secondary" data-admin-event-thumbs-cancel>Cancel</button>
+                        <button type="submit" class="admin-edit-primary">Save Thumbnails</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    <?php endif; ?>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260319-1"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260328-2"></script>
 </body>
 </html>

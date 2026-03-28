@@ -1378,8 +1378,18 @@ button {
     padding-left: 1.95rem;
 }
 
+#admin-event-edit-price {
+    padding-left: 1.95rem;
+}
+
 #admin-edit-price,
 #admin-edit-discount {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+#admin-event-edit-price,
+#admin-event-edit-discount {
     appearance: textfield;
     -moz-appearance: textfield;
 }
@@ -1388,6 +1398,14 @@ button {
 #admin-edit-price::-webkit-inner-spin-button,
 #admin-edit-discount::-webkit-outer-spin-button,
 #admin-edit-discount::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#admin-event-edit-price::-webkit-outer-spin-button,
+#admin-event-edit-price::-webkit-inner-spin-button,
+#admin-event-edit-discount::-webkit-outer-spin-button,
+#admin-event-edit-discount::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
@@ -2459,11 +2477,22 @@ button {
     padding: 0.55rem 0.8rem;
     font-size: 0.82rem;
     font-weight: 700;
+    letter-spacing: 0.01em;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.admin-inline-save-toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .admin-inline-save-toast-error {
     color: #ffd7d7;
-    border-color: rgba(255, 110, 110, 0.62);
+    font-size: 0.95rem;
+    font-weight: 700;
 }
 
 .admin-cover-preview {
@@ -5254,10 +5283,38 @@ button {
 }
 
 .package-card {
+    position: relative;
     border: 2px solid rgba(255, 255, 255, 0.76);
     border-radius: 10px;
     overflow: hidden;
     background: rgba(17, 18, 20, 0.92);
+}
+
+.package-card-admin-no-thumb .package-body {
+    padding-top: 3.1rem;
+}
+
+.admin-events-flash-message {
+    margin: 0 0 0.85rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.admin-events-flash-message.is-success {
+    border-color: rgba(89, 181, 108, 0.45);
+    background: rgba(40, 107, 55, 0.28);
+    color: #ddf5e2;
+}
+
+.admin-events-flash-message.is-error {
+    border-color: rgba(206, 92, 92, 0.48);
+    background: rgba(140, 35, 35, 0.26);
+    color: #ffd1d1;
 }
 
 .package-thumb {
@@ -5351,9 +5408,30 @@ button {
     margin-top: 1.5rem;
 }
 
-.package-footer span {
+.package-footer > span {
     font-size: 0.95rem;
     font-weight: 700;
+}
+
+.package-price-stack {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.16rem;
+    min-height: 34px;
+}
+
+.package-price-original {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.68);
+    text-decoration: line-through;
+}
+
+.package-price-discounted {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #dde531;
 }
 
 .package-footer button {
@@ -5366,6 +5444,23 @@ button {
     font-size: 0.82rem;
     font-weight: 700;
     cursor: pointer;
+}
+
+.package-admin-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.45rem;
+}
+
+.package-admin-actions .package-admin-set-thumbs {
+    background: #ece4ab;
+    color: #141519;
+}
+
+.package-admin-actions .package-admin-set-thumbs:hover,
+.package-admin-actions .package-admin-set-thumbs:focus-visible {
+    background: #f3ebb9;
 }
 
 .event-detail-shell {
@@ -5426,6 +5521,116 @@ button {
     font-size: 0.82rem;
     font-weight: 700;
     cursor: pointer;
+}
+
+.admin-event-edit-modal {
+    width: min(100%, 560px);
+}
+
+.admin-event-edit-fields {
+    width: 100%;
+}
+
+.admin-event-edit-form .admin-edit-actions {
+    justify-content: flex-end;
+}
+
+.admin-event-edit-form .admin-edit-actions .admin-edit-secondary,
+.admin-event-edit-form .admin-edit-actions .admin-edit-primary {
+    min-width: 120px;
+}
+
+.admin-event-thumbs-modal {
+    width: min(100%, 1060px);
+}
+
+.admin-event-thumbs-note {
+    margin: 0 0 0.8rem;
+    color: #d7dde6;
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.admin-event-thumbs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.6rem;
+    max-height: 56vh;
+    overflow: auto;
+    padding-right: 0.3rem;
+}
+
+.admin-event-thumb-item {
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    color: inherit;
+    text-align: left;
+    padding: 0.35rem;
+    cursor: pointer;
+    transition: border-color 160ms ease, transform 160ms ease, background-color 160ms ease;
+}
+
+.admin-event-thumb-item img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.admin-event-thumb-item:hover,
+.admin-event-thumb-item:focus-visible {
+    border-color: rgba(255, 255, 255, 0.38);
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateY(-1px);
+}
+
+.admin-event-thumb-item.is-selected {
+    border-color: rgba(221, 229, 49, 0.78);
+    background: rgba(221, 229, 49, 0.1);
+}
+
+.admin-event-thumb-order {
+    position: absolute;
+    top: 0.6rem;
+    left: 0.6rem;
+    z-index: 2;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #dde531;
+    color: #0d1117;
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.38);
+}
+
+.admin-event-thumb-meta {
+    display: block;
+    margin-top: 0.38rem;
+    font-size: 0.75rem;
+    color: #c8ced8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.admin-event-thumbs-empty {
+    margin: 0;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    min-height: 140px;
+    display: grid;
+    place-items: center;
+    color: #ced4dd;
+    font-size: 0.92rem;
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .event-gallery-empty-state {

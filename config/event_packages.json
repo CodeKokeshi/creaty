@@ -1,0 +1,44 @@
+{
+    "wedding": {
+        "title": "WEDDING PACKAGE",
+        "price": "800.00",
+        "discountPercent": 0,
+        "folder": "wedding",
+        "thumbnail_folder": "weddings"
+    },
+    "birthdays": {
+        "title": "BIRTHDAY PACKAGE",
+        "price": "450.00",
+        "discountPercent": 0,
+        "folder": "birthdays",
+        "thumbnail_folder": "birthdays"
+    },
+    "debut": {
+        "title": "DEBUT PACKAGE",
+        "price": "450.00",
+        "discountPercent": 0,
+        "folder": "debut",
+        "thumbnail_folder": "debut"
+    },
+    "photo-shoot": {
+        "title": "PHOTO SHOOT",
+        "price": "600.00",
+        "discountPercent": 0,
+        "folder": "photography-and-videography",
+        "thumbnail_folder": "photography-and-videography"
+    },
+    "business-shoots": {
+        "title": "BUSINESS SHOOTS",
+        "price": "250.00",
+        "discountPercent": 0,
+        "folder": "business_promotion",
+        "thumbnail_folder": "business"
+    },
+    "photo-video-services": {
+        "title": "PHOTOGRAPHY AND VIDEOGRAPHY SERVICES",
+        "price": "899.00",
+        "discountPercent": 0,
+        "folder": "photography-and-videography",
+        "thumbnail_folder": "photography-and-videography"
+    }
+}
