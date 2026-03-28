@@ -3272,6 +3272,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (nav.hasAttribute("data-admin-dashboard-nav")) {
                 updateDashboardPanels();
+                
+                var panelTarget = nextPill ? nextPill.getAttribute("data-admin-panel-target") : null;
+                if (panelTarget) {
+                    var url = new URL(window.location.href);
+                    url.searchParams.set("admin_view", panelTarget);
+                    window.history.replaceState({ path: url.href }, "", url.href);
+                }
             }
         }
 
@@ -3347,6 +3354,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 setActiveAdminPill(adminNavPills[0] || null);
             } else {
                 updateDashboardPanels();
+                if (nav.hasAttribute("data-admin-dashboard-nav")) {
+                    var url = new URL(window.location.href);
+                    url.searchParams.delete("admin_view");
+                    window.history.replaceState({ path: url.href }, "", url.href);
+                }
             }
         });
 
