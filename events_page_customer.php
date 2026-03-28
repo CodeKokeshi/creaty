@@ -8,13 +8,20 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+$isAdminView = isset($isAdminView) && $isAdminView === true;
 $assetBase = $assetBase ?? '';
 $homePath = $homePath ?? '';
 $loginPath = $loginPath ?? 'customer-login/';
 
 $isCustomerLoggedIn = isset($_SESSION['customer_id']);
+$isAdminLoggedIn = isset($_SESSION['user_id']) && !isset($_SESSION['customer_id']);
 
-if (isset($_GET['add_event'])) {
+if ($isAdminView && !$isAdminLoggedIn) {
+    header('Location: ' . $assetBase . 'admin/');
+    exit;
+}
+
+if (!$isAdminView && isset($_GET['add_event'])) {
     if (!$isCustomerLoggedIn) {
         $currentPageUrl = $_SERVER['REQUEST_URI'] ?? ($assetBase . 'customer-events/');
         $redirectQuery = '?redirect=' . rawurlencode($currentPageUrl);
@@ -35,12 +42,13 @@ if (isset($_GET['add_event'])) {
     exit;
 }
 
-$cartCount = $isCustomerLoggedIn ? (int) ($_SESSION['customer_cart_count'] ?? 0) : 0;
-$accountLabel = $isCustomerLoggedIn ? 'Account' : 'Sign In';
-$accountSettingsPath = $assetBase . 'customer-account-settings/';
-$logoutPath = $assetBase . 'customer-logout/';
+$cartCount = $isAdminView ? 0 : ($isCustomerLoggedIn ? (int) ($_SESSION['customer_cart_count'] ?? 0) : 0);
+$accountLabel = $isAdminView ? 'Admin' : ($isCustomerLoggedIn ? 'Account' : 'Sign In');
+$accountSettingsPath = $isAdminView ? ($assetBase . 'admin/dashboard/') : ($assetBase . 'customer-account-settings/');
+$logoutPath = $isAdminView ? ($assetBase . 'admin/logout.php') : ($assetBase . 'customer-logout/');
 $cartPath = $assetBase . 'customer-cart/';
-$eventsPath = $assetBase . 'customer-events/';
+$eventsPath = $isAdminView ? ($assetBase . 'admin/events/') : ($assetBase . 'customer-events/');
+$eventDetailPath = $isAdminView ? 'admin/event/' : 'customer-event/';
 
 $eventPackages = [
     [
@@ -144,7 +152,7 @@ unset($eventPackage);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Nifty Fifty | Events</title>
+    <title><?php echo $isAdminView ? 'Admin Events | Creaty' : 'The Nifty Fifty | Events'; ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -153,36 +161,48 @@ unset($eventPackage);
 </head>
 <body class="events-page">
     <header class="site-header">
-        <div class="topbar">
+        <div class="topbar<?php echo $isAdminView ? ' topbar-admin' : ''; ?>">
             <a class="brand-badge" href="<?php echo htmlspecialchars($homePath, ENT_QUOTES, 'UTF-8'); ?>">
                 <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/images/main_logo.png" alt="The Nifty Fifty">
             </a>
 
-            <a class="topbar-link topbar-help" href="#">
-                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/help_icon.svg" alt="">
-                <span>Help</span>
-            </a>
+            <?php if (!$isAdminView): ?>
+                <a class="topbar-link topbar-help" href="#">
+                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/help_icon.svg" alt="">
+                    <span>Help</span>
+                </a>
+            <?php endif; ?>
 
             <form class="topbar-search" action="#" method="get">
                 <input type="search" name="q" placeholder="Search packages, events, or services">
             </form>
 
-            <a class="topbar-cart" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>customer-cart/" aria-label="Cart">
-                <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cart_icon.svg" alt="">
-                <span class="cart-count"><?php echo $cartCount; ?></span>
-            </a>
+            <?php if (!$isAdminView): ?>
+                <a class="topbar-cart" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>customer-cart/" aria-label="Cart">
+                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cart_icon.svg" alt="">
+                    <span class="cart-count"><?php echo $cartCount; ?></span>
+                </a>
+            <?php endif; ?>
 
-            <a class="topbar-link" href="#">Message us</a>
-            <?php if ($isCustomerLoggedIn): ?>
+            <?php if (!$isAdminView): ?>
+                <a class="topbar-link" href="#">Message us</a>
+            <?php endif; ?>
+
+            <?php if ($isAdminView || $isCustomerLoggedIn): ?>
                 <div class="dropdown topbar-account-menu">
                     <button class="account-pill account-pill-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
-                        <li><a class="dropdown-item" href="#">Help Center</a></li>
+                        <?php if ($isAdminView): ?>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
+                        <?php else: ?>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
+                            <li><a class="dropdown-item" href="#">Help Center</a></li>
+                        <?php endif; ?>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
                     </ul>
@@ -194,7 +214,7 @@ unset($eventPackage);
 
         <nav class="section-nav section-nav-disabled" aria-label="Catalog filters">
             <span class="section-nav-filter is-disabled" aria-disabled="true">BRANDS</span>
-            <a class="section-nav-section is-active" href="#" aria-current="page">EVENTS</a>
+            <a class="section-nav-section is-active" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>" aria-current="page">EVENTS</a>
             <span class="section-nav-filter is-disabled" aria-disabled="true">DATE</span>
         </nav>
     </header>
@@ -214,7 +234,7 @@ unset($eventPackage);
                     $images = $eventPackage['images'];
                     $title = $eventPackage['title'];
                     $price = $eventPackage['price'];
-                    $detailPageUrl = $assetBase . 'customer-event/?package=' . urlencode($eventPackage['key']);
+                    $detailPageUrl = $assetBase . $eventDetailPath . '?package=' . urlencode($eventPackage['key']);
                     ?>
                     <article class="package-card">
                         <div
@@ -250,27 +270,36 @@ unset($eventPackage);
                             </h2>
                             <div class="package-footer">
                                 <span><?php echo htmlspecialchars($price, ENT_QUOTES, 'UTF-8'); ?></span>
-                                <?php
-                                $eventPreview = $images !== []
-                                    ? buildAssetUrl($assetBase, $images[0])
-                                    : ($assetBase . 'assets/images/main_logo.png');
-                                $eventLoginUrl = $loginPath . '?redirect=' . rawurlencode($_SERVER['REQUEST_URI'] ?? ($assetBase . 'customer-events/'));
-                                ?>
-                                <button
-                                    type="button"
-                                    data-add-cart
-                                    data-item-id="event-<?php echo htmlspecialchars($eventPackage['key'], ENT_QUOTES, 'UTF-8'); ?>"
-                                    data-item-type="event-package"
-                                    data-item-name="<?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?>"
-                                    data-item-copy="Event package with curated coverage style and sample gallery references."
-                                    data-item-image="<?php echo htmlspecialchars($eventPreview, ENT_QUOTES, 'UTF-8'); ?>"
-                                    data-item-price="<?php echo htmlspecialchars($price, ENT_QUOTES, 'UTF-8'); ?>"
-                                    <?php if (!$isCustomerLoggedIn): ?>
-                                        data-login-url="<?php echo htmlspecialchars($eventLoginUrl, ENT_QUOTES, 'UTF-8'); ?>"
-                                    <?php endif; ?>
-                                >
-                                    ADD TO CART
-                                </button>
+                                <?php if ($isAdminView): ?>
+                                    <button
+                                        type="button"
+                                        onclick="window.location.href='<?php echo htmlspecialchars($detailPageUrl, ENT_QUOTES, 'UTF-8'); ?>'"
+                                    >
+                                        OPEN PACKAGE
+                                    </button>
+                                <?php else: ?>
+                                    <?php
+                                    $eventPreview = $images !== []
+                                        ? buildAssetUrl($assetBase, $images[0])
+                                        : ($assetBase . 'assets/images/main_logo.png');
+                                    $eventLoginUrl = $loginPath . '?redirect=' . rawurlencode($_SERVER['REQUEST_URI'] ?? ($assetBase . 'customer-events/'));
+                                    ?>
+                                    <button
+                                        type="button"
+                                        data-add-cart
+                                        data-item-id="event-<?php echo htmlspecialchars($eventPackage['key'], ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-item-type="event-package"
+                                        data-item-name="<?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-item-copy="Event package with curated coverage style and sample gallery references."
+                                        data-item-image="<?php echo htmlspecialchars($eventPreview, ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-item-price="<?php echo htmlspecialchars($price, ENT_QUOTES, 'UTF-8'); ?>"
+                                        <?php if (!$isCustomerLoggedIn): ?>
+                                            data-login-url="<?php echo htmlspecialchars($eventLoginUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                                        <?php endif; ?>
+                                    >
+                                        ADD TO CART
+                                    </button>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </article>

@@ -934,7 +934,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                 </div>
             </div>
 
-            <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">EVENTS</a>
+            <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($routeBase . 'events/', ENT_QUOTES, 'UTF-8'); ?>">EVENTS</a>
 
             <div class="section-nav-item section-nav-item-filter admin-nav-primary" data-admin-nav-item="primary">
                 <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="date-filter-panel">
