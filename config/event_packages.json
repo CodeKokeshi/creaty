@@ -2,7 +2,7 @@
     "wedding": {
         "title": "WEDDING PACKAGE",
         "price": "800.00",
-        "discountPercent": 0,
+        "discountPercent": 10,
         "folder": "0000",
         "thumbnail_images": [
             "assets/event_packages/0000/civil-wedding_Jerome-and-Marian/CLT05321.jpg",
@@ -57,7 +57,7 @@
         "archivedAt": ""
     },
     "business-shoots": {
-        "title": "BUSINESS SHOOTS",
+        "title": "BUSINESS SHOOTER",
         "price": "250.00",
         "discountPercent": 0,
         "folder": "0004",

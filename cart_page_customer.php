@@ -21,6 +21,39 @@ $logoutPath = $assetBase . 'customer-logout/';
 $cartPath = $assetBase . 'customer-cart/';
 $eventsPath = $assetBase . 'customer-events/';
 
+require_once __DIR__ . '/config/products_repository.php';
+require_once __DIR__ . '/config/event_packages_repository.php';
+
+$productsRepository = load_products_repository();
+$eventPackagesRepository = load_event_packages_repository();
+$availableCartItemIds = [];
+
+if (is_array($productsRepository)) {
+    foreach ($productsRepository as $productKey => $productRecord) {
+        if (!is_string($productKey) || trim($productKey) === '' || !is_array($productRecord)) {
+            continue;
+        }
+
+        $availableCartItemIds[] = 'camera-' . trim($productKey);
+    }
+}
+
+if (is_array($eventPackagesRepository)) {
+    foreach ($eventPackagesRepository as $packageKey => $packageRecord) {
+        if (!is_string($packageKey) || trim($packageKey) === '' || !is_array($packageRecord)) {
+            continue;
+        }
+
+        if (!empty($packageRecord['archived'])) {
+            continue;
+        }
+
+        $availableCartItemIds[] = 'event-' . trim($packageKey);
+    }
+}
+
+$availableCartItemIds = array_values(array_unique($availableCartItemIds));
+
 ?>
 
 <!DOCTYPE html>
@@ -485,7 +518,23 @@ $eventsPath = $assetBase . 'customer-events/';
         </section>
     </main>
 
+    <section class="cart-unavailable-modal" data-cart-unavailable-modal hidden>
+        <div class="cart-unavailable-modal-backdrop" data-cart-unavailable-close></div>
+        <div class="cart-unavailable-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-unavailable-title">
+            <h3 id="cart-unavailable-title">Unavailable items found</h3>
+            <p data-cart-unavailable-message>Some items are no longer available and will be removed from your cart.</p>
+            <div class="cart-unavailable-modal-actions">
+                <button type="button" class="cart-unavailable-modal-cancel" data-cart-unavailable-close>Cancel</button>
+                <button type="button" class="cart-unavailable-modal-confirm" data-cart-unavailable-confirm>Remove and Continue</button>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        window.__creatyCartAvailableItemIds = <?php echo json_encode($availableCartItemIds, JSON_UNESCAPED_SLASHES); ?>;
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260319-1"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260331-1"></script>
 </body>
 </html>

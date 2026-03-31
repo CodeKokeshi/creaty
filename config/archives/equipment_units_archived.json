@@ -76,5 +76,17 @@
             "status": "available"
         },
         "productArchiveKey": "Canon New Product (Copy) 20260328-090022"
+    },
+    {
+        "archiveKey": "CANON_NEWPRODUCTCOPY_000_20260331-073715-4254",
+        "archivedAt": "2026-03-31T07:37:15+00:00",
+        "productKey": "canon-new-product-copy",
+        "model": "CANON_NEWPRODUCTCOPY",
+        "reason": "Featured product archived from admin dashboard card",
+        "unit": {
+            "serial": 0,
+            "status": "available"
+        },
+        "productArchiveKey": "Canon New Product (Copy) 20260331-073715"
     }
 ]

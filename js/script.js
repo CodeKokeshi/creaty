@@ -4521,6 +4521,91 @@ document.addEventListener("DOMContentLoaded", function () {
         var returnMethodInputs = bookingCard ? bookingCard.querySelectorAll("input[name='returningMethod']") : [];
         var uploadInputs = bookingCard ? bookingCard.querySelectorAll("input[type='file'][data-booking-field]") : [];
         var bookingState = loadJsonStorage(bookingStorageKey, {});
+        var unavailableModal = document.querySelector("[data-cart-unavailable-modal]");
+        var unavailableModalMessage = unavailableModal ? unavailableModal.querySelector("[data-cart-unavailable-message]") : null;
+        var unavailableModalConfirm = unavailableModal ? unavailableModal.querySelector("[data-cart-unavailable-confirm]") : null;
+        var unavailableModalCloseButtons = unavailableModal ? unavailableModal.querySelectorAll("[data-cart-unavailable-close]") : [];
+        var availableCartItemIdsSource = Array.isArray(window.__creatyCartAvailableItemIds) ? window.__creatyCartAvailableItemIds : [];
+        var availableCartItemIdsSet = availableCartItemIdsSource.reduce(function (set, itemId) {
+            if (typeof itemId === "string" && itemId) {
+                set[itemId] = true;
+            }
+
+            return set;
+        }, {});
+        var hasAvailabilitySnapshot = Object.keys(availableCartItemIdsSet).length > 0;
+
+        function isUnavailableCartItem(item) {
+            if (!item || !item.id || !hasAvailabilitySnapshot) {
+                return false;
+            }
+
+            return !availableCartItemIdsSet[item.id];
+        }
+
+        function getUnavailableCartItems(items) {
+            var source = Array.isArray(items) ? items : getCartItems();
+
+            return source.filter(function (item) {
+                return isUnavailableCartItem(item);
+            });
+        }
+
+        function removeUnavailableCartItems() {
+            var items = getCartItems();
+            var filteredItems = items.filter(function (item) {
+                return !isUnavailableCartItem(item);
+            });
+
+            saveCartItems(filteredItems);
+            return filteredItems;
+        }
+
+        function closeUnavailableModal() {
+            if (!unavailableModal) {
+                return;
+            }
+
+            unavailableModal.hidden = true;
+        }
+
+        function openUnavailableModal(items, onConfirm) {
+            if (!unavailableModal || !unavailableModalConfirm) {
+                if (typeof onConfirm === "function") {
+                    onConfirm();
+                }
+                return;
+            }
+
+            var unavailableItems = Array.isArray(items) ? items : [];
+            var unavailableNames = unavailableItems.map(function (item) {
+                return String(item && item.name ? item.name : "Item");
+            });
+
+            if (unavailableModalMessage) {
+                if (!unavailableNames.length) {
+                    unavailableModalMessage.textContent = "Some items are no longer available and will be removed from your cart.";
+                } else {
+                    unavailableModalMessage.textContent = "The following items are out of stock and will be removed: " + unavailableNames.join(", ") + ".";
+                }
+            }
+
+            unavailableModalConfirm.onclick = function () {
+                closeUnavailableModal();
+
+                if (typeof onConfirm === "function") {
+                    onConfirm();
+                }
+            };
+
+            unavailableModal.hidden = false;
+        }
+
+        unavailableModalCloseButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                closeUnavailableModal();
+            });
+        });
 
         function getMethodValue(inputList, fallbackValue) {
             var checked = Array.prototype.find.call(inputList, function (input) {
@@ -4671,33 +4756,49 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             items.forEach(function (item) {
-                var lineTotal = item.price * item.qty * item.days;
+                var itemIsUnavailable = isUnavailableCartItem(item);
+                var lineTotal = itemIsUnavailable ? 0 : (item.price * item.qty * item.days);
+                var nameLabel = String(item.name).toUpperCase();
                 var card = document.createElement("article");
-                card.className = "cart-item-card";
+                card.className = "cart-item-card" + (itemIsUnavailable ? " is-unavailable" : "");
                 card.setAttribute("data-cart-item-id", item.id);
                 card.innerHTML = '' +
                     '<div class="cart-item-copy">' +
-                        '<h2>' + escapeHtml(String(item.name).toUpperCase()) + '</h2>' +
+                        '<h2 class="cart-item-name' + (itemIsUnavailable ? ' is-unavailable' : '') + '">' + escapeHtml(nameLabel) + (itemIsUnavailable ? ' <span class="cart-item-stock-note">(OUT OF STOCK)</span>' : '') + '</h2>' +
                         '<p>' + escapeHtml(item.copy) + '</p>' +
                         '<label class="cart-mini-field">' +
                             '<span>Qty</span>' +
-                            '<input type="number" min="1" max="20" value="' + item.qty + '" data-cart-edit="qty">' +
+                            '<input type="number" min="1" max="20" value="' + item.qty + '" data-cart-edit="qty"' + (itemIsUnavailable ? ' disabled' : '') + '>' +
                         '</label>' +
                     '</div>' +
-                    '<div class="cart-item-thumb">' +
-                        '<img class="cart-item-thumb-image" src="' + escapeHtml(item.image) + '" alt="' + escapeHtml(item.name) + '">' +
+                    '<div class="cart-item-thumb' + (itemIsUnavailable ? ' cart-item-thumb-missing' : '') + '">' +
+                        (itemIsUnavailable
+                            ? '<span class="cart-item-thumb-missing-text">Missing</span>'
+                            : '<img class="cart-item-thumb-image" src="' + escapeHtml(item.image) + '" alt="' + escapeHtml(item.name) + '">') +
                     '</div>' +
                     '<div class="cart-item-pricebox">' +
                         '<label class="cart-mini-field">' +
                             '<span>Days</span>' +
-                            '<input type="number" min="1" max="14" value="' + item.days + '" data-cart-edit="days">' +
+                            '<input type="number" min="1" max="14" value="' + item.days + '" data-cart-edit="days"' + (itemIsUnavailable ? ' disabled' : '') + '>' +
                         '</label>' +
-                        '<p class="cart-item-price-label">Price:</p>' +
-                        '<strong>' + formatMoney(lineTotal) + '</strong>' +
+                        '<p class="cart-item-price-label">' + (itemIsUnavailable ? 'Status:' : 'Price:') + '</p>' +
+                        '<strong>' + (itemIsUnavailable ? 'Unavailable' : formatMoney(lineTotal)) + '</strong>' +
                     '</div>' +
                     '<button class="cart-remove-button" type="button" aria-label="Remove item" data-cart-remove>&#10005;</button>';
 
                 panel.appendChild(card);
+            });
+
+            panel.querySelectorAll(".cart-item-thumb-image").forEach(function (imageNode) {
+                imageNode.addEventListener("error", function () {
+                    var thumbNode = imageNode.closest(".cart-item-thumb");
+                    if (!thumbNode) {
+                        return;
+                    }
+
+                    thumbNode.classList.add("cart-item-thumb-missing");
+                    thumbNode.innerHTML = '<span class="cart-item-thumb-missing-text">Missing</span>';
+                });
             });
 
             refreshTotals(items);
@@ -4707,6 +4808,10 @@ document.addEventListener("DOMContentLoaded", function () {
         function refreshTotals(items) {
             var activeItems = Array.isArray(items) ? items : getCartItems();
             var subtotal = activeItems.reduce(function (sum, item) {
+                if (isUnavailableCartItem(item)) {
+                    return sum;
+                }
+
                 return sum + (item.price * item.qty * item.days);
             }, 0);
             var booking = getBookingSnapshot();
@@ -4841,6 +4946,26 @@ document.addEventListener("DOMContentLoaded", function () {
                 var items = getCartItems();
                 if (!items.length) {
                     bookingNote.textContent = "Add at least one item before confirming your demo booking.";
+                    return;
+                }
+
+                var unavailableItems = getUnavailableCartItems(items);
+
+                if (unavailableItems.length) {
+                    openUnavailableModal(unavailableItems, function () {
+                        var remainingItems = removeUnavailableCartItems();
+                        renderCartItems();
+
+                        if (!remainingItems.length) {
+                            bookingNote.textContent = "Out of stock items were removed from your cart.";
+                            showCartToast("Unavailable items removed");
+                            return;
+                        }
+
+                        bookingNote.textContent = "Out of stock items were removed. Booking request staged in demo mode.";
+                        showCartToast("Unavailable items removed");
+                    });
+
                     return;
                 }
 
