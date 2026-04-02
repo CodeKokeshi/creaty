@@ -3,5 +3,6 @@
     "maintenance",
     "in-use",
     "retired",
-    "missing"
+    "missing",
+    "cleaning"
 ]

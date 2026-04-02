@@ -573,6 +573,80 @@ $canRemoveBrands = count($brandMap) > 1;
             color: #adb4c0;
             font-size: 0.76rem;
         }
+
+        .brands-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 1200;
+            display: grid;
+            place-items: center;
+            padding: 1rem;
+            background: rgba(5, 7, 10, 0.76);
+        }
+
+        .brands-modal {
+            width: min(100%, 460px);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: #121620;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+            padding: 0.9rem;
+            display: grid;
+            gap: 0.8rem;
+        }
+
+        .brands-modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .brands-modal-head h2 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .brands-modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            background: transparent;
+            color: #f4f4f4;
+            font-size: 1.1rem;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .brands-modal-close:hover,
+        .brands-modal-close:focus-visible {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .brands-modal-message {
+            margin: 0;
+            color: #d7dbe3;
+            line-height: 1.45;
+            font-size: 0.9rem;
+        }
+
+        .brands-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+
+        .brands-modal-cancel {
+            border-color: rgba(255, 255, 255, 0.24);
+            background: transparent;
+            color: #f4f4f4;
+        }
+
+        body.brands-modal-open {
+            overflow: hidden;
+        }
     </style>
 </head>
 <body>
@@ -635,27 +709,118 @@ $canRemoveBrands = count($brandMap) > 1;
         </section>
     </main>
 
+    <div class="brands-modal-backdrop" data-brands-modal-backdrop hidden>
+        <section class="brands-modal" role="dialog" aria-modal="true" aria-labelledby="brands-modal-title" aria-describedby="brands-modal-message">
+            <div class="brands-modal-head">
+                <h2 id="brands-modal-title" data-brands-modal-title>Confirm Action</h2>
+                <button class="brands-modal-close" type="button" data-brands-modal-cancel aria-label="Close">&times;</button>
+            </div>
+
+            <p class="brands-modal-message" id="brands-modal-message" data-brands-modal-message>Are you sure you want to continue?</p>
+
+            <div class="brands-modal-actions">
+                <button class="brands-button brands-modal-cancel" type="button" data-brands-modal-cancel>Cancel</button>
+                <button class="brands-button brands-button-danger" type="button" data-brands-modal-confirm>Proceed</button>
+            </div>
+        </section>
+    </div>
+
     <script>
     (function () {
+        var modalBackdrop = document.querySelector('[data-brands-modal-backdrop]');
+        var modalTitle = document.querySelector('[data-brands-modal-title]');
+        var modalMessage = document.querySelector('[data-brands-modal-message]');
+        var modalConfirm = document.querySelector('[data-brands-modal-confirm]');
+        var modalCancelButtons = document.querySelectorAll('[data-brands-modal-cancel]');
+        var pendingForm = null;
+
+        function closeModal() {
+            pendingForm = null;
+
+            if (!modalBackdrop) {
+                return;
+            }
+
+            modalBackdrop.hidden = true;
+            document.body.classList.remove('brands-modal-open');
+        }
+
+        function openModal(config) {
+            if (!modalBackdrop || !modalTitle || !modalMessage || !modalConfirm) {
+                return;
+            }
+
+            pendingForm = config && config.form ? config.form : null;
+            modalTitle.textContent = config && config.title ? config.title : 'Confirm Action';
+            modalMessage.textContent = config && config.message ? config.message : 'Are you sure you want to continue?';
+            modalConfirm.textContent = config && config.confirmLabel ? config.confirmLabel : 'Proceed';
+
+            modalBackdrop.hidden = false;
+            document.body.classList.add('brands-modal-open');
+        }
+
+        if (modalConfirm) {
+            modalConfirm.addEventListener('click', function () {
+                var formToSubmit = pendingForm;
+                closeModal();
+
+                if (formToSubmit) {
+                    formToSubmit.submit();
+                }
+            });
+        }
+
+        modalCancelButtons.forEach(function (button) {
+            button.addEventListener('click', closeModal);
+        });
+
+        if (modalBackdrop) {
+            modalBackdrop.addEventListener('click', function (event) {
+                if (event.target === modalBackdrop) {
+                    closeModal();
+                }
+            });
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && modalBackdrop && !modalBackdrop.hidden) {
+                closeModal();
+            }
+        });
+
         document.querySelectorAll('[data-brand-remove-form]').forEach(function (form) {
             form.addEventListener('submit', function (event) {
                 var brandLabel = form.getAttribute('data-brand-label') || 'this brand';
-                var warning = 'Removing "' + brandLabel + '" will archive all products related to it. Proceed?';
+                event.preventDefault();
 
-                if (!window.confirm(warning)) {
-                    event.preventDefault();
-                }
+                openModal({
+                    form: form,
+                    title: 'Remove Brand',
+                    message: 'Removing "' + brandLabel + '" will archive all products related to it. Proceed or Cancel?',
+                    confirmLabel: 'Proceed'
+                });
             });
         });
 
         document.querySelectorAll('[data-brand-rename-form]').forEach(function (form) {
             form.addEventListener('submit', function (event) {
                 var brandLabel = form.getAttribute('data-brand-label') || 'this brand';
-                var warning = 'Renaming "' + brandLabel + '" will update all products under it. Proceed?';
+                var renameInput = form.querySelector('input[name="new_brand"]');
+                var nextLabel = renameInput ? String(renameInput.value || '').trim() : '';
+                var warning = 'Renaming "' + brandLabel + '" will affect all products under it. Proceed or Cancel?';
 
-                if (!window.confirm(warning)) {
-                    event.preventDefault();
+                if (nextLabel !== '' && nextLabel.toLowerCase() !== brandLabel.toLowerCase()) {
+                    warning = 'Renaming "' + brandLabel + '" to "' + nextLabel + '" will affect all products under it. Proceed or Cancel?';
                 }
+
+                event.preventDefault();
+
+                openModal({
+                    form: form,
+                    title: 'Rename Brand',
+                    message: warning,
+                    confirmLabel: 'Proceed'
+                });
             });
         });
     })();
