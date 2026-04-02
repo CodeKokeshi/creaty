@@ -3999,60 +3999,217 @@ button {
 
 .admin-notifications-list {
     display: grid;
-    gap: 0.85rem;
+    gap: 0.68rem;
 }
 
 .admin-notification-item {
+    width: 100%;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.03);
-    padding: 0.85rem;
-    display: grid;
-    gap: 0.58rem;
+    padding: 0.8rem 0.92rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.8rem;
+    text-align: left;
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.admin-notification-item:hover,
+.admin-notification-item:focus-visible {
+    border-color: rgba(255, 255, 255, 0.34);
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+.admin-notification-item:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.55);
+    outline-offset: 2px;
 }
 
 .admin-notification-item.is-read {
-    border-color: rgba(122, 161, 135, 0.28);
+    border-color: rgba(133, 136, 145, 0.28);
+    background: rgba(255, 255, 255, 0.02);
 }
 
-.admin-notification-meta {
+.admin-notification-item.is-unread {
+    border-color: rgba(202, 216, 255, 0.34);
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.admin-notification-item-main {
+    min-width: 0;
+    display: grid;
+    gap: 0.44rem;
+}
+
+.admin-notification-item-head {
     display: flex;
+    align-items: center;
     flex-wrap: wrap;
-    gap: 0.4rem 0.9rem;
+    gap: 0.35rem 0.55rem;
+}
+
+.admin-notification-unread-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #7bc2ff;
+    box-shadow: 0 0 0 4px rgba(123, 194, 255, 0.16);
+    flex-shrink: 0;
+}
+
+.admin-notification-type-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 20px;
+    padding: 0 0.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    background: rgba(255, 255, 255, 0.08);
     color: var(--muted);
-    font-size: 0.82rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
 }
 
 .admin-notification-sender {
-    color: var(--text);
+    color: #f2f4f7;
+    font-size: 0.86rem;
     font-weight: 700;
 }
 
-.admin-notification-email,
 .admin-notification-time {
-    color: var(--muted-strong);
+    color: #b9bcc6;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    padding-top: 0.12rem;
 }
 
-.admin-notification-item h2 {
+.admin-notification-title {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.94rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #f2f4f7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-notification-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 84;
+    display: grid;
+    place-items: center;
+}
+
+.admin-notification-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.74);
+}
+
+.admin-notification-modal-dialog {
+    position: relative;
+    z-index: 1;
+    width: min(100% - 2rem, 760px);
+    max-height: min(88vh, 860px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 16px;
+    background: rgba(16, 18, 23, 0.98);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.48);
+    display: grid;
+    gap: 0.86rem;
+    padding: 1rem;
+}
+
+.admin-notification-modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.admin-notification-modal-head h2 {
+    margin: 0;
+    font-size: 1.12rem;
     letter-spacing: 0.02em;
 }
 
-.admin-notification-message {
+.admin-notification-modal-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.admin-notification-modal-close:hover,
+.admin-notification-modal-close:focus-visible {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.admin-notification-modal-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem 0.68rem;
+    color: #ccd0da;
+    font-size: 0.86rem;
+}
+
+.admin-notification-modal-sender {
+    color: #f5f7fc;
+    font-weight: 700;
+}
+
+.admin-notification-modal-email,
+.admin-notification-modal-time {
+    color: #b9bcc6;
+}
+
+.admin-notification-modal-scroll {
+    max-height: min(62vh, 560px);
+    overflow: auto;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.86rem;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.admin-notification-modal-summary,
+.admin-notification-modal-message,
+.admin-notification-modal-empty {
     margin: 0;
-    color: #ededee;
-    line-height: 1.58;
+    color: #f1f2f5;
+    line-height: 1.6;
     white-space: pre-wrap;
 }
 
-.admin-notification-attachments {
+.admin-notification-modal-summary {
+    color: #d7dae2;
+    font-style: italic;
+}
+
+.admin-notification-modal-attachments {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 0.6rem;
 }
 
-.admin-notification-attachment {
+.admin-notification-modal-attachment {
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 10px;
     overflow: hidden;
@@ -4060,7 +4217,7 @@ button {
     display: block;
 }
 
-.admin-notification-attachment img {
+.admin-notification-modal-attachment img {
     width: 100%;
     aspect-ratio: 4 / 3;
     object-fit: cover;
@@ -6489,7 +6646,21 @@ button {
         width: 100%;
     }
 
-    .admin-notification-attachments {
+    .admin-notification-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .admin-notification-time {
+        padding-top: 0;
+    }
+
+    .admin-notification-modal-dialog {
+        width: min(100% - 1rem, 760px);
+        padding: 0.9rem;
+    }
+
+    .admin-notification-modal-attachments {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 

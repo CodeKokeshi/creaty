@@ -9,6 +9,22 @@ document.addEventListener("DOMContentLoaded", function () {
     var customerMessageSubmitButton = customerMessageModal ? customerMessageModal.querySelector("[data-message-submit]") : null;
     var customerMessageFeedback = customerMessageModal ? customerMessageModal.querySelector("[data-message-feedback]") : null;
     var customerMessageAttachmentInput = customerMessageModal ? customerMessageModal.querySelector("[data-message-attachments]") : null;
+    var adminNotificationItems = document.querySelectorAll("[data-admin-notification-item]");
+    var adminNotificationModal = document.querySelector("[data-admin-notification-modal]");
+    var adminNotificationModalCloseButtons = adminNotificationModal ? adminNotificationModal.querySelectorAll("[data-admin-notification-close]") : [];
+    var adminNotificationModalTitle = adminNotificationModal ? adminNotificationModal.querySelector("[data-admin-notification-modal-title]") : null;
+    var adminNotificationModalType = adminNotificationModal ? adminNotificationModal.querySelector("[data-admin-notification-modal-type]") : null;
+    var adminNotificationModalSender = adminNotificationModal ? adminNotificationModal.querySelector("[data-admin-notification-modal-sender]") : null;
+    var adminNotificationModalEmail = adminNotificationModal ? adminNotificationModal.querySelector("[data-admin-notification-modal-email]") : null;
+    var adminNotificationModalTime = adminNotificationModal ? adminNotificationModal.querySelector("[data-admin-notification-modal-time]") : null;
+    var adminNotificationModalSummary = adminNotificationModal ? adminNotificationModal.querySelector("[data-admin-notification-modal-summary]") : null;
+    var adminNotificationModalMessage = adminNotificationModal ? adminNotificationModal.querySelector("[data-admin-notification-modal-message]") : null;
+    var adminNotificationModalAttachments = adminNotificationModal ? adminNotificationModal.querySelector("[data-admin-notification-modal-attachments]") : null;
+    var adminNotificationModalEmpty = adminNotificationModal ? adminNotificationModal.querySelector("[data-admin-notification-modal-empty]") : null;
+    var adminNotificationCountBadges = document.querySelectorAll("[data-admin-notification-count], .topbar-notification-count");
+    var adminNotificationMarkReadEndpoint = typeof window.__creatyAdminNotificationMarkReadEndpoint === "string"
+        ? String(window.__creatyAdminNotificationMarkReadEndpoint || "")
+        : "";
     var promoBanner = document.querySelector(".promo-banner");
     var promoCarousel = promoBanner ? promoBanner.querySelector(".promo-carousel") : null;
     var promoPrev = promoBanner ? promoBanner.querySelector(".promo-arrow-left") : null;
@@ -519,6 +535,249 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
                     }
                 });
+        });
+    }
+
+    function initializeAdminNotificationsPage() {
+        if (!document.body.classList.contains("admin-notifications-page") || !adminNotificationModal || !adminNotificationItems.length) {
+            return;
+        }
+
+        function getAdminNotificationBadgeCount() {
+            var firstBadge = adminNotificationCountBadges.length ? adminNotificationCountBadges[0] : null;
+            var parsedCount = firstBadge ? Number.parseInt(String(firstBadge.textContent || "0"), 10) : 0;
+
+            if (!Number.isFinite(parsedCount) || parsedCount < 0) {
+                return 0;
+            }
+
+            return parsedCount;
+        }
+
+        function setAdminNotificationBadgeCount(nextCount) {
+            var normalizedCount = Number.parseInt(String(nextCount), 10);
+
+            if (!Number.isFinite(normalizedCount) || normalizedCount < 0) {
+                normalizedCount = 0;
+            }
+
+            adminNotificationCountBadges.forEach(function (badge) {
+                badge.textContent = String(normalizedCount);
+            });
+        }
+
+        function parseAdminNotificationAttachments(rawValue) {
+            var parsed = [];
+
+            try {
+                var decoded = JSON.parse(String(rawValue || "[]"));
+
+                if (Array.isArray(decoded)) {
+                    parsed = decoded;
+                }
+            } catch (error) {
+                parsed = [];
+            }
+
+            return parsed
+                .map(function (entry) {
+                    return String(entry || "").trim();
+                })
+                .filter(function (entry) {
+                    return entry !== "";
+                });
+        }
+
+        function setAdminNotificationReadState(item, isRead) {
+            if (!item) {
+                return;
+            }
+
+            var shouldRead = Boolean(isRead);
+
+            item.setAttribute("data-notification-is-read", shouldRead ? "1" : "0");
+            item.classList.toggle("is-read", shouldRead);
+            item.classList.toggle("is-unread", !shouldRead);
+
+            var unreadDot = item.querySelector(".admin-notification-unread-dot");
+            if (unreadDot) {
+                unreadDot.hidden = shouldRead;
+            }
+        }
+
+        function clearAdminNotificationModalAttachments() {
+            if (!adminNotificationModalAttachments) {
+                return;
+            }
+
+            adminNotificationModalAttachments.innerHTML = "";
+            adminNotificationModalAttachments.hidden = true;
+        }
+
+        function openAdminNotificationModal(item) {
+            if (!item || !adminNotificationModal) {
+                return;
+            }
+
+            var typeValue = String(item.getAttribute("data-notification-type") || "notification").trim();
+            var titleValue = String(item.getAttribute("data-notification-title") || "Notification").trim();
+            var summaryValue = String(item.getAttribute("data-notification-summary") || "").trim();
+            var senderValue = String(item.getAttribute("data-notification-sender") || "System").trim();
+            var emailValue = String(item.getAttribute("data-notification-email") || "").trim();
+            var messageValue = String(item.getAttribute("data-notification-message") || "").trim();
+            var timeValue = String(item.getAttribute("data-notification-created-at") || "Unknown time").trim();
+            var attachments = parseAdminNotificationAttachments(item.getAttribute("data-notification-attachments") || "[]");
+
+            if (adminNotificationModalTitle) {
+                adminNotificationModalTitle.textContent = titleValue || "Notification";
+            }
+
+            if (adminNotificationModalType) {
+                adminNotificationModalType.textContent = (typeValue || "notification").toUpperCase();
+            }
+
+            if (adminNotificationModalSender) {
+                adminNotificationModalSender.textContent = senderValue || "System";
+            }
+
+            if (adminNotificationModalEmail) {
+                adminNotificationModalEmail.textContent = emailValue;
+                adminNotificationModalEmail.hidden = emailValue === "";
+            }
+
+            if (adminNotificationModalTime) {
+                adminNotificationModalTime.textContent = timeValue || "Unknown time";
+            }
+
+            if (adminNotificationModalSummary) {
+                if (typeValue !== "message" && summaryValue !== "") {
+                    adminNotificationModalSummary.textContent = summaryValue;
+                    adminNotificationModalSummary.hidden = false;
+                } else {
+                    adminNotificationModalSummary.hidden = true;
+                }
+            }
+
+            if (adminNotificationModalMessage) {
+                if (messageValue !== "") {
+                    adminNotificationModalMessage.textContent = messageValue;
+                    adminNotificationModalMessage.hidden = false;
+                } else {
+                    adminNotificationModalMessage.hidden = true;
+                }
+            }
+
+            clearAdminNotificationModalAttachments();
+
+            if (adminNotificationModalAttachments && attachments.length) {
+                attachments.forEach(function (attachmentPath) {
+                    var anchor = document.createElement("a");
+                    anchor.className = "admin-notification-modal-attachment";
+                    anchor.href = attachmentPath;
+                    anchor.target = "_blank";
+                    anchor.rel = "noopener noreferrer";
+
+                    var image = document.createElement("img");
+                    image.src = attachmentPath;
+                    image.alt = "Notification attachment";
+
+                    anchor.appendChild(image);
+                    adminNotificationModalAttachments.appendChild(anchor);
+                });
+
+                adminNotificationModalAttachments.hidden = false;
+            }
+
+            if (adminNotificationModalEmpty) {
+                var hasDetails = summaryValue !== "" || messageValue !== "" || attachments.length > 0;
+                adminNotificationModalEmpty.hidden = hasDetails;
+            }
+
+            adminNotificationModal.hidden = false;
+            document.body.classList.add("admin-modal-open");
+
+            var isRead = String(item.getAttribute("data-notification-is-read") || "0") === "1";
+
+            if (!isRead) {
+                var notificationId = String(item.getAttribute("data-notification-id") || "").trim();
+
+                if (!notificationId) {
+                    return;
+                }
+
+                if (!adminNotificationMarkReadEndpoint) {
+                    setAdminNotificationReadState(item, true);
+                    setAdminNotificationBadgeCount(Math.max(0, getAdminNotificationBadgeCount() - 1));
+                    return;
+                }
+
+                fetch(adminNotificationMarkReadEndpoint, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        notificationId: notificationId
+                    })
+                })
+                    .then(function (response) {
+                        return response.json().catch(function () {
+                            return {
+                                ok: false
+                            };
+                        }).then(function (payload) {
+                            return {
+                                ok: response.ok,
+                                payload: payload
+                            };
+                        });
+                    })
+                    .then(function (result) {
+                        if (!result.ok || !result.payload || !result.payload.ok) {
+                            return;
+                        }
+
+                        setAdminNotificationReadState(item, true);
+
+                        if (typeof result.payload.unreadCount !== "undefined") {
+                            setAdminNotificationBadgeCount(result.payload.unreadCount);
+                        } else {
+                            setAdminNotificationBadgeCount(Math.max(0, getAdminNotificationBadgeCount() - 1));
+                        }
+                    })
+                    .catch(function () {
+                        // Keep UI usable even if mark-read network call fails.
+                    });
+            }
+        }
+
+        function closeAdminNotificationModal() {
+            if (!adminNotificationModal) {
+                return;
+            }
+
+            adminNotificationModal.hidden = true;
+            document.body.classList.remove("admin-modal-open");
+        }
+
+        adminNotificationItems.forEach(function (item) {
+            item.addEventListener("click", function () {
+                openAdminNotificationModal(item);
+            });
+        });
+
+        adminNotificationModalCloseButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                closeAdminNotificationModal();
+            });
+        });
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key !== "Escape" || adminNotificationModal.hidden) {
+                return;
+            }
+
+            closeAdminNotificationModal();
         });
     }
 
@@ -4612,7 +4871,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function syncCartCountBadges(items) {
         var count = getCartCount(items);
-        var badges = document.querySelectorAll(".cart-count");
+        var badges = document.querySelectorAll(".cart-count:not(.topbar-notification-count)");
 
         badges.forEach(function (badge) {
             badge.textContent = String(count);
@@ -5177,6 +5436,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     initializeCustomerMessageModal();
+    initializeAdminNotificationsPage();
     syncCartCountBadges();
     initializeAddToCartButtons();
     initializeCartPage();

@@ -8,9 +8,9 @@ function message_notifications_repository_path()
 function message_notification_generate_id()
 {
     try {
-        return 'msg-' . gmdate('YmdHis') . '-' . bin2hex(random_bytes(4));
+        return 'notif-' . gmdate('YmdHis') . '-' . bin2hex(random_bytes(4));
     } catch (Throwable $error) {
-        return 'msg-' . gmdate('YmdHis') . '-' . substr(md5(uniqid('', true)), 0, 8);
+        return 'notif-' . gmdate('YmdHis') . '-' . substr(md5(uniqid('', true)), 0, 8);
     }
 }
 
@@ -27,33 +27,63 @@ function normalize_message_notification_attachment_path($path)
     return $normalized;
 }
 
-function normalize_message_notification_record($record)
+function normalize_message_notification_type($value)
 {
-    if (!is_array($record)) {
-        $record = [];
+    $type = strtolower(trim((string) $value));
+    $type = preg_replace('/[^a-z0-9_-]+/', '', $type) ?? $type;
+
+    if ($type === '') {
+        return 'message';
     }
 
-    $id = trim((string) ($record['id'] ?? ''));
-    if ($id === '') {
-        $id = message_notification_generate_id();
+    return $type;
+}
+
+function normalize_message_notification_summary($value)
+{
+    $summary = trim((string) $value);
+    $summary = preg_replace('/\s+/', ' ', $summary) ?? $summary;
+
+    if ($summary === '') {
+        return '';
     }
 
-    $senderName = trim((string) ($record['sender_name'] ?? 'Unknown customer'));
+    $maxLength = 160;
+
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+        if (mb_strlen($summary) > $maxLength) {
+            return rtrim((string) mb_substr($summary, 0, $maxLength - 1)) . '…';
+        }
+
+        return $summary;
+    }
+
+    if (strlen($summary) > $maxLength) {
+        return rtrim(substr($summary, 0, $maxLength - 1)) . '...';
+    }
+
+    return $summary;
+}
+
+function normalize_message_notification_payload($type, $payload, $legacyRecord = null)
+{
+    $payloadInput = is_array($payload) ? $payload : [];
+    $legacy = is_array($legacyRecord) ? $legacyRecord : [];
+
+    if ($type !== 'message') {
+        return $payloadInput;
+    }
+
+    $senderName = trim((string) ($payloadInput['sender_name'] ?? ($legacy['sender_name'] ?? 'Unknown customer')));
     if ($senderName === '') {
         $senderName = 'Unknown customer';
     }
 
-    $senderEmail = trim((string) ($record['sender_email'] ?? ''));
+    $senderEmail = trim((string) ($payloadInput['sender_email'] ?? ($legacy['sender_email'] ?? '')));
+    $messageBody = trim((string) ($payloadInput['message'] ?? ($legacy['message'] ?? '')));
 
-    $subject = trim((string) ($record['subject'] ?? 'Untitled message'));
-    if ($subject === '') {
-        $subject = 'Untitled message';
-    }
-
-    $message = trim((string) ($record['message'] ?? ''));
-
+    $attachmentsInput = $payloadInput['attachments'] ?? ($legacy['attachments'] ?? []);
     $attachments = [];
-    $attachmentsInput = $record['attachments'] ?? [];
 
     if (is_array($attachmentsInput)) {
         foreach ($attachmentsInput as $attachmentPath) {
@@ -66,6 +96,55 @@ function normalize_message_notification_record($record)
             $attachments[$normalizedPath] = $normalizedPath;
         }
     }
+
+    return [
+        'sender_name' => $senderName,
+        'sender_email' => $senderEmail,
+        'message' => $messageBody,
+        'attachments' => array_values($attachments),
+    ];
+}
+
+function normalize_message_notification_record($record)
+{
+    if (!is_array($record)) {
+        $record = [];
+    }
+
+    $id = trim((string) ($record['id'] ?? ''));
+    if ($id === '') {
+        $id = message_notification_generate_id();
+    }
+
+    $type = normalize_message_notification_type($record['type'] ?? 'message');
+
+    $payload = normalize_message_notification_payload(
+        $type,
+        $record['payload'] ?? [],
+        $record
+    );
+
+    $titleFallback = $type === 'message'
+        ? trim((string) ($record['subject'] ?? 'Untitled message'))
+        : 'Notification';
+
+    $title = trim((string) ($record['title'] ?? $titleFallback));
+
+    if ($title === '') {
+        $title = $type === 'message' ? 'Untitled message' : 'Notification';
+    }
+
+    $summarySource = trim((string) ($record['summary'] ?? ''));
+
+    if ($summarySource === '' && $type === 'message') {
+        $summarySource = (string) ($payload['message'] ?? '');
+    }
+
+    if ($summarySource === '') {
+        $summarySource = $title;
+    }
+
+    $summary = normalize_message_notification_summary($summarySource);
 
     $isRead = (bool) ($record['is_read'] ?? false);
 
@@ -81,11 +160,10 @@ function normalize_message_notification_record($record)
 
     return [
         'id' => $id,
-        'sender_name' => $senderName,
-        'sender_email' => $senderEmail,
-        'subject' => $subject,
-        'message' => $message,
-        'attachments' => array_values($attachments),
+        'type' => $type,
+        'title' => $title,
+        'summary' => $summary,
+        'payload' => $payload,
         'is_read' => $isRead,
         'created_at' => $createdAt,
         'read_at' => $readAt,
@@ -153,13 +231,24 @@ function append_message_notification($senderName, $senderEmail, $subject, $messa
 {
     $notifications = load_message_notifications_repository();
 
+    $normalizedSubject = trim((string) $subject);
+    if ($normalizedSubject === '') {
+        $normalizedSubject = 'Untitled message';
+    }
+
+    $normalizedMessage = trim((string) $message);
+
     $newRecord = normalize_message_notification_record([
         'id' => message_notification_generate_id(),
-        'sender_name' => $senderName,
-        'sender_email' => $senderEmail,
-        'subject' => $subject,
-        'message' => $message,
-        'attachments' => is_array($attachments) ? $attachments : [],
+        'type' => 'message',
+        'title' => $normalizedSubject,
+        'summary' => normalize_message_notification_summary($normalizedMessage),
+        'payload' => [
+            'sender_name' => trim((string) $senderName),
+            'sender_email' => trim((string) $senderEmail),
+            'message' => $normalizedMessage,
+            'attachments' => is_array($attachments) ? $attachments : [],
+        ],
         'is_read' => false,
         'created_at' => gmdate('c'),
         'read_at' => '',
@@ -190,6 +279,49 @@ function count_unread_message_notifications($notifications = null)
     }
 
     return $count;
+}
+
+function mark_message_notification_as_read($notificationId, $notifications = null)
+{
+    $targetId = trim((string) $notificationId);
+
+    if ($targetId === '') {
+        return [
+            'notifications' => is_array($notifications) ? $notifications : load_message_notifications_repository(),
+            'changed' => false,
+            'updated' => null,
+        ];
+    }
+
+    $source = is_array($notifications) ? $notifications : load_message_notifications_repository();
+    $changed = false;
+    $updated = null;
+    $readTimestamp = gmdate('c');
+
+    foreach ($source as $index => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        $normalized = normalize_message_notification_record($record);
+
+        if ($normalized['id'] === $targetId && !$normalized['is_read']) {
+            $normalized['is_read'] = true;
+            $normalized['read_at'] = $readTimestamp;
+            $changed = true;
+            $updated = $normalized;
+        } elseif ($normalized['id'] === $targetId) {
+            $updated = $normalized;
+        }
+
+        $source[$index] = $normalized;
+    }
+
+    return [
+        'notifications' => array_values($source),
+        'changed' => $changed,
+        'updated' => $updated,
+    ];
 }
 
 function mark_all_message_notifications_as_read($notifications = null)
