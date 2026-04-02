@@ -3767,6 +3767,305 @@ button {
     color: #ffd6d6;
 }
 
+.customer-message-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: grid;
+    place-items: center;
+}
+
+.customer-message-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.customer-message-modal-dialog {
+    position: relative;
+    width: min(100% - 2rem, 620px);
+    max-height: min(88vh, 760px);
+    overflow: auto;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 16px;
+    background: rgba(18, 19, 22, 0.98);
+    box-shadow: 0 22px 48px rgba(0, 0, 0, 0.45);
+    padding: 1rem;
+    display: grid;
+    gap: 0.85rem;
+}
+
+.customer-message-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.customer-message-modal-head h2 {
+    margin: 0;
+    font-size: 1.08rem;
+    letter-spacing: 0.03em;
+}
+
+.customer-message-modal-close {
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.customer-message-modal-close:hover,
+.customer-message-modal-close:focus-visible {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.customer-message-sender {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.customer-message-sender strong {
+    color: var(--text);
+}
+
+.customer-message-sender span {
+    color: var(--muted-strong);
+    font-size: 0.83rem;
+}
+
+.customer-message-login-note {
+    margin: 0;
+    padding: 0.62rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 194, 116, 0.38);
+    background: rgba(115, 82, 20, 0.18);
+    color: #ffe9c3;
+    font-size: 0.88rem;
+}
+
+.customer-message-login-note a {
+    color: #ffe9c3;
+    text-decoration: underline;
+    font-weight: 700;
+}
+
+.customer-message-form {
+    display: grid;
+    gap: 0.7rem;
+}
+
+.customer-message-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.customer-message-input,
+.customer-message-textarea,
+.customer-message-file {
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    padding: 0.62rem 0.78rem;
+}
+
+.customer-message-input,
+.customer-message-file {
+    min-height: 42px;
+}
+
+.customer-message-textarea {
+    resize: vertical;
+    min-height: 132px;
+}
+
+.customer-message-input:focus-visible,
+.customer-message-textarea:focus-visible,
+.customer-message-file:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.6);
+    outline-offset: 1px;
+}
+
+.customer-message-file-note {
+    margin: 0;
+    color: var(--muted-strong);
+    font-size: 0.82rem;
+}
+
+.customer-message-feedback {
+    margin: 0;
+    border-radius: 10px;
+    padding: 0.56rem 0.72rem;
+    font-size: 0.88rem;
+    border: 1px solid transparent;
+}
+
+.customer-message-feedback.is-success {
+    border-color: rgba(111, 233, 155, 0.42);
+    background: rgba(24, 92, 55, 0.36);
+    color: #d7ffe8;
+}
+
+.customer-message-feedback.is-error {
+    border-color: rgba(255, 159, 159, 0.46);
+    background: rgba(128, 36, 36, 0.3);
+    color: #ffdede;
+}
+
+.customer-message-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.7rem;
+}
+
+.customer-message-cancel,
+.customer-message-submit {
+    min-height: 40px;
+    padding: 0.46rem 0.9rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+}
+
+.customer-message-submit {
+    border-color: rgba(111, 233, 155, 0.36);
+    background: rgba(23, 95, 54, 0.35);
+}
+
+.customer-message-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.customer-message-cancel:hover,
+.customer-message-cancel:focus-visible,
+.customer-message-submit:hover,
+.customer-message-submit:focus-visible {
+    transform: translateY(-1px);
+}
+
+.admin-notifications-shell {
+    width: min(100%, 1280px);
+    margin: 0 auto;
+    padding: 1.4rem 1rem 2.8rem;
+}
+
+.admin-notifications-panel {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+    background: rgba(18, 19, 22, 0.9);
+    box-shadow: 0 20px 38px rgba(0, 0, 0, 0.34);
+    padding: 1rem;
+    display: grid;
+    gap: 0.95rem;
+}
+
+.admin-notifications-head h1 {
+    margin: 0;
+    font-size: clamp(1.26rem, 2vw, 1.5rem);
+    letter-spacing: 0.03em;
+}
+
+.admin-notifications-head p {
+    margin: 0.35rem 0 0;
+    color: var(--muted);
+}
+
+.admin-notifications-empty {
+    margin: 0;
+    border: 1px dashed rgba(255, 255, 255, 0.28);
+    border-radius: 12px;
+    padding: 0.95rem;
+    text-align: center;
+    color: var(--muted-strong);
+}
+
+.admin-notifications-list {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.admin-notification-item {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.85rem;
+    display: grid;
+    gap: 0.58rem;
+}
+
+.admin-notification-item.is-read {
+    border-color: rgba(122, 161, 135, 0.28);
+}
+
+.admin-notification-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.9rem;
+    color: var(--muted);
+    font-size: 0.82rem;
+}
+
+.admin-notification-sender {
+    color: var(--text);
+    font-weight: 700;
+}
+
+.admin-notification-email,
+.admin-notification-time {
+    color: var(--muted-strong);
+}
+
+.admin-notification-item h2 {
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+}
+
+.admin-notification-message {
+    margin: 0;
+    color: #ededee;
+    line-height: 1.58;
+    white-space: pre-wrap;
+}
+
+.admin-notification-attachments {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.6rem;
+}
+
+.admin-notification-attachment {
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.05);
+    display: block;
+}
+
+.admin-notification-attachment img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+}
+
 .account-settings-page {
     background:
         radial-gradient(circle at top center, rgba(255, 255, 255, 0.05), transparent 22%),
@@ -6174,6 +6473,24 @@ button {
 
     .topbar-link:not(.topbar-help) {
         grid-area: message;
+    }
+
+    .customer-message-modal-dialog {
+        width: min(100% - 1rem, 620px);
+        padding: 0.9rem;
+    }
+
+    .customer-message-actions {
+        flex-direction: column-reverse;
+    }
+
+    .customer-message-cancel,
+    .customer-message-submit {
+        width: 100%;
+    }
+
+    .admin-notification-attachments {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .package-grid {

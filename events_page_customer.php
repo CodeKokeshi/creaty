@@ -322,6 +322,13 @@ $logoutPath = $isAdminView ? ($assetBase . 'admin/logout.php') : ($assetBase . '
 $cartPath = $assetBase . 'customer-cart/';
 $eventsPath = $isAdminView ? ($assetBase . 'admin/events/') : ($assetBase . 'customer-events/');
 $eventDetailPath = $isAdminView ? 'admin/event/' : 'customer-event/';
+$notificationsPath = $assetBase . 'admin/notifications/';
+$adminNotificationCount = 0;
+
+if ($isAdminView) {
+    require_once __DIR__ . '/config/message_notifications_repository.php';
+    $adminNotificationCount = count_unread_message_notifications();
+}
 
 $projectRoot = __DIR__;
 $availableEventFolders = collectEventPackageFolders($projectRoot);
@@ -424,25 +431,25 @@ unset($eventPackage);
             <?php endif; ?>
 
             <?php if (!$isAdminView): ?>
-                <a class="topbar-link" href="#">Message us</a>
+                <a class="topbar-link" href="#" data-message-us-open>Message us</a>
             <?php endif; ?>
 
             <?php if ($isAdminView): ?>
                 <div class="topbar-admin-actions">
-                    <button
+                    <a
                         class="topbar-notification-button"
-                        type="button"
+                        href="<?php echo htmlspecialchars($notificationsPath, ENT_QUOTES, 'UTF-8'); ?>"
                         aria-label="Notifications"
                         title="Notifications"
                         data-admin-notification-trigger
-                        data-notification-count="0"
+                        data-notification-count="<?php echo htmlspecialchars((string) $adminNotificationCount, ENT_QUOTES, 'UTF-8'); ?>"
                     >
                         <span class="topbar-notification-text">Notifications</span>
                         <span class="topbar-notification-icon-wrap" aria-hidden="true">
                             <img class="topbar-notification-icon" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/notifications.svg" alt="">
-                            <span class="cart-count topbar-notification-count" aria-hidden="true">0</span>
+                            <span class="cart-count topbar-notification-count" aria-hidden="true"><?php echo htmlspecialchars((string) $adminNotificationCount, ENT_QUOTES, 'UTF-8'); ?></span>
                         </span>
-                    </button>
+                    </a>
 
                     <div class="dropdown topbar-account-menu">
                         <button class="account-pill account-pill-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -703,7 +710,11 @@ unset($eventPackage);
         </aside>
     <?php endif; ?>
 
+    <?php if (!$isAdminView): ?>
+        <?php require __DIR__ . '/customer_message_modal.php'; ?>
+    <?php endif; ?>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260328-9"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260402-1"></script>
 </body>
 </html>

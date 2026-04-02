@@ -125,7 +125,7 @@ $staticOrders = [
                 <span class="cart-count"><?php echo $cartCount; ?></span>
             </a>
 
-            <a class="topbar-link" href="#">Message us</a>
+            <a class="topbar-link" href="#" data-message-us-open>Message us</a>
             <div class="dropdown topbar-account-menu">
                 <button class="account-pill account-pill-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?>
@@ -323,7 +323,9 @@ $staticOrders = [
         </div>
     </main>
 
+    <?php require __DIR__ . '/customer_message_modal.php'; ?>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260402-1"></script>
 </body>
 </html>

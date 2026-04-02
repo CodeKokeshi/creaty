@@ -1,0 +1,15 @@
+[
+    {
+        "id": "msg-20260402053822-348b094b",
+        "sender_name": "qwe qwe",
+        "sender_email": "qwe@gmail.com",
+        "subject": "Hello",
+        "message": "Message test",
+        "attachments": [
+            "assets/message_attachments/20260402053822-a98f1bda0cf0-658288927_2123063471792265_2185620901470783050_n.jpg"
+        ],
+        "is_read": true,
+        "created_at": "2026-04-02T05:38:22+00:00",
+        "read_at": "2026-04-02T05:38:29+00:00"
+    }
+]

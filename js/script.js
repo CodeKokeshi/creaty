@@ -2,6 +2,13 @@ document.addEventListener("DOMContentLoaded", function () {
     var revealItems = document.querySelectorAll(".reveal");
     var toggleButtons = document.querySelectorAll(".toggle-visibility");
     var authSwitchLinks = document.querySelectorAll("[data-auth-switch]");
+    var messageUsOpenButtons = document.querySelectorAll("[data-message-us-open]");
+    var customerMessageModal = document.querySelector("[data-message-modal]");
+    var customerMessageModalCloseButtons = customerMessageModal ? customerMessageModal.querySelectorAll("[data-message-modal-close]") : [];
+    var customerMessageForm = customerMessageModal ? customerMessageModal.querySelector("[data-message-form]") : null;
+    var customerMessageSubmitButton = customerMessageModal ? customerMessageModal.querySelector("[data-message-submit]") : null;
+    var customerMessageFeedback = customerMessageModal ? customerMessageModal.querySelector("[data-message-feedback]") : null;
+    var customerMessageAttachmentInput = customerMessageModal ? customerMessageModal.querySelector("[data-message-attachments]") : null;
     var promoBanner = document.querySelector(".promo-banner");
     var promoCarousel = promoBanner ? promoBanner.querySelector(".promo-carousel") : null;
     var promoPrev = promoBanner ? promoBanner.querySelector(".promo-arrow-left") : null;
@@ -326,6 +333,194 @@ document.addEventListener("DOMContentLoaded", function () {
             button.setAttribute("aria-label", "Show password");
         });
     });
+
+    function initializeCustomerMessageModal() {
+        if (!messageUsOpenButtons.length || !customerMessageModal) {
+            return;
+        }
+
+        var isSubmittingMessage = false;
+
+        function setMessageFeedback(message, type) {
+            if (!customerMessageFeedback) {
+                return;
+            }
+
+            var normalizedMessage = String(message || "").trim();
+            var normalizedType = type === "success" ? "is-success" : "is-error";
+
+            customerMessageFeedback.hidden = normalizedMessage === "";
+            customerMessageFeedback.textContent = normalizedMessage;
+            customerMessageFeedback.classList.remove("is-success", "is-error");
+
+            if (normalizedMessage !== "") {
+                customerMessageFeedback.classList.add(normalizedType);
+            }
+        }
+
+        function closeCustomerMessageModal() {
+            customerMessageModal.hidden = true;
+            document.body.classList.remove("admin-modal-open");
+
+            if (!isSubmittingMessage) {
+                setMessageFeedback("", "error");
+            }
+        }
+
+        function openCustomerMessageModal() {
+            customerMessageModal.hidden = false;
+            document.body.classList.add("admin-modal-open");
+            setMessageFeedback("", "error");
+
+            var firstInput = customerMessageModal.querySelector("#customer-message-subject");
+            if (firstInput) {
+                window.setTimeout(function () {
+                    firstInput.focus();
+                }, 60);
+            }
+        }
+
+        messageUsOpenButtons.forEach(function (button) {
+            button.addEventListener("click", function (event) {
+                event.preventDefault();
+                openCustomerMessageModal();
+            });
+        });
+
+        customerMessageModalCloseButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                if (isSubmittingMessage) {
+                    return;
+                }
+
+                closeCustomerMessageModal();
+            });
+        });
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key !== "Escape" || customerMessageModal.hidden || isSubmittingMessage) {
+                return;
+            }
+
+            closeCustomerMessageModal();
+        });
+
+        if (customerMessageAttachmentInput) {
+            customerMessageAttachmentInput.addEventListener("change", function () {
+                var fileCount = customerMessageAttachmentInput.files ? customerMessageAttachmentInput.files.length : 0;
+
+                if (fileCount <= 5) {
+                    return;
+                }
+
+                customerMessageAttachmentInput.value = "";
+                setMessageFeedback("You can upload up to 5 images only.", "error");
+            });
+        }
+
+        if (!customerMessageForm) {
+            return;
+        }
+
+        customerMessageForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            if (isSubmittingMessage) {
+                return;
+            }
+
+            var endpoint = customerMessageForm.getAttribute("action") || "";
+            if (!endpoint) {
+                setMessageFeedback("Message endpoint is unavailable.", "error");
+                return;
+            }
+
+            var subjectInput = customerMessageForm.querySelector("#customer-message-subject");
+            var messageInput = customerMessageForm.querySelector("#customer-message-body");
+            var subjectValue = subjectInput ? String(subjectInput.value || "").trim() : "";
+            var messageValue = messageInput ? String(messageInput.value || "").trim() : "";
+            var attachmentCount = customerMessageAttachmentInput && customerMessageAttachmentInput.files
+                ? customerMessageAttachmentInput.files.length
+                : 0;
+
+            if (!subjectValue || !messageValue) {
+                setMessageFeedback("Subject and message are required.", "error");
+                return;
+            }
+
+            if (attachmentCount > 5) {
+                setMessageFeedback("You can upload up to 5 images only.", "error");
+                return;
+            }
+
+            setMessageFeedback("", "error");
+            isSubmittingMessage = true;
+
+            var previousButtonLabel = customerMessageSubmitButton ? customerMessageSubmitButton.textContent : "Send Message";
+
+            if (customerMessageSubmitButton) {
+                customerMessageSubmitButton.disabled = true;
+                customerMessageSubmitButton.textContent = "Sending...";
+            }
+
+            var payload = new FormData(customerMessageForm);
+
+            fetch(endpoint, {
+                method: "POST",
+                body: payload,
+                credentials: "same-origin"
+            })
+                .then(function (response) {
+                    return response.json().catch(function () {
+                        return {
+                            ok: false,
+                            message: "Unexpected server response."
+                        };
+                    }).then(function (body) {
+                        return {
+                            ok: response.ok,
+                            body: body
+                        };
+                    });
+                })
+                .then(function (result) {
+                    var responseMessage = result.body && result.body.message
+                        ? String(result.body.message)
+                        : "Unable to send your message right now.";
+
+                    if (!result.ok || !result.body || !result.body.ok) {
+                        throw new Error(responseMessage);
+                    }
+
+                    customerMessageForm.reset();
+                    setMessageFeedback(responseMessage, "success");
+
+                    window.setTimeout(function () {
+                        isSubmittingMessage = false;
+
+                        if (customerMessageSubmitButton) {
+                            customerMessageSubmitButton.disabled = false;
+                            customerMessageSubmitButton.textContent = previousButtonLabel;
+                        }
+
+                        closeCustomerMessageModal();
+                    }, 700);
+                })
+                .catch(function (error) {
+                    setMessageFeedback(error.message || "Unable to send your message right now.", "error");
+                })
+                .finally(function () {
+                    if (isSubmittingMessage) {
+                        isSubmittingMessage = false;
+
+                        if (customerMessageSubmitButton) {
+                            customerMessageSubmitButton.disabled = false;
+                            customerMessageSubmitButton.textContent = previousButtonLabel;
+                        }
+                    }
+                });
+        });
+    }
 
     function hideAdminUndoToast() {
         if (!adminUndoToast) {
@@ -4981,6 +5176,7 @@ document.addEventListener("DOMContentLoaded", function () {
         renderCartItems();
     }
 
+    initializeCustomerMessageModal();
     syncCartCountBadges();
     initializeAddToCartButtons();
     initializeCartPage();
