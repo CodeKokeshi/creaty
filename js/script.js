@@ -588,6 +588,48 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
         }
 
+        function addAdminNotificationCarriageReturns(textValue, maxLineLength) {
+            var text = String(textValue || "");
+            var limit = Number.parseInt(String(maxLineLength || 92), 10);
+
+            if (!Number.isFinite(limit) || limit < 20) {
+                limit = 92;
+            }
+
+            return text
+                .replace(/\r\n/g, "\n")
+                .replace(/\r/g, "\n")
+                .split("\n")
+                .map(function (line) {
+                    if (line.length <= limit) {
+                        return line;
+                    }
+
+                    var remaining = line;
+                    var chunks = [];
+
+                    while (remaining.length > limit) {
+                        var segment = remaining.slice(0, limit);
+                        var breakIndex = segment.lastIndexOf(" ");
+
+                        if (breakIndex > Math.floor(limit * 0.5)) {
+                            chunks.push(remaining.slice(0, breakIndex));
+                            remaining = remaining.slice(breakIndex + 1);
+                        } else {
+                            chunks.push(segment);
+                            remaining = remaining.slice(limit);
+                        }
+                    }
+
+                    if (remaining !== "") {
+                        chunks.push(remaining);
+                    }
+
+                    return chunks.join("\r\n");
+                })
+                .join("\r\n");
+        }
+
         function setAdminNotificationReadState(item, isRead) {
             if (!item) {
                 return;
@@ -627,6 +669,8 @@ document.addEventListener("DOMContentLoaded", function () {
             var messageValue = String(item.getAttribute("data-notification-message") || "").trim();
             var timeValue = String(item.getAttribute("data-notification-created-at") || "Unknown time").trim();
             var attachments = parseAdminNotificationAttachments(item.getAttribute("data-notification-attachments") || "[]");
+            var wrappedSummaryValue = addAdminNotificationCarriageReturns(summaryValue, 92);
+            var wrappedMessageValue = addAdminNotificationCarriageReturns(messageValue, 92);
 
             if (adminNotificationModalTitle) {
                 adminNotificationModalTitle.textContent = titleValue || "Notification";
@@ -651,7 +695,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (adminNotificationModalSummary) {
                 if (typeValue !== "message" && summaryValue !== "") {
-                    adminNotificationModalSummary.textContent = summaryValue;
+                    adminNotificationModalSummary.textContent = wrappedSummaryValue;
                     adminNotificationModalSummary.hidden = false;
                 } else {
                     adminNotificationModalSummary.hidden = true;
@@ -660,7 +704,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (adminNotificationModalMessage) {
                 if (messageValue !== "") {
-                    adminNotificationModalMessage.textContent = messageValue;
+                    adminNotificationModalMessage.textContent = wrappedMessageValue;
                     adminNotificationModalMessage.hidden = false;
                 } else {
                     adminNotificationModalMessage.hidden = true;
