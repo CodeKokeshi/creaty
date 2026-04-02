@@ -50,6 +50,11 @@ try {
         throw new RuntimeException('Unable to save active products.');
     }
 
+    $restoredBrand = normalize_product_brand($result['restoredProduct']['brand'] ?? default_product_brand());
+    if (!ensure_product_brand_exists($restoredBrand)) {
+        throw new RuntimeException('Unable to restore product brand availability.');
+    }
+
     if (!save_archived_products_repository($result['archivedProducts'])) {
         throw new RuntimeException('Unable to save archive data.');
     }

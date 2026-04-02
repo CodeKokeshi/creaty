@@ -50,6 +50,7 @@ $logoutPath = $assetBase . 'customer-logout/';
 $cartPath = $assetBase . 'customer-cart/';
 $eventsPath = $assetBase . 'customer-events/';
 $notificationsPath = $assetBase . 'admin/notifications/';
+$manageBrandsPath = $assetBase . 'admin/brands/';
 $adminNotificationCount = 0;
 $addToCartLoginUrl = $loginPath . '?redirect=' . rawurlencode($_SERVER['REQUEST_URI'] ?? ($assetBase . 'customer-products/?product=' . urlencode($productKey)));
 
@@ -60,6 +61,8 @@ if ($isAdminView) {
 
 require __DIR__ . '/config/products_repository.php';
 $products = load_products_repository();
+$productBrandOptions = load_product_brands_repository();
+$productBrandValueMap = product_brand_value_map($productBrandOptions);
 
 if (
     $isAdminView
@@ -207,7 +210,13 @@ if (
         }
 
         if ($scope === 'spec_identity') {
-            $brandValue = normalize_product_brand($_POST['brand'] ?? ($productToUpdate['brand'] ?? 'Canon'));
+            $postedBrandValue = trim((string) ($_POST['brand'] ?? ''));
+            if ($postedBrandValue === '__manage_brands__') {
+                header('Location: ' . $manageBrandsPath);
+                exit;
+            }
+
+            $brandValue = normalize_product_brand($postedBrandValue !== '' ? $postedBrandValue : ($productToUpdate['brand'] ?? default_product_brand()));
             $nameValue = trim((string) ($_POST['name'] ?? ($productToUpdate['name'] ?? '')));
 
             if ($nameValue !== '' && has_duplicate_product_display_name($products, $brandValue, $nameValue, $postedKey)) {
@@ -218,10 +227,17 @@ if (
                 }
 
                 $productToUpdate['brand'] = $brandValue;
+                ensure_product_brand_exists($brandValue);
             }
         }
 
         if ($scope === 'specifications') {
+            $postedBrandValue = trim((string) ($_POST['brand'] ?? ''));
+            if ($postedBrandValue === '__manage_brands__') {
+                header('Location: ' . $manageBrandsPath);
+                exit;
+            }
+
             $imagingLines = normalize_lines_array($_POST['imagingSpecs'] ?? []);
             $videoLines = normalize_lines_array($_POST['videoSpecs'] ?? []);
             $physicalLines = normalize_lines_array($_POST['physicalSpecs'] ?? []);
@@ -268,6 +284,7 @@ if ($productKey === null || !isset($products[$productKey])) {
 
 $selectedProduct = $products[$productKey];
 $selectedBrand = normalize_product_brand($selectedProduct['brand'] ?? 'Canon');
+$selectedBrandValue = product_brand_slug($selectedBrand);
 $selectedProductName = trim((string) ($selectedProduct['name'] ?? ''));
 $selectedSpecs = is_array($selectedProduct['specs'] ?? null) ? $selectedProduct['specs'] : [];
 $selectedImagingSpecs = is_array($selectedSpecs['Imaging and Performance'] ?? null) ? $selectedSpecs['Imaging and Performance'] : [];
@@ -357,6 +374,7 @@ $productListPath = $homePath . '#featured-products-title';
                         <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                             <li><a class="dropdown-item" href="<?php echo htmlspecialchars($homePath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
                             <li><a class="dropdown-item" href="<?php echo htmlspecialchars($homePath . '#featured-products-title', ENT_QUOTES, 'UTF-8'); ?>">Manage Featured Products</a></li>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageBrandsPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Brands</a></li>
                             <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($assetBase . 'admin/logout.php', ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
@@ -560,11 +578,11 @@ $productListPath = $homePath . '#featured-products-title';
                                 <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
 
                                 <label for="admin-spec-brand">Brand</label>
-                                <select id="admin-spec-brand" name="brand" required>
-                                    <option value="canon"<?php echo strtolower($selectedBrand) === 'canon' ? ' selected' : ''; ?>>Canon</option>
-                                    <option value="fuji"<?php echo strtolower($selectedBrand) === 'fuji' ? ' selected' : ''; ?>>Fuji</option>
-                                    <option value="nikon"<?php echo strtolower($selectedBrand) === 'nikon' ? ' selected' : ''; ?>>Nikon</option>
-                                    <option value="sony"<?php echo strtolower($selectedBrand) === 'sony' ? ' selected' : ''; ?>>Sony</option>
+                                <select id="admin-spec-brand" name="brand" data-brand-manage-select data-brand-manage-url="<?php echo htmlspecialchars($manageBrandsPath, ENT_QUOTES, 'UTF-8'); ?>" required>
+                                    <?php foreach ($productBrandValueMap as $brandValue => $brandLabel): ?>
+                                        <option value="<?php echo htmlspecialchars($brandValue, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $selectedBrandValue === $brandValue ? ' selected' : ''; ?>><?php echo htmlspecialchars($brandLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                    <?php endforeach; ?>
+                                    <option value="__manage_brands__">Manage Brands</option>
                                 </select>
 
                                 <label for="admin-spec-name">Product Name</label>
@@ -775,11 +793,11 @@ $productListPath = $homePath . '#featured-products-title';
                             <input type="hidden" name="productKey" value="<?php echo htmlspecialchars($productKey, ENT_QUOTES, 'UTF-8'); ?>">
 
                             <label for="admin-spec-brand">Brand</label>
-                            <select id="admin-spec-brand" name="brand" required>
-                                <option value="canon"<?php echo strtolower($selectedBrand) === 'canon' ? ' selected' : ''; ?>>Canon</option>
-                                <option value="fuji"<?php echo strtolower($selectedBrand) === 'fuji' ? ' selected' : ''; ?>>Fuji</option>
-                                <option value="nikon"<?php echo strtolower($selectedBrand) === 'nikon' ? ' selected' : ''; ?>>Nikon</option>
-                                <option value="sony"<?php echo strtolower($selectedBrand) === 'sony' ? ' selected' : ''; ?>>Sony</option>
+                            <select id="admin-spec-brand" name="brand" data-brand-manage-select data-brand-manage-url="<?php echo htmlspecialchars($manageBrandsPath, ENT_QUOTES, 'UTF-8'); ?>" required>
+                                <?php foreach ($productBrandValueMap as $brandValue => $brandLabel): ?>
+                                    <option value="<?php echo htmlspecialchars($brandValue, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $selectedBrandValue === $brandValue ? ' selected' : ''; ?>><?php echo htmlspecialchars($brandLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                <?php endforeach; ?>
+                                <option value="__manage_brands__">Manage Brands</option>
                             </select>
 
                             <label for="admin-spec-name">Product Name</label>
@@ -938,6 +956,60 @@ $productListPath = $homePath . '#featured-products-title';
                         var scope = button.getAttribute('data-admin-cancel-edit');
                         setEditMode(scope, false);
                     });
+                });
+
+                var manageBrandOptionValue = '__manage_brands__';
+
+                document.querySelectorAll('[data-brand-manage-select]').forEach(function (select) {
+                    var initialValue = String(select.value || '').trim();
+                    if (initialValue !== '' && initialValue !== manageBrandOptionValue) {
+                        select.setAttribute('data-last-brand-value', initialValue);
+                    }
+
+                    select.addEventListener('focus', function () {
+                        var currentValue = String(select.value || '').trim();
+                        if (currentValue !== '' && currentValue !== manageBrandOptionValue) {
+                            select.setAttribute('data-last-brand-value', currentValue);
+                        }
+                    });
+
+                    select.addEventListener('change', function () {
+                        var selectedValue = String(select.value || '').trim();
+
+                        if (selectedValue !== manageBrandOptionValue) {
+                            if (selectedValue !== '') {
+                                select.setAttribute('data-last-brand-value', selectedValue);
+                            }
+                            return;
+                        }
+
+                        var targetUrl = String(select.getAttribute('data-brand-manage-url') || '').trim();
+                        var fallbackValue = String(select.getAttribute('data-last-brand-value') || '').trim();
+
+                        if (fallbackValue !== '') {
+                            select.value = fallbackValue;
+                        }
+
+                        if (targetUrl !== '') {
+                            window.location.href = targetUrl;
+                        }
+                    });
+
+                    var parentForm = select.closest('form');
+                    if (parentForm) {
+                        parentForm.addEventListener('submit', function (event) {
+                            if (String(select.value || '').trim() !== manageBrandOptionValue) {
+                                return;
+                            }
+
+                            event.preventDefault();
+
+                            var targetUrl = String(select.getAttribute('data-brand-manage-url') || '').trim();
+                            if (targetUrl !== '') {
+                                window.location.href = targetUrl;
+                            }
+                        });
+                    }
                 });
 
                 var infoAddButton = document.querySelector('[data-admin-info-image-add]');
@@ -1431,6 +1503,6 @@ $productListPath = $homePath . '#featured-products-title';
     <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260402-4"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260402-5"></script>
 </body>
 </html>

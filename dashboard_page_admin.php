@@ -27,6 +27,7 @@ $accountLabel = 'Admin';
 $adminHomePath = $routeBase . 'dashboard/';
 $logoutPath = $routeBase . 'logout.php';
 $notificationsPath = $routeBase . 'notifications/';
+$manageBrandsPath = $routeBase . 'brands/';
 
 require_once __DIR__ . '/config/message_notifications_repository.php';
 
@@ -202,6 +203,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['admin_action'] ??
 require __DIR__ . '/config/products_repository.php';
 require __DIR__ . '/config/equipment_inventory_repository.php';
 $products = load_products_repository();
+$productBrandOptions = load_product_brands_repository();
+$productBrandValueMap = product_brand_value_map($productBrandOptions);
 
 $equipmentStatuses = load_equipment_statuses_repository();
 $equipmentStatusLabels = [];
@@ -931,8 +934,9 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
-                        <li><a class="dropdown-item" href="#">Manage Featured Products</a></li>
-                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath . '#featured-products-title', ENT_QUOTES, 'UTF-8'); ?>">Manage Featured Products</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageBrandsPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Brands</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
                         <li><a class="dropdown-item" href="#">Manage Discounts</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
@@ -949,10 +953,9 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
 
                 <div class="filter-panel filter-panel-brands" id="brands-filter-panel" hidden>
                     <button class="filter-option is-selected" type="button" data-filter-group="brand" data-filter-value="all">ALL BRANDS</button>
-                    <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="fuji">FUJI</button>
-                    <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="sony">SONY</button>
-                    <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="canon">CANON</button>
-                    <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="nikon">NIKON</button>
+                    <?php foreach ($productBrandValueMap as $brandValue => $brandLabel): ?>
+                        <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="<?php echo htmlspecialchars($brandValue, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(strtoupper($brandLabel), ENT_QUOTES, 'UTF-8'); ?></button>
+                    <?php endforeach; ?>
                 </div>
             </div>
 
@@ -1306,7 +1309,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                         }
 
                         $brandLabel = normalize_product_brand($product['brand'] ?? 'Canon');
-                        $brandValue = strtolower($brandLabel);
+                        $brandValue = product_brand_slug($brandLabel);
                         $productName = trim((string) ($product['name'] ?? ''));
                         $displayName = trim($brandLabel . ' ' . $productName);
                         $specOne = trim((string) ($product['spec1'] ?? ''));
@@ -1614,11 +1617,11 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
 
                     <div class="admin-edit-fields-column">
                         <label class="admin-edit-label" for="admin-edit-brand">Brand</label>
-                        <select id="admin-edit-brand" data-admin-edit-brand required>
-                            <option value="canon">Canon</option>
-                            <option value="fuji">Fuji</option>
-                            <option value="nikon">Nikon</option>
-                            <option value="sony">Sony</option>
+                        <select id="admin-edit-brand" data-admin-edit-brand data-admin-manage-brands-url="<?php echo htmlspecialchars($manageBrandsPath, ENT_QUOTES, 'UTF-8'); ?>" required>
+                            <?php foreach ($productBrandValueMap as $brandValue => $brandLabel): ?>
+                                <option value="<?php echo htmlspecialchars($brandValue, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($brandLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                            <?php endforeach; ?>
+                            <option value="__manage_brands__">Manage Brands</option>
                         </select>
 
                         <label class="admin-edit-label" for="admin-edit-name">Product Name</label>
@@ -1827,7 +1830,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         }
         document.addEventListener('DOMContentLoaded', updateFieldLabels);
     </script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260402-4"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260402-5"></script>
 </body>
 </html>
 

@@ -17,6 +17,8 @@ $logoutPath = 'customer-logout/';
 
 require __DIR__ . '/config/products_repository.php';
 $products = load_products_repository();
+$productBrandOptions = load_product_brands_repository();
+$productBrandValueMap = product_brand_value_map($productBrandOptions);
 
 if (!is_array($products)) {
     $products = [];
@@ -135,10 +137,9 @@ $activePromoBannerSlots = $promoBannerSlots;
 
                 <div class="filter-panel filter-panel-brands" id="brands-filter-panel" hidden>
                     <button class="filter-option is-selected" type="button" data-filter-group="brand" data-filter-value="all">ALL BRANDS</button>
-                    <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="fuji">FUJI</button>
-                    <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="sony">SONY</button>
-                    <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="canon">CANON</button>
-                    <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="nikon">NIKON</button>
+                    <?php foreach ($productBrandValueMap as $brandValue => $brandLabel): ?>
+                        <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="<?php echo htmlspecialchars($brandValue, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(strtoupper($brandLabel), ENT_QUOTES, 'UTF-8'); ?></button>
+                    <?php endforeach; ?>
                 </div>
             </div>
 
@@ -249,7 +250,7 @@ $activePromoBannerSlots = $promoBannerSlots;
                         }
 
                         $brandLabel = normalize_product_brand($product['brand'] ?? 'Canon');
-                        $brandValue = strtolower($brandLabel);
+                        $brandValue = product_brand_slug($brandLabel);
                         $productName = trim((string) ($product['name'] ?? ''));
                         $displayName = trim($brandLabel . ' ' . $productName);
                         $specOne = trim((string) ($product['spec1'] ?? ''));
@@ -294,6 +295,6 @@ $activePromoBannerSlots = $promoBannerSlots;
     <?php require __DIR__ . '/customer_message_modal.php'; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="js/script.js?v=20260402-1"></script>
+    <script src="js/script.js?v=20260402-5"></script>
 </body>
 </html>

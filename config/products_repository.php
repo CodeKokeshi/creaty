@@ -41,23 +41,231 @@ function save_products_repository($products)
     return file_put_contents($path, $encoded . PHP_EOL, LOCK_EX) !== false;
 }
 
+function default_product_brands()
+{
+    return [
+        'Canon',
+        'Fuji',
+        'Nikon',
+        'Sony'
+    ];
+}
+
+function sanitize_product_brand_label($brand)
+{
+    $label = preg_replace('/\s+/', ' ', trim((string) $brand));
+
+    return trim((string) $label);
+}
+
+function product_brand_slug($brand)
+{
+    $normalized = strtolower(sanitize_product_brand_label($brand));
+    $slug = preg_replace('/[^a-z0-9]+/', '-', $normalized);
+    $slug = trim((string) $slug, '-');
+
+    return $slug !== '' ? $slug : 'brand';
+}
+
+function normalize_product_brands_collection($brands, $fallbackToDefaults = true)
+{
+    $normalized = [];
+    $seenSlugs = [];
+
+    foreach ((array) $brands as $brand) {
+        $label = sanitize_product_brand_label($brand);
+
+        if ($label === '') {
+            continue;
+        }
+
+        $slug = product_brand_slug($label);
+
+        if (isset($seenSlugs[$slug])) {
+            continue;
+        }
+
+        $seenSlugs[$slug] = true;
+        $normalized[] = $label;
+    }
+
+    if ($normalized || !$fallbackToDefaults) {
+        return array_values($normalized);
+    }
+
+    return default_product_brands();
+}
+
+function product_brands_repository_path()
+{
+    return __DIR__ . '/brands.json';
+}
+
+function load_product_brands_repository()
+{
+    $path = product_brands_repository_path();
+    $fallbackBrands = default_product_brands();
+
+    foreach (load_products_repository() as $product) {
+        if (!is_array($product)) {
+            continue;
+        }
+
+        $fallbackBrands[] = (string) ($product['brand'] ?? '');
+    }
+
+    $fallback = normalize_product_brands_collection($fallbackBrands, true);
+
+    if (!is_file($path)) {
+        return $fallback;
+    }
+
+    $raw = file_get_contents($path);
+    if ($raw === false) {
+        return $fallback;
+    }
+
+    $raw = preg_replace('/^\xEF\xBB\xBF/', '', (string) $raw);
+    $decoded = json_decode($raw, true);
+
+    if (!is_array($decoded)) {
+        return $fallback;
+    }
+
+    $normalized = normalize_product_brands_collection($decoded, false);
+
+    return $normalized ? $normalized : $fallback;
+}
+
+function save_product_brands_repository($brands)
+{
+    $path = product_brands_repository_path();
+    $normalized = normalize_product_brands_collection($brands, false);
+
+    if (!$normalized) {
+        return false;
+    }
+
+    $encoded = json_encode(array_values($normalized), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+    if ($encoded === false) {
+        return false;
+    }
+
+    return file_put_contents($path, $encoded . PHP_EOL, LOCK_EX) !== false;
+}
+
+function product_brand_lookup_map($brands)
+{
+    $lookup = [];
+
+    foreach (normalize_product_brands_collection($brands, false) as $label) {
+        $lowerLabel = strtolower($label);
+        $slug = product_brand_slug($label);
+
+        if (!isset($lookup[$lowerLabel])) {
+            $lookup[$lowerLabel] = $label;
+        }
+
+        if (!isset($lookup[$slug])) {
+            $lookup[$slug] = $label;
+        }
+    }
+
+    return $lookup;
+}
+
+function product_brand_value_map($brands = null)
+{
+    $brandOptions = is_array($brands)
+        ? normalize_product_brands_collection($brands, true)
+        : load_product_brands_repository();
+
+    $valueMap = [];
+
+    foreach ($brandOptions as $label) {
+        $slug = product_brand_slug($label);
+
+        if (!isset($valueMap[$slug])) {
+            $valueMap[$slug] = $label;
+        }
+    }
+
+    return $valueMap;
+}
+
+function resolve_product_brand_label($value, $brands = null)
+{
+    $cleaned = sanitize_product_brand_label($value);
+
+    if ($cleaned === '') {
+        return '';
+    }
+
+    $brandOptions = is_array($brands) ? $brands : load_product_brands_repository();
+    $lookup = product_brand_lookup_map($brandOptions);
+    $lowerValue = strtolower($cleaned);
+
+    if (isset($lookup[$lowerValue])) {
+        return $lookup[$lowerValue];
+    }
+
+    $slugValue = product_brand_slug($cleaned);
+
+    if (isset($lookup[$slugValue])) {
+        return $lookup[$slugValue];
+    }
+
+    return '';
+}
+
+function default_product_brand()
+{
+    $brands = load_product_brands_repository();
+
+    return isset($brands[0]) ? (string) $brands[0] : 'Canon';
+}
+
 function normalize_product_brand($brand)
 {
-    $map = [
-        'canon' => 'Canon',
-        'fuji' => 'Fuji',
-        'nikon' => 'Nikon',
-        'sony' => 'Sony'
-    ];
+    $resolved = resolve_product_brand_label($brand);
 
-    $normalized = strtolower(trim((string) $brand));
+    if ($resolved !== '') {
+        return $resolved;
+    }
 
-    return isset($map[$normalized]) ? $map[$normalized] : 'Canon';
+    $cleaned = sanitize_product_brand_label($brand);
+
+    if ($cleaned !== '') {
+        return $cleaned;
+    }
+
+    return default_product_brand();
+}
+
+function ensure_product_brand_exists($brand)
+{
+    $normalizedBrand = normalize_product_brand($brand);
+    $cleaned = sanitize_product_brand_label($normalizedBrand);
+
+    if ($cleaned === '') {
+        return false;
+    }
+
+    $brands = load_product_brands_repository();
+
+    if (resolve_product_brand_label($cleaned, $brands) !== '') {
+        return true;
+    }
+
+    $brands[] = $cleaned;
+
+    return save_product_brands_repository($brands);
 }
 
 function product_display_name($product)
 {
-    $brand = normalize_product_brand(isset($product['brand']) ? $product['brand'] : 'Canon');
+    $brand = normalize_product_brand(isset($product['brand']) ? $product['brand'] : default_product_brand());
     $name = trim((string) (isset($product['name']) ? $product['name'] : ''));
 
     return trim($brand . ' ' . $name);
@@ -182,7 +390,7 @@ function duplicate_product_record($products, $sourceKey, $projectRoot)
     }
 
     $source = $products[$sourceKey];
-    $brand = normalize_product_brand(isset($source['brand']) ? $source['brand'] : 'Canon');
+    $brand = normalize_product_brand(isset($source['brand']) ? $source['brand'] : default_product_brand());
     $sourceName = trim((string) (isset($source['name']) ? $source['name'] : 'Product'));
 
     if ($sourceName === '') {
@@ -215,7 +423,7 @@ function duplicate_product_record($products, $sourceKey, $projectRoot)
 
 function create_product_record($products, $projectRoot)
 {
-    $brand = 'Canon';
+    $brand = default_product_brand();
     $baseName = 'New Product';
     $newName = unique_product_name($products, $brand, $baseName);
     $newKey = unique_product_key($products, $brand, $newName);
@@ -475,7 +683,7 @@ function archive_product_image_for_entry($sourceRelativePath, $products, $source
     return $targetRelativePath;
 }
 
-function archive_product_record($products, $sourceKey, $projectRoot)
+function archive_product_record($products, $sourceKey, $projectRoot, $archivedProducts = null)
 {
     if (!isset($products[$sourceKey]) || !is_array($products[$sourceKey])) {
         throw new RuntimeException('Product to archive was not found.');
@@ -489,7 +697,9 @@ function archive_product_record($products, $sourceKey, $projectRoot)
         $archiveKey = 'archived-product-' . date('Ymd-His');
     }
 
-    $archivedProducts = load_archived_products_repository();
+    $archivedProductsList = is_array($archivedProducts)
+        ? array_values($archivedProducts)
+        : load_archived_products_repository();
     $archivedImagePath = archive_product_image_for_entry(
         isset($source['cameraImage']) ? $source['cameraImage'] : '',
         $products,
@@ -502,7 +712,7 @@ function archive_product_record($products, $sourceKey, $projectRoot)
         $source['cameraImage'] = $archivedImagePath;
     }
 
-    $archivedProducts[] = [
+    $archivedProductsList[] = [
         'archiveKey' => $archiveKey,
         'archivedAt' => gmdate('c'),
         'originalKey' => (string) $sourceKey,
@@ -513,8 +723,8 @@ function archive_product_record($products, $sourceKey, $projectRoot)
 
     return [
         'products' => $products,
-        'archivedProducts' => $archivedProducts,
-        'archivedEntry' => end($archivedProducts)
+        'archivedProducts' => $archivedProductsList,
+        'archivedEntry' => end($archivedProductsList)
     ];
 }
 
@@ -594,7 +804,7 @@ function restore_archived_product_record($products, $archivedProducts, $archiveK
         throw new RuntimeException('Archived product payload is invalid.');
     }
 
-    $brand = normalize_product_brand($product['brand'] ?? 'Canon');
+    $brand = normalize_product_brand($product['brand'] ?? default_product_brand());
     $name = trim((string) ($product['name'] ?? 'Product'));
     if ($name === '') {
         $name = 'Product';

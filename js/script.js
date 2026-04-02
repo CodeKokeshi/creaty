@@ -265,12 +265,67 @@ document.addEventListener("DOMContentLoaded", function () {
     var now = new Date();
     var calendarViewMonthIndex = now.getMonth();
     var calendarViewYear = now.getFullYear();
-    var brandValueToLabel = {
-        canon: "Canon",
-        fuji: "Fuji",
-        nikon: "Nikon",
-        sony: "Sony"
-    };
+    var manageBrandsOptionValue = "__manage_brands__";
+    var brandValueToLabel = {};
+
+    function formatBrandLabelFromValue(value) {
+        var normalized = String(value || "")
+            .replace(/[_-]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        if (!normalized) {
+            return "";
+        }
+
+        return normalized.replace(/\b\w/g, function (character) {
+            return character.toUpperCase();
+        });
+    }
+
+    function registerBrandValueLabel(value, label) {
+        var normalizedValue = String(value || "").toLowerCase().trim();
+        if (!normalizedValue || normalizedValue === "all" || normalizedValue === manageBrandsOptionValue) {
+            return;
+        }
+
+        var normalizedLabel = String(label || "").replace(/\s+/g, " ").trim();
+
+        if (!normalizedLabel || normalizedLabel === normalizedLabel.toUpperCase()) {
+            normalizedLabel = formatBrandLabelFromValue(normalizedValue);
+        }
+
+        if (normalizedLabel && !Object.prototype.hasOwnProperty.call(brandValueToLabel, normalizedValue)) {
+            brandValueToLabel[normalizedValue] = normalizedLabel;
+        }
+    }
+
+    if (adminEditBrand && adminEditBrand.options) {
+        Array.prototype.forEach.call(adminEditBrand.options, function (option) {
+            if (!option) {
+                return;
+            }
+
+            registerBrandValueLabel(option.value, option.textContent);
+        });
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-filter-group="brand"][data-filter-value]'), function (button) {
+        if (!button) {
+            return;
+        }
+
+        registerBrandValueLabel(button.getAttribute("data-filter-value"), button.textContent);
+    });
+
+    if (!Object.keys(brandValueToLabel).length) {
+        registerBrandValueLabel("canon", "Canon");
+        registerBrandValueLabel("fuji", "Fuji");
+        registerBrandValueLabel("nikon", "Nikon");
+        registerBrandValueLabel("sony", "Sony");
+    }
+
+    var defaultBrandValue = Object.keys(brandValueToLabel)[0] || "canon";
     var adminProducts = (typeof window.__creatyAdminProducts === "object" && window.__creatyAdminProducts)
         ? window.__creatyAdminProducts
         : {};
@@ -1213,16 +1268,30 @@ document.addEventListener("DOMContentLoaded", function () {
     function normalizeBrandValue(value) {
         var normalized = String(value || "").toLowerCase().trim();
 
+        if (!normalized || normalized === manageBrandsOptionValue) {
+            return defaultBrandValue;
+        }
+
         if (Object.prototype.hasOwnProperty.call(brandValueToLabel, normalized)) {
             return normalized;
         }
 
-        return "canon";
+        return normalized;
     }
 
     function getBrandLabel(value) {
         var normalized = normalizeBrandValue(value);
-        return brandValueToLabel[normalized] || "Canon";
+
+        if (Object.prototype.hasOwnProperty.call(brandValueToLabel, normalized)) {
+            return brandValueToLabel[normalized];
+        }
+
+        var fallback = formatBrandLabelFromValue(normalized);
+        if (fallback) {
+            return fallback;
+        }
+
+        return brandValueToLabel[defaultBrandValue] || "Brand";
     }
 
     function splitProductDisplayName(brandValue, fullName) {
@@ -1768,6 +1837,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminEditBrand) {
             adminEditBrand.value = currentBrandValue;
+
+            if (adminEditBrand.value !== currentBrandValue) {
+                adminEditBrand.value = defaultBrandValue;
+                currentBrandValue = normalizeBrandValue(adminEditBrand.value);
+            }
+
+            adminEditBrand.setAttribute("data-admin-brand-last-value", currentBrandValue);
         }
 
         if (adminEditName) {
@@ -1833,6 +1909,40 @@ document.addEventListener("DOMContentLoaded", function () {
             adminCropState.offsetX = clamped.x;
             adminCropState.offsetY = clamped.y;
             syncAdminPreviewTransform();
+        });
+    }
+
+    if (adminEditBrand) {
+        adminEditBrand.addEventListener("focus", function () {
+            var currentValue = String(adminEditBrand.value || "").toLowerCase().trim();
+
+            if (currentValue && currentValue !== manageBrandsOptionValue) {
+                adminEditBrand.setAttribute("data-admin-brand-last-value", currentValue);
+            }
+        });
+
+        adminEditBrand.addEventListener("change", function () {
+            var selectedValue = String(adminEditBrand.value || "").toLowerCase().trim();
+
+            if (selectedValue && selectedValue !== manageBrandsOptionValue) {
+                adminEditBrand.setAttribute("data-admin-brand-last-value", selectedValue);
+                return;
+            }
+
+            if (selectedValue !== manageBrandsOptionValue) {
+                return;
+            }
+
+            var targetUrl = String(adminEditBrand.getAttribute("data-admin-manage-brands-url") || "").trim();
+            var fallbackValue = String(adminEditBrand.getAttribute("data-admin-brand-last-value") || defaultBrandValue).toLowerCase().trim();
+
+            if (fallbackValue && fallbackValue !== manageBrandsOptionValue) {
+                adminEditBrand.value = fallbackValue;
+            }
+
+            if (targetUrl) {
+                window.location.href = targetUrl;
+            }
         });
     }
 
@@ -2062,7 +2172,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
             var productKey = activeAdminEditCard.getAttribute("data-product-key") || "";
             var updateEndpoint = adminEditBackdrop.getAttribute("data-admin-update-endpoint") || "";
-            var brandValue = normalizeBrandValue(adminEditBrand ? adminEditBrand.value : "canon");
+            var selectedBrandValue = adminEditBrand ? String(adminEditBrand.value || "").toLowerCase().trim() : "";
+
+            if (selectedBrandValue === manageBrandsOptionValue) {
+                var manageBrandsUrl = adminEditBrand
+                    ? String(adminEditBrand.getAttribute("data-admin-manage-brands-url") || "").trim()
+                    : "";
+
+                if (manageBrandsUrl) {
+                    window.location.href = manageBrandsUrl;
+                }
+
+                return;
+            }
+
+            var brandValue = normalizeBrandValue(selectedBrandValue || defaultBrandValue);
             var nameValue = adminEditName ? adminEditName.value.trim() : "";
             var specOneValue = adminEditSpec1 ? adminEditSpec1.value.trim() : "";
             var specTwoValue = adminEditSpec2 ? adminEditSpec2.value.trim() : "";

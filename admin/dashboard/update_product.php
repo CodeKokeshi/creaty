@@ -39,7 +39,14 @@ if (!isset($products[$productKey]) || !is_array($products[$productKey])) {
     exit;
 }
 
-$brand = normalize_product_brand($payload['brand'] ?? 'Canon');
+$rawBrand = trim((string) ($payload['brand'] ?? ''));
+if ($rawBrand === '__manage_brands__') {
+    http_response_code(422);
+    echo json_encode(['ok' => false, 'message' => 'Please select a valid brand.']);
+    exit;
+}
+
+$brand = normalize_product_brand($rawBrand !== '' ? $rawBrand : default_product_brand());
 $name = trim((string) ($payload['name'] ?? ''));
 $spec1 = trim((string) ($payload['spec1'] ?? ''));
 $spec2 = trim((string) ($payload['spec2'] ?? ''));
@@ -120,6 +127,12 @@ if (strpos($imageDataUrl, 'data:image/') === 0) {
 }
 
 $products[$productKey] = $product;
+
+if (!ensure_product_brand_exists($brand)) {
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'message' => 'Unable to keep brand list in sync.']);
+    exit;
+}
 
 if (!save_products_repository($products)) {
     http_response_code(500);
