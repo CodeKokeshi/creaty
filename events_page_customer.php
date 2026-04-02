@@ -427,21 +427,42 @@ unset($eventPackage);
                 <a class="topbar-link" href="#">Message us</a>
             <?php endif; ?>
 
-            <?php if ($isAdminView || $isCustomerLoggedIn): ?>
+            <?php if ($isAdminView): ?>
+                <div class="topbar-admin-actions">
+                    <button
+                        class="topbar-notification-button"
+                        type="button"
+                        aria-label="Notifications"
+                        title="Notifications"
+                        data-admin-notification-trigger
+                        data-notification-count="0"
+                    >
+                        <img class="topbar-notification-icon" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/notifications.svg" alt="">
+                        <span class="cart-count topbar-notification-count" aria-hidden="true">0</span>
+                    </button>
+
+                    <div class="dropdown topbar-account-menu">
+                        <button class="account-pill account-pill-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
+                        </ul>
+                    </div>
+                </div>
+            <?php elseif ($isCustomerLoggedIn): ?>
                 <div class="dropdown topbar-account-menu">
                     <button class="account-pill account-pill-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
-                        <?php if ($isAdminView): ?>
-                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
-                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
-                        <?php else: ?>
-                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
-                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
-                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
-                            <li><a class="dropdown-item" href="#">Help Center</a></li>
-                        <?php endif; ?>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
+                        <li><a class="dropdown-item" href="#">Help Center</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
                     </ul>

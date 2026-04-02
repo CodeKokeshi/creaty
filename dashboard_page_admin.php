@@ -904,18 +904,32 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                 <input type="search" name="q" placeholder="Search products, events, or services">
             </form>
 
-            <div class="dropdown topbar-account-menu">
-                <button class="account-pill account-pill-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?>
+            <div class="topbar-admin-actions">
+                <button
+                    class="topbar-notification-button"
+                    type="button"
+                    aria-label="Notifications"
+                    title="Notifications"
+                    data-admin-notification-trigger
+                    data-notification-count="0"
+                >
+                    <img class="topbar-notification-icon" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/notifications.svg" alt="">
+                    <span class="cart-count topbar-notification-count" aria-hidden="true">0</span>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
-                    <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
-                    <li><a class="dropdown-item" href="#">Manage Featured Products</a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
-                    <li><a class="dropdown-item" href="#">Manage Discounts</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
-                </ul>
+
+                <div class="dropdown topbar-account-menu">
+                    <button class="account-pill account-pill-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
+                        <li><a class="dropdown-item" href="#">Manage Featured Products</a></li>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
+                        <li><a class="dropdown-item" href="#">Manage Discounts</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
 

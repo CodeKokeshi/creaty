@@ -3676,6 +3676,43 @@ button {
     justify-self: end;
 }
 
+.topbar-admin-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-self: end;
+    gap: 0.65rem;
+}
+
+.topbar-notification-button {
+    position: relative;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.topbar-notification-button:hover,
+.topbar-notification-button:focus-visible {
+    opacity: 0.92;
+}
+
+.topbar-notification-button:focus-visible {
+    outline: 2px solid #e3e3e3;
+    outline-offset: 2px;
+}
+
+.topbar-notification-icon {
+    width: 22px;
+    height: 22px;
+}
+
+.topbar-notification-count {
+    top: -5px;
+}
+
 .account-dropdown-menu {
     min-width: 224px;
     margin-top: 0.45rem;
@@ -6091,6 +6128,16 @@ button {
     .topbar-account-menu {
         grid-area: account;
         justify-self: end;
+    }
+
+    .topbar-admin-actions {
+        grid-area: account;
+        justify-self: end;
+    }
+
+    .topbar-notification-button {
+        min-width: 22px;
+        padding: 0;
     }
 
     .topbar-help {
