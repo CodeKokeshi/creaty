@@ -437,8 +437,11 @@ unset($eventPackage);
                         data-admin-notification-trigger
                         data-notification-count="0"
                     >
-                        <img class="topbar-notification-icon" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/notifications.svg" alt="">
-                        <span class="cart-count topbar-notification-count" aria-hidden="true">0</span>
+                        <span class="topbar-notification-text">Notifications</span>
+                        <span class="topbar-notification-icon-wrap" aria-hidden="true">
+                            <img class="topbar-notification-icon" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/notifications.svg" alt="">
+                            <span class="cart-count topbar-notification-count" aria-hidden="true">0</span>
+                        </span>
                     </button>
 
                     <div class="dropdown topbar-account-menu">
