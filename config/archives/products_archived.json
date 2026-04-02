@@ -348,8 +348,8 @@
         }
     },
     {
-        "archiveKey": "Canon New Product (Copy) 20260331-073715",
-        "archivedAt": "2026-03-31T07:37:15+00:00",
+        "archiveKey": "Canon New Product (Copy) 20260402-040452",
+        "archivedAt": "2026-04-02T04:04:52+00:00",
         "originalKey": "canon-new-product-copy",
         "product": {
             "brand": "Canon",
@@ -359,7 +359,7 @@
             "spec1": "New camera specification 1",
             "spec2": "New camera specification 2",
             "tagline": "Add a short product tagline.",
-            "cameraImage": "assets/cameras/_archived/Canon%20New%20Product%20%28Copy%29%2020260331-073715.jpg",
+            "cameraImage": "assets/cameras/_archived/Canon%20New%20Product%20%28Copy%29%2020260402-040452.jpg",
             "informationImages": [],
             "captureSlides": [],
             "specs": {
