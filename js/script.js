@@ -5241,8 +5241,6 @@ document.addEventListener("DOMContentLoaded", function () {
         function restoreBookingDefaults() {
             var now = new Date();
             var today = now.toISOString().slice(0, 10);
-            var tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-            var tomorrow = tomorrowDate.toISOString().slice(0, 10);
 
             if (receiveDateInput) {
                 receiveDateInput.min = today;
@@ -5251,7 +5249,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (returnDateInput) {
                 returnDateInput.min = receiveDateInput ? receiveDateInput.value : today;
-                returnDateInput.value = bookingState.returnDate || tomorrow;
             }
 
             if (placeSelect) {
@@ -5270,10 +5267,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (receiveTimeSelect && bookingState.receiveTime) {
                 receiveTimeSelect.value = bookingState.receiveTime;
-            }
-
-            if (returnTimeSelect && bookingState.returnTime) {
-                returnTimeSelect.value = bookingState.returnTime;
             }
 
             if (paymentSelect && bookingState.paymentMethod) {
@@ -5309,12 +5302,22 @@ document.addEventListener("DOMContentLoaded", function () {
                 return {};
             }
 
+            var derivedSchedule = buildDerivedReturnSchedule();
+
+            if (returnDateInput && derivedSchedule.date) {
+                returnDateInput.value = derivedSchedule.date;
+            }
+
+            if (returnTimeSelect && derivedSchedule.time) {
+                returnTimeSelect.value = derivedSchedule.time;
+            }
+
             return {
                 receiveDate: receiveDateInput ? receiveDateInput.value : "",
                 receiveTime: receiveTimeSelect ? receiveTimeSelect.value : "",
                 place: placeSelect ? placeSelect.value : "",
-                returnDate: returnDateInput ? returnDateInput.value : "",
-                returnTime: returnTimeSelect ? returnTimeSelect.value : "",
+                returnDate: derivedSchedule.date || (returnDateInput ? returnDateInput.value : ""),
+                returnTime: derivedSchedule.time || (returnTimeSelect ? returnTimeSelect.value : ""),
                 courier: courierSelect ? courierSelect.value : "",
                 receivingMethod: getMethodValue(receiveMethodInputs, "pickup"),
                 returningMethod: getMethodValue(returnMethodInputs, "meetup"),
@@ -5349,19 +5352,23 @@ document.addEventListener("DOMContentLoaded", function () {
             return maxDays;
         }
 
-        function syncReturnDateTimeFromReceive(items) {
-            if (!receiveDateInput || !returnDateInput) {
-                return;
-            }
+        function buildDerivedReturnSchedule(items) {
+            var receiveDateValue = receiveDateInput ? String(receiveDateInput.value || "").trim() : "";
+            var receiveTimeValue = receiveTimeSelect ? String(receiveTimeSelect.value || "").trim() : "";
 
-            var receiveDateValue = String(receiveDateInput.value || "").trim();
             if (!receiveDateValue) {
-                return;
+                return {
+                    date: "",
+                    time: receiveTimeValue
+                };
             }
 
             var dateParts = receiveDateValue.split("-");
             if (dateParts.length !== 3) {
-                return;
+                return {
+                    date: "",
+                    time: receiveTimeValue
+                };
             }
 
             var year = Number.parseInt(dateParts[0], 10);
@@ -5369,21 +5376,82 @@ document.addEventListener("DOMContentLoaded", function () {
             var day = Number.parseInt(dateParts[2], 10);
 
             if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
-                return;
+                return {
+                    date: "",
+                    time: receiveTimeValue
+                };
             }
 
             var rentalDays = getCartRentalDays(items);
             var returnDate = new Date(year, month - 1, day + rentalDays);
 
             if (Number.isNaN(returnDate.getTime())) {
+                return {
+                    date: "",
+                    time: receiveTimeValue
+                };
+            }
+
+            return {
+                date: dateKeyFromDate(returnDate),
+                time: receiveTimeValue
+            };
+        }
+
+        function syncReturnDateTimeFromReceive(items) {
+            if (!returnDateInput && !returnTimeSelect) {
                 return;
             }
 
-            returnDateInput.min = receiveDateValue;
-            returnDateInput.value = dateKeyFromDate(returnDate);
+            var receiveDateValue = receiveDateInput ? String(receiveDateInput.value || "").trim() : "";
+            var derivedSchedule = buildDerivedReturnSchedule(items);
 
-            if (receiveTimeSelect && returnTimeSelect && receiveTimeSelect.value) {
-                returnTimeSelect.value = receiveTimeSelect.value;
+            if (returnDateInput) {
+                if (receiveDateValue) {
+                    returnDateInput.min = receiveDateValue;
+                }
+
+                if (derivedSchedule.date) {
+                    returnDateInput.value = derivedSchedule.date;
+                }
+
+                if (!returnDateInput.readOnly) {
+                    returnDateInput.readOnly = true;
+                }
+
+                if (!returnDateInput.hasAttribute("readonly")) {
+                    returnDateInput.setAttribute("readonly", "readonly");
+                }
+
+                if (!returnDateInput.disabled) {
+                    returnDateInput.disabled = true;
+                }
+
+                if (returnDateInput.getAttribute("aria-disabled") !== "true") {
+                    returnDateInput.setAttribute("aria-disabled", "true");
+                }
+
+                if (returnDateInput.tabIndex !== -1) {
+                    returnDateInput.tabIndex = -1;
+                }
+            }
+
+            if (returnTimeSelect) {
+                if (derivedSchedule.time) {
+                    returnTimeSelect.value = derivedSchedule.time;
+                }
+
+                if (!returnTimeSelect.disabled) {
+                    returnTimeSelect.disabled = true;
+                }
+
+                if (returnTimeSelect.getAttribute("aria-disabled") !== "true") {
+                    returnTimeSelect.setAttribute("aria-disabled", "true");
+                }
+
+                if (returnTimeSelect.tabIndex !== -1) {
+                    returnTimeSelect.tabIndex = -1;
+                }
             }
         }
 
@@ -5573,16 +5641,25 @@ document.addEventListener("DOMContentLoaded", function () {
         panel.addEventListener("input", handleCartPanelInput);
         panel.addEventListener("change", handleCartPanelInput);
 
+        [returnDateInput, returnTimeSelect].forEach(function (lockedControl) {
+            if (!lockedControl) {
+                return;
+            }
+
+            lockedControl.addEventListener("input", function () {
+                syncReturnDateTimeFromReceive();
+                saveBookingSnapshot();
+            });
+
+            lockedControl.addEventListener("change", function () {
+                syncReturnDateTimeFromReceive();
+                saveBookingSnapshot();
+            });
+        });
+
         if (bookingCard) {
             bookingCard.querySelectorAll("[data-booking-field], input[name='receivingMethod'], input[name='returningMethod']").forEach(function (control) {
                 control.addEventListener("change", function () {
-                    if (receiveDateInput && returnDateInput && receiveDateInput.value) {
-                        returnDateInput.min = receiveDateInput.value;
-                        if (returnDateInput.value && returnDateInput.value < receiveDateInput.value) {
-                            returnDateInput.value = receiveDateInput.value;
-                        }
-                    }
-
                     if (control === receiveDateInput || control === receiveTimeSelect) {
                         syncReturnDateTimeFromReceive();
                     }
@@ -5626,6 +5703,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (confirmButton && bookingNote) {
             confirmButton.addEventListener("click", function () {
+                syncReturnDateTimeFromReceive();
+                saveBookingSnapshot();
+
                 var items = getCartItems();
                 if (!items.length) {
                     bookingNote.textContent = "Add at least one item before confirming your demo booking.";

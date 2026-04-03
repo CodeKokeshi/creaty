@@ -390,8 +390,8 @@ $availableCartItemIds = array_values(array_unique($availableCartItemIds));
                     <div class="cart-booking-group">
                         <h2>Returning Date/Time:</h2>
                         <div class="cart-inline-fields">
-                            <input type="date" data-booking-field="returnDate">
-                            <select data-booking-field="returnTime">
+                            <input type="date" data-booking-field="returnDate" readonly disabled aria-disabled="true" tabindex="-1">
+                            <select data-booking-field="returnTime" disabled aria-disabled="true">
                                 <option value="08:00" selected>08:00 AM</option>
                                 <option value="09:00">09:00 AM</option>
                                 <option value="10:00">10:00 AM</option>
