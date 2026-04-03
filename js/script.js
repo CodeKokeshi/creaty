@@ -70,6 +70,24 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEquipmentStatusDeleteButtons = document.querySelectorAll("[data-admin-equipment-status-delete]");
     var adminEquipmentAddButtons = document.querySelectorAll("[data-admin-equipment-add]");
     var adminEquipmentRemoveButtons = document.querySelectorAll("[data-admin-equipment-remove]");
+    var adminBookingRows = document.querySelectorAll("[data-admin-booking-row]");
+    var adminBookingDetailBackdrop = document.querySelector("[data-admin-booking-detail-backdrop]");
+    var adminBookingDetailCloseButtons = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelectorAll("[data-admin-booking-detail-close]") : [];
+    var adminBookingDetailName = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-name]") : null;
+    var adminBookingDetailEmail = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-email]") : null;
+    var adminBookingDetailOrderNumber = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-order-number]") : null;
+    var adminBookingDetailTimestamp = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-timestamp]") : null;
+    var adminBookingDetailStatus = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-status]") : null;
+    var adminBookingDetailPlace = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-place]") : null;
+    var adminBookingDetailReceive = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receive]") : null;
+    var adminBookingDetailReturn = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-return]") : null;
+    var adminBookingDetailReceivingMethod = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receiving-method]") : null;
+    var adminBookingDetailReturningMethod = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-returning-method]") : null;
+    var adminBookingDetailCourier = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-courier]") : null;
+    var adminBookingDetailPaymentMethod = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-payment-method]") : null;
+    var adminBookingDetailItems = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-items]") : null;
+    var adminBookingStatusOrderIdInput = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-status-order-id]") : null;
+    var adminBookingsSource = Array.isArray(window.__creatyAdminBookings) ? window.__creatyAdminBookings : [];
     var shouldOpenAdminEquipmentArchiveModal = document.body.getAttribute("data-admin-open-equipment-archive-modal") === "true";
     var shouldOpenAdminEquipmentStatusModal = document.body.getAttribute("data-admin-open-equipment-status-modal") === "true";
     var adminActionModalBackdrop = document.querySelector("[data-admin-action-modal-backdrop]");
@@ -4442,7 +4460,8 @@ document.addEventListener("DOMContentLoaded", function () {
         var hasVisibleActionModal = Boolean(adminActionModalBackdrop && !adminActionModalBackdrop.hidden);
         var hasVisibleEventEditModal = Boolean(adminEventEditBackdrop && !adminEventEditBackdrop.hidden);
         var hasVisibleEventThumbsModal = Boolean(adminEventThumbsBackdrop && !adminEventThumbsBackdrop.hidden);
-        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal || hasVisibleEventEditModal || hasVisibleEventThumbsModal);
+        var hasVisibleBookingDetailModal = Boolean(adminBookingDetailBackdrop && !adminBookingDetailBackdrop.hidden);
+        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal || hasVisibleEventEditModal || hasVisibleEventThumbsModal || hasVisibleBookingDetailModal);
     }
 
     function closeAdminActionModal(invokeOnClose) {
@@ -4582,6 +4601,288 @@ document.addEventListener("DOMContentLoaded", function () {
         syncAdminModalBodyLock();
     }
 
+    function normalizeAdminBookingStatusClass(value) {
+        var token = String(value || "status-pending")
+            .toLowerCase()
+            .replace(/[^a-z0-9-]+/g, "");
+
+        if (token.indexOf("status-") !== 0) {
+            return "status-pending";
+        }
+
+        return token;
+    }
+
+    function formatAdminBookingDate(value) {
+        var normalized = String(value || "").trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+            return normalized;
+        }
+
+        var parts = normalized.split("-");
+        var year = Number.parseInt(parts[0], 10);
+        var month = Number.parseInt(parts[1], 10);
+        var day = Number.parseInt(parts[2], 10);
+
+        if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+            return normalized;
+        }
+
+        var parsed = new Date(year, month - 1, day);
+        if (Number.isNaN(parsed.getTime())) {
+            return normalized;
+        }
+
+        return parsed.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric"
+        });
+    }
+
+    function formatAdminBookingTime(value) {
+        var normalized = String(value || "").trim();
+        var match = normalized.match(/^(\d{2}):(\d{2})$/);
+
+        if (!match) {
+            return normalized;
+        }
+
+        var hour = Number.parseInt(match[1], 10);
+        var minute = Number.parseInt(match[2], 10);
+
+        if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+            return normalized;
+        }
+
+        var suffix = hour >= 12 ? "PM" : "AM";
+        var hour12 = hour % 12;
+        if (hour12 === 0) {
+            hour12 = 12;
+        }
+
+        return String(hour12).padStart(2, "0") + ":" + String(minute).padStart(2, "0") + " " + suffix;
+    }
+
+    function formatAdminBookingSchedule(dateValue, timeValue) {
+        var dateLabel = formatAdminBookingDate(dateValue);
+        var timeLabel = formatAdminBookingTime(timeValue);
+
+        if (dateLabel && timeLabel) {
+            return dateLabel + " " + timeLabel;
+        }
+
+        return dateLabel || timeLabel || "-";
+    }
+
+    function formatAdminBookingMethod(value) {
+        var token = String(value || "").toLowerCase().trim();
+
+        if (token === "pickup") {
+            return "Pick-up";
+        }
+
+        if (token === "meetup") {
+            return "Meet-up";
+        }
+
+        if (token === "delivery") {
+            return "Delivery";
+        }
+
+        return token ? token : "-";
+    }
+
+    function formatAdminBookingCourier(value) {
+        var token = String(value || "").toLowerCase().trim();
+
+        if (token === "grab-express") {
+            return "GrabExpress";
+        }
+
+        if (token === "j-and-t") {
+            return "J&T Express";
+        }
+
+        if (token === "self-booked") {
+            return "Self-booked";
+        }
+
+        if (token === "lbc") {
+            return "LBC";
+        }
+
+        if (token === "lalamove") {
+            return "Lalamove";
+        }
+
+        return token ? token : "-";
+    }
+
+    function formatAdminBookingPayment(value) {
+        var token = String(value || "").toLowerCase().trim();
+
+        if (token === "gcash") {
+            return "GCash";
+        }
+
+        if (token === "cash-pickup") {
+            return "Cash on Pickup";
+        }
+
+        if (token === "cash-meetup") {
+            return "Cash on Meetup";
+        }
+
+        return token ? token : "-";
+    }
+
+    function findAdminBookingById(bookingId) {
+        var targetId = String(bookingId || "").trim();
+
+        if (!targetId) {
+            return null;
+        }
+
+        var found = null;
+
+        adminBookingsSource.some(function (entry) {
+            if (!entry || typeof entry !== "object") {
+                return false;
+            }
+
+            if (String(entry.id || "") !== targetId) {
+                return false;
+            }
+
+            found = entry;
+            return true;
+        });
+
+        return found;
+    }
+
+    function populateAdminBookingDetails(booking) {
+        if (!booking) {
+            return;
+        }
+
+        if (adminBookingDetailName) {
+            adminBookingDetailName.textContent = String(booking.name || "-");
+        }
+
+        if (adminBookingDetailEmail) {
+            var emailText = String(booking.email || "").trim();
+            adminBookingDetailEmail.textContent = emailText || "-";
+        }
+
+        if (adminBookingDetailOrderNumber) {
+            adminBookingDetailOrderNumber.textContent = String(booking.orderNumber || booking.id || "-");
+        }
+
+        if (adminBookingDetailTimestamp) {
+            adminBookingDetailTimestamp.textContent = String(booking.timestamp || "-");
+        }
+
+        if (adminBookingDetailStatus) {
+            var statusClass = normalizeAdminBookingStatusClass(booking.statusClass || "status-pending");
+            adminBookingDetailStatus.className = "admin-bookings-status " + statusClass;
+            adminBookingDetailStatus.textContent = String(booking.status || "PENDING");
+        }
+
+        if (adminBookingDetailPlace) {
+            var placeText = String(booking.place || "").trim();
+            adminBookingDetailPlace.textContent = placeText || "-";
+        }
+
+        if (adminBookingDetailReceive) {
+            adminBookingDetailReceive.textContent = formatAdminBookingSchedule(booking.receiveDate, booking.receiveTime);
+        }
+
+        if (adminBookingDetailReturn) {
+            adminBookingDetailReturn.textContent = formatAdminBookingSchedule(booking.returnDate, booking.returnTime);
+        }
+
+        if (adminBookingDetailReceivingMethod) {
+            adminBookingDetailReceivingMethod.textContent = formatAdminBookingMethod(booking.receivingMethod);
+        }
+
+        if (adminBookingDetailReturningMethod) {
+            adminBookingDetailReturningMethod.textContent = formatAdminBookingMethod(booking.returningMethod);
+        }
+
+        if (adminBookingDetailCourier) {
+            adminBookingDetailCourier.textContent = formatAdminBookingCourier(booking.courier);
+        }
+
+        if (adminBookingDetailPaymentMethod) {
+            adminBookingDetailPaymentMethod.textContent = formatAdminBookingPayment(booking.paymentMethod);
+        }
+
+        if (adminBookingStatusOrderIdInput) {
+            adminBookingStatusOrderIdInput.value = String(booking.id || "");
+        }
+
+        if (adminBookingDetailItems) {
+            adminBookingDetailItems.innerHTML = "";
+
+            var bookingItems = Array.isArray(booking.items) ? booking.items : [];
+
+            if (!bookingItems.length) {
+                var emptyItem = document.createElement("li");
+                emptyItem.textContent = "No item details found.";
+                adminBookingDetailItems.appendChild(emptyItem);
+            } else {
+                bookingItems.forEach(function (item) {
+                    if (!item || typeof item !== "object") {
+                        return;
+                    }
+
+                    var name = String(item.name || "Item");
+                    var qty = Number.parseInt(item.qty, 10);
+                    var days = Number.parseInt(item.days, 10);
+
+                    if (!Number.isFinite(qty) || qty < 1) {
+                        qty = 1;
+                    }
+
+                    if (!Number.isFinite(days) || days < 1) {
+                        days = 1;
+                    }
+
+                    var dayLabel = days === 1 ? "day" : "days";
+                    var entry = document.createElement("li");
+                    entry.textContent = name + " - Quantity " + qty + ", " + days + " " + dayLabel;
+                    adminBookingDetailItems.appendChild(entry);
+                });
+            }
+        }
+    }
+
+    function openAdminBookingDetail(bookingId) {
+        if (!adminBookingDetailBackdrop) {
+            return;
+        }
+
+        var booking = findAdminBookingById(bookingId);
+        if (!booking) {
+            return;
+        }
+
+        populateAdminBookingDetails(booking);
+        adminBookingDetailBackdrop.hidden = false;
+        syncAdminModalBodyLock();
+    }
+
+    function closeAdminBookingDetail() {
+        if (!adminBookingDetailBackdrop) {
+            return;
+        }
+
+        adminBookingDetailBackdrop.hidden = true;
+        syncAdminModalBodyLock();
+    }
+
     adminUsersOpenModalButtons.forEach(function (button) {
         button.addEventListener("click", function () {
             openAdminUsersCreateModal();
@@ -4638,6 +4939,35 @@ document.addEventListener("DOMContentLoaded", function () {
         adminEquipmentStatusBackdrop.addEventListener("click", function (event) {
             if (event.target === adminEquipmentStatusBackdrop) {
                 closeAdminEquipmentStatusModal();
+            }
+        });
+    }
+
+    adminBookingRows.forEach(function (row) {
+        row.addEventListener("click", function () {
+            openAdminBookingDetail(row.getAttribute("data-admin-booking-id") || "");
+        });
+
+        row.addEventListener("keydown", function (event) {
+            if (event.key !== "Enter" && event.key !== " ") {
+                return;
+            }
+
+            event.preventDefault();
+            openAdminBookingDetail(row.getAttribute("data-admin-booking-id") || "");
+        });
+    });
+
+    adminBookingDetailCloseButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            closeAdminBookingDetail();
+        });
+    });
+
+    if (adminBookingDetailBackdrop) {
+        adminBookingDetailBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminBookingDetailBackdrop) {
+                closeAdminBookingDetail();
             }
         });
     }
@@ -4824,6 +5154,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminActionModalBackdrop && !adminActionModalBackdrop.hidden) {
             closeAdminActionModal(true);
+        }
+
+        if (adminBookingDetailBackdrop && !adminBookingDetailBackdrop.hidden) {
+            closeAdminBookingDetail();
         }
     });
 
@@ -5493,6 +5827,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 returnDate: booking.returnDate || "",
                 returnTime: booking.returnTime || "",
                 place: booking.place || "",
+                receivingMethod: booking.receivingMethod || "",
+                returningMethod: booking.returningMethod || "",
+                courier: booking.courier || "",
                 paymentMethod: booking.paymentMethod || "",
                 createdAt: new Date().toISOString()
             };

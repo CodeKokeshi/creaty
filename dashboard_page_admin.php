@@ -282,7 +282,7 @@ foreach (load_customer_orders_repository() as $bookingRecord) {
 
     $customerName = trim((string) ($bookingRecord['customer_name'] ?? ''));
     if ($customerName === '') {
-        $customerName = 'Customer #' . trim((string) ($bookingRecord['customer_id'] ?? '')); 
+        $customerName = 'Customer #' . trim((string) ($bookingRecord['customer_id'] ?? ''));
     }
 
     $orderNumberLabel = strtoupper($bookingId);
