@@ -35,6 +35,7 @@ require_once __DIR__ . '/config/message_notifications_repository.php';
 $adminNotificationCount = count_unread_message_notifications();
 
 require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/config/customer_orders_repository.php';
 
 $initialAdminPanel = strtolower(trim((string) ($_GET['admin_view'] ?? '')));
 if (!in_array($initialAdminPanel, ['equipments', 'bookings', 'reports', 'users'], true)) {
@@ -258,22 +259,63 @@ if ($customerUsersResult instanceof mysqli_result) {
     }
 }
 
-$dashboardBookings = [
-    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'PENDING'],
-    ['starred' => true, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'PENDING'],
-    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'PENDING'],
-    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'PENDING'],
-    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'PENDING'],
-    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'CONFIRMED'],
-    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'CONFIRMED'],
-    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'CONFIRMED'],
-    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'CANCELED'],
-    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'CANCELED'],
-    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'PAST RETURN'],
-    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'ONGOING'],
-    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'ONGOING'],
-    ['starred' => false, 'name' => 'JUAN MIGUEL CARLOS', 'order' => '00032', 'time' => 'JAN 25 20:25', 'status' => 'COMPLETED'],
-];
+$dashboardBookings = [];
+$adminBookingDetails = [];
+
+foreach (load_customer_orders_repository() as $bookingRecord) {
+    if (!is_array($bookingRecord)) {
+        continue;
+    }
+
+    $bookingId = trim((string) ($bookingRecord['id'] ?? ''));
+    if ($bookingId === '') {
+        continue;
+    }
+
+    $bookingStatusToken = normalize_customer_order_status_token($bookingRecord['status'] ?? 'pending');
+    $bookingStatusLabel = strtoupper(str_replace('-', ' ', $bookingStatusToken));
+    $bookingTimestampRaw = trim((string) ($bookingRecord['created_at'] ?? ''));
+    $bookingTimestamp = strtotime($bookingTimestampRaw);
+    $bookingTimestampLabel = $bookingTimestamp
+        ? strtoupper(date('M d, Y h:i A', $bookingTimestamp))
+        : '-';
+
+    $customerName = trim((string) ($bookingRecord['customer_name'] ?? ''));
+    if ($customerName === '') {
+        $customerName = 'Customer #' . trim((string) ($bookingRecord['customer_id'] ?? '')); 
+    }
+
+    $orderNumberLabel = strtoupper($bookingId);
+
+    $dashboardBookings[] = [
+        'id' => $bookingId,
+        'name' => $customerName,
+        'order' => $orderNumberLabel,
+        'time' => $bookingTimestampLabel,
+        'status' => $bookingStatusLabel,
+        'statusClass' => 'status-' . $bookingStatusToken,
+    ];
+
+    $adminBookingDetails[] = [
+        'id' => $bookingId,
+        'name' => $customerName,
+        'email' => trim((string) ($bookingRecord['customer_email'] ?? '')),
+        'orderNumber' => $orderNumberLabel,
+        'timestamp' => $bookingTimestampLabel,
+        'status' => $bookingStatusLabel,
+        'statusClass' => 'status-' . $bookingStatusToken,
+        'items' => is_array($bookingRecord['items'] ?? null) ? array_values($bookingRecord['items']) : [],
+        'receiveDate' => (string) ($bookingRecord['receive_date'] ?? ''),
+        'receiveTime' => (string) ($bookingRecord['receive_time'] ?? ''),
+        'returnDate' => (string) ($bookingRecord['return_date'] ?? ''),
+        'returnTime' => (string) ($bookingRecord['return_time'] ?? ''),
+        'place' => (string) ($bookingRecord['place'] ?? ''),
+        'receivingMethod' => (string) ($bookingRecord['receiving_method'] ?? ''),
+        'returningMethod' => (string) ($bookingRecord['returning_method'] ?? ''),
+        'courier' => (string) ($bookingRecord['courier'] ?? ''),
+        'paymentMethod' => (string) ($bookingRecord['payment_method'] ?? ''),
+    ];
+}
 
 if (!is_array($products)) {
     $products = [];
@@ -894,7 +936,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260328-4">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260403-2">
 </head>
 <body
     class="home-page-customer"
@@ -1124,14 +1166,6 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                 <table class="admin-bookings-table">
                     <thead>
                         <tr>
-                            <th scope="col" class="admin-bookings-back-col">
-                                <a href="#" class="admin-bookings-back-btn">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="icon-back">
-                                        <path d="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z" fill="currentColor"/>
-                                    </svg>
-                                    BACK
-                                </a>
-                            </th>
                             <th scope="col">NAME</th>
                             <th scope="col">ORDER NUMBER</th>
                             <th scope="col">TIME STAMP</th>
@@ -1139,30 +1173,71 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($dashboardBookings as $booking): ?>
+                        <?php if ($dashboardBookings): ?>
+                            <?php foreach ($dashboardBookings as $booking): ?>
+                                <tr class="admin-bookings-row" data-admin-booking-row data-admin-booking-id="<?php echo htmlspecialchars((string) ($booking['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" tabindex="0">
+                                    <td class="admin-bookings-name-col"><?php echo htmlspecialchars((string) ($booking['name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars((string) ($booking['order'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars((string) ($booking['time'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td>
+                                        <span class="admin-bookings-status <?php echo htmlspecialchars((string) ($booking['statusClass'] ?? 'status-pending'), ENT_QUOTES, 'UTF-8'); ?>">
+                                            <?php echo htmlspecialchars((string) ($booking['status'] ?? 'PENDING'), ENT_QUOTES, 'UTF-8'); ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
                             <tr>
-                                <td class="admin-bookings-star-col">
-                                    <?php if ($booking['starred']): ?>
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?php echo htmlspecialchars($booking['name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                <td><?php echo htmlspecialchars($booking['order'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                <td><?php echo htmlspecialchars($booking['time'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                <td>
-                                    <?php 
-                                        $statusClass = 'status-' . strtolower(str_replace(' ', '-', $booking['status']));
-                                    ?>
-                                    <span class="admin-bookings-status <?php echo $statusClass; ?>">
-                                        <?php echo htmlspecialchars($booking['status'], ENT_QUOTES, 'UTF-8'); ?>
-                                    </span>
-                                </td>
+                                <td colspan="4">No bookings yet.</td>
                             </tr>
-                        <?php endforeach; ?>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
         </section>
+
+        <div class="admin-booking-detail-backdrop" data-admin-booking-detail-backdrop hidden>
+            <section class="admin-booking-detail-modal" role="dialog" aria-modal="true" aria-labelledby="admin-booking-detail-title">
+                <div class="admin-booking-detail-head">
+                    <h2 id="admin-booking-detail-title">Booking Details</h2>
+                    <button class="admin-booking-detail-close" type="button" data-admin-booking-detail-close aria-label="Close booking details">&times;</button>
+                </div>
+
+                <div class="admin-booking-detail-grid">
+                    <p><strong>Name:</strong> <span data-admin-booking-detail-name>-</span></p>
+                    <p><strong>Email:</strong> <span data-admin-booking-detail-email>-</span></p>
+                    <p><strong>Order Number:</strong> <span data-admin-booking-detail-order-number>-</span></p>
+                    <p><strong>Timestamp:</strong> <span data-admin-booking-detail-timestamp>-</span></p>
+                    <p>
+                        <strong>Status:</strong>
+                        <span class="admin-bookings-status status-pending" data-admin-booking-detail-status>-</span>
+                    </p>
+                    <p><strong>Meeting Place:</strong> <span data-admin-booking-detail-place>-</span></p>
+                    <p><strong>Receiving:</strong> <span data-admin-booking-detail-receive>-</span></p>
+                    <p><strong>Returning:</strong> <span data-admin-booking-detail-return>-</span></p>
+                    <p><strong>Receiving Method:</strong> <span data-admin-booking-detail-receiving-method>-</span></p>
+                    <p><strong>Returning Method:</strong> <span data-admin-booking-detail-returning-method>-</span></p>
+                    <p><strong>Courier:</strong> <span data-admin-booking-detail-courier>-</span></p>
+                    <p><strong>Payment Method:</strong> <span data-admin-booking-detail-payment-method>-</span></p>
+                </div>
+
+                <div class="admin-booking-detail-items-wrap">
+                    <h3>Ordered Items</h3>
+                    <ul class="admin-booking-detail-items" data-admin-booking-detail-items></ul>
+                </div>
+
+                <form class="admin-booking-detail-actions" method="post" action="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_booking_status.php', ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="order_id" value="" data-admin-booking-status-order-id>
+                    <input type="hidden" name="redirect" value="<?php echo htmlspecialchars($adminHomePath . '?admin_view=bookings', ENT_QUOTES, 'UTF-8'); ?>">
+                    <button type="submit" name="next_status" value="pending" class="admin-booking-action">Set Pending</button>
+                    <button type="submit" name="next_status" value="approved" class="admin-booking-action is-approve">Approve</button>
+                    <button type="submit" name="next_status" value="ongoing" class="admin-booking-action is-ongoing">Mark Ongoing</button>
+                    <button type="submit" name="next_status" value="return" class="admin-booking-action is-return">Mark Return</button>
+                    <button type="submit" name="next_status" value="completed" class="admin-booking-action is-complete">Complete</button>
+                    <button type="submit" name="next_status" value="canceled" class="admin-booking-action is-cancel">Cancel</button>
+                </form>
+            </section>
+        </div>
 
         <section class="admin-reports-shell" data-admin-dashboard-panel="reports" hidden>
             <div class="admin-reports-head" role="group" aria-label="Report breakdown">
@@ -1806,6 +1881,9 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script>
+        window.__creatyAdminBookings = <?php echo json_encode($adminBookingDetails, JSON_UNESCAPED_SLASHES); ?>;
+    </script>
+    <script>
         function updateFieldLabels() {
             const roleRadios = document.querySelectorAll('input[name="role"]'); 
             const selectedRole = Array.from(roleRadios).find(r => r.checked)?.value || 'customer';
@@ -1832,7 +1910,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         }
         document.addEventListener('DOMContentLoaded', updateFieldLabels);
     </script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260402-5"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260403-3"></script>
 </body>
 </html>
 
