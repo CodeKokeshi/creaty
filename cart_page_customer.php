@@ -379,32 +379,12 @@ $availableCartItemIds = array_values(array_unique($availableCartItemIds));
                         </div>
 
                         <label class="cart-form-line">
-                            <span>Place:</span>
+                            <span>Meeting Place:</span>
                             <select data-booking-field="place">
-                                <option value="Carmona, Cavite" selected>Carmona, Cavite</option>
-                                <option value="Bacoor, Cavite">Bacoor, Cavite</option>
-                                <option value="Imus, Cavite">Imus, Cavite</option>
-                                <option value="Dasmarinas, Cavite">Dasmarinas, Cavite</option>
-                                <option value="Tagaytay, Cavite">Tagaytay, Cavite</option>
-                                <option value="Silang, Cavite">Silang, Cavite</option>
-                                <option value="General Trias, Cavite">General Trias, Cavite</option>
-                                <option value="Tanza, Cavite">Tanza, Cavite</option>
-                                <option value="Trece Martires, Cavite">Trece Martires, Cavite</option>
-                                <option value="Naic, Cavite">Naic, Cavite</option>
-                                <option value="Kawit, Cavite">Kawit, Cavite</option>
-                                <option value="Rosario, Cavite">Rosario, Cavite</option>
+                                <option value="Walter Mart Entrance, Carmona" selected>Walter Mart Entrance, Carmona</option>
+                                <option value="Cabilang Baybay (Arko), Carmona">Cabilang Baybay (Arko), Carmona</option>
                             </select>
                         </label>
-
-                        <div class="cart-map-embed-wrap">
-                            <iframe
-                                title="Cavite map preview"
-                                loading="lazy"
-                                referrerpolicy="no-referrer-when-downgrade"
-                                data-booking-map
-                                src="https://www.google.com/maps?q=Carmona%2C%20Cavite&output=embed"
-                            ></iframe>
-                        </div>
                     </div>
 
                     <div class="cart-booking-group">

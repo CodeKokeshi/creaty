@@ -5133,12 +5133,13 @@ document.addEventListener("DOMContentLoaded", function () {
         var bookingNote = document.querySelector("[data-cart-booking-note]");
         var confirmButton = bookingCard ? bookingCard.querySelector(".cart-confirm-button") : null;
         var paymentSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='paymentMethod']") : null;
-        var mapFrame = bookingCard ? bookingCard.querySelector("[data-booking-map]") : null;
         var deliveryOnlyBlock = bookingCard ? bookingCard.querySelector("[data-delivery-only-block]") : null;
         var courierSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='courier']") : null;
         var placeSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='place']") : null;
         var receiveDateInput = bookingCard ? bookingCard.querySelector("[data-booking-field='receiveDate']") : null;
         var returnDateInput = bookingCard ? bookingCard.querySelector("[data-booking-field='returnDate']") : null;
+        var receiveTimeSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='receiveTime']") : null;
+        var returnTimeSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='returnTime']") : null;
         var receiveMethodInputs = bookingCard ? bookingCard.querySelectorAll("input[name='receivingMethod']") : [];
         var returnMethodInputs = bookingCard ? bookingCard.querySelectorAll("input[name='returningMethod']") : [];
         var uploadInputs = bookingCard ? bookingCard.querySelectorAll("input[type='file'][data-booking-field]") : [];
@@ -5253,29 +5254,30 @@ document.addEventListener("DOMContentLoaded", function () {
                 returnDateInput.value = bookingState.returnDate || tomorrow;
             }
 
-            if (placeSelect && bookingState.place) {
-                placeSelect.value = bookingState.place;
+            if (placeSelect) {
+                if (bookingState.place) {
+                    placeSelect.value = bookingState.place;
+                }
+
+                if (!placeSelect.value && placeSelect.options.length) {
+                    placeSelect.selectedIndex = 0;
+                }
             }
 
             if (courierSelect && bookingState.courier) {
                 courierSelect.value = bookingState.courier;
             }
 
-            if (bookingCard) {
-                var receiveTime = bookingCard.querySelector("[data-booking-field='receiveTime']");
-                var returnTime = bookingCard.querySelector("[data-booking-field='returnTime']");
+            if (receiveTimeSelect && bookingState.receiveTime) {
+                receiveTimeSelect.value = bookingState.receiveTime;
+            }
 
-                if (receiveTime && bookingState.receiveTime) {
-                    receiveTime.value = bookingState.receiveTime;
-                }
+            if (returnTimeSelect && bookingState.returnTime) {
+                returnTimeSelect.value = bookingState.returnTime;
+            }
 
-                if (returnTime && bookingState.returnTime) {
-                    returnTime.value = bookingState.returnTime;
-                }
-
-                if (paymentSelect && bookingState.paymentMethod) {
-                    paymentSelect.value = bookingState.paymentMethod;
-                }
+            if (paymentSelect && bookingState.paymentMethod) {
+                paymentSelect.value = bookingState.paymentMethod;
             }
 
             if (bookingState.receivingMethod) {
@@ -5307,15 +5309,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 return {};
             }
 
-            var receiveTimeField = bookingCard.querySelector("[data-booking-field='receiveTime']");
-            var returnTimeField = bookingCard.querySelector("[data-booking-field='returnTime']");
-
             return {
                 receiveDate: receiveDateInput ? receiveDateInput.value : "",
-                receiveTime: receiveTimeField ? receiveTimeField.value : "",
+                receiveTime: receiveTimeSelect ? receiveTimeSelect.value : "",
                 place: placeSelect ? placeSelect.value : "",
                 returnDate: returnDateInput ? returnDateInput.value : "",
-                returnTime: returnTimeField ? returnTimeField.value : "",
+                returnTime: returnTimeSelect ? returnTimeSelect.value : "",
                 courier: courierSelect ? courierSelect.value : "",
                 receivingMethod: getMethodValue(receiveMethodInputs, "pickup"),
                 returningMethod: getMethodValue(returnMethodInputs, "meetup"),
@@ -5328,13 +5327,64 @@ document.addEventListener("DOMContentLoaded", function () {
             saveJsonStorage(bookingStorageKey, bookingState);
         }
 
-        function updateMapPreview() {
-            if (!mapFrame || !placeSelect) {
+        function getCartRentalDays(items) {
+            var source = Array.isArray(items) ? items : getCartItems();
+            var maxDays = 1;
+
+            source.forEach(function (item) {
+                if (!item || isUnavailableCartItem(item)) {
+                    return;
+                }
+
+                var itemDays = Number.parseInt(item.days, 10);
+                if (!Number.isFinite(itemDays) || itemDays < 1) {
+                    itemDays = 1;
+                }
+
+                if (itemDays > maxDays) {
+                    maxDays = itemDays;
+                }
+            });
+
+            return maxDays;
+        }
+
+        function syncReturnDateTimeFromReceive(items) {
+            if (!receiveDateInput || !returnDateInput) {
                 return;
             }
 
-            var place = placeSelect.value || "Cavite";
-            mapFrame.src = "https://www.google.com/maps?q=" + encodeURIComponent(place) + "&output=embed";
+            var receiveDateValue = String(receiveDateInput.value || "").trim();
+            if (!receiveDateValue) {
+                return;
+            }
+
+            var dateParts = receiveDateValue.split("-");
+            if (dateParts.length !== 3) {
+                return;
+            }
+
+            var year = Number.parseInt(dateParts[0], 10);
+            var month = Number.parseInt(dateParts[1], 10);
+            var day = Number.parseInt(dateParts[2], 10);
+
+            if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+                return;
+            }
+
+            var rentalDays = getCartRentalDays(items);
+            var returnDate = new Date(year, month - 1, day + rentalDays);
+
+            if (Number.isNaN(returnDate.getTime())) {
+                return;
+            }
+
+            returnDateInput.min = receiveDateValue;
+            returnDateInput.value = dateKeyFromDate(returnDate);
+
+            if (receiveTimeSelect && returnTimeSelect && receiveTimeSelect.value) {
+                returnTimeSelect.value = receiveTimeSelect.value;
+            }
         }
 
         function updateDeliveryFields() {
@@ -5489,6 +5539,12 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             saveCartItems(items);
+
+            if (field === "days") {
+                syncReturnDateTimeFromReceive(items);
+                saveBookingSnapshot();
+            }
+
             renderCartItems();
         }
 
@@ -5509,6 +5565,8 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             saveCartItems(filteredItems);
+            syncReturnDateTimeFromReceive(filteredItems);
+            saveBookingSnapshot();
             renderCartItems();
         });
 
@@ -5525,7 +5583,10 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
                     }
 
-                    updateMapPreview();
+                    if (control === receiveDateInput || control === receiveTimeSelect) {
+                        syncReturnDateTimeFromReceive();
+                    }
+
                     updateDeliveryFields();
                     saveBookingSnapshot();
                     refreshTotals();
@@ -5576,6 +5637,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (unavailableItems.length) {
                     openUnavailableModal(unavailableItems, function () {
                         var remainingItems = removeUnavailableCartItems();
+                        syncReturnDateTimeFromReceive(remainingItems);
+                        saveBookingSnapshot();
                         renderCartItems();
 
                         if (!remainingItems.length) {
@@ -5597,7 +5660,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         restoreBookingDefaults();
-        updateMapPreview();
+        syncReturnDateTimeFromReceive();
         updateDeliveryFields();
         saveBookingSnapshot();
         renderCartItems();
