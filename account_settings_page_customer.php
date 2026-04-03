@@ -82,14 +82,6 @@ $addressParts = array_filter([
 
 $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No address yet.';
 
-$staticOrders = [
-    ['id' => '1001', 'status' => 'Return', 'actionLabel' => 'Upload Delivery Link', 'actionType' => 'secondary'],
-    ['id' => '1002', 'status' => 'Completed', 'actionLabel' => '', 'actionType' => ''],
-    ['id' => '1003', 'status' => 'Pending', 'actionLabel' => 'Upload Payment Receipt', 'actionType' => 'primary'],
-    ['id' => '1004', 'status' => 'Approved', 'actionLabel' => 'Cancel', 'actionType' => 'danger'],
-    ['id' => '1005', 'status' => 'Ongoing', 'actionLabel' => '', 'actionType' => ''],
-    ['id' => '1006', 'status' => 'Canceled', 'actionLabel' => '', 'actionType' => '']
-];
 ?>
 
 <!DOCTYPE html>
@@ -144,7 +136,7 @@ $staticOrders = [
         <nav class="section-nav section-nav-disabled" aria-label="Catalog filters">
             <span class="section-nav-filter is-disabled" aria-disabled="true">PROFILE</span>
             <span class="section-nav-section is-disabled" aria-disabled="true">PERSONAL INFORMATION</span>
-            <span class="section-nav-filter is-disabled" aria-disabled="true">ORDER STATUS</span>
+            <span class="section-nav-filter is-disabled" aria-disabled="true">ADDRESS</span>
         </nav>
     </header>
 
@@ -152,7 +144,7 @@ $staticOrders = [
         <section class="account-settings-card reveal">
             <div class="account-settings-head">
                 <h1>Profile</h1>
-                <p>Manage your personal information and address. Order statuses shown below are static previews.</p>
+                <p>Manage your personal information and address.</p>
             </div>
 
             <?php if ($infoMessage !== ''): ?>
@@ -275,52 +267,7 @@ $staticOrders = [
                 </form>
             </section>
 
-            <section class="profile-section-card" aria-labelledby="profile-order-status-heading">
-                <div class="profile-section-head">
-                    <h2 id="profile-order-status-heading">Order Status</h2>
-                </div>
-
-                <div class="profile-order-list" aria-label="Order status list">
-                    <?php foreach ($staticOrders as $order): ?>
-                        <?php
-                        $statusLower = strtolower($order['status']);
-                        $statusClass = 'status-' . preg_replace('/[^a-z0-9]+/', '-', $statusLower);
-                        ?>
-                        <article class="profile-order-item">
-                            <div class="profile-order-meta">
-                                <p class="profile-order-id">Order#<?php echo htmlspecialchars($order['id'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                <span class="profile-order-status <?php echo htmlspecialchars($statusClass, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($order['status'], ENT_QUOTES, 'UTF-8'); ?></span>
-                            </div>
-
-                            <?php if ($order['actionLabel'] !== ''): ?>
-                                <?php if ($order['status'] === 'Approved'): ?>
-                                    <button type="button" class="profile-order-action <?php echo htmlspecialchars($order['actionType'], ENT_QUOTES, 'UTF-8'); ?>" data-profile-open-cancel-modal>
-                                        <?php echo htmlspecialchars($order['actionLabel'], ENT_QUOTES, 'UTF-8'); ?>
-                                    </button>
-                                <?php else: ?>
-                                    <button type="button" class="profile-order-action <?php echo htmlspecialchars($order['actionType'], ENT_QUOTES, 'UTF-8'); ?>">
-                                        <?php echo htmlspecialchars($order['actionLabel'], ENT_QUOTES, 'UTF-8'); ?>
-                                    </button>
-                                <?php endif; ?>
-                            <?php endif; ?>
-                        </article>
-                    <?php endforeach; ?>
-                </div>
-            </section>
         </section>
-
-        <div class="profile-modal" id="profile-cancel-modal" hidden>
-            <div class="profile-modal-backdrop" data-profile-close-cancel-modal></div>
-            <section class="profile-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-cancel-title">
-                <h3 id="profile-cancel-title">Reason for Cancellation</h3>
-                <p>Please tell us why you want to cancel this approved order.</p>
-                <textarea rows="4" placeholder="Type your reason here..."></textarea>
-                <div class="profile-modal-actions">
-                    <button type="button" class="profile-action-button is-ghost" data-profile-close-cancel-modal>Close</button>
-                    <button type="button" class="profile-action-button">Submit Request</button>
-                </div>
-            </section>
-        </div>
     </main>
 
     <?php require __DIR__ . '/customer_message_modal.php'; ?>
