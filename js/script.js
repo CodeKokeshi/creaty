@@ -4954,6 +4954,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var cartStorageKey = "creaty_cart_v1";
     var bookingStorageKey = "creaty_booking_v1";
+    var orderStorageKey = "creaty_orders_v1";
 
     function loadJsonStorage(storageKey, fallbackValue) {
         try {
@@ -5143,6 +5144,15 @@ document.addEventListener("DOMContentLoaded", function () {
         var receiveMethodInputs = bookingCard ? bookingCard.querySelectorAll("input[name='receivingMethod']") : [];
         var returnMethodInputs = bookingCard ? bookingCard.querySelectorAll("input[name='returningMethod']") : [];
         var uploadInputs = bookingCard ? bookingCard.querySelectorAll("input[type='file'][data-booking-field]") : [];
+        var cartNavButtons = document.querySelectorAll("[data-cart-nav]");
+        var cartSidebar = document.querySelector("[data-cart-sidebar]");
+        var cartLayout = document.querySelector(".cart-layout");
+        var cartViewPanels = {
+            cart: document.querySelector("[data-cart-view='cart']"),
+            orderStatus: document.querySelector("[data-cart-view='order-status']")
+        };
+        var orderStatusList = document.querySelector("[data-cart-orders-list]");
+        var orderStatusEmpty = document.querySelector("[data-cart-orders-empty]");
         var bookingState = loadJsonStorage(bookingStorageKey, {});
         var unavailableModal = document.querySelector("[data-cart-unavailable-modal]");
         var unavailableModalMessage = unavailableModal ? unavailableModal.querySelector("[data-cart-unavailable-message]") : null;
@@ -5229,6 +5239,286 @@ document.addEventListener("DOMContentLoaded", function () {
                 closeUnavailableModal();
             });
         });
+
+        function setCartView(nextView) {
+            var normalizedView = nextView === "order-status" ? "order-status" : "cart";
+
+            if (cartViewPanels.cart) {
+                cartViewPanels.cart.hidden = normalizedView !== "cart";
+            }
+
+            if (cartViewPanels.orderStatus) {
+                cartViewPanels.orderStatus.hidden = normalizedView !== "order-status";
+            }
+
+            if (cartSidebar) {
+                cartSidebar.hidden = normalizedView !== "cart";
+            }
+
+            if (cartLayout) {
+                cartLayout.classList.toggle("is-order-status-view", normalizedView === "order-status");
+            }
+
+            if (normalizedView === "order-status") {
+                renderOrderStatusList();
+            }
+
+            Array.prototype.forEach.call(cartNavButtons, function (button) {
+                var buttonView = button.getAttribute("data-cart-nav") || "";
+                var isActive = buttonView === normalizedView;
+
+                button.classList.toggle("is-active", isActive);
+
+                if (isActive) {
+                    button.setAttribute("aria-current", "page");
+                } else {
+                    button.removeAttribute("aria-current");
+                }
+            });
+        }
+
+        function normalizeStoredOrder(order) {
+            if (!order || typeof order !== "object") {
+                return null;
+            }
+
+            var items = Array.isArray(order.items)
+                ? order.items.map(function (item) {
+                    if (!item || typeof item !== "object") {
+                        return null;
+                    }
+
+                    var qty = Number.parseInt(item.qty, 10);
+                    var days = Number.parseInt(item.days, 10);
+
+                    return {
+                        name: String(item.name || "Item"),
+                        qty: Number.isFinite(qty) && qty > 0 ? qty : 1,
+                        days: Number.isFinite(days) && days > 0 ? days : 1
+                    };
+                }).filter(function (item) {
+                    return Boolean(item);
+                })
+                : [];
+
+            return {
+                id: String(order.id || ""),
+                status: String(order.status || "Pending"),
+                items: items,
+                receiveDate: String(order.receiveDate || ""),
+                receiveTime: String(order.receiveTime || ""),
+                returnDate: String(order.returnDate || ""),
+                returnTime: String(order.returnTime || ""),
+                place: String(order.place || ""),
+                paymentMethod: String(order.paymentMethod || ""),
+                createdAt: String(order.createdAt || "")
+            };
+        }
+
+        function getStoredOrders() {
+            var parsedOrders = loadJsonStorage(orderStorageKey, []);
+
+            if (!Array.isArray(parsedOrders)) {
+                return [];
+            }
+
+            return parsedOrders
+                .map(function (order) {
+                    return normalizeStoredOrder(order);
+                })
+                .filter(function (order) {
+                    return Boolean(order);
+                });
+        }
+
+        function saveStoredOrders(orders) {
+            saveJsonStorage(orderStorageKey, orders);
+        }
+
+        function formatTimeDisplay(timeValue) {
+            var normalized = String(timeValue || "").trim();
+            if (!normalized) {
+                return "";
+            }
+
+            var parts = normalized.split(":");
+            if (parts.length < 2) {
+                return normalized;
+            }
+
+            var hour = Number.parseInt(parts[0], 10);
+            var minute = Number.parseInt(parts[1], 10);
+
+            if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+                return normalized;
+            }
+
+            var suffix = hour >= 12 ? "PM" : "AM";
+            var hour12 = hour % 12;
+            if (hour12 === 0) {
+                hour12 = 12;
+            }
+
+            return padTwo(hour12) + ":" + padTwo(minute) + " " + suffix;
+        }
+
+        function formatDateDisplay(dateValue) {
+            var normalized = String(dateValue || "").trim();
+            if (!normalized) {
+                return "";
+            }
+
+            var parts = normalized.split("-");
+            if (parts.length !== 3) {
+                return normalized;
+            }
+
+            var year = Number.parseInt(parts[0], 10);
+            var month = Number.parseInt(parts[1], 10);
+            var day = Number.parseInt(parts[2], 10);
+
+            if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+                return normalized;
+            }
+
+            var parsedDate = new Date(year, month - 1, day);
+            if (Number.isNaN(parsedDate.getTime())) {
+                return normalized;
+            }
+
+            return parsedDate.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric"
+            });
+        }
+
+        function formatOrderSchedule(dateValue, timeValue) {
+            var dateLabel = formatDateDisplay(dateValue);
+            var timeLabel = formatTimeDisplay(timeValue);
+
+            if (dateLabel && timeLabel) {
+                return dateLabel + " " + timeLabel;
+            }
+
+            return dateLabel || timeLabel;
+        }
+
+        function buildOrderItemsSummary(items) {
+            if (!Array.isArray(items) || !items.length) {
+                return "No items";
+            }
+
+            return items.map(function (item) {
+                var name = String(item.name || "Item");
+                var qty = Number.isFinite(item.qty) && item.qty > 0 ? item.qty : 1;
+                var days = Number.isFinite(item.days) && item.days > 0 ? item.days : 1;
+                var dayLabel = days === 1 ? "day" : "days";
+
+                return name + " x" + qty + " (" + days + " " + dayLabel + ")";
+            }).join(", ");
+        }
+
+        function createPendingOrderRecord(items) {
+            var booking = getBookingSnapshot();
+            var source = Array.isArray(items) ? items : getCartItems();
+            var normalizedItems = source
+                .filter(function (item) {
+                    return item && !isUnavailableCartItem(item);
+                })
+                .map(function (item) {
+                    return {
+                        name: String(item.name || "Item"),
+                        qty: Number.isFinite(item.qty) && item.qty > 0 ? item.qty : 1,
+                        days: Number.isFinite(item.days) && item.days > 0 ? item.days : 1
+                    };
+                });
+
+            if (!normalizedItems.length) {
+                return null;
+            }
+
+            return {
+                id: "booking-" + Date.now() + "-" + Math.floor(Math.random() * 900 + 100),
+                status: "Pending",
+                items: normalizedItems,
+                receiveDate: booking.receiveDate || "",
+                receiveTime: booking.receiveTime || "",
+                returnDate: booking.returnDate || "",
+                returnTime: booking.returnTime || "",
+                place: booking.place || "",
+                paymentMethod: booking.paymentMethod || "",
+                createdAt: new Date().toISOString()
+            };
+        }
+
+        function renderOrderStatusList() {
+            if (!orderStatusList) {
+                return;
+            }
+
+            orderStatusList.innerHTML = "";
+
+            var pendingOrders = getStoredOrders().filter(function (order) {
+                return String(order.status || "").toLowerCase() === "pending";
+            });
+
+            if (orderStatusEmpty) {
+                orderStatusEmpty.hidden = pendingOrders.length > 0;
+            }
+
+            pendingOrders.forEach(function (order) {
+                var statusText = String(order.status || "Pending");
+                var statusSlug = statusText.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+                var orderedText = "Ordered: " + buildOrderItemsSummary(order.items);
+                var receiveSchedule = formatOrderSchedule(order.receiveDate, order.receiveTime);
+                var returnSchedule = formatOrderSchedule(order.returnDate, order.returnTime);
+                var scheduleText = "Date: " + (receiveSchedule && returnSchedule
+                    ? receiveSchedule + " to " + returnSchedule
+                    : receiveSchedule || returnSchedule || "Not set");
+
+                var orderItem = document.createElement("article");
+                orderItem.className = "profile-order-item";
+
+                var orderMeta = document.createElement("div");
+                orderMeta.className = "profile-order-meta";
+
+                var orderedLine = document.createElement("p");
+                orderedLine.className = "profile-order-id cart-order-status-ordered";
+                orderedLine.textContent = orderedText;
+
+                var scheduleLine = document.createElement("p");
+                scheduleLine.className = "cart-order-status-date";
+                scheduleLine.textContent = scheduleText;
+
+                var statusBadge = document.createElement("span");
+                statusBadge.className = "profile-order-status status-" + statusSlug;
+                statusBadge.textContent = statusText;
+
+                orderMeta.appendChild(orderedLine);
+                orderMeta.appendChild(scheduleLine);
+                orderMeta.appendChild(statusBadge);
+                orderItem.appendChild(orderMeta);
+
+                if (statusSlug === "pending") {
+                    var pendingAction = document.createElement("button");
+                    pendingAction.type = "button";
+                    pendingAction.className = "profile-order-action primary";
+                    pendingAction.textContent = "Upload Payment Receipt";
+                    orderItem.appendChild(pendingAction);
+                }
+
+                orderStatusList.appendChild(orderItem);
+            });
+        }
+
+        cartNavButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                setCartView(button.getAttribute("data-cart-nav") || "cart");
+            });
+        });
+
+        setCartView("cart");
 
         function getMethodValue(inputList, fallbackValue) {
             var checked = Array.prototype.find.call(inputList, function (input) {
@@ -5740,11 +6030,24 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
-                bookingNote.textContent = "Booking request staged in demo mode. We did not submit this to any backend payment or booking service.";
-                showCartToast("Demo booking prepared");
+                var pendingOrder = createPendingOrderRecord(items);
+                if (!pendingOrder) {
+                    bookingNote.textContent = "Unable to create booking. Please check your cart items and try again.";
+                    return;
+                }
+
+                var existingOrders = getStoredOrders();
+                existingOrders.unshift(pendingOrder);
+                saveStoredOrders(existingOrders);
+                renderOrderStatusList();
+
+                bookingNote.textContent = "Booking saved as Pending. Open Order Status to track your reservation.";
+                showCartToast("Booking saved as Pending");
+                setCartView("order-status");
             });
         }
 
+        renderOrderStatusList();
         restoreBookingDefaults();
         syncReturnDateTimeFromReceive();
         updateDeliveryFields();

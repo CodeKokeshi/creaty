@@ -2562,9 +2562,23 @@ button {
     align-items: start;
 }
 
+.cart-layout.is-order-status-view {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 .cart-main-column {
     display: grid;
     gap: 1.2rem;
+}
+
+.cart-order-status-panel {
+    gap: 0.9rem;
+}
+
+.cart-order-status-copy {
+    margin: 0;
+    color: var(--cart-soft-text);
+    line-height: 1.55;
 }
 
 .cart-sidebar {

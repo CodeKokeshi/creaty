@@ -54,15 +54,6 @@ if (is_array($eventPackagesRepository)) {
 
 $availableCartItemIds = array_values(array_unique($availableCartItemIds));
 
-$staticOrders = [
-    ['id' => '1001', 'status' => 'Return', 'actionLabel' => 'Upload Delivery Link', 'actionType' => 'secondary'],
-    ['id' => '1002', 'status' => 'Completed', 'actionLabel' => '', 'actionType' => ''],
-    ['id' => '1003', 'status' => 'Pending', 'actionLabel' => 'Upload Payment Receipt', 'actionType' => 'primary'],
-    ['id' => '1004', 'status' => 'Approved', 'actionLabel' => 'Cancel', 'actionType' => 'danger'],
-    ['id' => '1005', 'status' => 'Ongoing', 'actionLabel' => '', 'actionType' => ''],
-    ['id' => '1006', 'status' => 'Canceled', 'actionLabel' => '', 'actionType' => '']
-];
-
 ?>
 
 <!DOCTYPE html>
@@ -374,32 +365,8 @@ $staticOrders = [
 
                     <p class="cart-order-status-copy">Track your reservations and current fulfillment status.</p>
 
-                    <div class="profile-order-list" aria-label="Order status list">
-                        <?php foreach ($staticOrders as $order): ?>
-                            <?php
-                            $statusLower = strtolower($order['status']);
-                            $statusClass = 'status-' . preg_replace('/[^a-z0-9]+/', '-', $statusLower);
-                            ?>
-                            <article class="profile-order-item">
-                                <div class="profile-order-meta">
-                                    <p class="profile-order-id">Order#<?php echo htmlspecialchars($order['id'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                    <span class="profile-order-status <?php echo htmlspecialchars($statusClass, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($order['status'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                </div>
-
-                                <?php if ($order['actionLabel'] !== ''): ?>
-                                    <?php if ($order['status'] === 'Approved'): ?>
-                                        <button type="button" class="profile-order-action <?php echo htmlspecialchars($order['actionType'], ENT_QUOTES, 'UTF-8'); ?>" data-profile-open-cancel-modal>
-                                            <?php echo htmlspecialchars($order['actionLabel'], ENT_QUOTES, 'UTF-8'); ?>
-                                        </button>
-                                    <?php else: ?>
-                                        <button type="button" class="profile-order-action <?php echo htmlspecialchars($order['actionType'], ENT_QUOTES, 'UTF-8'); ?>">
-                                            <?php echo htmlspecialchars($order['actionLabel'], ENT_QUOTES, 'UTF-8'); ?>
-                                        </button>
-                                    <?php endif; ?>
-                                <?php endif; ?>
-                            </article>
-                        <?php endforeach; ?>
-                    </div>
+                    <div class="profile-order-list" data-cart-orders-list aria-label="Order status list"></div>
+                    <p class="cart-order-status-empty" data-cart-orders-empty hidden>No pending orders yet. Confirm a booking to see it here.</p>
                 </section>
             </div>
 
@@ -543,19 +510,6 @@ $staticOrders = [
 
     <?php require __DIR__ . '/customer_message_modal.php'; ?>
 
-    <div class="profile-modal" id="profile-cancel-modal" hidden>
-        <div class="profile-modal-backdrop" data-profile-close-cancel-modal></div>
-        <section class="profile-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-cancel-title">
-            <h3 id="profile-cancel-title">Reason for Cancellation</h3>
-            <p>Please tell us why you want to cancel this approved order.</p>
-            <textarea rows="4" placeholder="Type your reason here..."></textarea>
-            <div class="profile-modal-actions">
-                <button type="button" class="profile-action-button is-ghost" data-profile-close-cancel-modal>Close</button>
-                <button type="button" class="profile-action-button">Submit Request</button>
-            </div>
-        </section>
-    </div>
-
     <section class="cart-unavailable-modal" data-cart-unavailable-modal hidden>
         <div class="cart-unavailable-modal-backdrop" data-cart-unavailable-close></div>
         <div class="cart-unavailable-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-unavailable-title">
@@ -573,6 +527,6 @@ $staticOrders = [
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260402-5"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260403-1"></script>
 </body>
 </html>
