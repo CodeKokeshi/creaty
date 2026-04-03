@@ -85,8 +85,19 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminBookingDetailReturningMethod = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-returning-method]") : null;
     var adminBookingDetailCourier = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-courier]") : null;
     var adminBookingDetailPaymentMethod = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-payment-method]") : null;
+    var adminBookingDetailCancelReason = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-cancel-reason]") : null;
     var adminBookingDetailItems = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-items]") : null;
+    var adminBookingStatusForm = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-status-form]") : null;
     var adminBookingStatusOrderIdInput = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-status-order-id]") : null;
+    var adminBookingNextStatusInput = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-next-status]") : null;
+    var adminBookingCancelReasonHiddenInput = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-cancel-reason-input]") : null;
+    var adminBookingStatusSubmitButtons = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelectorAll("[data-admin-booking-status-submit]") : [];
+    var adminBookingCancelOpenButton = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-cancel-open]") : null;
+    var adminBookingCancelBackdrop = document.querySelector("[data-admin-booking-cancel-backdrop]");
+    var adminBookingCancelCloseButtons = adminBookingCancelBackdrop ? adminBookingCancelBackdrop.querySelectorAll("[data-admin-booking-cancel-close]") : [];
+    var adminBookingCancelReasonInput = adminBookingCancelBackdrop ? adminBookingCancelBackdrop.querySelector("[data-admin-booking-cancel-reason]") : null;
+    var adminBookingCancelError = adminBookingCancelBackdrop ? adminBookingCancelBackdrop.querySelector("[data-admin-booking-cancel-error]") : null;
+    var adminBookingCancelConfirmButton = adminBookingCancelBackdrop ? adminBookingCancelBackdrop.querySelector("[data-admin-booking-cancel-confirm]") : null;
     var adminBookingsSource = Array.isArray(window.__creatyAdminBookings) ? window.__creatyAdminBookings : [];
     var shouldOpenAdminEquipmentArchiveModal = document.body.getAttribute("data-admin-open-equipment-archive-modal") === "true";
     var shouldOpenAdminEquipmentStatusModal = document.body.getAttribute("data-admin-open-equipment-status-modal") === "true";
@@ -244,6 +255,7 @@ document.addEventListener("DOMContentLoaded", function () {
         onClose: null,
         quantityRequired: false
     };
+    var activeAdminBookingCancelReason = "";
     var detailGalleries = document.querySelectorAll("[data-gallery]");
     var packageSlideshows = document.querySelectorAll("[data-package-slideshow]");
     var packageSlideshowControllers = [];
@@ -4461,7 +4473,63 @@ document.addEventListener("DOMContentLoaded", function () {
         var hasVisibleEventEditModal = Boolean(adminEventEditBackdrop && !adminEventEditBackdrop.hidden);
         var hasVisibleEventThumbsModal = Boolean(adminEventThumbsBackdrop && !adminEventThumbsBackdrop.hidden);
         var hasVisibleBookingDetailModal = Boolean(adminBookingDetailBackdrop && !adminBookingDetailBackdrop.hidden);
-        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal || hasVisibleEventEditModal || hasVisibleEventThumbsModal || hasVisibleBookingDetailModal);
+        var hasVisibleBookingCancelModal = Boolean(adminBookingCancelBackdrop && !adminBookingCancelBackdrop.hidden);
+        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal || hasVisibleEventEditModal || hasVisibleEventThumbsModal || hasVisibleBookingDetailModal || hasVisibleBookingCancelModal);
+    }
+
+    function setAdminBookingCancelError(message) {
+        if (!adminBookingCancelError) {
+            return;
+        }
+
+        var text = String(message || "").trim();
+        adminBookingCancelError.textContent = text;
+        adminBookingCancelError.hidden = text === "";
+    }
+
+    function closeAdminBookingCancelModal() {
+        if (!adminBookingCancelBackdrop) {
+            return;
+        }
+
+        adminBookingCancelBackdrop.hidden = true;
+        setAdminBookingCancelError("");
+
+        if (adminBookingCancelReasonInput) {
+            adminBookingCancelReasonInput.value = "";
+        }
+
+        if (adminBookingCancelConfirmButton) {
+            adminBookingCancelConfirmButton.disabled = false;
+        }
+
+        syncAdminModalBodyLock();
+    }
+
+    function openAdminBookingCancelModal() {
+        if (!adminBookingCancelBackdrop || !adminBookingStatusOrderIdInput) {
+            return;
+        }
+
+        var orderId = String(adminBookingStatusOrderIdInput.value || "").trim();
+        if (!orderId) {
+            return;
+        }
+
+        if (adminBookingCancelReasonInput) {
+            adminBookingCancelReasonInput.value = activeAdminBookingCancelReason;
+        }
+
+        setAdminBookingCancelError("");
+        adminBookingCancelBackdrop.hidden = false;
+        syncAdminModalBodyLock();
+
+        window.requestAnimationFrame(function () {
+            if (adminBookingCancelReasonInput) {
+                adminBookingCancelReasonInput.focus();
+                adminBookingCancelReasonInput.select();
+            }
+        });
     }
 
     function closeAdminActionModal(invokeOnClose) {
@@ -4819,8 +4887,22 @@ document.addEventListener("DOMContentLoaded", function () {
             adminBookingDetailPaymentMethod.textContent = formatAdminBookingPayment(booking.paymentMethod);
         }
 
+        activeAdminBookingCancelReason = String(booking.cancelReason || "").trim();
+
+        if (adminBookingDetailCancelReason) {
+            adminBookingDetailCancelReason.textContent = activeAdminBookingCancelReason || "-";
+        }
+
         if (adminBookingStatusOrderIdInput) {
             adminBookingStatusOrderIdInput.value = String(booking.id || "");
+        }
+
+        if (adminBookingNextStatusInput) {
+            adminBookingNextStatusInput.value = "";
+        }
+
+        if (adminBookingCancelReasonHiddenInput) {
+            adminBookingCancelReasonHiddenInput.value = "";
         }
 
         if (adminBookingDetailItems) {
@@ -4878,6 +4960,8 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!adminBookingDetailBackdrop) {
             return;
         }
+
+        closeAdminBookingCancelModal();
 
         adminBookingDetailBackdrop.hidden = true;
         syncAdminModalBodyLock();
@@ -4969,6 +5053,79 @@ document.addEventListener("DOMContentLoaded", function () {
             if (event.target === adminBookingDetailBackdrop) {
                 closeAdminBookingDetail();
             }
+        });
+    }
+
+    adminBookingStatusSubmitButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            if (adminBookingNextStatusInput) {
+                adminBookingNextStatusInput.value = "";
+            }
+
+            if (adminBookingCancelReasonHiddenInput) {
+                adminBookingCancelReasonHiddenInput.value = "";
+            }
+        });
+    });
+
+    if (adminBookingCancelOpenButton) {
+        adminBookingCancelOpenButton.addEventListener("click", function () {
+            openAdminBookingCancelModal();
+        });
+    }
+
+    adminBookingCancelCloseButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            closeAdminBookingCancelModal();
+        });
+    });
+
+    if (adminBookingCancelBackdrop) {
+        adminBookingCancelBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminBookingCancelBackdrop) {
+                closeAdminBookingCancelModal();
+            }
+        });
+    }
+
+    if (adminBookingCancelConfirmButton) {
+        adminBookingCancelConfirmButton.addEventListener("click", function () {
+            if (!adminBookingStatusForm || !adminBookingStatusOrderIdInput) {
+                return;
+            }
+
+            var orderId = String(adminBookingStatusOrderIdInput.value || "").trim();
+            var reasonText = adminBookingCancelReasonInput ? String(adminBookingCancelReasonInput.value || "").trim() : "";
+
+            if (!orderId) {
+                closeAdminBookingCancelModal();
+                return;
+            }
+
+            if (reasonText === "") {
+                setAdminBookingCancelError("Please provide a cancellation reason.");
+
+                if (adminBookingCancelReasonInput) {
+                    adminBookingCancelReasonInput.focus();
+                }
+
+                return;
+            }
+
+            if (adminBookingCancelConfirmButton.disabled) {
+                return;
+            }
+
+            if (adminBookingNextStatusInput) {
+                adminBookingNextStatusInput.value = "canceled";
+            }
+
+            if (adminBookingCancelReasonHiddenInput) {
+                adminBookingCancelReasonHiddenInput.value = reasonText;
+            }
+
+            adminBookingCancelConfirmButton.disabled = true;
+            adminBookingStatusForm.submit();
         });
     }
 
@@ -5154,6 +5311,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminActionModalBackdrop && !adminActionModalBackdrop.hidden) {
             closeAdminActionModal(true);
+        }
+
+        if (adminBookingCancelBackdrop && !adminBookingCancelBackdrop.hidden) {
+            closeAdminBookingCancelModal();
+            return;
         }
 
         if (adminBookingDetailBackdrop && !adminBookingDetailBackdrop.hidden) {

@@ -7359,6 +7359,108 @@ button {
     color: #ffe5e5;
 }
 
+.admin-booking-cancel-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 126;
+    background: rgba(0, 0, 0, 0.62);
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+}
+
+.admin-booking-cancel-modal {
+    width: min(100%, 560px);
+    border: 1px solid rgba(217, 217, 217, 0.28);
+    background: #111214;
+    color: #f4f4f4;
+    padding: 1rem;
+    display: grid;
+    gap: 0.7rem;
+}
+
+.admin-booking-cancel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+}
+
+.admin-booking-cancel-head h3 {
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.admin-booking-cancel-close {
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #f4f4f4;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.admin-booking-cancel-copy {
+    margin: 0;
+    color: #d8d8db;
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
+.admin-booking-cancel-textarea {
+    width: 100%;
+    min-height: 120px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    color: #f4f4f4;
+    padding: 0.68rem;
+    resize: vertical;
+}
+
+.admin-booking-cancel-textarea:focus {
+    outline: 2px solid rgba(236, 227, 169, 0.52);
+    outline-offset: 1px;
+}
+
+.admin-booking-cancel-error {
+    margin: 0;
+    color: #ffbebe;
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.admin-booking-cancel-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.admin-booking-cancel-action {
+    min-height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #f4f4f4;
+    font-size: 0.77rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0 1rem;
+    cursor: pointer;
+}
+
+.admin-booking-cancel-action.is-confirm {
+    border-color: rgba(229, 114, 114, 0.62);
+    background: rgba(155, 57, 57, 0.26);
+    color: #ffe5e5;
+}
+
 @media (max-width: 900px) {
     .admin-booking-detail-grid {
         grid-template-columns: 1fr;

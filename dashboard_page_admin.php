@@ -313,6 +313,7 @@ foreach (load_customer_orders_repository() as $bookingRecord) {
         'receivingMethod' => (string) ($bookingRecord['receiving_method'] ?? ''),
         'returningMethod' => (string) ($bookingRecord['returning_method'] ?? ''),
         'courier' => (string) ($bookingRecord['courier'] ?? ''),
+        'cancelReason' => (string) ($bookingRecord['cancel_reason'] ?? ''),
         'paymentMethod' => (string) ($bookingRecord['payment_method'] ?? ''),
     ];
 }
@@ -936,7 +937,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260403-2">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260403-3">
 </head>
 <body
     class="home-page-customer"
@@ -1219,6 +1220,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <p><strong>Returning Method:</strong> <span data-admin-booking-detail-returning-method>-</span></p>
                     <p><strong>Courier:</strong> <span data-admin-booking-detail-courier>-</span></p>
                     <p><strong>Payment Method:</strong> <span data-admin-booking-detail-payment-method>-</span></p>
+                    <p><strong>Cancel Reason:</strong> <span data-admin-booking-detail-cancel-reason>-</span></p>
                 </div>
 
                 <div class="admin-booking-detail-items-wrap">
@@ -1226,16 +1228,36 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <ul class="admin-booking-detail-items" data-admin-booking-detail-items></ul>
                 </div>
 
-                <form class="admin-booking-detail-actions" method="post" action="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_booking_status.php', ENT_QUOTES, 'UTF-8'); ?>">
+                <form class="admin-booking-detail-actions" method="post" action="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_booking_status.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-booking-status-form>
                     <input type="hidden" name="order_id" value="" data-admin-booking-status-order-id>
                     <input type="hidden" name="redirect" value="<?php echo htmlspecialchars($adminHomePath . '?admin_view=bookings', ENT_QUOTES, 'UTF-8'); ?>">
-                    <button type="submit" name="next_status" value="pending" class="admin-booking-action">Set Pending</button>
-                    <button type="submit" name="next_status" value="approved" class="admin-booking-action is-approve">Approve</button>
-                    <button type="submit" name="next_status" value="ongoing" class="admin-booking-action is-ongoing">Mark Ongoing</button>
-                    <button type="submit" name="next_status" value="return" class="admin-booking-action is-return">Mark Return</button>
-                    <button type="submit" name="next_status" value="completed" class="admin-booking-action is-complete">Complete</button>
-                    <button type="submit" name="next_status" value="canceled" class="admin-booking-action is-cancel">Cancel</button>
+                    <input type="hidden" name="next_status" value="" data-admin-booking-next-status>
+                    <input type="hidden" name="cancel_reason" value="" data-admin-booking-cancel-reason-input>
+                    <button type="submit" name="next_status" value="pending" class="admin-booking-action" data-admin-booking-status-submit>Set Pending</button>
+                    <button type="submit" name="next_status" value="approved" class="admin-booking-action is-approve" data-admin-booking-status-submit>Approve</button>
+                    <button type="submit" name="next_status" value="ongoing" class="admin-booking-action is-ongoing" data-admin-booking-status-submit>Mark Ongoing</button>
+                    <button type="submit" name="next_status" value="return" class="admin-booking-action is-return" data-admin-booking-status-submit>Mark Return</button>
+                    <button type="submit" name="next_status" value="completed" class="admin-booking-action is-complete" data-admin-booking-status-submit>Complete</button>
+                    <button type="button" class="admin-booking-action is-cancel" data-admin-booking-cancel-open>Cancel</button>
                 </form>
+            </section>
+        </div>
+
+        <div class="admin-booking-cancel-backdrop" data-admin-booking-cancel-backdrop hidden>
+            <section class="admin-booking-cancel-modal" role="dialog" aria-modal="true" aria-labelledby="admin-booking-cancel-title">
+                <div class="admin-booking-cancel-head">
+                    <h3 id="admin-booking-cancel-title">Cancel Booking</h3>
+                    <button class="admin-booking-cancel-close" type="button" data-admin-booking-cancel-close aria-label="Close cancel dialog">&times;</button>
+                </div>
+
+                <p class="admin-booking-cancel-copy">Provide a cancellation reason. This will be visible to the customer in Order Status.</p>
+                <textarea class="admin-booking-cancel-textarea" data-admin-booking-cancel-reason maxlength="500" placeholder="Enter cancellation reason"></textarea>
+                <p class="admin-booking-cancel-error" data-admin-booking-cancel-error hidden></p>
+
+                <div class="admin-booking-cancel-actions">
+                    <button type="button" class="admin-booking-cancel-action" data-admin-booking-cancel-close>Back</button>
+                    <button type="button" class="admin-booking-cancel-action is-confirm" data-admin-booking-cancel-confirm>Confirm Cancel</button>
+                </div>
             </section>
         </div>
 
@@ -1910,7 +1932,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         }
         document.addEventListener('DOMContentLoaded', updateFieldLabels);
     </script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260403-3"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260403-4"></script>
 </body>
 </html>
 

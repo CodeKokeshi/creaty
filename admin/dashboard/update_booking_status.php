@@ -17,6 +17,7 @@ require_once dirname(__DIR__, 2) . '/config/customer_orders_repository.php';
 
 $orderId = trim((string) ($_POST['order_id'] ?? ''));
 $nextStatus = trim((string) ($_POST['next_status'] ?? 'pending'));
+$cancelReason = trim((string) ($_POST['cancel_reason'] ?? ''));
 $redirectInput = trim((string) ($_POST['redirect'] ?? './?admin_view=bookings'));
 
 $redirectTarget = './?admin_view=bookings';
@@ -34,7 +35,17 @@ if ($orderId === '') {
     exit;
 }
 
-$updatedOrder = update_customer_order_status_by_id($orderId, $nextStatus);
+$nextStatusToken = normalize_customer_order_status_token($nextStatus);
+if ($nextStatusToken === 'canceled' && $cancelReason === '') {
+    header('Location: ' . $redirectTarget);
+    exit;
+}
+
+$updatedOrder = update_customer_order_status_by_id(
+    $orderId,
+    $nextStatus,
+    $nextStatusToken === 'canceled' ? $cancelReason : ''
+);
 
 if ($updatedOrder === null) {
     header('Location: ' . $redirectTarget);
