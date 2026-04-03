@@ -29,6 +29,7 @@ $logoutPath = $routeBase . 'logout.php';
 $notificationsPath = $routeBase . 'notifications/';
 $manageBrandsPath = $routeBase . 'brands/';
 $manageCategoriesPath = $routeBase . 'categories/';
+$setGcashQrPath = $routeBase . 'gcash-qr/';
 
 require_once __DIR__ . '/config/message_notifications_repository.php';
 
@@ -314,6 +315,7 @@ foreach (load_customer_orders_repository() as $bookingRecord) {
         'returningMethod' => (string) ($bookingRecord['returning_method'] ?? ''),
         'courier' => (string) ($bookingRecord['courier'] ?? ''),
         'cancelReason' => (string) ($bookingRecord['cancel_reason'] ?? ''),
+        'cancelBy' => (string) ($bookingRecord['canceled_by'] ?? ''),
         'paymentMethod' => (string) ($bookingRecord['payment_method'] ?? ''),
     ];
 }
@@ -978,11 +980,10 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath . '#featured-products-title', ENT_QUOTES, 'UTF-8'); ?>">Manage Featured Products</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageBrandsPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Brands</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageCategoriesPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Categories</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
-                        <li><a class="dropdown-item" href="#">Manage Discounts</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($setGcashQrPath, ENT_QUOTES, 'UTF-8'); ?>">Set GCash QR</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
                     </ul>

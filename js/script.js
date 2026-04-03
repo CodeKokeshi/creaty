@@ -5667,7 +5667,17 @@ document.addEventListener("DOMContentLoaded", function () {
         var orderCancelError = orderCancelModal ? orderCancelModal.querySelector("[data-cart-order-cancel-error]") : null;
         var orderCancelConfirmButton = orderCancelModal ? orderCancelModal.querySelector("[data-cart-order-cancel-confirm]") : null;
         var orderCancelCloseButtons = orderCancelModal ? orderCancelModal.querySelectorAll("[data-cart-order-cancel-close]") : [];
+        var gcashModal = document.querySelector("[data-cart-gcash-modal]");
+        var gcashModalCloseButtons = gcashModal ? gcashModal.querySelectorAll("[data-cart-gcash-close]") : [];
+        var gcashModalContinueButton = gcashModal ? gcashModal.querySelector("[data-cart-gcash-continue]") : null;
+        var gcashModalQrImage = gcashModal ? gcashModal.querySelector("[data-cart-gcash-qr-image]") : null;
+        var gcashModalQrEmpty = gcashModal ? gcashModal.querySelector("[data-cart-gcash-qr-empty]") : null;
+        var gcashModalName = gcashModal ? gcashModal.querySelector("[data-cart-gcash-name]") : null;
+        var gcashModalNumber = gcashModal ? gcashModal.querySelector("[data-cart-gcash-number]") : null;
+        var gcashPaymentInfo = normalizeGcashPaymentInfo(window.__creatyGcashPaymentInfo);
         var activeCancelOrderId = "";
+        var pendingGcashOrderRecord = null;
+        var isSubmittingPendingOrder = false;
         var availableCartItemIdsSource = Array.isArray(window.__creatyCartAvailableItemIds) ? window.__creatyCartAvailableItemIds : [];
         var availableCartItemIdsSet = availableCartItemIdsSource.reduce(function (set, itemId) {
             if (typeof itemId === "string" && itemId) {
@@ -5796,6 +5806,69 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
+        function normalizeGcashPaymentInfo(rawValue) {
+            var source = rawValue && typeof rawValue === "object" ? rawValue : {};
+
+            return {
+                imageUrl: String(source.imageUrl || "").trim(),
+                accountName: String(source.accountName || "").trim(),
+                accountNumber: String(source.accountNumber || "").trim()
+            };
+        }
+
+        function setGcashModalDetails() {
+            if (gcashModalName) {
+                gcashModalName.textContent = gcashPaymentInfo.accountName || "Not set";
+            }
+
+            if (gcashModalNumber) {
+                gcashModalNumber.textContent = gcashPaymentInfo.accountNumber || "Not set";
+            }
+
+            if (gcashModalQrImage) {
+                if (gcashPaymentInfo.imageUrl) {
+                    gcashModalQrImage.src = gcashPaymentInfo.imageUrl;
+                    gcashModalQrImage.hidden = false;
+
+                    if (gcashModalQrEmpty) {
+                        gcashModalQrEmpty.hidden = true;
+                    }
+                } else {
+                    gcashModalQrImage.removeAttribute("src");
+                    gcashModalQrImage.hidden = true;
+
+                    if (gcashModalQrEmpty) {
+                        gcashModalQrEmpty.textContent = "GCash QR is not set yet. Please contact Rental Services.";
+                        gcashModalQrEmpty.hidden = false;
+                    }
+                }
+            }
+        }
+
+        function closeGcashModal() {
+            if (!gcashModal) {
+                return;
+            }
+
+            gcashModal.hidden = true;
+            pendingGcashOrderRecord = null;
+
+            if (gcashModalContinueButton) {
+                gcashModalContinueButton.disabled = false;
+            }
+        }
+
+        function openGcashModal(orderRecord) {
+            if (!gcashModal) {
+                handlePendingOrderSubmission(orderRecord);
+                return;
+            }
+
+            pendingGcashOrderRecord = orderRecord;
+            setGcashModalDetails();
+            gcashModal.hidden = false;
+        }
+
         unavailableModalCloseButtons.forEach(function (button) {
             button.addEventListener("click", function () {
                 closeUnavailableModal();
@@ -5873,6 +5946,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 returnTime: String(order.returnTime || ""),
                 place: String(order.place || ""),
                 cancelReason: String(order.cancelReason || order.cancel_reason || ""),
+                cancelBy: String(order.cancelBy || order.cancel_by || ""),
                 paymentMethod: String(order.paymentMethod || ""),
                 createdAt: String(order.createdAt || "")
             };
@@ -5974,6 +6048,62 @@ document.addEventListener("DOMContentLoaded", function () {
                     return payload;
                 });
             });
+        }
+
+        function handlePendingOrderSubmission(pendingOrder) {
+            if (!pendingOrder || isSubmittingPendingOrder) {
+                return;
+            }
+
+            isSubmittingPendingOrder = true;
+
+            if (confirmButton) {
+                confirmButton.disabled = true;
+            }
+
+            if (gcashModalContinueButton) {
+                gcashModalContinueButton.disabled = true;
+            }
+
+            submitPendingOrder(pendingOrder)
+                .then(function (responsePayload) {
+                    var savedOrder = normalizeStoredOrder(responsePayload.order || pendingOrder);
+                    var existingOrders = getStoredOrders();
+
+                    closeGcashModal();
+
+                    existingOrders.unshift(savedOrder);
+                    saveStoredOrders(existingOrders);
+                    renderOrderStatusList();
+
+                    saveCartItems([]);
+                    renderCartItems();
+
+                    if (bookingNote) {
+                        bookingNote.textContent = "Booking saved as Pending. Open Order Status to track your reservation.";
+                    }
+
+                    showCartToast("Booking saved as Pending");
+                    setCartView("order-status");
+                })
+                .catch(function (error) {
+                    if (bookingNote) {
+                        bookingNote.textContent = error && error.message
+                            ? String(error.message)
+                            : "Unable to save booking right now.";
+                    }
+                })
+                .finally(function () {
+                    isSubmittingPendingOrder = false;
+
+                    if (confirmButton) {
+                        confirmButton.disabled = false;
+                    }
+
+                    if (gcashModalContinueButton) {
+                        gcashModalContinueButton.disabled = false;
+                    }
+                });
         }
 
         function formatTimeDisplay(timeValue) {
@@ -6144,9 +6274,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 orderMeta.appendChild(statusBadge);
 
                 if (statusSlug === "canceled" && cancelReason) {
+                    var cancelBy = String(order.cancelBy || "").toLowerCase().trim();
+                    var reasonPrefix = cancelBy === "customer"
+                        ? "You canceled this order for reason(s): "
+                        : "Your order has been cancelled by the Rental Services for reason(s): ";
                     var reasonLine = document.createElement("p");
                     reasonLine.className = "cart-order-status-reason";
-                    reasonLine.textContent = "Reason: " + cancelReason;
+                    reasonLine.textContent = reasonPrefix + cancelReason;
                     orderMeta.appendChild(reasonLine);
                 }
 
@@ -6160,6 +6294,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     pendingAction.type = "button";
                     pendingAction.className = "profile-order-action primary";
                     pendingAction.textContent = "Upload Payment Receipt";
+                    pendingAction.setAttribute("data-cart-order-upload", "true");
+                    pendingAction.setAttribute("data-cart-order-id", String(order.id || ""));
+                    actionWrap.classList.add("is-stacked");
                     actionWrap.appendChild(pendingAction);
                 }
 
@@ -6185,6 +6322,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (orderStatusList) {
             orderStatusList.addEventListener("click", function (event) {
+                var uploadButton = event.target.closest("[data-cart-order-upload]");
+                if (uploadButton) {
+                    showCartToast("Receipt upload will be available soon.");
+                    return;
+                }
+
                 var cancelButton = event.target.closest("[data-cart-order-cancel-open]");
                 if (!cancelButton) {
                     return;
@@ -6200,6 +6343,34 @@ document.addEventListener("DOMContentLoaded", function () {
                 closeOrderCancelModal();
             });
         });
+
+        gcashModalCloseButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                closeGcashModal();
+            });
+        });
+
+        if (gcashModalContinueButton) {
+            gcashModalContinueButton.addEventListener("click", function () {
+                if (!pendingGcashOrderRecord) {
+                    closeGcashModal();
+                    return;
+                }
+
+                handlePendingOrderSubmission(pendingGcashOrderRecord);
+            });
+        }
+
+        if (gcashModalQrImage) {
+            gcashModalQrImage.addEventListener("error", function () {
+                gcashModalQrImage.hidden = true;
+
+                if (gcashModalQrEmpty) {
+                    gcashModalQrEmpty.textContent = "Unable to load GCash QR right now. Please contact Rental Services.";
+                    gcashModalQrEmpty.hidden = false;
+                }
+            });
+        }
 
         if (orderCancelConfirmButton) {
             orderCancelConfirmButton.addEventListener("click", function () {
@@ -6276,6 +6447,11 @@ document.addEventListener("DOMContentLoaded", function () {
         document.addEventListener("keydown", function (event) {
             if (event.key === "Escape" && orderCancelModal && !orderCancelModal.hidden) {
                 closeOrderCancelModal();
+                return;
+            }
+
+            if (event.key === "Escape" && gcashModal && !gcashModal.hidden) {
+                closeGcashModal();
             }
         });
 
@@ -6766,7 +6942,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (paymentSelect && bookingNote) {
             paymentSelect.addEventListener("change", function () {
                 if (paymentSelect.value === "gcash") {
-                    bookingNote.textContent = "Demo payment selected. No charges will be made in this frontend prototype.";
+                    bookingNote.textContent = "GCash selected. After confirming, review the QR details before finalizing your booking.";
                     return;
                 }
 
@@ -6813,36 +6989,18 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
-                if (confirmButton.disabled) {
+                if (isSubmittingPendingOrder) {
                     return;
                 }
 
-                confirmButton.disabled = true;
+                var paymentMethod = String(pendingOrder.paymentMethod || "").toLowerCase().trim();
+                if (paymentMethod === "gcash") {
+                    bookingNote.textContent = "Review the GCash payment details, then tap Continue Booking.";
+                    openGcashModal(pendingOrder);
+                    return;
+                }
 
-                submitPendingOrder(pendingOrder)
-                    .then(function (responsePayload) {
-                        var savedOrder = normalizeStoredOrder(responsePayload.order || pendingOrder);
-                        var existingOrders = getStoredOrders();
-
-                        existingOrders.unshift(savedOrder);
-                        saveStoredOrders(existingOrders);
-                        renderOrderStatusList();
-
-                        saveCartItems([]);
-                        renderCartItems();
-
-                        bookingNote.textContent = "Booking saved as Pending. Open Order Status to track your reservation.";
-                        showCartToast("Booking saved as Pending");
-                        setCartView("order-status");
-                    })
-                    .catch(function (error) {
-                        bookingNote.textContent = error && error.message
-                            ? String(error.message)
-                            : "Unable to save booking right now.";
-                    })
-                    .finally(function () {
-                        confirmButton.disabled = false;
-                    });
+                handlePendingOrderSubmission(pendingOrder);
             });
         }
 

@@ -44,7 +44,8 @@ if ($nextStatusToken === 'canceled' && $cancelReason === '') {
 $updatedOrder = update_customer_order_status_by_id(
     $orderId,
     $nextStatus,
-    $nextStatusToken === 'canceled' ? $cancelReason : ''
+    $nextStatusToken === 'canceled' ? $cancelReason : '',
+    $nextStatusToken === 'canceled' ? 'admin' : ''
 );
 
 if ($updatedOrder === null) {

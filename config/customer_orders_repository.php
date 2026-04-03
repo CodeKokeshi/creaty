@@ -109,6 +109,11 @@ function normalize_customer_order_courier($value)
     return normalize_customer_order_method($value, ['lalamove', 'grab-express', 'lbc', 'j-and-t', 'self-booked']);
 }
 
+function normalize_customer_order_canceled_by($value)
+{
+    return normalize_customer_order_method($value, ['admin', 'customer']);
+}
+
 function normalize_customer_order_cancel_reason($value)
 {
     $reason = trim((string) $value);
@@ -192,6 +197,7 @@ function normalize_customer_order_record($record)
     $returningMethod = normalize_customer_order_returning_method($record['returning_method'] ?? '');
     $courier = normalize_customer_order_courier($record['courier'] ?? '');
     $cancelReason = normalize_customer_order_cancel_reason($record['cancel_reason'] ?? '');
+    $canceledBy = normalize_customer_order_canceled_by($record['canceled_by'] ?? '');
 
     if ($receivingMethod !== 'delivery' && $returningMethod !== 'delivery') {
         $courier = '';
@@ -199,6 +205,9 @@ function normalize_customer_order_record($record)
 
     if ($statusToken !== 'canceled') {
         $cancelReason = '';
+        $canceledBy = '';
+    } elseif ($canceledBy === '') {
+        $canceledBy = 'admin';
     }
 
     return [
@@ -217,6 +226,7 @@ function normalize_customer_order_record($record)
         'returning_method' => $returningMethod,
         'courier' => $courier,
         'cancel_reason' => $cancelReason,
+        'canceled_by' => $canceledBy,
         'payment_method' => normalize_customer_order_payment_method($record['payment_method'] ?? ''),
         'created_at' => $createdAt,
     ];
@@ -302,6 +312,7 @@ function map_customer_order_for_frontend($record)
         'returningMethod' => (string) ($record['returning_method'] ?? ''),
         'courier' => (string) ($record['courier'] ?? ''),
         'cancelReason' => (string) ($record['cancel_reason'] ?? ''),
+        'cancelBy' => (string) ($record['canceled_by'] ?? ''),
         'paymentMethod' => (string) ($record['payment_method'] ?? ''),
         'createdAt' => (string) ($record['created_at'] ?? ''),
     ];
@@ -373,6 +384,7 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
         'returning_method' => $payload['returningMethod'] ?? '',
         'courier' => $payload['courier'] ?? '',
         'cancel_reason' => '',
+        'canceled_by' => '',
         'payment_method' => $payload['paymentMethod'] ?? '',
         'created_at' => gmdate('c'),
     ]);
@@ -386,7 +398,7 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
     return map_customer_order_for_frontend($newOrder);
 }
 
-function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason = '')
+function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason = '', $canceledBy = 'admin')
 {
     $targetOrderId = trim((string) $orderId);
 
@@ -399,6 +411,13 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
     $normalizedCancelReason = $statusToken === 'canceled'
         ? normalize_customer_order_cancel_reason($cancelReason)
         : '';
+    $normalizedCanceledBy = $statusToken === 'canceled'
+        ? normalize_customer_order_canceled_by($canceledBy)
+        : '';
+
+    if ($statusToken === 'canceled' && $normalizedCanceledBy === '') {
+        $normalizedCanceledBy = 'admin';
+    }
     $orders = load_customer_orders_repository();
     $updatedOrder = null;
 
@@ -413,6 +432,7 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
 
         $record['status'] = $statusLabel;
         $record['cancel_reason'] = $normalizedCancelReason;
+        $record['canceled_by'] = $normalizedCanceledBy;
         $orders[$index] = normalize_customer_order_record($record);
         $updatedOrder = $orders[$index];
         break;
@@ -463,6 +483,7 @@ function cancel_customer_order_for_customer($customerId, $orderId, $cancelReason
 
         $record['status'] = 'canceled';
         $record['cancel_reason'] = $normalizedReason;
+        $record['canceled_by'] = 'customer';
         $orders[$index] = normalize_customer_order_record($record);
         $updatedOrder = $orders[$index];
         break;
