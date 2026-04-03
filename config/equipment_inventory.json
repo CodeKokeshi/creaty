@@ -62,25 +62,5 @@
                 "status": "available"
             }
         ]
-    },
-    "canon-new-product-1": {
-        "timesUsed": 12,
-        "nextSerial": 1,
-        "units": [
-            {
-                "serial": 0,
-                "status": "available"
-            }
-        ]
-    },
-    "canon-new-product-copy": {
-        "timesUsed": 12,
-        "nextSerial": 1,
-        "units": [
-            {
-                "serial": 0,
-                "status": "available"
-            }
-        ]
     }
 }

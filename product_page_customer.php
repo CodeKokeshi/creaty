@@ -51,6 +51,7 @@ $cartPath = $assetBase . 'customer-cart/';
 $eventsPath = $assetBase . 'customer-events/';
 $notificationsPath = $assetBase . 'admin/notifications/';
 $manageBrandsPath = $assetBase . 'admin/brands/';
+$manageCategoriesPath = $assetBase . 'admin/categories/';
 $adminNotificationCount = 0;
 $addToCartLoginUrl = $loginPath . '?redirect=' . rawurlencode($_SERVER['REQUEST_URI'] ?? ($assetBase . 'customer-products/?product=' . urlencode($productKey)));
 
@@ -63,6 +64,9 @@ require __DIR__ . '/config/products_repository.php';
 $products = load_products_repository();
 $productBrandOptions = load_product_brands_repository();
 $productBrandValueMap = product_brand_value_map($productBrandOptions);
+$productCategoryOptions = load_product_categories_repository();
+$productCategoryValueMap = product_category_value_map($productCategoryOptions);
+$productSkillLevels = product_skill_level_options();
 
 if (
     $isAdminView
@@ -216,7 +220,15 @@ if (
                 exit;
             }
 
+            $postedCategoryValue = trim((string) ($_POST['category'] ?? ''));
+            if ($postedCategoryValue === '__manage_categories__') {
+                header('Location: ' . $manageCategoriesPath);
+                exit;
+            }
+
             $brandValue = normalize_product_brand($postedBrandValue !== '' ? $postedBrandValue : ($productToUpdate['brand'] ?? default_product_brand()));
+            $categoryValue = normalize_product_category($postedCategoryValue !== '' ? $postedCategoryValue : ($productToUpdate['category'] ?? default_product_category()));
+            $skillLevelValue = normalize_product_skill_level($_POST['skillLevel'] ?? ($productToUpdate['skillLevel'] ?? default_product_skill_level()));
             $nameValue = trim((string) ($_POST['name'] ?? ($productToUpdate['name'] ?? '')));
 
             if ($nameValue !== '' && has_duplicate_product_display_name($products, $brandValue, $nameValue, $postedKey)) {
@@ -227,7 +239,10 @@ if (
                 }
 
                 $productToUpdate['brand'] = $brandValue;
+                $productToUpdate['skillLevel'] = $skillLevelValue;
+                $productToUpdate['category'] = $categoryValue;
                 ensure_product_brand_exists($brandValue);
+                ensure_product_category_exists($categoryValue);
             }
         }
 
@@ -285,6 +300,9 @@ if ($productKey === null || !isset($products[$productKey])) {
 $selectedProduct = $products[$productKey];
 $selectedBrand = normalize_product_brand($selectedProduct['brand'] ?? 'Canon');
 $selectedBrandValue = product_brand_slug($selectedBrand);
+$selectedSkillLevel = normalize_product_skill_level($selectedProduct['skillLevel'] ?? default_product_skill_level());
+$selectedCategory = normalize_product_category($selectedProduct['category'] ?? default_product_category());
+$selectedCategoryValue = product_category_slug($selectedCategory);
 $selectedProductName = trim((string) ($selectedProduct['name'] ?? ''));
 $selectedSpecs = is_array($selectedProduct['specs'] ?? null) ? $selectedProduct['specs'] : [];
 $selectedImagingSpecs = is_array($selectedSpecs['Imaging and Performance'] ?? null) ? $selectedSpecs['Imaging and Performance'] : [];
@@ -375,6 +393,7 @@ $productListPath = $homePath . '#featured-products-title';
                             <li><a class="dropdown-item" href="<?php echo htmlspecialchars($homePath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
                             <li><a class="dropdown-item" href="<?php echo htmlspecialchars($homePath . '#featured-products-title', ENT_QUOTES, 'UTF-8'); ?>">Manage Featured Products</a></li>
                             <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageBrandsPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Brands</a></li>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageCategoriesPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Categories</a></li>
                             <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($assetBase . 'admin/logout.php', ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
@@ -588,6 +607,21 @@ $productListPath = $homePath . '#featured-products-title';
                                 <label for="admin-spec-name">Product Name</label>
                                 <input id="admin-spec-name" type="text" name="name" value="<?php echo htmlspecialchars($selectedProductName, ENT_QUOTES, 'UTF-8'); ?>" required>
 
+                                <label for="admin-spec-skill-level">Skill Level</label>
+                                <select id="admin-spec-skill-level" name="skillLevel" required>
+                                    <?php foreach ($productSkillLevels as $skillLevelLabel): ?>
+                                        <option value="<?php echo htmlspecialchars((string) $skillLevelLabel, ENT_QUOTES, 'UTF-8'); ?>"<?php echo strcasecmp($selectedSkillLevel, (string) $skillLevelLabel) === 0 ? ' selected' : ''; ?>><?php echo htmlspecialchars((string) $skillLevelLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+
+                                <label for="admin-spec-category">Category</label>
+                                <select id="admin-spec-category" name="category" data-category-manage-select data-category-manage-url="<?php echo htmlspecialchars($manageCategoriesPath, ENT_QUOTES, 'UTF-8'); ?>" required>
+                                    <?php foreach ($productCategoryValueMap as $categoryValue => $categoryLabel): ?>
+                                        <option value="<?php echo htmlspecialchars($categoryValue, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $selectedCategoryValue === $categoryValue ? ' selected' : ''; ?>><?php echo htmlspecialchars($categoryLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                    <?php endforeach; ?>
+                                    <option value="__manage_categories__">Manage Categories.</option>
+                                </select>
+
                                 <div class="admin-inline-edit-actions">
                                     <button type="submit" class="admin-icon-action admin-icon-action-save" aria-label="Save" title="Save">
                                         <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/check.svg" alt="">
@@ -767,6 +801,11 @@ $productListPath = $homePath . '#featured-products-title';
                         <section class="product-specs-section">
                             <h3>PRODUCT</h3>
                             <p><?php echo htmlspecialchars($selectedBrand . ' ' . $selectedProductName, ENT_QUOTES, 'UTF-8'); ?></p>
+                        </section>
+
+                        <section class="product-specs-section">
+                            <h3>CATEGORY</h3>
+                            <p><?php echo htmlspecialchars($selectedCategory, ENT_QUOTES, 'UTF-8'); ?></p>
                         </section>
 
                         <?php foreach ($selectedSpecs as $sectionTitle => $entries): ?>
@@ -959,6 +998,7 @@ $productListPath = $homePath . '#featured-products-title';
                 });
 
                 var manageBrandOptionValue = '__manage_brands__';
+                var manageCategoryOptionValue = '__manage_categories__';
 
                 document.querySelectorAll('[data-brand-manage-select]').forEach(function (select) {
                     var initialValue = String(select.value || '').trim();
@@ -1005,6 +1045,58 @@ $productListPath = $homePath . '#featured-products-title';
                             event.preventDefault();
 
                             var targetUrl = String(select.getAttribute('data-brand-manage-url') || '').trim();
+                            if (targetUrl !== '') {
+                                window.location.href = targetUrl;
+                            }
+                        });
+                    }
+                });
+
+                document.querySelectorAll('[data-category-manage-select]').forEach(function (select) {
+                    var initialValue = String(select.value || '').trim();
+                    if (initialValue !== '' && initialValue !== manageCategoryOptionValue) {
+                        select.setAttribute('data-last-category-value', initialValue);
+                    }
+
+                    select.addEventListener('focus', function () {
+                        var currentValue = String(select.value || '').trim();
+                        if (currentValue !== '' && currentValue !== manageCategoryOptionValue) {
+                            select.setAttribute('data-last-category-value', currentValue);
+                        }
+                    });
+
+                    select.addEventListener('change', function () {
+                        var selectedValue = String(select.value || '').trim();
+
+                        if (selectedValue !== manageCategoryOptionValue) {
+                            if (selectedValue !== '') {
+                                select.setAttribute('data-last-category-value', selectedValue);
+                            }
+                            return;
+                        }
+
+                        var targetUrl = String(select.getAttribute('data-category-manage-url') || '').trim();
+                        var fallbackValue = String(select.getAttribute('data-last-category-value') || '').trim();
+
+                        if (fallbackValue !== '') {
+                            select.value = fallbackValue;
+                        }
+
+                        if (targetUrl !== '') {
+                            window.location.href = targetUrl;
+                        }
+                    });
+
+                    var parentForm = select.closest('form');
+                    if (parentForm) {
+                        parentForm.addEventListener('submit', function (event) {
+                            if (String(select.value || '').trim() !== manageCategoryOptionValue) {
+                                return;
+                            }
+
+                            event.preventDefault();
+
+                            var targetUrl = String(select.getAttribute('data-category-manage-url') || '').trim();
                             if (targetUrl !== '') {
                                 window.location.href = targetUrl;
                             }

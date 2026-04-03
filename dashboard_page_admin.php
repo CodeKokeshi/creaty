@@ -28,6 +28,7 @@ $adminHomePath = $routeBase . 'dashboard/';
 $logoutPath = $routeBase . 'logout.php';
 $notificationsPath = $routeBase . 'notifications/';
 $manageBrandsPath = $routeBase . 'brands/';
+$manageCategoriesPath = $routeBase . 'categories/';
 
 require_once __DIR__ . '/config/message_notifications_repository.php';
 
@@ -936,6 +937,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath . '#featured-products-title', ENT_QUOTES, 'UTF-8'); ?>">Manage Featured Products</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageBrandsPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Brands</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageCategoriesPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Categories</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
                         <li><a class="dropdown-item" href="#">Manage Discounts</a></li>
                         <li><hr class="dropdown-divider"></li>

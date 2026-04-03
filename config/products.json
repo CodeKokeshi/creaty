@@ -2,6 +2,8 @@
     "canon-700d": {
         "brand": "Canon",
         "name": "700D",
+        "skillLevel": "Beginner",
+        "category": "Photography",
         "price": "800.00",
         "discountPercent": 50,
         "spec1": "18MP APS-C CMOS sensor",
@@ -48,6 +50,8 @@
     "canon-1200d": {
         "brand": "Canon",
         "name": "1200D",
+        "skillLevel": "Beginner",
+        "category": "Photography",
         "price": "450.00",
         "discountPercent": 20,
         "spec1": "18-megapixel APS-C CMOS sensor",
@@ -87,6 +91,8 @@
     "fuji-x-a3": {
         "brand": "Fuji",
         "name": "X A3",
+        "skillLevel": "Beginner",
+        "category": "Photography",
         "price": "450.00",
         "discountPercent": 30,
         "spec1": "APS-C mirrorless camera",
@@ -127,6 +133,8 @@
     "canon-4000d": {
         "brand": "Canon",
         "name": "4000D",
+        "skillLevel": "Beginner",
+        "category": "Photography",
         "price": "600.00",
         "discountPercent": 0,
         "spec1": "18MP APS-C CMOS sensor",
@@ -166,6 +174,8 @@
     "nikon-d60": {
         "brand": "Nikon",
         "name": "D60",
+        "skillLevel": "Beginner",
+        "category": "Photography",
         "price": "250.00",
         "discountPercent": 0,
         "spec1": "10.2MP CCD sensor",
@@ -209,6 +219,8 @@
     "sony-zv-e10": {
         "brand": "Sony",
         "name": "ZV E10",
+        "skillLevel": "Professional",
+        "category": "Videography",
         "price": "899.00",
         "discountPercent": 0,
         "spec1": "24.2MP APS-C sensor",
@@ -244,59 +256,5 @@
             "canon-1200d",
             "canon-700d"
         ]
-    },
-    "canon-new-product-1": {
-        "brand": "Mark",
-        "name": "III",
-        "price": "100.00",
-        "discountPercent": 0,
-        "spec1": "New camera specification 1",
-        "spec2": "New camera specification 2",
-        "tagline": "Add a short product tagline.",
-        "cameraImage": "assets/cameras/Canon%20New%20Product%20%281%29.png",
-        "informationImages": [],
-        "captureSlides": [],
-        "specs": {
-            "Brand": [
-                "Mark"
-            ],
-            "Imaging and Performance": [
-                "Add imaging and performance details."
-            ],
-            "Video": [
-                "Add video details."
-            ],
-            "Physical Specifications": [
-                "Add physical specifications."
-            ]
-        },
-        "recommendations": []
-    },
-    "canon-new-product-copy": {
-        "brand": "Canon",
-        "name": "New Product (Copy)",
-        "price": "0.00",
-        "discountPercent": 0,
-        "spec1": "New camera specification 1",
-        "spec2": "New camera specification 2",
-        "tagline": "Add a short product tagline.",
-        "cameraImage": "assets/cameras/Canon%20New%20Product%20%28Copy%29%205.png",
-        "informationImages": [],
-        "captureSlides": [],
-        "specs": {
-            "Brand": [
-                "Canon"
-            ],
-            "Imaging and Performance": [
-                "Add imaging and performance details."
-            ],
-            "Video": [
-                "Add video details."
-            ],
-            "Physical Specifications": [
-                "Add physical specifications."
-            ]
-        },
-        "recommendations": []
     }
 }

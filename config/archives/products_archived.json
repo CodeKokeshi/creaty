@@ -410,5 +410,73 @@
             },
             "recommendations": []
         }
+    },
+    {
+        "archiveKey": "Canon New Product (Copy) 20260403-010058",
+        "archivedAt": "2026-04-03T01:00:58+00:00",
+        "originalKey": "canon-new-product-copy",
+        "product": {
+            "brand": "Canon",
+            "name": "New Product (Copy)",
+            "skillLevel": "Beginner",
+            "category": "Photography",
+            "price": "0.00",
+            "discountPercent": 0,
+            "spec1": "New camera specification 1",
+            "spec2": "New camera specification 2",
+            "tagline": "Add a short product tagline.",
+            "cameraImage": "assets/cameras/_archived/Canon%20New%20Product%20%28Copy%29%2020260403-010058.png",
+            "informationImages": [],
+            "captureSlides": [],
+            "specs": {
+                "Brand": [
+                    "Canon"
+                ],
+                "Imaging and Performance": [
+                    "Add imaging and performance details."
+                ],
+                "Video": [
+                    "Add video details."
+                ],
+                "Physical Specifications": [
+                    "Add physical specifications."
+                ]
+            },
+            "recommendations": []
+        }
+    },
+    {
+        "archiveKey": "Mark III 20260403-010100",
+        "archivedAt": "2026-04-03T01:01:00+00:00",
+        "originalKey": "canon-new-product-1",
+        "product": {
+            "brand": "Mark",
+            "name": "III",
+            "skillLevel": "Professional",
+            "category": "Videography",
+            "price": "100.00",
+            "discountPercent": 0,
+            "spec1": "New camera specification 1",
+            "spec2": "New camera specification 2",
+            "tagline": "Add a short product tagline.",
+            "cameraImage": "assets/cameras/_archived/Mark%20III%2020260403-010100.png",
+            "informationImages": [],
+            "captureSlides": [],
+            "specs": {
+                "Brand": [
+                    "Mark"
+                ],
+                "Imaging and Performance": [
+                    "Add imaging and performance details."
+                ],
+                "Video": [
+                    "Add video details."
+                ],
+                "Physical Specifications": [
+                    "Add physical specifications."
+                ]
+            },
+            "recommendations": []
+        }
     }
 ]

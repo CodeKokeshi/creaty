@@ -584,6 +584,10 @@ $canRemoveBrands = count($brandMap) > 1;
             background: rgba(5, 7, 10, 0.76);
         }
 
+        .brands-modal-backdrop[hidden] {
+            display: none;
+        }
+
         .brands-modal {
             width: min(100%, 460px);
             border-radius: 12px;

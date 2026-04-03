@@ -54,6 +54,24 @@ $tagline = trim((string) ($payload['tagline'] ?? ''));
 $priceValue = (float) ($payload['price'] ?? 0);
 $discount = (int) ($payload['discountPercent'] ?? 0);
 $discount = max(0, min(95, $discount));
+$skillLevelValue = null;
+$categoryValue = null;
+
+if (array_key_exists('skillLevel', $payload)) {
+    $skillLevelValue = normalize_product_skill_level($payload['skillLevel'] ?? default_product_skill_level());
+}
+
+if (array_key_exists('category', $payload)) {
+    $rawCategory = trim((string) ($payload['category'] ?? ''));
+
+    if ($rawCategory === '__manage_categories__') {
+        http_response_code(422);
+        echo json_encode(['ok' => false, 'message' => 'Please select a valid category.']);
+        exit;
+    }
+
+    $categoryValue = normalize_product_category($rawCategory !== '' ? $rawCategory : default_product_category());
+}
 
 if ($name === '' || $spec1 === '' || $spec2 === '' || $priceValue < 0) {
     http_response_code(422);
@@ -74,6 +92,20 @@ $product['spec1'] = $spec1;
 $product['spec2'] = $spec2;
 $product['price'] = number_format($priceValue, 2, '.', '');
 $product['discountPercent'] = $discount;
+
+if ($skillLevelValue !== null) {
+    $product['skillLevel'] = $skillLevelValue;
+}
+
+if ($categoryValue !== null) {
+    $product['category'] = $categoryValue;
+
+    if (!ensure_product_category_exists($categoryValue)) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'message' => 'Unable to keep category list in sync.']);
+        exit;
+    }
+}
 
 if (array_key_exists('tagline', $payload) && $tagline !== '') {
     $product['tagline'] = $tagline;

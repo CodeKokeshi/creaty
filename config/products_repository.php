@@ -263,6 +263,263 @@ function ensure_product_brand_exists($brand)
     return save_product_brands_repository($brands);
 }
 
+function default_product_skill_levels()
+{
+    return [
+        'Beginner',
+        'Professional'
+    ];
+}
+
+function product_skill_level_options()
+{
+    return default_product_skill_levels();
+}
+
+function default_product_skill_level()
+{
+    $levels = default_product_skill_levels();
+
+    return isset($levels[0]) ? (string) $levels[0] : 'Beginner';
+}
+
+function normalize_product_skill_level($skillLevel)
+{
+    $cleaned = preg_replace('/\s+/', ' ', trim((string) $skillLevel));
+
+    if ($cleaned === '') {
+        return default_product_skill_level();
+    }
+
+    foreach (default_product_skill_levels() as $option) {
+        if (strcasecmp($cleaned, $option) === 0) {
+            return $option;
+        }
+    }
+
+    return default_product_skill_level();
+}
+
+function default_product_categories()
+{
+    return [
+        'Photography',
+        'Videography'
+    ];
+}
+
+function sanitize_product_category_label($category)
+{
+    $label = preg_replace('/\s+/', ' ', trim((string) $category));
+
+    return trim((string) $label);
+}
+
+function product_category_slug($category)
+{
+    $normalized = strtolower(sanitize_product_category_label($category));
+    $slug = preg_replace('/[^a-z0-9]+/', '-', $normalized);
+    $slug = trim((string) $slug, '-');
+
+    return $slug !== '' ? $slug : 'category';
+}
+
+function normalize_product_categories_collection($categories, $fallbackToDefaults = true)
+{
+    $normalized = [];
+    $seenSlugs = [];
+
+    foreach ((array) $categories as $category) {
+        $label = sanitize_product_category_label($category);
+
+        if ($label === '') {
+            continue;
+        }
+
+        $slug = product_category_slug($label);
+
+        if (isset($seenSlugs[$slug])) {
+            continue;
+        }
+
+        $seenSlugs[$slug] = true;
+        $normalized[] = $label;
+    }
+
+    if ($normalized || !$fallbackToDefaults) {
+        return array_values($normalized);
+    }
+
+    return default_product_categories();
+}
+
+function product_categories_repository_path()
+{
+    return __DIR__ . '/categories.json';
+}
+
+function load_product_categories_repository()
+{
+    $path = product_categories_repository_path();
+    $fallbackCategories = default_product_categories();
+
+    foreach (load_products_repository() as $product) {
+        if (!is_array($product)) {
+            continue;
+        }
+
+        $fallbackCategories[] = (string) ($product['category'] ?? '');
+    }
+
+    $fallback = normalize_product_categories_collection($fallbackCategories, true);
+
+    if (!is_file($path)) {
+        return $fallback;
+    }
+
+    $raw = file_get_contents($path);
+    if ($raw === false) {
+        return $fallback;
+    }
+
+    $raw = preg_replace('/^\xEF\xBB\xBF/', '', (string) $raw);
+    $decoded = json_decode($raw, true);
+
+    if (!is_array($decoded)) {
+        return $fallback;
+    }
+
+    $normalized = normalize_product_categories_collection($decoded, false);
+
+    return $normalized ? $normalized : $fallback;
+}
+
+function save_product_categories_repository($categories)
+{
+    $path = product_categories_repository_path();
+    $normalized = normalize_product_categories_collection($categories, false);
+
+    if (!$normalized) {
+        return false;
+    }
+
+    $encoded = json_encode(array_values($normalized), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+    if ($encoded === false) {
+        return false;
+    }
+
+    return file_put_contents($path, $encoded . PHP_EOL, LOCK_EX) !== false;
+}
+
+function product_category_lookup_map($categories)
+{
+    $lookup = [];
+
+    foreach (normalize_product_categories_collection($categories, false) as $label) {
+        $lowerLabel = strtolower($label);
+        $slug = product_category_slug($label);
+
+        if (!isset($lookup[$lowerLabel])) {
+            $lookup[$lowerLabel] = $label;
+        }
+
+        if (!isset($lookup[$slug])) {
+            $lookup[$slug] = $label;
+        }
+    }
+
+    return $lookup;
+}
+
+function product_category_value_map($categories = null)
+{
+    $categoryOptions = is_array($categories)
+        ? normalize_product_categories_collection($categories, true)
+        : load_product_categories_repository();
+
+    $valueMap = [];
+
+    foreach ($categoryOptions as $label) {
+        $slug = product_category_slug($label);
+
+        if (!isset($valueMap[$slug])) {
+            $valueMap[$slug] = $label;
+        }
+    }
+
+    return $valueMap;
+}
+
+function resolve_product_category_label($value, $categories = null)
+{
+    $cleaned = sanitize_product_category_label($value);
+
+    if ($cleaned === '') {
+        return '';
+    }
+
+    $categoryOptions = is_array($categories) ? $categories : load_product_categories_repository();
+    $lookup = product_category_lookup_map($categoryOptions);
+    $lowerValue = strtolower($cleaned);
+
+    if (isset($lookup[$lowerValue])) {
+        return $lookup[$lowerValue];
+    }
+
+    $slugValue = product_category_slug($cleaned);
+
+    if (isset($lookup[$slugValue])) {
+        return $lookup[$slugValue];
+    }
+
+    return '';
+}
+
+function default_product_category()
+{
+    $categories = load_product_categories_repository();
+
+    return isset($categories[0]) ? (string) $categories[0] : 'Photography';
+}
+
+function normalize_product_category($category)
+{
+    $resolved = resolve_product_category_label($category);
+
+    if ($resolved !== '') {
+        return $resolved;
+    }
+
+    $cleaned = sanitize_product_category_label($category);
+
+    if ($cleaned !== '') {
+        return $cleaned;
+    }
+
+    return default_product_category();
+}
+
+function ensure_product_category_exists($category)
+{
+    $normalizedCategory = normalize_product_category($category);
+    $cleaned = sanitize_product_category_label($normalizedCategory);
+
+    if ($cleaned === '') {
+        return false;
+    }
+
+    $categories = load_product_categories_repository();
+
+    if (resolve_product_category_label($cleaned, $categories) !== '') {
+        return true;
+    }
+
+    $categories[] = $cleaned;
+
+    return save_product_categories_repository($categories);
+}
+
 function product_display_name($product)
 {
     $brand = normalize_product_brand(isset($product['brand']) ? $product['brand'] : default_product_brand());
@@ -403,6 +660,8 @@ function duplicate_product_record($products, $sourceKey, $projectRoot)
     $duplicate = $source;
     $duplicate['brand'] = $brand;
     $duplicate['name'] = $newName;
+    $duplicate['skillLevel'] = normalize_product_skill_level($source['skillLevel'] ?? default_product_skill_level());
+    $duplicate['category'] = normalize_product_category($source['category'] ?? default_product_category());
     unset($duplicate['availability']);
     unset($duplicate['featuredDate']);
     $duplicate['cameraImage'] = copy_product_image_for_duplicate(
@@ -411,6 +670,8 @@ function duplicate_product_record($products, $sourceKey, $projectRoot)
         $newName,
         $projectRoot
     );
+
+    ensure_product_category_exists($duplicate['category']);
 
     $products[$newKey] = $duplicate;
 
@@ -459,6 +720,8 @@ function create_product_record($products, $projectRoot)
     $newProduct = [
         'brand' => $brand,
         'name' => $newName,
+        'skillLevel' => default_product_skill_level(),
+        'category' => default_product_category(),
         'price' => '0.00',
         'discountPercent' => 0,
         'spec1' => 'New camera specification 1',
@@ -475,6 +738,8 @@ function create_product_record($products, $projectRoot)
         ],
         'recommendations' => []
     ];
+
+    ensure_product_category_exists($newProduct['category']);
 
     $products[$newKey] = $newProduct;
 
@@ -823,6 +1088,10 @@ function restore_archived_product_record($products, $archivedProducts, $archiveK
             $projectRoot
         );
     }
+
+    $product['skillLevel'] = normalize_product_skill_level($product['skillLevel'] ?? default_product_skill_level());
+    $product['category'] = normalize_product_category($product['category'] ?? default_product_category());
+    ensure_product_category_exists($product['category']);
 
     $products[$restoreKey] = $product;
     array_splice($archivedProducts, $matchIndex, 1);
