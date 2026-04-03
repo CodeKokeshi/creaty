@@ -483,11 +483,9 @@ $availableCartItemIds = array_values(array_unique($availableCartItemIds));
                     </div>
 
                     <select class="cart-payment-select" data-booking-field="paymentMethod">
-                        <option value="">Payment Method</option>
-                        <option value="gcash">GCash (Demo)</option>
-                        <option value="bank-transfer">Bank Transfer (Demo)</option>
-                        <option value="cash-pickup">Cash on Pick-up</option>
-                        <option value="cash-meetup">Cash on Meet-up</option>
+                        <option value="gcash">Gcash</option>
+                        <option value="cash-pickup">Cash on Pickup</option>
+                        <option value="cash-meetup">Cash on Meetup</option>
                     </select>
 
                     <button class="cart-confirm-button" type="button">CONFIRM BOOKING</button>

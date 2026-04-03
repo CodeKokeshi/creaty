@@ -5269,8 +5269,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 receiveTimeSelect.value = bookingState.receiveTime;
             }
 
-            if (paymentSelect && bookingState.paymentMethod) {
-                paymentSelect.value = bookingState.paymentMethod;
+            if (paymentSelect) {
+                if (bookingState.paymentMethod) {
+                    paymentSelect.value = bookingState.paymentMethod;
+                }
+
+                if (!paymentSelect.value && paymentSelect.options.length) {
+                    paymentSelect.selectedIndex = 0;
+                }
             }
 
             if (bookingState.receivingMethod) {
@@ -5692,7 +5698,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (paymentSelect && bookingNote) {
             paymentSelect.addEventListener("change", function () {
-                if (paymentSelect.value === "gcash" || paymentSelect.value === "bank-transfer") {
+                if (paymentSelect.value === "gcash") {
                     bookingNote.textContent = "Demo payment selected. No charges will be made in this frontend prototype.";
                     return;
                 }
