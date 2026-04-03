@@ -14,15 +14,39 @@ function customer_order_generate_id()
     }
 }
 
-function normalize_customer_order_status($value)
+function customer_order_allowed_status_tokens()
+{
+    return ['pending', 'approved', 'ongoing', 'return', 'completed', 'canceled'];
+}
+
+function normalize_customer_order_status_token($value)
 {
     $status = strtolower(trim((string) $value));
+    $status = preg_replace('/[^a-z0-9-]+/', '-', $status) ?? $status;
+    $status = trim((string) $status, '-');
 
-    if ($status !== 'pending') {
+    if ($status === 'confirmed') {
+        $status = 'approved';
+    } elseif ($status === 'past-return') {
+        $status = 'return';
+    }
+
+    if (!in_array($status, customer_order_allowed_status_tokens(), true)) {
         $status = 'pending';
     }
 
-    return ucfirst($status);
+    return $status;
+}
+
+function normalize_customer_order_status($value)
+{
+    $statusToken = normalize_customer_order_status_token($value);
+
+    if ($statusToken === 'return') {
+        return 'Return';
+    }
+
+    return ucfirst($statusToken);
 }
 
 function normalize_customer_order_date($value)
@@ -57,6 +81,32 @@ function normalize_customer_order_payment_method($value)
     }
 
     return $method;
+}
+
+function normalize_customer_order_method($value, $allowed)
+{
+    $method = strtolower(trim((string) $value));
+
+    if (!in_array($method, $allowed, true)) {
+        return '';
+    }
+
+    return $method;
+}
+
+function normalize_customer_order_receiving_method($value)
+{
+    return normalize_customer_order_method($value, ['pickup', 'meetup', 'delivery']);
+}
+
+function normalize_customer_order_returning_method($value)
+{
+    return normalize_customer_order_method($value, ['pickup', 'meetup', 'delivery']);
+}
+
+function normalize_customer_order_courier($value)
+{
+    return normalize_customer_order_method($value, ['lalamove', 'grab-express', 'lbc', 'j-and-t', 'self-booked']);
 }
 
 function normalize_customer_order_items($items)
@@ -131,6 +181,9 @@ function normalize_customer_order_record($record)
         'return_date' => normalize_customer_order_date($record['return_date'] ?? ''),
         'return_time' => normalize_customer_order_time($record['return_time'] ?? ''),
         'place' => trim((string) ($record['place'] ?? '')),
+        'receiving_method' => normalize_customer_order_receiving_method($record['receiving_method'] ?? ''),
+        'returning_method' => normalize_customer_order_returning_method($record['returning_method'] ?? ''),
+        'courier' => normalize_customer_order_courier($record['courier'] ?? ''),
         'payment_method' => normalize_customer_order_payment_method($record['payment_method'] ?? ''),
         'created_at' => $createdAt,
     ];
@@ -212,6 +265,9 @@ function map_customer_order_for_frontend($record)
         'returnDate' => (string) ($record['return_date'] ?? ''),
         'returnTime' => (string) ($record['return_time'] ?? ''),
         'place' => (string) ($record['place'] ?? ''),
+        'receivingMethod' => (string) ($record['receiving_method'] ?? ''),
+        'returningMethod' => (string) ($record['returning_method'] ?? ''),
+        'courier' => (string) ($record['courier'] ?? ''),
         'paymentMethod' => (string) ($record['payment_method'] ?? ''),
         'createdAt' => (string) ($record['created_at'] ?? ''),
     ];
@@ -279,6 +335,9 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
         'return_date' => $payload['returnDate'] ?? '',
         'return_time' => $payload['returnTime'] ?? '',
         'place' => $payload['place'] ?? '',
+        'receiving_method' => $payload['receivingMethod'] ?? '',
+        'returning_method' => $payload['returningMethod'] ?? '',
+        'courier' => $payload['courier'] ?? '',
         'payment_method' => $payload['paymentMethod'] ?? '',
         'created_at' => gmdate('c'),
     ]);
@@ -290,4 +349,42 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
     }
 
     return map_customer_order_for_frontend($newOrder);
+}
+
+function update_customer_order_status_by_id($orderId, $nextStatus)
+{
+    $targetOrderId = trim((string) $orderId);
+
+    if ($targetOrderId === '') {
+        return null;
+    }
+
+    $statusLabel = normalize_customer_order_status($nextStatus);
+    $orders = load_customer_orders_repository();
+    $updatedOrder = null;
+
+    foreach ($orders as $index => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        if ((string) ($record['id'] ?? '') !== $targetOrderId) {
+            continue;
+        }
+
+        $record['status'] = $statusLabel;
+        $orders[$index] = normalize_customer_order_record($record);
+        $updatedOrder = $orders[$index];
+        break;
+    }
+
+    if ($updatedOrder === null) {
+        return null;
+    }
+
+    if (!save_customer_orders_repository($orders)) {
+        return null;
+    }
+
+    return map_customer_order_for_frontend($updatedOrder);
 }
