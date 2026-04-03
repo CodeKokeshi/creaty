@@ -23,6 +23,7 @@ $eventsPath = $assetBase . 'customer-events/';
 
 require_once __DIR__ . '/config/products_repository.php';
 require_once __DIR__ . '/config/event_packages_repository.php';
+require_once __DIR__ . '/config/customer_orders_repository.php';
 
 $productsRepository = load_products_repository();
 $eventPackagesRepository = load_event_packages_repository();
@@ -53,6 +54,12 @@ if (is_array($eventPackagesRepository)) {
 }
 
 $availableCartItemIds = array_values(array_unique($availableCartItemIds));
+$orderSubmitEndpoint = $assetBase . 'customer_order_submit.php';
+$customerOrders = [];
+
+if ($isCustomerLoggedIn) {
+    $customerOrders = load_customer_orders_for_customer($_SESSION['customer_id'] ?? '');
+}
 
 ?>
 
@@ -524,9 +531,11 @@ $availableCartItemIds = array_values(array_unique($availableCartItemIds));
 
     <script>
         window.__creatyCartAvailableItemIds = <?php echo json_encode($availableCartItemIds, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerOrders = <?php echo json_encode($customerOrders, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerOrderSubmitEndpoint = <?php echo json_encode($orderSubmitEndpoint, JSON_UNESCAPED_SLASHES); ?>;
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260403-1"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260403-2"></script>
 </body>
 </html>

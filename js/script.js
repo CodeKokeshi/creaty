@@ -4954,7 +4954,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var cartStorageKey = "creaty_cart_v1";
     var bookingStorageKey = "creaty_booking_v1";
-    var orderStorageKey = "creaty_orders_v1";
 
     function loadJsonStorage(storageKey, fallbackValue) {
         try {
@@ -5153,6 +5152,12 @@ document.addEventListener("DOMContentLoaded", function () {
         };
         var orderStatusList = document.querySelector("[data-cart-orders-list]");
         var orderStatusEmpty = document.querySelector("[data-cart-orders-empty]");
+        var orderSubmitEndpoint = typeof window.__creatyCustomerOrderSubmitEndpoint === "string"
+            ? String(window.__creatyCustomerOrderSubmitEndpoint || "")
+            : "";
+        var serverOrders = Array.isArray(window.__creatyCustomerOrders)
+            ? window.__creatyCustomerOrders.slice()
+            : [];
         var bookingState = loadJsonStorage(bookingStorageKey, {});
         var unavailableModal = document.querySelector("[data-cart-unavailable-modal]");
         var unavailableModalMessage = unavailableModal ? unavailableModal.querySelector("[data-cart-unavailable-message]") : null;
@@ -5316,13 +5321,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function getStoredOrders() {
-            var parsedOrders = loadJsonStorage(orderStorageKey, []);
-
-            if (!Array.isArray(parsedOrders)) {
-                return [];
-            }
-
-            return parsedOrders
+            return serverOrders
                 .map(function (order) {
                     return normalizeStoredOrder(order);
                 })
@@ -5332,7 +5331,54 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function saveStoredOrders(orders) {
-            saveJsonStorage(orderStorageKey, orders);
+            if (!Array.isArray(orders)) {
+                serverOrders = [];
+                return;
+            }
+
+            serverOrders = orders
+                .map(function (order) {
+                    return normalizeStoredOrder(order);
+                })
+                .filter(function (order) {
+                    return Boolean(order);
+                });
+        }
+
+        function submitPendingOrder(orderRecord) {
+            if (!orderSubmitEndpoint) {
+                return Promise.reject(new Error("Order endpoint is unavailable."));
+            }
+
+            return window.fetch(orderSubmitEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                },
+                body: JSON.stringify({
+                    order: orderRecord
+                })
+            }).then(function (response) {
+                return response.text().then(function (rawBody) {
+                    var payload = {};
+
+                    try {
+                        payload = JSON.parse(rawBody);
+                    } catch (error) {
+                        payload = {};
+                    }
+
+                    if (!response.ok || !payload || payload.ok !== true) {
+                        var errorMessage = payload && payload.message
+                            ? String(payload.message)
+                            : "Unable to save booking right now.";
+                        throw new Error(errorMessage);
+                    }
+
+                    return payload;
+                });
+            });
         }
 
         function formatTimeDisplay(timeValue) {
@@ -6037,17 +6083,36 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
-                var existingOrders = getStoredOrders();
-                existingOrders.unshift(pendingOrder);
-                saveStoredOrders(existingOrders);
-                renderOrderStatusList();
+                if (confirmButton.disabled) {
+                    return;
+                }
 
-                saveCartItems([]);
-                renderCartItems();
+                confirmButton.disabled = true;
 
-                bookingNote.textContent = "Booking saved as Pending. Open Order Status to track your reservation.";
-                showCartToast("Booking saved as Pending");
-                setCartView("order-status");
+                submitPendingOrder(pendingOrder)
+                    .then(function (responsePayload) {
+                        var savedOrder = normalizeStoredOrder(responsePayload.order || pendingOrder);
+                        var existingOrders = getStoredOrders();
+
+                        existingOrders.unshift(savedOrder);
+                        saveStoredOrders(existingOrders);
+                        renderOrderStatusList();
+
+                        saveCartItems([]);
+                        renderCartItems();
+
+                        bookingNote.textContent = "Booking saved as Pending. Open Order Status to track your reservation.";
+                        showCartToast("Booking saved as Pending");
+                        setCartView("order-status");
+                    })
+                    .catch(function (error) {
+                        bookingNote.textContent = error && error.message
+                            ? String(error.message)
+                            : "Unable to save booking right now.";
+                    })
+                    .finally(function () {
+                        confirmButton.disabled = false;
+                    });
             });
         }
 
