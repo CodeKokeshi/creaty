@@ -109,10 +109,9 @@ $availableCartItemIds = array_values(array_unique($availableCartItemIds));
             <?php endif; ?>
         </div>
 
-        <nav class="section-nav section-nav-disabled" aria-label="Catalog filters">
-            <span class="section-nav-filter is-disabled" aria-disabled="true">BRANDS</span>
-            <span class="section-nav-section is-disabled" aria-disabled="true">EVENTS</span>
-            <span class="section-nav-filter is-disabled" aria-disabled="true">DATE</span>
+        <nav class="section-nav" aria-label="Customer navigation">
+            <span class="section-nav-filter is-active" aria-current="page">Cart</span>
+            <span class="section-nav-section">Order Status</span>
         </nav>
     </header>
 
