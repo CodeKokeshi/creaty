@@ -2610,6 +2610,27 @@ button {
     line-height: 1.5;
 }
 
+.cart-order-status-reason {
+    margin: 0;
+    color: #ffbebe;
+    font-size: 0.79rem;
+    line-height: 1.45;
+}
+
+.cart-order-status-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.45rem;
+}
+
+.cart-order-cancel-error {
+    margin: 0;
+    color: #ffbebe;
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
 .cart-sidebar {
     position: sticky;
     top: 114px;

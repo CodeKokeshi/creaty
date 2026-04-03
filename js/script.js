@@ -5489,6 +5489,9 @@ document.addEventListener("DOMContentLoaded", function () {
         var orderSubmitEndpoint = typeof window.__creatyCustomerOrderSubmitEndpoint === "string"
             ? String(window.__creatyCustomerOrderSubmitEndpoint || "")
             : "";
+        var orderCancelEndpoint = typeof window.__creatyCustomerOrderCancelEndpoint === "string"
+            ? String(window.__creatyCustomerOrderCancelEndpoint || "")
+            : "";
         var serverOrders = Array.isArray(window.__creatyCustomerOrders)
             ? window.__creatyCustomerOrders.slice()
             : [];
@@ -5497,6 +5500,12 @@ document.addEventListener("DOMContentLoaded", function () {
         var unavailableModalMessage = unavailableModal ? unavailableModal.querySelector("[data-cart-unavailable-message]") : null;
         var unavailableModalConfirm = unavailableModal ? unavailableModal.querySelector("[data-cart-unavailable-confirm]") : null;
         var unavailableModalCloseButtons = unavailableModal ? unavailableModal.querySelectorAll("[data-cart-unavailable-close]") : [];
+        var orderCancelModal = document.querySelector("[data-cart-order-cancel-modal]");
+        var orderCancelReasonInput = orderCancelModal ? orderCancelModal.querySelector("[data-cart-order-cancel-reason]") : null;
+        var orderCancelError = orderCancelModal ? orderCancelModal.querySelector("[data-cart-order-cancel-error]") : null;
+        var orderCancelConfirmButton = orderCancelModal ? orderCancelModal.querySelector("[data-cart-order-cancel-confirm]") : null;
+        var orderCancelCloseButtons = orderCancelModal ? orderCancelModal.querySelectorAll("[data-cart-order-cancel-close]") : [];
+        var activeCancelOrderId = "";
         var availableCartItemIdsSource = Array.isArray(window.__creatyCartAvailableItemIds) ? window.__creatyCartAvailableItemIds : [];
         var availableCartItemIdsSet = availableCartItemIdsSource.reduce(function (set, itemId) {
             if (typeof itemId === "string" && itemId) {
@@ -5571,6 +5580,58 @@ document.addEventListener("DOMContentLoaded", function () {
             };
 
             unavailableModal.hidden = false;
+        }
+
+        function setOrderCancelError(message) {
+            if (!orderCancelError) {
+                return;
+            }
+
+            var text = String(message || "").trim();
+            orderCancelError.textContent = text;
+            orderCancelError.hidden = text === "";
+        }
+
+        function closeOrderCancelModal() {
+            if (!orderCancelModal) {
+                return;
+            }
+
+            orderCancelModal.hidden = true;
+            activeCancelOrderId = "";
+            setOrderCancelError("");
+
+            if (orderCancelReasonInput) {
+                orderCancelReasonInput.value = "";
+            }
+
+            if (orderCancelConfirmButton) {
+                orderCancelConfirmButton.disabled = false;
+            }
+        }
+
+        function openOrderCancelModal(orderId) {
+            if (!orderCancelModal) {
+                return;
+            }
+
+            activeCancelOrderId = String(orderId || "").trim();
+            if (!activeCancelOrderId) {
+                return;
+            }
+
+            if (orderCancelReasonInput) {
+                orderCancelReasonInput.value = "";
+            }
+
+            setOrderCancelError("");
+            orderCancelModal.hidden = false;
+
+            window.requestAnimationFrame(function () {
+                if (orderCancelReasonInput) {
+                    orderCancelReasonInput.focus();
+                }
+            });
         }
 
         unavailableModalCloseButtons.forEach(function (button) {
@@ -5649,6 +5710,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 returnDate: String(order.returnDate || ""),
                 returnTime: String(order.returnTime || ""),
                 place: String(order.place || ""),
+                cancelReason: String(order.cancelReason || order.cancel_reason || ""),
                 paymentMethod: String(order.paymentMethod || ""),
                 createdAt: String(order.createdAt || "")
             };
@@ -5707,6 +5769,43 @@ document.addEventListener("DOMContentLoaded", function () {
                         var errorMessage = payload && payload.message
                             ? String(payload.message)
                             : "Unable to save booking right now.";
+                        throw new Error(errorMessage);
+                    }
+
+                    return payload;
+                });
+            });
+        }
+
+        function submitOrderCancellation(orderId, reasonText) {
+            if (!orderCancelEndpoint) {
+                return Promise.reject(new Error("Cancel endpoint is unavailable."));
+            }
+
+            return window.fetch(orderCancelEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                },
+                body: JSON.stringify({
+                    orderId: String(orderId || ""),
+                    reason: String(reasonText || "")
+                })
+            }).then(function (response) {
+                return response.text().then(function (rawBody) {
+                    var payload = {};
+
+                    try {
+                        payload = JSON.parse(rawBody);
+                    } catch (error) {
+                        payload = {};
+                    }
+
+                    if (!response.ok || !payload || payload.ok !== true) {
+                        var errorMessage = payload && payload.message
+                            ? String(payload.message)
+                            : "Unable to cancel booking right now.";
                         throw new Error(errorMessage);
                     }
 
@@ -5852,6 +5951,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 var statusText = String(order.status || "Pending");
                 var statusSlug = statusText.toLowerCase().replace(/[^a-z0-9]+/g, "-");
                 var paymentMethodSlug = String(order.paymentMethod || "").toLowerCase().trim();
+                var cancelReason = String(order.cancelReason || "").trim();
                 var orderedText = "Ordered: " + buildOrderItemsSummary(order.items);
                 var receiveSchedule = formatOrderSchedule(order.receiveDate, order.receiveTime);
                 var returnSchedule = formatOrderSchedule(order.returnDate, order.returnTime);
@@ -5880,19 +5980,142 @@ document.addEventListener("DOMContentLoaded", function () {
                 orderMeta.appendChild(orderedLine);
                 orderMeta.appendChild(scheduleLine);
                 orderMeta.appendChild(statusBadge);
+
+                if (statusSlug === "canceled" && cancelReason) {
+                    var reasonLine = document.createElement("p");
+                    reasonLine.className = "cart-order-status-reason";
+                    reasonLine.textContent = "Reason: " + cancelReason;
+                    orderMeta.appendChild(reasonLine);
+                }
+
                 orderItem.appendChild(orderMeta);
+
+                var actionWrap = document.createElement("div");
+                actionWrap.className = "cart-order-status-actions";
 
                 if (statusSlug === "pending" && paymentMethodSlug === "gcash") {
                     var pendingAction = document.createElement("button");
                     pendingAction.type = "button";
                     pendingAction.className = "profile-order-action primary";
                     pendingAction.textContent = "Upload Payment Receipt";
-                    orderItem.appendChild(pendingAction);
+                    actionWrap.appendChild(pendingAction);
+                }
+
+                var canCancelOrder = orderCancelEndpoint !== "" && (statusSlug === "pending" || statusSlug === "approved");
+
+                if (canCancelOrder) {
+                    var cancelAction = document.createElement("button");
+                    cancelAction.type = "button";
+                    cancelAction.className = "profile-order-action danger";
+                    cancelAction.textContent = "Cancel";
+                    cancelAction.setAttribute("data-cart-order-cancel-open", "true");
+                    cancelAction.setAttribute("data-cart-order-id", String(order.id || ""));
+                    actionWrap.appendChild(cancelAction);
+                }
+
+                if (actionWrap.children.length > 0) {
+                    orderItem.appendChild(actionWrap);
                 }
 
                 orderStatusList.appendChild(orderItem);
             });
         }
+
+        if (orderStatusList) {
+            orderStatusList.addEventListener("click", function (event) {
+                var cancelButton = event.target.closest("[data-cart-order-cancel-open]");
+                if (!cancelButton) {
+                    return;
+                }
+
+                var orderId = cancelButton.getAttribute("data-cart-order-id") || "";
+                openOrderCancelModal(orderId);
+            });
+        }
+
+        orderCancelCloseButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                closeOrderCancelModal();
+            });
+        });
+
+        if (orderCancelConfirmButton) {
+            orderCancelConfirmButton.addEventListener("click", function () {
+                var targetOrderId = String(activeCancelOrderId || "").trim();
+                var reasonValue = orderCancelReasonInput ? String(orderCancelReasonInput.value || "").trim() : "";
+
+                if (!targetOrderId) {
+                    closeOrderCancelModal();
+                    return;
+                }
+
+                if (reasonValue === "") {
+                    setOrderCancelError("Please provide a cancellation reason.");
+
+                    if (orderCancelReasonInput) {
+                        orderCancelReasonInput.focus();
+                    }
+
+                    return;
+                }
+
+                if (orderCancelConfirmButton.disabled) {
+                    return;
+                }
+
+                orderCancelConfirmButton.disabled = true;
+                setOrderCancelError("");
+
+                submitOrderCancellation(targetOrderId, reasonValue)
+                    .then(function (responsePayload) {
+                        var savedOrder = normalizeStoredOrder(responsePayload.order || null);
+
+                        if (!savedOrder) {
+                            throw new Error("Unable to refresh canceled booking.");
+                        }
+
+                        var existingOrders = getStoredOrders();
+                        var hasMatch = false;
+                        var nextOrders = existingOrders.map(function (order) {
+                            if (order.id === savedOrder.id) {
+                                hasMatch = true;
+                                return savedOrder;
+                            }
+
+                            return order;
+                        });
+
+                        if (!hasMatch) {
+                            nextOrders.unshift(savedOrder);
+                        }
+
+                        saveStoredOrders(nextOrders);
+                        renderOrderStatusList();
+                        closeOrderCancelModal();
+
+                        if (bookingNote) {
+                            bookingNote.textContent = "Booking canceled successfully.";
+                        }
+
+                        showCartToast("Booking canceled");
+                        setCartView("order-status");
+                    })
+                    .catch(function (error) {
+                        setOrderCancelError(error && error.message
+                            ? String(error.message)
+                            : "Unable to cancel booking right now.");
+                    })
+                    .finally(function () {
+                        orderCancelConfirmButton.disabled = false;
+                    });
+            });
+        }
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && orderCancelModal && !orderCancelModal.hidden) {
+                closeOrderCancelModal();
+            }
+        });
 
         cartNavButtons.forEach(function (button) {
             button.addEventListener("click", function () {

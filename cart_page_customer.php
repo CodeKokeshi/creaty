@@ -55,6 +55,7 @@ if (is_array($eventPackagesRepository)) {
 
 $availableCartItemIds = array_values(array_unique($availableCartItemIds));
 $orderSubmitEndpoint = $assetBase . 'customer_order_submit.php';
+$orderCancelEndpoint = $assetBase . 'customer_order_cancel.php';
 $customerOrders = [];
 
 if ($isCustomerLoggedIn) {
@@ -73,7 +74,7 @@ if ($isCustomerLoggedIn) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260403-1">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260403-2">
 </head>
 <body class="cart-page">
     <header class="site-header">
@@ -373,7 +374,7 @@ if ($isCustomerLoggedIn) {
                     <p class="cart-order-status-copy">Track your reservations and current fulfillment status.</p>
 
                     <div class="profile-order-list" data-cart-orders-list aria-label="Order status list"></div>
-                    <p class="cart-order-status-empty" data-cart-orders-empty hidden>No pending orders yet. Confirm a booking to see it here.</p>
+                    <p class="cart-order-status-empty" data-cart-orders-empty hidden>No orders yet. Confirm a booking to see it here.</p>
                 </section>
             </div>
 
@@ -517,6 +518,20 @@ if ($isCustomerLoggedIn) {
 
     <?php require __DIR__ . '/customer_message_modal.php'; ?>
 
+    <section class="profile-modal cart-order-cancel-modal" data-cart-order-cancel-modal hidden>
+        <div class="profile-modal-backdrop" data-cart-order-cancel-close></div>
+        <div class="profile-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-order-cancel-title">
+            <h3 id="cart-order-cancel-title">Cancel booking</h3>
+            <p>Please tell us why you want to cancel this booking.</p>
+            <textarea data-cart-order-cancel-reason placeholder="Write your reason here" maxlength="500"></textarea>
+            <p class="cart-order-cancel-error" data-cart-order-cancel-error hidden></p>
+            <div class="profile-modal-actions">
+                <button type="button" class="profile-order-action" data-cart-order-cancel-close>Back</button>
+                <button type="button" class="profile-order-action danger" data-cart-order-cancel-confirm>Submit Cancel</button>
+            </div>
+        </div>
+    </section>
+
     <section class="cart-unavailable-modal" data-cart-unavailable-modal hidden>
         <div class="cart-unavailable-modal-backdrop" data-cart-unavailable-close></div>
         <div class="cart-unavailable-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-unavailable-title">
@@ -533,9 +548,10 @@ if ($isCustomerLoggedIn) {
         window.__creatyCartAvailableItemIds = <?php echo json_encode($availableCartItemIds, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerOrders = <?php echo json_encode($customerOrders, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerOrderSubmitEndpoint = <?php echo json_encode($orderSubmitEndpoint, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerOrderCancelEndpoint = <?php echo json_encode($orderCancelEndpoint, JSON_UNESCAPED_SLASHES); ?>;
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260403-2"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260403-4"></script>
 </body>
 </html>

@@ -109,6 +109,22 @@ function normalize_customer_order_courier($value)
     return normalize_customer_order_method($value, ['lalamove', 'grab-express', 'lbc', 'j-and-t', 'self-booked']);
 }
 
+function normalize_customer_order_cancel_reason($value)
+{
+    $reason = trim((string) $value);
+    $reason = preg_replace('/\s+/', ' ', $reason) ?? $reason;
+
+    if ($reason === '') {
+        return '';
+    }
+
+    if (function_exists('mb_substr')) {
+        return trim((string) mb_substr($reason, 0, 500));
+    }
+
+    return trim((string) substr($reason, 0, 500));
+}
+
 function normalize_customer_order_items($items)
 {
     if (!is_array($items)) {
@@ -169,12 +185,20 @@ function normalize_customer_order_record($record)
         $createdAt = gmdate('c');
     }
 
+    $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+    $statusLabel = normalize_customer_order_status($statusToken);
+
     $receivingMethod = normalize_customer_order_receiving_method($record['receiving_method'] ?? '');
     $returningMethod = normalize_customer_order_returning_method($record['returning_method'] ?? '');
     $courier = normalize_customer_order_courier($record['courier'] ?? '');
+    $cancelReason = normalize_customer_order_cancel_reason($record['cancel_reason'] ?? '');
 
     if ($receivingMethod !== 'delivery' && $returningMethod !== 'delivery') {
         $courier = '';
+    }
+
+    if ($statusToken !== 'canceled') {
+        $cancelReason = '';
     }
 
     return [
@@ -182,7 +206,7 @@ function normalize_customer_order_record($record)
         'customer_id' => $customerId,
         'customer_name' => $customerName,
         'customer_email' => $customerEmail,
-        'status' => normalize_customer_order_status($record['status'] ?? 'pending'),
+        'status' => $statusLabel,
         'items' => $items,
         'receive_date' => normalize_customer_order_date($record['receive_date'] ?? ''),
         'receive_time' => normalize_customer_order_time($record['receive_time'] ?? ''),
@@ -192,6 +216,7 @@ function normalize_customer_order_record($record)
         'receiving_method' => $receivingMethod,
         'returning_method' => $returningMethod,
         'courier' => $courier,
+        'cancel_reason' => $cancelReason,
         'payment_method' => normalize_customer_order_payment_method($record['payment_method'] ?? ''),
         'created_at' => $createdAt,
     ];
@@ -276,6 +301,7 @@ function map_customer_order_for_frontend($record)
         'receivingMethod' => (string) ($record['receiving_method'] ?? ''),
         'returningMethod' => (string) ($record['returning_method'] ?? ''),
         'courier' => (string) ($record['courier'] ?? ''),
+        'cancelReason' => (string) ($record['cancel_reason'] ?? ''),
         'paymentMethod' => (string) ($record['payment_method'] ?? ''),
         'createdAt' => (string) ($record['created_at'] ?? ''),
     ];
@@ -346,6 +372,7 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
         'receiving_method' => $payload['receivingMethod'] ?? '',
         'returning_method' => $payload['returningMethod'] ?? '',
         'courier' => $payload['courier'] ?? '',
+        'cancel_reason' => '',
         'payment_method' => $payload['paymentMethod'] ?? '',
         'created_at' => gmdate('c'),
     ]);
@@ -359,7 +386,7 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
     return map_customer_order_for_frontend($newOrder);
 }
 
-function update_customer_order_status_by_id($orderId, $nextStatus)
+function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason = '')
 {
     $targetOrderId = trim((string) $orderId);
 
@@ -367,7 +394,11 @@ function update_customer_order_status_by_id($orderId, $nextStatus)
         return null;
     }
 
-    $statusLabel = normalize_customer_order_status($nextStatus);
+    $statusToken = normalize_customer_order_status_token($nextStatus);
+    $statusLabel = normalize_customer_order_status($statusToken);
+    $normalizedCancelReason = $statusToken === 'canceled'
+        ? normalize_customer_order_cancel_reason($cancelReason)
+        : '';
     $orders = load_customer_orders_repository();
     $updatedOrder = null;
 
@@ -381,6 +412,57 @@ function update_customer_order_status_by_id($orderId, $nextStatus)
         }
 
         $record['status'] = $statusLabel;
+        $record['cancel_reason'] = $normalizedCancelReason;
+        $orders[$index] = normalize_customer_order_record($record);
+        $updatedOrder = $orders[$index];
+        break;
+    }
+
+    if ($updatedOrder === null) {
+        return null;
+    }
+
+    if (!save_customer_orders_repository($orders)) {
+        return null;
+    }
+
+    return map_customer_order_for_frontend($updatedOrder);
+}
+
+function cancel_customer_order_for_customer($customerId, $orderId, $cancelReason)
+{
+    $targetCustomerId = trim((string) $customerId);
+    $targetOrderId = trim((string) $orderId);
+    $normalizedReason = normalize_customer_order_cancel_reason($cancelReason);
+
+    if ($targetCustomerId === '' || $targetOrderId === '' || $normalizedReason === '') {
+        return null;
+    }
+
+    $orders = load_customer_orders_repository();
+    $updatedOrder = null;
+
+    foreach ($orders as $index => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        if ((string) ($record['id'] ?? '') !== $targetOrderId) {
+            continue;
+        }
+
+        if ((string) ($record['customer_id'] ?? '') !== $targetCustomerId) {
+            return null;
+        }
+
+        $currentStatusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+
+        if (!in_array($currentStatusToken, ['pending', 'approved'], true)) {
+            return null;
+        }
+
+        $record['status'] = 'canceled';
+        $record['cancel_reason'] = $normalizedReason;
         $orders[$index] = normalize_customer_order_record($record);
         $updatedOrder = $orders[$index];
         break;
