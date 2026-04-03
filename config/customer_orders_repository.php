@@ -169,6 +169,14 @@ function normalize_customer_order_record($record)
         $createdAt = gmdate('c');
     }
 
+    $receivingMethod = normalize_customer_order_receiving_method($record['receiving_method'] ?? '');
+    $returningMethod = normalize_customer_order_returning_method($record['returning_method'] ?? '');
+    $courier = normalize_customer_order_courier($record['courier'] ?? '');
+
+    if ($receivingMethod !== 'delivery' && $returningMethod !== 'delivery') {
+        $courier = '';
+    }
+
     return [
         'id' => $id,
         'customer_id' => $customerId,
@@ -181,9 +189,9 @@ function normalize_customer_order_record($record)
         'return_date' => normalize_customer_order_date($record['return_date'] ?? ''),
         'return_time' => normalize_customer_order_time($record['return_time'] ?? ''),
         'place' => trim((string) ($record['place'] ?? '')),
-        'receiving_method' => normalize_customer_order_receiving_method($record['receiving_method'] ?? ''),
-        'returning_method' => normalize_customer_order_returning_method($record['returning_method'] ?? ''),
-        'courier' => normalize_customer_order_courier($record['courier'] ?? ''),
+        'receiving_method' => $receivingMethod,
+        'returning_method' => $returningMethod,
+        'courier' => $courier,
         'payment_method' => normalize_customer_order_payment_method($record['payment_method'] ?? ''),
         'created_at' => $createdAt,
     ];

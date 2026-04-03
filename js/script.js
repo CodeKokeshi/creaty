@@ -5990,15 +5990,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 returnTimeSelect.value = derivedSchedule.time;
             }
 
+            var receivingMethod = getMethodValue(receiveMethodInputs, "pickup");
+            var returningMethod = getMethodValue(returnMethodInputs, "meetup");
+            var hasDelivery = receivingMethod === "delivery" || returningMethod === "delivery";
+
             return {
                 receiveDate: receiveDateInput ? receiveDateInput.value : "",
                 receiveTime: receiveTimeSelect ? receiveTimeSelect.value : "",
                 place: placeSelect ? placeSelect.value : "",
                 returnDate: derivedSchedule.date || (returnDateInput ? returnDateInput.value : ""),
                 returnTime: derivedSchedule.time || (returnTimeSelect ? returnTimeSelect.value : ""),
-                courier: courierSelect ? courierSelect.value : "",
-                receivingMethod: getMethodValue(receiveMethodInputs, "pickup"),
-                returningMethod: getMethodValue(returnMethodInputs, "meetup"),
+                courier: hasDelivery && courierSelect ? courierSelect.value : "",
+                receivingMethod: receivingMethod,
+                returningMethod: returningMethod,
                 paymentMethod: paymentSelect ? paymentSelect.value : ""
             };
         }
@@ -6144,6 +6148,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (courierSelect) {
                 courierSelect.disabled = !hasDelivery;
+
+                if (!hasDelivery) {
+                    courierSelect.value = "";
+                } else if (!courierSelect.value && courierSelect.options.length) {
+                    courierSelect.selectedIndex = 0;
+                }
             }
 
             updateMethodOptionStyles();
