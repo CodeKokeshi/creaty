@@ -5470,6 +5470,7 @@ document.addEventListener("DOMContentLoaded", function () {
             pendingOrders.forEach(function (order) {
                 var statusText = String(order.status || "Pending");
                 var statusSlug = statusText.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+                var paymentMethodSlug = String(order.paymentMethod || "").toLowerCase().trim();
                 var orderedText = "Ordered: " + buildOrderItemsSummary(order.items);
                 var receiveSchedule = formatOrderSchedule(order.receiveDate, order.receiveTime);
                 var returnSchedule = formatOrderSchedule(order.returnDate, order.returnTime);
@@ -5500,7 +5501,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 orderMeta.appendChild(statusBadge);
                 orderItem.appendChild(orderMeta);
 
-                if (statusSlug === "pending") {
+                if (statusSlug === "pending" && paymentMethodSlug === "gcash") {
                     var pendingAction = document.createElement("button");
                     pendingAction.type = "button";
                     pendingAction.className = "profile-order-action primary";
@@ -6040,6 +6041,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 existingOrders.unshift(pendingOrder);
                 saveStoredOrders(existingOrders);
                 renderOrderStatusList();
+
+                saveCartItems([]);
+                renderCartItems();
 
                 bookingNote.textContent = "Booking saved as Pending. Open Order Status to track your reservation.";
                 showCartToast("Booking saved as Pending");
