@@ -5842,15 +5842,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
             orderStatusList.innerHTML = "";
 
-            var pendingOrders = getStoredOrders().filter(function (order) {
-                return String(order.status || "").toLowerCase() === "pending";
-            });
+            var allOrders = getStoredOrders();
 
             if (orderStatusEmpty) {
-                orderStatusEmpty.hidden = pendingOrders.length > 0;
+                orderStatusEmpty.hidden = allOrders.length > 0;
             }
 
-            pendingOrders.forEach(function (order) {
+            allOrders.forEach(function (order) {
                 var statusText = String(order.status || "Pending");
                 var statusSlug = statusText.toLowerCase().replace(/[^a-z0-9]+/g, "-");
                 var paymentMethodSlug = String(order.paymentMethod || "").toLowerCase().trim();
