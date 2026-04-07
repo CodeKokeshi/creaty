@@ -1,10 +1,70 @@
 [
     {
+        "id": "ord-20260407053104-bd398c69",
+        "customer_id": "4",
+        "customer_name": "qwe qwe",
+        "customer_email": "qwe@gmail.com",
+        "status": "Refunded",
+        "items": [
+            {
+                "name": "Canon 4000D",
+                "qty": 2,
+                "days": 1
+            }
+        ],
+        "receive_date": "2026-03-25",
+        "receive_time": "10:00",
+        "return_date": "2026-03-26",
+        "return_time": "10:00",
+        "place": "Walter Mart Entrance, Carmona",
+        "receiving_method": "pickup",
+        "returning_method": "pickup",
+        "courier": "",
+        "cancel_reason": "Out of stuck and refunded",
+        "canceled_by": "admin",
+        "payment_method": "gcash",
+        "payment_receipt_path": "assets/payment_receipts/ord-20260407053104-bd398c69-receipt.png",
+        "payment_receipt_uploaded_at": "2026-04-07T05:31:14+00:00",
+        "refund_proof_path": "assets/refund_receipts/ord-20260407053104-bd398c69-refund.png",
+        "refund_proof_uploaded_at": "2026-04-07T05:31:36+00:00",
+        "created_at": "2026-04-07T05:31:04+00:00"
+    },
+    {
+        "id": "ord-20260407045420-9192b506",
+        "customer_id": "4",
+        "customer_name": "qwe qwe",
+        "customer_email": "qwe@gmail.com",
+        "status": "Rejected",
+        "items": [
+            {
+                "name": "Canon 700D",
+                "qty": 1,
+                "days": 1
+            }
+        ],
+        "receive_date": "2026-03-25",
+        "receive_time": "10:00",
+        "return_date": "2026-03-26",
+        "return_time": "10:00",
+        "place": "Walter Mart Entrance, Carmona",
+        "receiving_method": "pickup",
+        "returning_method": "pickup",
+        "courier": "",
+        "cancel_reason": "Fraud",
+        "canceled_by": "admin",
+        "payment_method": "gcash",
+        "payment_receipt_path": "assets/payment_receipts/ord-20260407045420-9192b506-receipt.jpg",
+        "payment_receipt_uploaded_at": "2026-04-07T04:54:36+00:00",
+        "refund_proof_path": "",
+        "refund_proof_uploaded_at": "",
+        "created_at": "2026-04-07T04:54:20+00:00"
+    },
+    {
         "id": "ord-20260407044120-90d01d8d",
         "customer_id": "4",
         "customer_name": "qwe qwe",
         "customer_email": "qwe@gmail.com",
-        "status": "Pending",
+        "status": "Canceled",
         "items": [
             {
                 "name": "Nikon D60",
@@ -20,11 +80,13 @@
         "receiving_method": "pickup",
         "returning_method": "pickup",
         "courier": "",
-        "cancel_reason": "",
-        "canceled_by": "",
+        "cancel_reason": "Failure to upload payment receipt.",
+        "canceled_by": "system",
         "payment_method": "gcash",
         "payment_receipt_path": "",
         "payment_receipt_uploaded_at": "",
+        "refund_proof_path": "",
+        "refund_proof_uploaded_at": "",
         "created_at": "2026-04-07T04:41:20+00:00"
     },
     {
@@ -53,6 +115,8 @@
         "payment_method": "gcash",
         "payment_receipt_path": "",
         "payment_receipt_uploaded_at": "",
+        "refund_proof_path": "",
+        "refund_proof_uploaded_at": "",
         "created_at": "2026-04-07T04:36:47+00:00"
     },
     {
@@ -81,6 +145,8 @@
         "payment_method": "gcash",
         "payment_receipt_path": "",
         "payment_receipt_uploaded_at": "",
+        "refund_proof_path": "",
+        "refund_proof_uploaded_at": "",
         "created_at": "2026-04-07T04:36:29+00:00"
     },
     {
@@ -109,6 +175,8 @@
         "payment_method": "gcash",
         "payment_receipt_path": "",
         "payment_receipt_uploaded_at": "",
+        "refund_proof_path": "",
+        "refund_proof_uploaded_at": "",
         "created_at": "2026-04-07T04:20:17+00:00"
     },
     {
@@ -137,6 +205,8 @@
         "payment_method": "gcash",
         "payment_receipt_path": "",
         "payment_receipt_uploaded_at": "",
+        "refund_proof_path": "",
+        "refund_proof_uploaded_at": "",
         "created_at": "2026-04-07T03:37:44+00:00"
     },
     {
@@ -165,6 +235,8 @@
         "payment_method": "gcash",
         "payment_receipt_path": "assets/payment_receipts/ord-20260403123400-1faa36b9-receipt.jpg",
         "payment_receipt_uploaded_at": "2026-04-03T12:34:07+00:00",
+        "refund_proof_path": "",
+        "refund_proof_uploaded_at": "",
         "created_at": "2026-04-03T12:34:00+00:00"
     },
     {
@@ -193,6 +265,8 @@
         "payment_method": "gcash",
         "payment_receipt_path": "",
         "payment_receipt_uploaded_at": "",
+        "refund_proof_path": "",
+        "refund_proof_uploaded_at": "",
         "created_at": "2026-04-03T09:13:22+00:00"
     },
     {
@@ -221,6 +295,8 @@
         "payment_method": "cash-pickup",
         "payment_receipt_path": "",
         "payment_receipt_uploaded_at": "",
+        "refund_proof_path": "",
+        "refund_proof_uploaded_at": "",
         "created_at": "2026-04-03T07:39:07+00:00"
     },
     {
@@ -249,6 +325,8 @@
         "payment_method": "cash-pickup",
         "payment_receipt_path": "",
         "payment_receipt_uploaded_at": "",
+        "refund_proof_path": "",
+        "refund_proof_uploaded_at": "",
         "created_at": "2026-04-03T07:38:37+00:00"
     }
 ]

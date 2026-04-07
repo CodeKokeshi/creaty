@@ -98,6 +98,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminBookingDetailCourier = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-courier]") : null;
     var adminBookingDetailPaymentMethod = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-payment-method]") : null;
     var adminBookingDetailReceiptState = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receipt-state]") : null;
+    var adminBookingDetailRefundProofState = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-refund-proof-state]") : null;
     var adminBookingDetailCancelReason = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-cancel-reason]") : null;
     var adminBookingDetailItems = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-items]") : null;
     var adminBookingDetailReceiptWrap = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receipt-wrap]") : null;
@@ -105,18 +106,36 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminBookingDetailReceiptImage = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receipt-image]") : null;
     var adminBookingDetailReceiptEmpty = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receipt-empty]") : null;
     var adminBookingDetailReceiptMeta = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receipt-meta]") : null;
+    var adminBookingDetailRefundWrap = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-refund-wrap]") : null;
+    var adminBookingDetailRefundLink = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-refund-link]") : null;
+    var adminBookingDetailRefundImage = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-refund-image]") : null;
+    var adminBookingDetailRefundEmpty = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-refund-empty]") : null;
+    var adminBookingDetailRefundMeta = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-refund-meta]") : null;
     var adminBookingDetailStatusNote = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-status-note]") : null;
     var adminBookingStatusForm = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-status-form]") : null;
     var adminBookingStatusOrderIdInput = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-status-order-id]") : null;
     var adminBookingNextStatusInput = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-next-status]") : null;
     var adminBookingCancelReasonHiddenInput = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-cancel-reason-input]") : null;
+    var adminBookingRefundProofHiddenInput = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-refund-proof-input]") : null;
     var adminBookingStatusSubmitButtons = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelectorAll("[data-admin-booking-status-submit]") : [];
+    var adminBookingReviewOpenButtons = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelectorAll("[data-admin-booking-review-open]") : [];
     var adminBookingCancelOpenButton = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-cancel-open]") : null;
     var adminBookingCancelBackdrop = document.querySelector("[data-admin-booking-cancel-backdrop]");
     var adminBookingCancelCloseButtons = adminBookingCancelBackdrop ? adminBookingCancelBackdrop.querySelectorAll("[data-admin-booking-cancel-close]") : [];
     var adminBookingCancelReasonInput = adminBookingCancelBackdrop ? adminBookingCancelBackdrop.querySelector("[data-admin-booking-cancel-reason]") : null;
     var adminBookingCancelError = adminBookingCancelBackdrop ? adminBookingCancelBackdrop.querySelector("[data-admin-booking-cancel-error]") : null;
     var adminBookingCancelConfirmButton = adminBookingCancelBackdrop ? adminBookingCancelBackdrop.querySelector("[data-admin-booking-cancel-confirm]") : null;
+    var adminBookingReviewBackdrop = document.querySelector("[data-admin-booking-review-backdrop]");
+    var adminBookingReviewCloseButtons = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelectorAll("[data-admin-booking-review-close]") : [];
+    var adminBookingReviewTitle = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-title]") : null;
+    var adminBookingReviewCopy = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-copy]") : null;
+    var adminBookingReviewReasonInput = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-reason]") : null;
+    var adminBookingReviewError = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-error]") : null;
+    var adminBookingReviewConfirmButton = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-confirm]") : null;
+    var adminBookingReviewProofWrap = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-proof-wrap]") : null;
+    var adminBookingReviewProofFileInput = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-proof-file]") : null;
+    var adminBookingReviewProofSelectButton = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-proof-select]") : null;
+    var adminBookingReviewProofFilename = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-proof-filename]") : null;
     var adminBookingsSource = Array.isArray(window.__creatyAdminBookings) ? window.__creatyAdminBookings : [];
     var initialAdminBookingRecord = adminBookingsSource.length ? adminBookingsSource[0] : null;
     var initialAdminBookingId = initialAdminBookingRecord && initialAdminBookingRecord.id
@@ -283,6 +302,7 @@ document.addEventListener("DOMContentLoaded", function () {
         quantityRequired: false
     };
     var activeAdminBookingCancelReason = "";
+    var activeAdminBookingReviewMode = "";
     var detailGalleries = document.querySelectorAll("[data-gallery]");
     var packageSlideshows = document.querySelectorAll("[data-package-slideshow]");
     var packageSlideshowControllers = [];
@@ -4691,7 +4711,8 @@ document.addEventListener("DOMContentLoaded", function () {
         var hasVisibleEventThumbsModal = Boolean(adminEventThumbsBackdrop && !adminEventThumbsBackdrop.hidden);
         var hasVisibleBookingDetailModal = Boolean(adminBookingDetailBackdrop && !adminBookingDetailBackdrop.hidden);
         var hasVisibleBookingCancelModal = Boolean(adminBookingCancelBackdrop && !adminBookingCancelBackdrop.hidden);
-        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal || hasVisibleEventEditModal || hasVisibleEventThumbsModal || hasVisibleBookingDetailModal || hasVisibleBookingCancelModal);
+        var hasVisibleBookingReviewModal = Boolean(adminBookingReviewBackdrop && !adminBookingReviewBackdrop.hidden);
+        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal || hasVisibleEventEditModal || hasVisibleEventThumbsModal || hasVisibleBookingDetailModal || hasVisibleBookingCancelModal || hasVisibleBookingReviewModal);
     }
 
     function setAdminBookingCancelError(message) {
@@ -4745,6 +4766,120 @@ document.addEventListener("DOMContentLoaded", function () {
             if (adminBookingCancelReasonInput) {
                 adminBookingCancelReasonInput.focus();
                 adminBookingCancelReasonInput.select();
+            }
+        });
+    }
+
+    function setAdminBookingReviewError(message) {
+        if (!adminBookingReviewError) {
+            return;
+        }
+
+        var text = String(message || "").trim();
+        adminBookingReviewError.textContent = text;
+        adminBookingReviewError.hidden = text === "";
+    }
+
+    function resetAdminBookingReviewProofSelection() {
+        if (adminBookingReviewProofFileInput) {
+            adminBookingReviewProofFileInput.value = "";
+        }
+
+        if (adminBookingReviewProofFilename) {
+            adminBookingReviewProofFilename.textContent = "No file selected";
+        }
+    }
+
+    function closeAdminBookingReviewModal() {
+        if (!adminBookingReviewBackdrop) {
+            return;
+        }
+
+        adminBookingReviewBackdrop.hidden = true;
+        activeAdminBookingReviewMode = "";
+        setAdminBookingReviewError("");
+
+        if (adminBookingReviewReasonInput) {
+            adminBookingReviewReasonInput.value = "";
+        }
+
+        if (adminBookingReviewConfirmButton) {
+            adminBookingReviewConfirmButton.disabled = false;
+            adminBookingReviewConfirmButton.textContent = "Confirm";
+        }
+
+        if (adminBookingRefundProofHiddenInput) {
+            adminBookingRefundProofHiddenInput.value = "";
+        }
+
+        if (adminBookingNextStatusInput) {
+            adminBookingNextStatusInput.value = "";
+        }
+
+        if (adminBookingCancelReasonHiddenInput) {
+            adminBookingCancelReasonHiddenInput.value = "";
+        }
+
+        if (adminBookingReviewProofWrap) {
+            adminBookingReviewProofWrap.hidden = true;
+        }
+
+        resetAdminBookingReviewProofSelection();
+        syncAdminModalBodyLock();
+    }
+
+    function openAdminBookingReviewModal(mode) {
+        if (!adminBookingReviewBackdrop || !adminBookingStatusOrderIdInput) {
+            return;
+        }
+
+        var orderId = String(adminBookingStatusOrderIdInput.value || "").trim();
+        if (!orderId) {
+            return;
+        }
+
+        var normalizedMode = mode === "refunded" ? "refunded" : "rejected";
+        activeAdminBookingReviewMode = normalizedMode;
+
+        if (adminBookingReviewTitle) {
+            adminBookingReviewTitle.textContent = normalizedMode === "refunded"
+                ? "Mark Booking as Refunded"
+                : "Reject Payment Receipt";
+        }
+
+        if (adminBookingReviewCopy) {
+            adminBookingReviewCopy.textContent = normalizedMode === "refunded"
+                ? "Provide a refund reason and upload the refund receipt screenshot. This will be visible to the customer."
+                : "Provide a rejection reason. This will be visible to the customer in Order Status.";
+        }
+
+        if (adminBookingReviewConfirmButton) {
+            adminBookingReviewConfirmButton.textContent = normalizedMode === "refunded"
+                ? "Confirm Refund"
+                : "Confirm Reject";
+        }
+
+        if (adminBookingReviewProofWrap) {
+            adminBookingReviewProofWrap.hidden = normalizedMode !== "refunded";
+        }
+
+        if (adminBookingReviewReasonInput) {
+            adminBookingReviewReasonInput.value = "";
+        }
+
+        if (adminBookingRefundProofHiddenInput) {
+            adminBookingRefundProofHiddenInput.value = "";
+        }
+
+        resetAdminBookingReviewProofSelection();
+        setAdminBookingReviewError("");
+        adminBookingReviewBackdrop.hidden = false;
+        syncAdminModalBodyLock();
+
+        window.requestAnimationFrame(function () {
+            if (adminBookingReviewReasonInput) {
+                adminBookingReviewReasonInput.focus();
+                adminBookingReviewReasonInput.select();
             }
         });
     }
@@ -5075,18 +5210,32 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         var statusClass = normalizeAdminBookingStatusClass(booking.statusClass || "status-pending");
-        var statusToken = statusClass.replace(/^status-/, "");
+        var statusTokenFromRecord = String(booking.statusToken || "").toLowerCase().trim();
+        var statusToken = statusTokenFromRecord || statusClass.replace(/^status-/, "");
         var isCanceled = statusToken === "canceled";
+        var isRejected = statusToken === "rejected";
+        var isRefunded = statusToken === "refunded";
+        var isTerminalStatus = isCanceled || isRejected || isRefunded;
         var paymentMethodToken = String(booking.paymentMethod || "").toLowerCase().trim();
         var paymentReceiptPath = String(booking.paymentReceiptPath || "").trim();
         var paymentReceiptUrl = String(booking.paymentReceiptUrl || "").trim();
         var paymentReceiptUploadedAt = String(booking.paymentReceiptUploadedAt || "").trim();
+        var refundProofPath = String(booking.refundProofPath || "").trim();
+        var refundProofUrl = String(booking.refundProofUrl || "").trim();
+        var refundProofUploadedAt = String(booking.refundProofUploadedAt || "").trim();
         var hasPaymentReceipt = paymentReceiptUrl !== "" || paymentReceiptPath !== "";
         var isWaitingForPaymentReceipt = Boolean(booking.waitingForPaymentReceipt)
             || (statusToken === "pending" && paymentMethodToken === "gcash" && !hasPaymentReceipt);
+        var isWaitingForPaymentReview = Boolean(booking.waitingForPaymentReview)
+            || (statusToken === "pending" && paymentMethodToken === "gcash" && hasPaymentReceipt);
+        var hasRefundProof = refundProofUrl !== "" || refundProofPath !== "";
 
         if (!paymentReceiptUrl && paymentReceiptPath) {
             paymentReceiptUrl = paymentReceiptPath;
+        }
+
+        if (!refundProofUrl && refundProofPath) {
+            refundProofUrl = refundProofPath;
         }
 
         if (adminBookingDetailName) {
@@ -5143,10 +5292,22 @@ document.addEventListener("DOMContentLoaded", function () {
         if (adminBookingDetailReceiptState) {
             if (paymentMethodToken !== "gcash") {
                 adminBookingDetailReceiptState.textContent = "Not Required";
+            } else if (isWaitingForPaymentReceipt) {
+                adminBookingDetailReceiptState.textContent = "Waiting for Upload";
             } else if (hasPaymentReceipt) {
                 adminBookingDetailReceiptState.textContent = "Uploaded";
             } else {
                 adminBookingDetailReceiptState.textContent = "Waiting for Upload";
+            }
+        }
+
+        if (adminBookingDetailRefundProofState) {
+            if (statusToken !== "refunded") {
+                adminBookingDetailRefundProofState.textContent = "Not Required";
+            } else if (hasRefundProof) {
+                adminBookingDetailRefundProofState.textContent = "Uploaded";
+            } else {
+                adminBookingDetailRefundProofState.textContent = "Required";
             }
         }
 
@@ -5191,9 +5352,59 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
+        if (adminBookingDetailRefundWrap) {
+            adminBookingDetailRefundWrap.hidden = !isRefunded && !hasRefundProof;
+        }
+
+        if (adminBookingDetailRefundLink) {
+            adminBookingDetailRefundLink.hidden = !hasRefundProof;
+
+            if (hasRefundProof) {
+                adminBookingDetailRefundLink.href = refundProofUrl;
+            } else {
+                adminBookingDetailRefundLink.removeAttribute("href");
+            }
+        }
+
+        if (adminBookingDetailRefundImage) {
+            if (hasRefundProof) {
+                adminBookingDetailRefundImage.src = refundProofUrl;
+                adminBookingDetailRefundImage.hidden = false;
+            } else {
+                adminBookingDetailRefundImage.hidden = true;
+                adminBookingDetailRefundImage.removeAttribute("src");
+            }
+        }
+
+        if (adminBookingDetailRefundEmpty) {
+            adminBookingDetailRefundEmpty.hidden = hasRefundProof || !isRefunded;
+        }
+
+        if (adminBookingDetailRefundMeta) {
+            if (hasRefundProof) {
+                var refundUploadedAtLabel = formatAdminBookingReceiptTimestamp(refundProofUploadedAt);
+                adminBookingDetailRefundMeta.textContent = refundUploadedAtLabel
+                    ? "Uploaded at: " + refundUploadedAtLabel
+                    : "Refund proof uploaded.";
+                adminBookingDetailRefundMeta.hidden = false;
+            } else {
+                adminBookingDetailRefundMeta.hidden = true;
+                adminBookingDetailRefundMeta.textContent = "";
+            }
+        }
+
         if (adminBookingDetailStatusNote) {
             if (isWaitingForPaymentReceipt) {
                 adminBookingDetailStatusNote.textContent = "Waiting for payment receipt upload. Only cancellation is allowed while waiting.";
+                adminBookingDetailStatusNote.hidden = false;
+            } else if (isWaitingForPaymentReview) {
+                adminBookingDetailStatusNote.textContent = "Payment receipt uploaded. Choose Approve, Reject, or Refund to continue.";
+                adminBookingDetailStatusNote.hidden = false;
+            } else if (isRejected) {
+                adminBookingDetailStatusNote.textContent = "Payment receipt was rejected. This booking cannot be changed.";
+                adminBookingDetailStatusNote.hidden = false;
+            } else if (isRefunded) {
+                adminBookingDetailStatusNote.textContent = "Payment was refunded. This booking cannot be changed.";
                 adminBookingDetailStatusNote.hidden = false;
             } else if (isCanceled) {
                 adminBookingDetailStatusNote.textContent = "This booking is canceled and cannot be changed.";
@@ -5204,21 +5415,44 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        var hideStatusActions = isWaitingForPaymentReceipt || isCanceled;
+        var visibleSubmitStatusMap = {
+            pending: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview,
+            approved: !isTerminalStatus && !isWaitingForPaymentReceipt,
+            ongoing: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview,
+            return: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview,
+            completed: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview
+        };
+
+        if (isWaitingForPaymentReview) {
+            visibleSubmitStatusMap.pending = false;
+            visibleSubmitStatusMap.ongoing = false;
+            visibleSubmitStatusMap.return = false;
+            visibleSubmitStatusMap.completed = false;
+            visibleSubmitStatusMap.approved = true;
+        }
 
         adminBookingStatusSubmitButtons.forEach(function (button) {
-            button.disabled = hideStatusActions;
-            button.hidden = hideStatusActions;
+            var targetStatus = String(button.value || "").toLowerCase().trim();
+            var isVisible = Boolean(visibleSubmitStatusMap[targetStatus]);
+            button.disabled = !isVisible;
+            button.hidden = !isVisible;
+        });
+
+        adminBookingReviewOpenButtons.forEach(function (button) {
+            var mode = String(button.getAttribute("data-admin-booking-review-mode") || "").toLowerCase().trim();
+            var isVisible = isWaitingForPaymentReview && (mode === "rejected" || mode === "refunded");
+            button.disabled = !isVisible;
+            button.hidden = !isVisible;
         });
 
         if (adminBookingCancelOpenButton) {
-            var canCancelBooking = !isCanceled;
+            var canCancelBooking = !isTerminalStatus && !isWaitingForPaymentReview;
             adminBookingCancelOpenButton.disabled = !canCancelBooking;
             adminBookingCancelOpenButton.hidden = !canCancelBooking;
         }
 
         if (adminBookingStatusForm) {
-            adminBookingStatusForm.hidden = isCanceled;
+            adminBookingStatusForm.hidden = isTerminalStatus;
         }
 
         activeAdminBookingCancelReason = String(booking.cancelReason || "").trim();
@@ -5237,6 +5471,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminBookingCancelReasonHiddenInput) {
             adminBookingCancelReasonHiddenInput.value = "";
+        }
+
+        if (adminBookingRefundProofHiddenInput) {
+            adminBookingRefundProofHiddenInput.value = "";
         }
 
         if (adminBookingDetailItems) {
@@ -5295,6 +5533,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        closeAdminBookingReviewModal();
         closeAdminBookingCancelModal();
 
         adminBookingDetailBackdrop.hidden = true;
@@ -5399,6 +5638,21 @@ document.addEventListener("DOMContentLoaded", function () {
             if (adminBookingCancelReasonHiddenInput) {
                 adminBookingCancelReasonHiddenInput.value = "";
             }
+
+            if (adminBookingRefundProofHiddenInput) {
+                adminBookingRefundProofHiddenInput.value = "";
+            }
+        });
+    });
+
+    adminBookingReviewOpenButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            if (!button || button.disabled || button.hidden) {
+                return;
+            }
+
+            var mode = String(button.getAttribute("data-admin-booking-review-mode") || "").toLowerCase().trim();
+            openAdminBookingReviewModal(mode);
         });
     });
 
@@ -5460,6 +5714,138 @@ document.addEventListener("DOMContentLoaded", function () {
 
             adminBookingCancelConfirmButton.disabled = true;
             adminBookingStatusForm.submit();
+        });
+    }
+
+    adminBookingReviewCloseButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            closeAdminBookingReviewModal();
+        });
+    });
+
+    if (adminBookingReviewBackdrop) {
+        adminBookingReviewBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminBookingReviewBackdrop) {
+                closeAdminBookingReviewModal();
+            }
+        });
+    }
+
+    if (adminBookingReviewProofSelectButton) {
+        adminBookingReviewProofSelectButton.addEventListener("click", function () {
+            if (!adminBookingReviewProofFileInput || !activeAdminBookingReviewMode || activeAdminBookingReviewMode !== "refunded") {
+                return;
+            }
+
+            if (adminBookingReviewConfirmButton && adminBookingReviewConfirmButton.disabled) {
+                return;
+            }
+
+            adminBookingReviewProofFileInput.click();
+        });
+    }
+
+    if (adminBookingReviewProofFileInput) {
+        adminBookingReviewProofFileInput.addEventListener("change", function () {
+            if (adminBookingReviewProofFilename) {
+                if (adminBookingReviewProofFileInput.files && adminBookingReviewProofFileInput.files.length > 0) {
+                    adminBookingReviewProofFilename.textContent = adminBookingReviewProofFileInput.files[0].name;
+                } else {
+                    adminBookingReviewProofFilename.textContent = "No file selected";
+                }
+            }
+
+            setAdminBookingReviewError("");
+        });
+    }
+
+    if (adminBookingReviewConfirmButton) {
+        adminBookingReviewConfirmButton.addEventListener("click", function () {
+            if (!adminBookingStatusForm || !adminBookingStatusOrderIdInput || !adminBookingNextStatusInput || !adminBookingCancelReasonHiddenInput) {
+                return;
+            }
+
+            if (adminBookingReviewConfirmButton.disabled) {
+                return;
+            }
+
+            if (activeAdminBookingReviewMode !== "rejected" && activeAdminBookingReviewMode !== "refunded") {
+                return;
+            }
+
+            var orderId = String(adminBookingStatusOrderIdInput.value || "").trim();
+            var reviewMode = activeAdminBookingReviewMode === "refunded" ? "refunded" : "rejected";
+            var reasonText = adminBookingReviewReasonInput ? String(adminBookingReviewReasonInput.value || "").trim() : "";
+            var confirmLabel = reviewMode === "refunded" ? "Confirm Refund" : "Confirm Reject";
+
+            if (!orderId) {
+                closeAdminBookingReviewModal();
+                return;
+            }
+
+            if (reasonText === "") {
+                setAdminBookingReviewError("Please provide a reason.");
+
+                if (adminBookingReviewReasonInput) {
+                    adminBookingReviewReasonInput.focus();
+                }
+
+                return;
+            }
+
+            adminBookingNextStatusInput.value = reviewMode;
+            adminBookingCancelReasonHiddenInput.value = reasonText;
+
+            if (adminBookingRefundProofHiddenInput) {
+                adminBookingRefundProofHiddenInput.value = "";
+            }
+
+            var submitDecision = function () {
+                adminBookingReviewConfirmButton.disabled = true;
+                adminBookingStatusForm.submit();
+            };
+
+            if (reviewMode !== "refunded") {
+                submitDecision();
+                return;
+            }
+
+            if (!adminBookingReviewProofFileInput || !adminBookingReviewProofFileInput.files || !adminBookingReviewProofFileInput.files.length) {
+                setAdminBookingReviewError("Please upload a refund proof image.");
+                return;
+            }
+
+            var selectedFile = adminBookingReviewProofFileInput.files[0];
+            var reader = new FileReader();
+
+            adminBookingReviewConfirmButton.disabled = true;
+            adminBookingReviewConfirmButton.textContent = "Submitting...";
+            setAdminBookingReviewError("");
+
+            reader.onload = function (loadEvent) {
+                var imageDataUrl = String(loadEvent && loadEvent.target && loadEvent.target.result ? loadEvent.target.result : "");
+
+                if (imageDataUrl.indexOf("data:image/") !== 0) {
+                    setAdminBookingReviewError("Please upload a valid image file.");
+                    adminBookingReviewConfirmButton.disabled = false;
+                    adminBookingReviewConfirmButton.textContent = confirmLabel;
+                    return;
+                }
+
+                if (adminBookingRefundProofHiddenInput) {
+                    adminBookingRefundProofHiddenInput.value = imageDataUrl;
+                }
+
+                submitDecision();
+            };
+
+            reader.onerror = function () {
+                setAdminBookingReviewError("Unable to read the selected proof image.");
+                adminBookingReviewConfirmButton.disabled = false;
+                adminBookingReviewConfirmButton.textContent = confirmLabel;
+            };
+
+            reader.readAsDataURL(selectedFile);
         });
     }
 
@@ -5991,6 +6377,9 @@ document.addEventListener("DOMContentLoaded", function () {
         var orderReceiptUploadEndpoint = typeof window.__creatyCustomerOrderReceiptUploadEndpoint === "string"
             ? String(window.__creatyCustomerOrderReceiptUploadEndpoint || "")
             : "";
+        var assetBase = typeof window.__creatyAssetBase === "string"
+            ? String(window.__creatyAssetBase || "")
+            : "";
         var serverOrders = Array.isArray(window.__creatyCustomerOrders)
             ? window.__creatyCustomerOrders.slice()
             : [];
@@ -6004,6 +6393,10 @@ document.addEventListener("DOMContentLoaded", function () {
         var orderCancelError = orderCancelModal ? orderCancelModal.querySelector("[data-cart-order-cancel-error]") : null;
         var orderCancelConfirmButton = orderCancelModal ? orderCancelModal.querySelector("[data-cart-order-cancel-confirm]") : null;
         var orderCancelCloseButtons = orderCancelModal ? orderCancelModal.querySelectorAll("[data-cart-order-cancel-close]") : [];
+        var refundProofModal = document.querySelector("[data-cart-refund-proof-modal]");
+        var refundProofModalImage = refundProofModal ? refundProofModal.querySelector("[data-cart-refund-proof-image]") : null;
+        var refundProofModalEmpty = refundProofModal ? refundProofModal.querySelector("[data-cart-refund-proof-empty]") : null;
+        var refundProofModalCloseButtons = refundProofModal ? refundProofModal.querySelectorAll("[data-cart-refund-proof-close]") : [];
         var gcashModal = document.querySelector("[data-cart-gcash-modal]");
         var gcashModalCloseButtons = gcashModal ? gcashModal.querySelectorAll("[data-cart-gcash-close]") : [];
         var gcashModalContinueButton = gcashModal ? gcashModal.querySelector("[data-cart-gcash-continue]") : null;
@@ -6166,6 +6559,65 @@ document.addEventListener("DOMContentLoaded", function () {
                 accountName: String(source.accountName || "").trim(),
                 accountNumber: String(source.accountNumber || "").trim()
             };
+        }
+
+        function resolveCartAssetUrl(pathValue) {
+            var normalizedPath = String(pathValue || "").trim();
+
+            if (!normalizedPath) {
+                return "";
+            }
+
+            if (/^(?:https?:)?\/\//i.test(normalizedPath) || normalizedPath.indexOf("data:image/") === 0) {
+                return normalizedPath;
+            }
+
+            if (normalizedPath.charAt(0) === "/") {
+                return normalizedPath;
+            }
+
+            if (assetBase) {
+                return assetBase + normalizedPath.replace(/^\/+/, "");
+            }
+
+            return "/" + normalizedPath.replace(/^\/+/, "");
+        }
+
+        function closeRefundProofModal() {
+            if (!refundProofModal) {
+                return;
+            }
+
+            refundProofModal.hidden = true;
+
+            if (refundProofModalImage) {
+                refundProofModalImage.hidden = true;
+                refundProofModalImage.removeAttribute("src");
+            }
+
+            if (refundProofModalEmpty) {
+                refundProofModalEmpty.hidden = true;
+                refundProofModalEmpty.textContent = "Unable to load refund proof screenshot.";
+            }
+        }
+
+        function openRefundProofModal(imageUrl) {
+            if (!refundProofModal || !refundProofModalImage) {
+                return;
+            }
+
+            var normalizedImageUrl = String(imageUrl || "").trim();
+            if (!normalizedImageUrl) {
+                return;
+            }
+
+            if (refundProofModalEmpty) {
+                refundProofModalEmpty.hidden = true;
+            }
+
+            refundProofModalImage.hidden = false;
+            refundProofModalImage.src = normalizedImageUrl;
+            refundProofModal.hidden = false;
         }
 
         function setGcashModalDetails() {
@@ -6385,6 +6837,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return {
                 id: String(order.id || ""),
                 status: String(order.status || "Pending"),
+                statusToken: String(order.statusToken || order.status_token || ""),
                 items: items,
                 receiveDate: String(order.receiveDate || ""),
                 receiveTime: String(order.receiveTime || ""),
@@ -6397,6 +6850,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 paymentReceiptPath: String(order.paymentReceiptPath || order.payment_receipt_path || ""),
                 paymentReceiptUploadedAt: String(order.paymentReceiptUploadedAt || order.payment_receipt_uploaded_at || ""),
                 paymentReceiptDeadlineAt: String(order.paymentReceiptDeadlineAt || order.payment_receipt_deadline_at || ""),
+                refundProofPath: String(order.refundProofPath || order.refund_proof_path || ""),
+                refundProofUploadedAt: String(order.refundProofUploadedAt || order.refund_proof_uploaded_at || ""),
                 paymentReceiptTimeoutSeconds: timeoutSeconds,
                 createdAt: String(order.createdAt || order.created_at || "")
             };
@@ -6986,8 +7441,12 @@ document.addEventListener("DOMContentLoaded", function () {
             allOrders.forEach(function (order) {
                 var statusText = String(order.status || "Pending");
                 var statusSlug = statusText.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+                var statusToken = String(order.statusToken || "").toLowerCase().trim();
                 var paymentMethodSlug = String(order.paymentMethod || "").toLowerCase().trim();
                 var hasPaymentReceipt = String(order.paymentReceiptPath || "").trim() !== "";
+                var refundProofPath = String(order.refundProofPath || "").trim();
+                var refundProofUrl = resolveCartAssetUrl(refundProofPath);
+                var hasRefundProof = refundProofUrl !== "";
                 var cancelReason = String(order.cancelReason || "").trim();
                 var countdownState = getOrderPaymentReceiptCountdownState(order);
                 var orderedText = "Ordered: " + buildOrderItemsSummary(order.items);
@@ -7028,13 +7487,42 @@ document.addEventListener("DOMContentLoaded", function () {
                     orderMeta.appendChild(countdownLine);
                 }
 
-                if (statusSlug === "canceled" && cancelReason) {
+                var shouldShowReason = (statusSlug === "canceled" || statusSlug === "rejected" || statusSlug === "refunded") && cancelReason;
+
+                if (shouldShowReason) {
                     var reasonLine = document.createElement("p");
                     reasonLine.className = "cart-order-status-reason";
-                    reasonLine.textContent = /^reason\s*:/i.test(cancelReason)
+                    var defaultReasonPrefix = "Reason: ";
+
+                    if (statusSlug === "rejected") {
+                        defaultReasonPrefix = "Rejection reason: ";
+                    } else if (statusSlug === "refunded") {
+                        defaultReasonPrefix = "Refund reason: ";
+                    }
+
+                    reasonLine.textContent = /^(reason|rejection reason|refund reason)\s*:/i.test(cancelReason)
                         ? cancelReason
-                        : "Reason: " + cancelReason;
+                        : defaultReasonPrefix + cancelReason;
                     orderMeta.appendChild(reasonLine);
+                }
+
+                if (statusSlug === "refunded" || statusToken === "refunded") {
+                    var refundProofLine = document.createElement("p");
+                    refundProofLine.className = "cart-order-status-refund-proof";
+
+                    if (hasRefundProof) {
+                        var refundProofButton = document.createElement("button");
+                        refundProofButton.type = "button";
+                        refundProofButton.className = "cart-order-status-refund-proof-link cart-order-status-refund-proof-open";
+                        refundProofButton.textContent = "View refund proof screenshot";
+                        refundProofButton.setAttribute("data-cart-order-refund-proof-open", "true");
+                        refundProofButton.setAttribute("data-cart-refund-proof-url", refundProofUrl);
+                        refundProofLine.appendChild(refundProofButton);
+                    } else {
+                        refundProofLine.textContent = "Refund proof screenshot is not available yet.";
+                    }
+
+                    orderMeta.appendChild(refundProofLine);
                 }
 
                 orderItem.appendChild(orderMeta);
@@ -7105,6 +7593,18 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
+                var refundProofButton = event.target.closest("[data-cart-order-refund-proof-open]");
+                if (refundProofButton) {
+                    var proofImageUrl = String(refundProofButton.getAttribute("data-cart-refund-proof-url") || "").trim();
+
+                    if (!proofImageUrl) {
+                        return;
+                    }
+
+                    openRefundProofModal(proofImageUrl);
+                    return;
+                }
+
                 var cancelButton = event.target.closest("[data-cart-order-cancel-open]");
                 if (!cancelButton) {
                     return;
@@ -7120,6 +7620,24 @@ document.addEventListener("DOMContentLoaded", function () {
                 closeOrderCancelModal();
             });
         });
+
+        refundProofModalCloseButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                closeRefundProofModal();
+            });
+        });
+
+        if (refundProofModalImage) {
+            refundProofModalImage.addEventListener("error", function () {
+                refundProofModalImage.hidden = true;
+                refundProofModalImage.removeAttribute("src");
+
+                if (refundProofModalEmpty) {
+                    refundProofModalEmpty.textContent = "Unable to load refund proof screenshot.";
+                    refundProofModalEmpty.hidden = false;
+                }
+            });
+        }
 
         gcashModalCloseButtons.forEach(function (button) {
             button.addEventListener("click", function () {
@@ -7411,6 +7929,11 @@ document.addEventListener("DOMContentLoaded", function () {
         document.addEventListener("keydown", function (event) {
             if (event.key === "Escape" && orderCancelModal && !orderCancelModal.hidden) {
                 closeOrderCancelModal();
+                return;
+            }
+
+            if (event.key === "Escape" && refundProofModal && !refundProofModal.hidden) {
+                closeRefundProofModal();
                 return;
             }
 

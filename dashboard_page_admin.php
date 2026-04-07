@@ -294,17 +294,27 @@ foreach ($customerBookingsRecords as $bookingRecord) {
     $paymentMethodToken = normalize_customer_order_payment_method($bookingRecord['payment_method'] ?? '');
     $paymentReceiptPath = normalize_customer_order_asset_path($bookingRecord['payment_receipt_path'] ?? '');
     $paymentReceiptUploadedAt = trim((string) ($bookingRecord['payment_receipt_uploaded_at'] ?? ''));
+    $refundProofPath = normalize_customer_order_asset_path($bookingRecord['refund_proof_path'] ?? '');
+    $refundProofUploadedAt = trim((string) ($bookingRecord['refund_proof_uploaded_at'] ?? ''));
     $isWaitingForPaymentReceipt = $bookingStatusToken === 'pending'
         && $paymentMethodToken === 'gcash'
         && $paymentReceiptPath === '';
+    $isWaitingForPaymentReview = $bookingStatusToken === 'pending'
+        && $paymentMethodToken === 'gcash'
+        && $paymentReceiptPath !== '';
     $bookingStatusLabel = $isWaitingForPaymentReceipt
         ? 'WAITING FOR PAYMENT RECEIPT'
-        : strtoupper(str_replace('-', ' ', $bookingStatusToken));
+        : ($isWaitingForPaymentReview
+            ? 'PAYMENT REVIEW'
+            : strtoupper(str_replace('-', ' ', $bookingStatusToken)));
     $bookingStatusClass = $isWaitingForPaymentReceipt
         ? 'status-waiting-receipt'
-        : 'status-' . $bookingStatusToken;
+        : ($isWaitingForPaymentReview ? 'status-review' : 'status-' . $bookingStatusToken);
     $paymentReceiptUrl = $paymentReceiptPath !== ''
         ? $assetBase . ltrim($paymentReceiptPath, '/')
+        : '';
+    $refundProofUrl = $refundProofPath !== ''
+        ? $assetBase . ltrim($refundProofPath, '/')
         : '';
     $bookingTimestampRaw = trim((string) ($bookingRecord['created_at'] ?? ''));
     $bookingTimestamp = strtotime($bookingTimestampRaw);
@@ -336,6 +346,7 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         'timestamp' => $bookingTimestampLabel,
         'status' => $bookingStatusLabel,
         'statusClass' => $bookingStatusClass,
+        'statusToken' => $bookingStatusToken,
         'items' => is_array($bookingRecord['items'] ?? null) ? array_values($bookingRecord['items']) : [],
         'receiveDate' => (string) ($bookingRecord['receive_date'] ?? ''),
         'receiveTime' => (string) ($bookingRecord['receive_time'] ?? ''),
@@ -351,7 +362,11 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         'paymentReceiptPath' => $paymentReceiptPath,
         'paymentReceiptUrl' => $paymentReceiptUrl,
         'paymentReceiptUploadedAt' => $paymentReceiptUploadedAt,
+        'refundProofPath' => $refundProofPath,
+        'refundProofUrl' => $refundProofUrl,
+        'refundProofUploadedAt' => $refundProofUploadedAt,
         'waitingForPaymentReceipt' => $isWaitingForPaymentReceipt,
+        'waitingForPaymentReview' => $isWaitingForPaymentReview,
     ];
 }
 
@@ -974,7 +989,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260403-4">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260407-4">
 </head>
 <body
     class="home-page-customer"
@@ -1257,7 +1272,8 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <p><strong>Courier:</strong> <span data-admin-booking-detail-courier>-</span></p>
                     <p><strong>Payment Method:</strong> <span data-admin-booking-detail-payment-method>-</span></p>
                     <p><strong>Payment Receipt:</strong> <span data-admin-booking-detail-receipt-state>-</span></p>
-                    <p><strong>Cancel Reason:</strong> <span data-admin-booking-detail-cancel-reason>-</span></p>
+                    <p><strong>Refund Proof:</strong> <span data-admin-booking-detail-refund-proof-state>-</span></p>
+                    <p><strong>Reason:</strong> <span data-admin-booking-detail-cancel-reason>-</span></p>
                 </div>
 
                 <div class="admin-booking-detail-items-wrap">
@@ -1274,6 +1290,15 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <p class="admin-booking-detail-receipt-meta" data-admin-booking-detail-receipt-meta hidden></p>
                 </div>
 
+                <div class="admin-booking-detail-refund-wrap" data-admin-booking-detail-refund-wrap hidden>
+                    <h3>Refund Proof</h3>
+                    <a class="admin-booking-detail-refund-link" href="#" target="_blank" rel="noopener" data-admin-booking-detail-refund-link hidden>
+                        <img src="" alt="Refund proof" data-admin-booking-detail-refund-image>
+                    </a>
+                    <p class="admin-booking-detail-refund-empty" data-admin-booking-detail-refund-empty hidden>No refund proof uploaded.</p>
+                    <p class="admin-booking-detail-refund-meta" data-admin-booking-detail-refund-meta hidden></p>
+                </div>
+
                 <p class="admin-booking-detail-status-note" data-admin-booking-detail-status-note hidden></p>
 
                 <form class="admin-booking-detail-actions" method="post" action="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_booking_status.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-booking-status-form>
@@ -1281,13 +1306,44 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <input type="hidden" name="redirect" value="<?php echo htmlspecialchars($adminHomePath . '?admin_view=bookings', ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="next_status" value="" data-admin-booking-next-status>
                     <input type="hidden" name="cancel_reason" value="" data-admin-booking-cancel-reason-input>
+                    <input type="hidden" name="refund_proof_data_url" value="" data-admin-booking-refund-proof-input>
                     <button type="submit" name="next_status" value="pending" class="admin-booking-action" data-admin-booking-status-submit>Set Pending</button>
                     <button type="submit" name="next_status" value="approved" class="admin-booking-action is-approve" data-admin-booking-status-submit>Approve</button>
+                    <button type="button" class="admin-booking-action is-reject" data-admin-booking-review-open data-admin-booking-review-mode="rejected">Reject</button>
+                    <button type="button" class="admin-booking-action is-refund" data-admin-booking-review-open data-admin-booking-review-mode="refunded">Refund</button>
                     <button type="submit" name="next_status" value="ongoing" class="admin-booking-action is-ongoing" data-admin-booking-status-submit>Mark Ongoing</button>
                     <button type="submit" name="next_status" value="return" class="admin-booking-action is-return" data-admin-booking-status-submit>Mark Return</button>
                     <button type="submit" name="next_status" value="completed" class="admin-booking-action is-complete" data-admin-booking-status-submit>Complete</button>
                     <button type="button" class="admin-booking-action is-cancel" data-admin-booking-cancel-open>Cancel</button>
                 </form>
+            </section>
+        </div>
+
+        <div class="admin-booking-review-backdrop" data-admin-booking-review-backdrop hidden>
+            <section class="admin-booking-review-modal" role="dialog" aria-modal="true" aria-labelledby="admin-booking-review-title">
+                <div class="admin-booking-review-head">
+                    <h3 id="admin-booking-review-title" data-admin-booking-review-title>Booking Decision</h3>
+                    <button class="admin-booking-review-close" type="button" data-admin-booking-review-close aria-label="Close decision dialog">&times;</button>
+                </div>
+
+                <p class="admin-booking-review-copy" data-admin-booking-review-copy>Provide a reason for this decision. This will be visible to the customer in Order Status.</p>
+                <textarea class="admin-booking-review-textarea" data-admin-booking-review-reason maxlength="500" placeholder="Enter decision reason"></textarea>
+
+                <div class="admin-booking-review-proof-wrap" data-admin-booking-review-proof-wrap hidden>
+                    <input type="file" accept="image/*" data-admin-booking-review-proof-file hidden>
+                    <div class="admin-booking-review-proof-row">
+                        <span class="admin-booking-review-proof-filename" data-admin-booking-review-proof-filename>No file selected</span>
+                        <button type="button" class="admin-booking-review-proof-select" data-admin-booking-review-proof-select>Select Proof Image</button>
+                    </div>
+                    <p class="admin-booking-review-proof-note">Upload the refund receipt screenshot as proof for the customer.</p>
+                </div>
+
+                <p class="admin-booking-review-error" data-admin-booking-review-error hidden></p>
+
+                <div class="admin-booking-review-actions">
+                    <button type="button" class="admin-booking-review-action" data-admin-booking-review-close>Back</button>
+                    <button type="button" class="admin-booking-review-action is-confirm" data-admin-booking-review-confirm>Confirm</button>
+                </div>
             </section>
         </div>
 
@@ -1982,7 +2038,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         }
         document.addEventListener('DOMContentLoaded', updateFieldLabels);
     </script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-3"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-4"></script>
 </body>
 </html>
 

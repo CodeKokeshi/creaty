@@ -16,7 +16,17 @@ function customer_order_generate_id()
 
 function customer_order_allowed_status_tokens()
 {
-    return ['pending', 'approved', 'ongoing', 'return', 'completed', 'canceled'];
+    return ['pending', 'approved', 'ongoing', 'return', 'completed', 'canceled', 'rejected', 'refunded'];
+}
+
+function customer_order_status_requires_reason($statusToken)
+{
+    return in_array((string) $statusToken, ['canceled', 'rejected', 'refunded'], true);
+}
+
+function customer_order_is_terminal_status($statusToken)
+{
+    return in_array((string) $statusToken, ['canceled', 'rejected', 'refunded'], true);
 }
 
 function customer_order_payment_receipt_timeout_seconds()
@@ -169,6 +179,19 @@ function normalize_customer_order_receipt_uploaded_at($value)
     return $timestamp;
 }
 
+function customer_order_requires_payment_review($record)
+{
+    if (!is_array($record)) {
+        return false;
+    }
+
+    $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+    $paymentMethod = normalize_customer_order_payment_method($record['payment_method'] ?? '');
+    $receiptPath = normalize_customer_order_asset_path($record['payment_receipt_path'] ?? '');
+
+    return $statusToken === 'pending' && $paymentMethod === 'gcash' && $receiptPath !== '';
+}
+
 function customer_order_payment_receipt_deadline_timestamp($record)
 {
     if (!is_array($record)) {
@@ -296,12 +319,14 @@ function normalize_customer_order_record($record)
     $paymentMethod = normalize_customer_order_payment_method($record['payment_method'] ?? '');
     $paymentReceiptPath = normalize_customer_order_asset_path($record['payment_receipt_path'] ?? $record['paymentReceiptPath'] ?? '');
     $paymentReceiptUploadedAt = normalize_customer_order_receipt_uploaded_at($record['payment_receipt_uploaded_at'] ?? $record['paymentReceiptUploadedAt'] ?? '');
+    $refundProofPath = normalize_customer_order_asset_path($record['refund_proof_path'] ?? $record['refundProofPath'] ?? '');
+    $refundProofUploadedAt = normalize_customer_order_receipt_uploaded_at($record['refund_proof_uploaded_at'] ?? $record['refundProofUploadedAt'] ?? '');
 
     if ($receivingMethod !== 'delivery' && $returningMethod !== 'delivery') {
         $courier = '';
     }
 
-    if ($statusToken !== 'canceled') {
+    if (!customer_order_status_requires_reason($statusToken)) {
         $cancelReason = '';
         $canceledBy = '';
     } elseif ($canceledBy === '') {
@@ -315,6 +340,15 @@ function normalize_customer_order_record($record)
         $paymentReceiptUploadedAt = '';
     } elseif ($paymentReceiptUploadedAt === '') {
         $paymentReceiptUploadedAt = gmdate('c');
+    }
+
+    if ($statusToken !== 'refunded') {
+        $refundProofPath = '';
+        $refundProofUploadedAt = '';
+    } elseif ($refundProofPath === '') {
+        $refundProofUploadedAt = '';
+    } elseif ($refundProofUploadedAt === '') {
+        $refundProofUploadedAt = gmdate('c');
     }
 
     return [
@@ -337,6 +371,8 @@ function normalize_customer_order_record($record)
         'payment_method' => $paymentMethod,
         'payment_receipt_path' => $paymentReceiptPath,
         'payment_receipt_uploaded_at' => $paymentReceiptUploadedAt,
+        'refund_proof_path' => $refundProofPath,
+        'refund_proof_uploaded_at' => $refundProofUploadedAt,
         'created_at' => $createdAt,
     ];
 }
@@ -470,6 +506,8 @@ function customer_orders_live_state_signature($orders)
             'canceled_by' => normalize_customer_order_canceled_by($record['canceled_by'] ?? ''),
             'payment_receipt_path' => normalize_customer_order_asset_path($record['payment_receipt_path'] ?? ''),
             'payment_receipt_uploaded_at' => normalize_customer_order_receipt_uploaded_at($record['payment_receipt_uploaded_at'] ?? ''),
+            'refund_proof_path' => normalize_customer_order_asset_path($record['refund_proof_path'] ?? ''),
+            'refund_proof_uploaded_at' => normalize_customer_order_receipt_uploaded_at($record['refund_proof_uploaded_at'] ?? ''),
         ];
     }
 
@@ -489,10 +527,12 @@ function map_customer_order_for_frontend($record)
     }
 
     $paymentReceiptDeadlineTimestamp = customer_order_payment_receipt_deadline_timestamp($record);
+    $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
 
     return [
         'id' => (string) ($record['id'] ?? ''),
         'status' => (string) ($record['status'] ?? 'Pending'),
+        'statusToken' => $statusToken,
         'items' => is_array($record['items'] ?? null) ? $record['items'] : [],
         'receiveDate' => (string) ($record['receive_date'] ?? ''),
         'receiveTime' => (string) ($record['receive_time'] ?? ''),
@@ -507,6 +547,8 @@ function map_customer_order_for_frontend($record)
         'paymentMethod' => (string) ($record['payment_method'] ?? ''),
         'paymentReceiptPath' => (string) ($record['payment_receipt_path'] ?? ''),
         'paymentReceiptUploadedAt' => (string) ($record['payment_receipt_uploaded_at'] ?? ''),
+        'refundProofPath' => (string) ($record['refund_proof_path'] ?? ''),
+        'refundProofUploadedAt' => (string) ($record['refund_proof_uploaded_at'] ?? ''),
         'paymentReceiptDeadlineAt' => $paymentReceiptDeadlineTimestamp !== null ? gmdate('c', $paymentReceiptDeadlineTimestamp) : '',
         'paymentReceiptTimeoutSeconds' => customer_order_payment_receipt_timeout_seconds(),
         'createdAt' => (string) ($record['created_at'] ?? ''),
@@ -595,7 +637,7 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
     return map_customer_order_for_frontend($newOrder);
 }
 
-function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason = '', $canceledBy = 'admin')
+function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason = '', $canceledBy = 'admin', $options = [])
 {
     $targetOrderId = trim((string) $orderId);
 
@@ -603,22 +645,27 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
         return null;
     }
 
+    $settings = is_array($options) ? $options : [];
     $statusToken = normalize_customer_order_status_token($nextStatus);
     $statusLabel = normalize_customer_order_status($statusToken);
-    $normalizedCancelReason = $statusToken === 'canceled'
+    $statusNeedsReason = customer_order_status_requires_reason($statusToken);
+    $normalizedCancelReason = $statusNeedsReason
         ? normalize_customer_order_cancel_reason($cancelReason)
         : '';
-    $normalizedCanceledBy = $statusToken === 'canceled'
+    $normalizedCanceledBy = $statusNeedsReason
         ? normalize_customer_order_canceled_by($canceledBy)
         : '';
+    $refundProofDataUrl = trim((string) ($settings['refund_proof_data_url'] ?? ''));
+    $projectRoot = trim((string) ($settings['project_root'] ?? ''));
 
-    if ($statusToken === 'canceled' && $normalizedCancelReason === '') {
+    if ($statusNeedsReason && $normalizedCancelReason === '') {
         return null;
     }
 
-    if ($statusToken === 'canceled' && $normalizedCanceledBy === '') {
+    if ($statusNeedsReason && $normalizedCanceledBy === '') {
         $normalizedCanceledBy = 'admin';
     }
+
     $orders = load_customer_orders_repository();
     $updatedOrder = null;
 
@@ -632,15 +679,42 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
         }
 
         $currentStatusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+        $isWaitingForPaymentReceipt = customer_order_requires_payment_receipt($record);
+        $isWaitingForPaymentReview = customer_order_requires_payment_review($record);
 
-        // Canceled bookings are terminal and cannot transition to any other state.
-        if ($currentStatusToken === 'canceled') {
+        // Terminal bookings cannot transition to any other state.
+        if (customer_order_is_terminal_status($currentStatusToken)) {
             return null;
         }
 
         // While waiting for a GCash receipt, admin can only cancel.
-        if (customer_order_requires_payment_receipt($record) && $statusToken !== 'canceled') {
+        if ($isWaitingForPaymentReceipt && $statusToken !== 'canceled') {
             return null;
+        }
+
+        // During receipt review, admin can only approve, reject, or refund.
+        if ($isWaitingForPaymentReview && !in_array($statusToken, ['approved', 'rejected', 'refunded'], true)) {
+            return null;
+        }
+
+        if ($statusToken === 'rejected' && !$isWaitingForPaymentReview) {
+            return null;
+        }
+
+        if ($statusToken === 'refunded') {
+            if (!$isWaitingForPaymentReview || $refundProofDataUrl === '' || $projectRoot === '') {
+                return null;
+            }
+
+            try {
+                $record['refund_proof_path'] = save_customer_order_refund_proof_from_data_url($refundProofDataUrl, $projectRoot, $targetOrderId);
+                $record['refund_proof_uploaded_at'] = gmdate('c');
+            } catch (Throwable $error) {
+                return null;
+            }
+        } else {
+            $record['refund_proof_path'] = '';
+            $record['refund_proof_uploaded_at'] = '';
         }
 
         $record['status'] = $statusLabel;
@@ -696,6 +770,45 @@ function save_customer_order_payment_receipt_from_data_url($imageDataUrl, $proje
 
     if (file_put_contents($absolutePath, $binary, LOCK_EX) === false) {
         throw new RuntimeException('Unable to save payment receipt image.');
+    }
+
+    return $targetDirRelative . '/' . $filename;
+}
+
+function save_customer_order_refund_proof_from_data_url($imageDataUrl, $projectRoot, $orderId)
+{
+    $dataUrl = trim((string) $imageDataUrl);
+
+    if (!preg_match('/^data:image\/(png|jpe?g|webp);base64,(.+)$/i', $dataUrl, $matches)) {
+        throw new RuntimeException('Invalid refund proof image payload.');
+    }
+
+    $binary = base64_decode((string) ($matches[2] ?? ''), true);
+    if ($binary === false) {
+        throw new RuntimeException('Invalid refund proof image data.');
+    }
+
+    $extensionRaw = strtolower((string) ($matches[1] ?? 'png'));
+    $extension = $extensionRaw === 'jpeg' ? 'jpg' : $extensionRaw;
+
+    $targetDirRelative = 'assets/refund_receipts';
+    $targetDir = rtrim((string) $projectRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR
+        . str_replace('/', DIRECTORY_SEPARATOR, $targetDirRelative);
+
+    if (!is_dir($targetDir) && !mkdir($targetDir, 0777, true) && !is_dir($targetDir)) {
+        throw new RuntimeException('Unable to access refund proof directory.');
+    }
+
+    $safeOrderId = strtolower(trim((string) preg_replace('/[^a-z0-9-]+/i', '-', (string) $orderId), '-'));
+    if ($safeOrderId === '') {
+        $safeOrderId = 'order';
+    }
+
+    $filename = $safeOrderId . '-refund.' . $extension;
+    $absolutePath = $targetDir . DIRECTORY_SEPARATOR . $filename;
+
+    if (file_put_contents($absolutePath, $binary, LOCK_EX) === false) {
+        throw new RuntimeException('Unable to save refund proof image.');
     }
 
     return $targetDirRelative . '/' . $filename;

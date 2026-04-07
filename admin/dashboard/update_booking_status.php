@@ -18,6 +18,7 @@ require_once dirname(__DIR__, 2) . '/config/customer_orders_repository.php';
 $orderId = trim((string) ($_POST['order_id'] ?? ''));
 $nextStatus = trim((string) ($_POST['next_status'] ?? 'pending'));
 $cancelReason = trim((string) ($_POST['cancel_reason'] ?? ''));
+$refundProofDataUrl = trim((string) ($_POST['refund_proof_data_url'] ?? ''));
 $redirectInput = trim((string) ($_POST['redirect'] ?? './?admin_view=bookings'));
 
 $redirectTarget = './?admin_view=bookings';
@@ -36,7 +37,12 @@ if ($orderId === '') {
 }
 
 $nextStatusToken = normalize_customer_order_status_token($nextStatus);
-if ($nextStatusToken === 'canceled' && $cancelReason === '') {
+if (customer_order_status_requires_reason($nextStatusToken) && $cancelReason === '') {
+    header('Location: ' . $redirectTarget);
+    exit;
+}
+
+if ($nextStatusToken === 'refunded' && strpos($refundProofDataUrl, 'data:image/') !== 0) {
     header('Location: ' . $redirectTarget);
     exit;
 }
@@ -49,7 +55,7 @@ if (!is_array($currentOrder)) {
 }
 
 $currentStatusToken = normalize_customer_order_status_token($currentOrder['status'] ?? 'pending');
-if ($currentStatusToken === 'canceled') {
+if (customer_order_is_terminal_status($currentStatusToken)) {
     header('Location: ' . $redirectTarget);
     exit;
 }
@@ -60,11 +66,21 @@ if ($isWaitingForPaymentReceipt && $nextStatusToken !== 'canceled') {
     exit;
 }
 
+$isWaitingForPaymentReview = customer_order_requires_payment_review($currentOrder);
+if ($isWaitingForPaymentReview && !in_array($nextStatusToken, ['approved', 'rejected', 'refunded'], true)) {
+    header('Location: ' . $redirectTarget);
+    exit;
+}
+
 $updatedOrder = update_customer_order_status_by_id(
     $orderId,
     $nextStatus,
-    $nextStatusToken === 'canceled' ? $cancelReason : '',
-    $nextStatusToken === 'canceled' ? 'admin' : ''
+    customer_order_status_requires_reason($nextStatusToken) ? $cancelReason : '',
+    customer_order_status_requires_reason($nextStatusToken) ? 'admin' : '',
+    [
+        'refund_proof_data_url' => $nextStatusToken === 'refunded' ? $refundProofDataUrl : '',
+        'project_root' => dirname(__DIR__, 2),
+    ]
 );
 
 if ($updatedOrder === null) {

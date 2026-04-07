@@ -83,7 +83,7 @@ if ($isCustomerLoggedIn) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260403-5">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260407-5">
 </head>
 <body class="cart-page">
     <header class="site-header">
@@ -578,6 +578,22 @@ if ($isCustomerLoggedIn) {
         </div>
     </section>
 
+    <section class="profile-modal cart-refund-proof-modal" data-cart-refund-proof-modal hidden>
+        <div class="profile-modal-backdrop" data-cart-refund-proof-close></div>
+        <div class="profile-modal-dialog cart-refund-proof-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-refund-proof-title">
+            <h3 id="cart-refund-proof-title">Refund Proof Screenshot</h3>
+
+            <div class="cart-refund-proof-image-wrap">
+                <img src="" alt="Refund proof screenshot" data-cart-refund-proof-image hidden>
+                <p class="cart-refund-proof-empty" data-cart-refund-proof-empty hidden>Unable to load refund proof screenshot.</p>
+            </div>
+
+            <div class="profile-modal-actions">
+                <button type="button" class="profile-order-action" data-cart-refund-proof-close>Close</button>
+            </div>
+        </div>
+    </section>
+
     <section class="cart-unavailable-modal" data-cart-unavailable-modal hidden>
         <div class="cart-unavailable-modal-backdrop" data-cart-unavailable-close></div>
         <div class="cart-unavailable-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-unavailable-title">
@@ -591,6 +607,7 @@ if ($isCustomerLoggedIn) {
     </section>
 
     <script>
+        window.__creatyAssetBase = <?php echo json_encode($assetBase, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCartAvailableItemIds = <?php echo json_encode($availableCartItemIds, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerOrders = <?php echo json_encode($customerOrders, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerOrderSubmitEndpoint = <?php echo json_encode($orderSubmitEndpoint, JSON_UNESCAPED_SLASHES); ?>;
@@ -600,6 +617,6 @@ if ($isCustomerLoggedIn) {
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260403-7"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-5"></script>
 </body>
 </html>

@@ -2625,6 +2625,34 @@ button {
     line-height: 1.45;
 }
 
+.cart-order-status-refund-proof {
+    margin: 0;
+    color: #d8d8db;
+    font-size: 0.79rem;
+    line-height: 1.45;
+}
+
+.cart-order-status-refund-proof-link {
+    color: #d7ecff;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+
+.cart-order-status-refund-proof-open {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+}
+
+.cart-order-status-refund-proof-link:hover,
+.cart-order-status-refund-proof-link:focus-visible {
+    color: #f1f8ff;
+}
+
 .cart-order-status-actions {
     display: flex;
     flex-wrap: wrap;
@@ -2874,9 +2902,44 @@ button {
     z-index: 65;
 }
 
+.cart-refund-proof-modal {
+    z-index: 66;
+}
+
 .cart-gcash-dialog {
     width: min(100% - 2rem, 540px);
     gap: 0.8rem;
+}
+
+.cart-refund-proof-dialog {
+    width: min(100% - 2rem, 720px);
+    gap: 0.8rem;
+}
+
+.cart-refund-proof-image-wrap {
+    width: 100%;
+    min-height: 260px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.25);
+    display: grid;
+    place-items: center;
+    padding: 0.7rem;
+}
+
+.cart-refund-proof-image-wrap img {
+    width: 100%;
+    max-height: min(72dvh, 640px);
+    object-fit: contain;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.cart-refund-proof-empty {
+    text-align: center;
+    color: #ffc6c6;
+    font-size: 0.86rem;
+    line-height: 1.45;
 }
 
 .cart-gcash-dialog > p {
@@ -4672,6 +4735,11 @@ button {
     color: #bfd8ff;
 }
 
+.profile-order-status.status-review {
+    border-color: rgba(236, 227, 169, 0.55);
+    color: #fff4be;
+}
+
 .profile-order-status.status-approved {
     border-color: rgba(130, 235, 188, 0.5);
     color: #c8ffe6;
@@ -4685,6 +4753,16 @@ button {
 .profile-order-status.status-canceled {
     border-color: rgba(236, 129, 129, 0.45);
     color: #ffbebe;
+}
+
+.profile-order-status.status-rejected {
+    border-color: rgba(245, 152, 152, 0.5);
+    color: #ffd0d0;
+}
+
+.profile-order-status.status-refunded {
+    border-color: rgba(177, 201, 255, 0.55);
+    color: #dbe7ff;
 }
 
 .profile-order-action.primary {
@@ -7332,6 +7410,11 @@ button {
     color: #f0f3fb;
 }
 
+.admin-bookings-status.status-review {
+    background-color: #8a7d2d;
+    color: #fff8d5;
+}
+
 .admin-bookings-status.status-approved,
 .admin-bookings-status.status-confirmed {
     background-color: #f4e85c;
@@ -7341,6 +7424,16 @@ button {
 .admin-bookings-status.status-canceled {
     background-color: #a42c2c;
     color: #ffe2e2;
+}
+
+.admin-bookings-status.status-rejected {
+    background-color: #7b2f3d;
+    color: #ffdbe3;
+}
+
+.admin-bookings-status.status-refunded {
+    background-color: #33507a;
+    color: #e6f0ff;
 }
 
 .admin-bookings-status.status-return,
@@ -7459,20 +7552,23 @@ button {
     font-size: 0.84rem;
 }
 
-.admin-booking-detail-receipt-wrap {
+.admin-booking-detail-receipt-wrap,
+.admin-booking-detail-refund-wrap {
     margin-top: 0.95rem;
     display: grid;
     gap: 0.55rem;
 }
 
-.admin-booking-detail-receipt-wrap h3 {
+.admin-booking-detail-receipt-wrap h3,
+.admin-booking-detail-refund-wrap h3 {
     margin: 0;
     font-size: 0.88rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
 }
 
-.admin-booking-detail-receipt-link {
+.admin-booking-detail-receipt-link,
+.admin-booking-detail-refund-link {
     width: min(100%, 360px);
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 12px;
@@ -7481,7 +7577,8 @@ button {
     display: block;
 }
 
-.admin-booking-detail-receipt-link img {
+.admin-booking-detail-receipt-link img,
+.admin-booking-detail-refund-link img {
     width: 100%;
     height: auto;
     max-height: 280px;
@@ -7491,7 +7588,9 @@ button {
 }
 
 .admin-booking-detail-receipt-empty,
+.admin-booking-detail-refund-empty,
 .admin-booking-detail-receipt-meta,
+.admin-booking-detail-refund-meta,
 .admin-booking-detail-status-note {
     margin: 0;
     font-size: 0.83rem;
@@ -7502,7 +7601,15 @@ button {
     color: #d8d8db;
 }
 
+.admin-booking-detail-refund-empty {
+    color: #d8d8db;
+}
+
 .admin-booking-detail-receipt-meta {
+    color: #ced3dd;
+}
+
+.admin-booking-detail-refund-meta {
     color: #ced3dd;
 }
 
@@ -7564,6 +7671,18 @@ button {
     border-color: rgba(229, 114, 114, 0.62);
     background: rgba(155, 57, 57, 0.26);
     color: #ffe5e5;
+}
+
+.admin-booking-action.is-reject {
+    border-color: rgba(236, 143, 143, 0.62);
+    background: rgba(142, 53, 72, 0.28);
+    color: #ffdbe3;
+}
+
+.admin-booking-action.is-refund {
+    border-color: rgba(143, 179, 245, 0.62);
+    background: rgba(63, 96, 162, 0.28);
+    color: #e6f0ff;
 }
 
 .admin-booking-cancel-backdrop {
@@ -7668,6 +7787,154 @@ button {
     color: #ffe5e5;
 }
 
+.admin-booking-review-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 127;
+    background: rgba(0, 0, 0, 0.62);
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+}
+
+.admin-booking-review-modal {
+    width: min(100%, 560px);
+    border: 1px solid rgba(217, 217, 217, 0.28);
+    background: #111214;
+    color: #f4f4f4;
+    padding: 1rem;
+    display: grid;
+    gap: 0.7rem;
+}
+
+.admin-booking-review-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+}
+
+.admin-booking-review-head h3 {
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.admin-booking-review-close {
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #f4f4f4;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.admin-booking-review-copy {
+    margin: 0;
+    color: #d8d8db;
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
+.admin-booking-review-textarea {
+    width: 100%;
+    min-height: 120px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    color: #f4f4f4;
+    padding: 0.68rem;
+    resize: vertical;
+}
+
+.admin-booking-review-textarea:focus {
+    outline: 2px solid rgba(236, 227, 169, 0.52);
+    outline-offset: 1px;
+}
+
+.admin-booking-review-proof-wrap {
+    display: grid;
+    gap: 0.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.65rem;
+}
+
+.admin-booking-review-proof-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+}
+
+.admin-booking-review-proof-filename {
+    min-width: 0;
+    flex: 1;
+    color: #d8d8db;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.admin-booking-review-proof-select {
+    min-height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #f4f4f4;
+    font-size: 0.73rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0 0.8rem;
+    cursor: pointer;
+}
+
+.admin-booking-review-proof-note {
+    margin: 0;
+    color: #ced3dd;
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.admin-booking-review-error {
+    margin: 0;
+    color: #ffbebe;
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.admin-booking-review-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.admin-booking-review-action {
+    min-height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #f4f4f4;
+    font-size: 0.77rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0 1rem;
+    cursor: pointer;
+}
+
+.admin-booking-review-action.is-confirm {
+    border-color: rgba(143, 179, 245, 0.62);
+    background: rgba(63, 96, 162, 0.28);
+    color: #e6f0ff;
+}
+
 @media (max-width: 900px) {
     .admin-booking-detail-grid {
         grid-template-columns: 1fr;
@@ -7681,5 +7948,10 @@ button {
 @media (max-width: 640px) {
     .admin-booking-detail-actions {
         grid-template-columns: 1fr;
+    }
+
+    .admin-booking-review-proof-row {
+        flex-direction: column;
+        align-items: stretch;
     }
 }
