@@ -1,0 +1,87 @@
+<?php
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
+header('Content-Type: application/json; charset=UTF-8');
+
+function customer_notifications_mark_read_respond(int $statusCode, array $payload): void
+{
+    http_response_code($statusCode);
+    echo json_encode($payload, JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+if (!isset($_SESSION['customer_id']) || isset($_SESSION['user_id'])) {
+    customer_notifications_mark_read_respond(401, [
+        'ok' => false,
+        'message' => 'Unauthorized.',
+    ]);
+}
+
+if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    customer_notifications_mark_read_respond(405, [
+        'ok' => false,
+        'message' => 'Method not allowed.',
+    ]);
+}
+
+require_once __DIR__ . '/config/customer_notifications_repository.php';
+
+$customerId = trim((string) ($_SESSION['customer_id'] ?? ''));
+
+if ($customerId === '') {
+    customer_notifications_mark_read_respond(401, [
+        'ok' => false,
+        'message' => 'Unauthorized.',
+    ]);
+}
+
+$rawBody = file_get_contents('php://input');
+$decodedBody = json_decode((string) $rawBody, true);
+
+$notificationId = trim((string) (
+    (is_array($decodedBody) ? ($decodedBody['notificationId'] ?? '') : '')
+    ?: ($_POST['notificationId'] ?? '')
+));
+
+if ($notificationId === '') {
+    customer_notifications_mark_read_respond(422, [
+        'ok' => false,
+        'message' => 'Notification id is required.',
+    ]);
+}
+
+$markResult = mark_customer_notification_as_read_for_customer($customerId, $notificationId);
+$notifications = $markResult['notifications'] ?? null;
+
+if (!is_array($notifications)) {
+    customer_notifications_mark_read_respond(500, [
+        'ok' => false,
+        'message' => 'Unable to process notifications.',
+    ]);
+}
+
+if (!empty($markResult['changed'])) {
+    if (!save_customer_notifications_repository($notifications)) {
+        customer_notifications_mark_read_respond(500, [
+            'ok' => false,
+            'message' => 'Unable to save read state.',
+        ]);
+    }
+}
+
+if (($markResult['updated'] ?? null) === null) {
+    customer_notifications_mark_read_respond(404, [
+        'ok' => false,
+        'message' => 'Notification not found.',
+        'unreadCount' => count_unread_customer_notifications_for_customer($customerId, $notifications),
+    ]);
+}
+
+customer_notifications_mark_read_respond(200, [
+    'ok' => true,
+    'changed' => (bool) ($markResult['changed'] ?? false),
+    'notificationId' => $notificationId,
+    'unreadCount' => count_unread_customer_notifications_for_customer($customerId, $notifications),
+]);

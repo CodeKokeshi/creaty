@@ -216,9 +216,13 @@ function customer_order_payment_receipt_deadline_timestamp($record)
     return (int) $createdAtTimestamp + customer_order_payment_receipt_timeout_seconds();
 }
 
-function expire_customer_orders_missing_payment_receipts($orders, &$didExpire = false, $nowTimestamp = null)
+function expire_customer_orders_missing_payment_receipts($orders, &$didExpire = false, $nowTimestamp = null, &$expiredOrders = null)
 {
     $didExpire = false;
+
+    if (!is_array($expiredOrders)) {
+        $expiredOrders = [];
+    }
 
     if (!is_array($orders)) {
         return [];
@@ -241,7 +245,9 @@ function expire_customer_orders_missing_payment_receipts($orders, &$didExpire = 
         $record['status'] = 'canceled';
         $record['cancel_reason'] = $cancelReason;
         $record['canceled_by'] = 'system';
-        $orders[$index] = normalize_customer_order_record($record);
+        $normalizedRecord = normalize_customer_order_record($record);
+        $orders[$index] = $normalizedRecord;
+        $expiredOrders[] = $normalizedRecord;
         $didExpire = true;
     }
 
@@ -410,10 +416,31 @@ function load_customer_orders_repository()
     }
 
     $didExpireOrders = false;
-    $orders = expire_customer_orders_missing_payment_receipts($orders, $didExpireOrders);
+    $expiredOrders = [];
+    $orders = expire_customer_orders_missing_payment_receipts($orders, $didExpireOrders, null, $expiredOrders);
 
     if ($didExpireOrders) {
         save_customer_orders_repository($orders);
+
+        if (!function_exists('append_customer_order_status_notification')) {
+            require_once __DIR__ . '/customer_notifications_repository.php';
+        }
+
+        if (function_exists('append_customer_order_status_notification')) {
+            foreach ($expiredOrders as $expiredOrder) {
+                if (!is_array($expiredOrder)) {
+                    continue;
+                }
+
+                append_customer_order_status_notification(
+                    (string) ($expiredOrder['customer_id'] ?? ''),
+                    (string) ($expiredOrder['id'] ?? ''),
+                    normalize_customer_order_status_token($expiredOrder['status'] ?? 'pending'),
+                    (string) ($expiredOrder['status'] ?? ''),
+                    (string) ($expiredOrder['cancel_reason'] ?? '')
+                );
+            }
+        }
     }
 
     return $orders;
@@ -518,6 +545,31 @@ function customer_orders_live_state_signature($orders)
     }
 
     return sha1($encodedRows);
+}
+
+function customer_orders_live_state_signature_for_customer($customerId)
+{
+    $targetCustomerId = trim((string) $customerId);
+
+    if ($targetCustomerId === '') {
+        return '';
+    }
+
+    $filteredOrders = [];
+
+    foreach (load_customer_orders_repository() as $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        if ((string) ($record['customer_id'] ?? '') !== $targetCustomerId) {
+            continue;
+        }
+
+        $filteredOrders[] = $record;
+    }
+
+    return customer_orders_live_state_signature($filteredOrders);
 }
 
 function map_customer_order_for_frontend($record)
@@ -668,6 +720,7 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
 
     $orders = load_customer_orders_repository();
     $updatedOrder = null;
+    $didStatusChange = false;
 
     foreach ($orders as $index => $record) {
         if (!is_array($record)) {
@@ -722,6 +775,7 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
         $record['canceled_by'] = $normalizedCanceledBy;
         $orders[$index] = normalize_customer_order_record($record);
         $updatedOrder = $orders[$index];
+        $didStatusChange = $currentStatusToken !== $statusToken;
         break;
     }
 
@@ -731,6 +785,22 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
 
     if (!save_customer_orders_repository($orders)) {
         return null;
+    }
+
+    if ($didStatusChange) {
+        if (!function_exists('append_customer_order_status_notification')) {
+            require_once __DIR__ . '/customer_notifications_repository.php';
+        }
+
+        if (function_exists('append_customer_order_status_notification')) {
+            append_customer_order_status_notification(
+                (string) ($updatedOrder['customer_id'] ?? ''),
+                (string) ($updatedOrder['id'] ?? $targetOrderId),
+                $statusToken,
+                (string) ($updatedOrder['status'] ?? $statusLabel),
+                (string) ($updatedOrder['cancel_reason'] ?? '')
+            );
+        }
     }
 
     return map_customer_order_for_frontend($updatedOrder);
@@ -926,6 +996,20 @@ function cancel_pending_gcash_order_for_customer_due_to_receipt_failure($custome
         return null;
     }
 
+    if (!function_exists('append_customer_order_status_notification')) {
+        require_once __DIR__ . '/customer_notifications_repository.php';
+    }
+
+    if (function_exists('append_customer_order_status_notification')) {
+        append_customer_order_status_notification(
+            (string) ($updatedOrder['customer_id'] ?? ''),
+            (string) ($updatedOrder['id'] ?? $targetOrderId),
+            normalize_customer_order_status_token($updatedOrder['status'] ?? 'canceled'),
+            (string) ($updatedOrder['status'] ?? 'Canceled'),
+            (string) ($updatedOrder['cancel_reason'] ?? $normalizedReason)
+        );
+    }
+
     return map_customer_order_for_frontend($updatedOrder);
 }
 
@@ -975,6 +1059,20 @@ function cancel_customer_order_for_customer($customerId, $orderId, $cancelReason
 
     if (!save_customer_orders_repository($orders)) {
         return null;
+    }
+
+    if (!function_exists('append_customer_order_status_notification')) {
+        require_once __DIR__ . '/customer_notifications_repository.php';
+    }
+
+    if (function_exists('append_customer_order_status_notification')) {
+        append_customer_order_status_notification(
+            (string) ($updatedOrder['customer_id'] ?? ''),
+            (string) ($updatedOrder['id'] ?? $targetOrderId),
+            normalize_customer_order_status_token($updatedOrder['status'] ?? 'canceled'),
+            (string) ($updatedOrder['status'] ?? 'Canceled'),
+            (string) ($updatedOrder['cancel_reason'] ?? $normalizedReason)
+        );
     }
 
     return map_customer_order_for_frontend($updatedOrder);

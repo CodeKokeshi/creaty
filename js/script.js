@@ -6368,6 +6368,12 @@ document.addEventListener("DOMContentLoaded", function () {
         };
         var orderStatusList = document.querySelector("[data-cart-orders-list]");
         var orderStatusEmpty = document.querySelector("[data-cart-orders-empty]");
+        var customerNotificationTrigger = document.querySelector("[data-customer-notification-trigger]");
+        var customerNotificationCountBadges = document.querySelectorAll("[data-customer-notification-count]");
+        var customerNotificationModal = document.querySelector("[data-customer-notification-modal]");
+        var customerNotificationModalCloseButtons = customerNotificationModal ? customerNotificationModal.querySelectorAll("[data-customer-notification-close]") : [];
+        var customerNotificationList = customerNotificationModal ? customerNotificationModal.querySelector("[data-customer-notification-list]") : null;
+        var customerNotificationEmpty = customerNotificationModal ? customerNotificationModal.querySelector("[data-customer-notification-empty]") : null;
         var orderSubmitEndpoint = typeof window.__creatyCustomerOrderSubmitEndpoint === "string"
             ? String(window.__creatyCustomerOrderSubmitEndpoint || "")
             : "";
@@ -6380,8 +6386,20 @@ document.addEventListener("DOMContentLoaded", function () {
         var assetBase = typeof window.__creatyAssetBase === "string"
             ? String(window.__creatyAssetBase || "")
             : "";
+        var customerNotificationLiveEndpoint = typeof window.__creatyCustomerNotificationLiveEndpoint === "string"
+            ? String(window.__creatyCustomerNotificationLiveEndpoint || "")
+            : "";
+        var customerNotificationMarkReadEndpoint = typeof window.__creatyCustomerNotificationMarkReadEndpoint === "string"
+            ? String(window.__creatyCustomerNotificationMarkReadEndpoint || "")
+            : "";
+        var customerInitialView = String(window.__creatyCustomerInitialView || "").toLowerCase().trim() === "order-status"
+            ? "order-status"
+            : "cart";
         var serverOrders = Array.isArray(window.__creatyCustomerOrders)
             ? window.__creatyCustomerOrders.slice()
+            : [];
+        var customerNotifications = Array.isArray(window.__creatyCustomerNotifications)
+            ? window.__creatyCustomerNotifications.slice()
             : [];
         var bookingState = loadJsonStorage(bookingStorageKey, {});
         var unavailableModal = document.querySelector("[data-cart-unavailable-modal]");
@@ -6415,6 +6433,18 @@ document.addEventListener("DOMContentLoaded", function () {
         var gcashPaymentInfo = normalizeGcashPaymentInfo(window.__creatyGcashPaymentInfo);
         var paymentReceiptTimeoutSecondsDefault = 10 * 60;
         var paymentReceiptAutoCancelReason = "Failure to upload payment receipt.";
+        var customerLivePollIntervalMs = 4000;
+        var customerLivePollTimerId = null;
+        var customerLivePollInFlight = false;
+        var customerLiveLastOrdersSignature = typeof window.__creatyCustomerOrdersSignature === "string"
+            ? String(window.__creatyCustomerOrdersSignature || "").trim()
+            : "";
+        var customerNotificationUnreadCountParsed = Number.parseInt(String(window.__creatyCustomerNotificationUnreadCount || "0"), 10);
+        var customerNotificationUnreadCount = Number.isFinite(customerNotificationUnreadCountParsed) && customerNotificationUnreadCountParsed > 0
+            ? customerNotificationUnreadCountParsed
+            : 0;
+        var activeCartView = "cart";
+        var orderStatusFocusId = "";
         var activeCancelOrderId = "";
         var pendingGcashOrderRecord = null;
         var activeGcashUploadOrderId = "";
@@ -6581,6 +6611,307 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             return "/" + normalizedPath.replace(/^\/+/, "");
+        }
+
+        function normalizeCustomerNotificationCount(value) {
+            var parsed = Number.parseInt(String(value || "0"), 10);
+
+            if (!Number.isFinite(parsed) || parsed < 0) {
+                return 0;
+            }
+
+            return parsed;
+        }
+
+        function setCustomerNotificationBadgeCount(nextCount) {
+            var normalizedCount = normalizeCustomerNotificationCount(nextCount);
+            customerNotificationUnreadCount = normalizedCount;
+
+            customerNotificationCountBadges.forEach(function (badge) {
+                badge.textContent = String(normalizedCount);
+            });
+        }
+
+        function normalizeCustomerNotificationRecord(record) {
+            if (!record || typeof record !== "object") {
+                return null;
+            }
+
+            var id = String(record.id || "").trim();
+
+            if (!id) {
+                return null;
+            }
+
+            return {
+                id: id,
+                type: String(record.type || "order-status").trim() || "order-status",
+                orderId: String(record.orderId || record.order_id || "").trim().toUpperCase(),
+                statusToken: String(record.statusToken || record.status_token || "").trim().toLowerCase(),
+                title: String(record.title || "Notification").trim() || "Notification",
+                summary: String(record.summary || "").trim(),
+                targetView: String(record.targetView || record.target_view || "order-status").trim().toLowerCase() === "order-status"
+                    ? "order-status"
+                    : "order-status",
+                isRead: String(record.isRead || record.is_read || "0") === "1" || Boolean(record.isRead || record.is_read),
+                createdAt: String(record.createdAt || record.created_at || "").trim(),
+                createdAtLabel: String(record.createdAtLabel || record.created_at_label || "").trim()
+            };
+        }
+
+        function saveCustomerNotifications(nextNotifications) {
+            if (!Array.isArray(nextNotifications)) {
+                customerNotifications = [];
+                return;
+            }
+
+            customerNotifications = nextNotifications
+                .map(function (notification) {
+                    return normalizeCustomerNotificationRecord(notification);
+                })
+                .filter(function (notification) {
+                    return Boolean(notification);
+                });
+        }
+
+        function updateCustomerNotificationEmptyState() {
+            if (!customerNotificationEmpty) {
+                return;
+            }
+
+            customerNotificationEmpty.hidden = customerNotifications.length > 0;
+        }
+
+        function setCustomerNotificationReadState(notificationId, shouldRead) {
+            var targetId = String(notificationId || "").trim();
+
+            if (!targetId) {
+                return;
+            }
+
+            customerNotifications = customerNotifications.map(function (notification) {
+                if (!notification || notification.id !== targetId) {
+                    return notification;
+                }
+
+                return Object.assign({}, notification, {
+                    isRead: Boolean(shouldRead)
+                });
+            });
+
+            var unreadCount = customerNotifications.reduce(function (total, notification) {
+                if (!notification || notification.isRead) {
+                    return total;
+                }
+
+                return total + 1;
+            }, 0);
+
+            setCustomerNotificationBadgeCount(unreadCount);
+            renderCustomerNotificationList();
+        }
+
+        function getCustomerNotificationTimeLabel(notification) {
+            if (!notification || typeof notification !== "object") {
+                return "";
+            }
+
+            var createdAtLabel = String(notification.createdAtLabel || "").trim();
+
+            if (createdAtLabel) {
+                return createdAtLabel;
+            }
+
+            var createdAt = String(notification.createdAt || "").trim();
+
+            if (!createdAt) {
+                return "";
+            }
+
+            var timestamp = Date.parse(createdAt);
+
+            if (!Number.isFinite(timestamp)) {
+                return createdAt;
+            }
+
+            return new Date(timestamp).toLocaleString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit"
+            });
+        }
+
+        function closeCustomerNotificationModal() {
+            if (!customerNotificationModal) {
+                return;
+            }
+
+            customerNotificationModal.hidden = true;
+        }
+
+        function openCustomerNotificationModal() {
+            if (!customerNotificationModal) {
+                return;
+            }
+
+            renderCustomerNotificationList();
+            customerNotificationModal.hidden = false;
+        }
+
+        function renderCustomerNotificationList() {
+            if (!customerNotificationList) {
+                return;
+            }
+
+            customerNotificationList.innerHTML = "";
+            updateCustomerNotificationEmptyState();
+
+            customerNotifications.forEach(function (notification) {
+                var item = document.createElement("button");
+                item.type = "button";
+                item.className = "cart-customer-notification-item" + (notification.isRead ? " is-read" : " is-unread");
+                item.setAttribute("role", "listitem");
+                item.setAttribute("data-customer-notification-item", "true");
+                item.setAttribute("data-customer-notification-id", String(notification.id || ""));
+                item.setAttribute("data-customer-notification-order-id", String(notification.orderId || ""));
+                item.setAttribute("data-customer-notification-target-view", String(notification.targetView || "order-status"));
+
+                var titleValue = String(notification.title || "Notification").trim() || "Notification";
+                var summaryValue = String(notification.summary || "").trim();
+                var timeLabel = getCustomerNotificationTimeLabel(notification);
+
+                var head = document.createElement("div");
+                head.className = "cart-customer-notification-item-head";
+
+                var title = document.createElement("p");
+                title.className = "cart-customer-notification-title";
+                title.textContent = titleValue;
+
+                var time = document.createElement("span");
+                time.className = "cart-customer-notification-time";
+                time.textContent = timeLabel || "";
+
+                head.appendChild(title);
+                head.appendChild(time);
+                item.appendChild(head);
+
+                if (summaryValue) {
+                    var summary = document.createElement("p");
+                    summary.className = "cart-customer-notification-summary";
+                    summary.textContent = summaryValue;
+                    item.appendChild(summary);
+                }
+
+                customerNotificationList.appendChild(item);
+            });
+        }
+
+        function markCustomerNotificationAsRead(notificationId) {
+            var targetId = String(notificationId || "").trim();
+
+            if (!targetId) {
+                return Promise.resolve();
+            }
+
+            if (!customerNotificationMarkReadEndpoint) {
+                setCustomerNotificationReadState(targetId, true);
+                return Promise.resolve();
+            }
+
+            return window.fetch(customerNotificationMarkReadEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                },
+                body: JSON.stringify({
+                    notificationId: targetId
+                })
+            }).then(function (response) {
+                return response.json().catch(function () {
+                    return {
+                        ok: false
+                    };
+                }).then(function (payload) {
+                    return {
+                        ok: response.ok,
+                        payload: payload
+                    };
+                });
+            }).then(function (result) {
+                if (!result.ok || !result.payload || !result.payload.ok) {
+                    setCustomerNotificationReadState(targetId, true);
+                    return;
+                }
+
+                setCustomerNotificationReadState(targetId, true);
+
+                if (typeof result.payload.unreadCount !== "undefined") {
+                    setCustomerNotificationBadgeCount(result.payload.unreadCount);
+                }
+            }).catch(function () {
+                setCustomerNotificationReadState(targetId, true);
+            });
+        }
+
+        function setCartViewQueryParam(nextView) {
+            if (!window.history || typeof window.history.replaceState !== "function") {
+                return;
+            }
+
+            try {
+                var nextUrl = new URL(window.location.href);
+
+                if (nextView === "order-status") {
+                    nextUrl.searchParams.set("view", "order-status");
+                } else {
+                    nextUrl.searchParams.delete("view");
+                }
+
+                var pathWithQuery = nextUrl.pathname + nextUrl.search + nextUrl.hash;
+                window.history.replaceState(null, "", pathWithQuery);
+            } catch (error) {
+                // Ignore URL parsing failures and keep current route.
+            }
+        }
+
+        function highlightOrderStatusEntry(orderId) {
+            var targetOrderId = String(orderId || "").trim();
+
+            if (!targetOrderId || !orderStatusList) {
+                return;
+            }
+
+            var matchedNode = null;
+
+            orderStatusList.querySelectorAll("[data-cart-order-entry-id]").forEach(function (node) {
+                if (matchedNode) {
+                    return;
+                }
+
+                if (String(node.getAttribute("data-cart-order-entry-id") || "").trim() !== targetOrderId) {
+                    return;
+                }
+
+                matchedNode = node;
+            });
+
+            if (!matchedNode) {
+                return;
+            }
+
+            matchedNode.classList.remove("is-flash-highlight");
+            matchedNode.classList.add("is-flash-highlight");
+            matchedNode.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+
+            window.setTimeout(function () {
+                matchedNode.classList.remove("is-flash-highlight");
+            }, 1500);
         }
 
         function closeRefundProofModal() {
@@ -6765,8 +7096,16 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        function setCartView(nextView) {
+        function setCartView(nextView, options) {
+            var settings = options && typeof options === "object" ? options : {};
+            var shouldPersist = settings.persist !== false;
             var normalizedView = nextView === "order-status" ? "order-status" : "cart";
+
+            activeCartView = normalizedView;
+
+            if (shouldPersist) {
+                setCartViewQueryParam(normalizedView);
+            }
 
             if (cartViewPanels.cart) {
                 cartViewPanels.cart.hidden = normalizedView !== "cart";
@@ -6880,6 +7219,96 @@ document.addEventListener("DOMContentLoaded", function () {
                 .filter(function (order) {
                     return Boolean(order);
                 });
+        }
+
+        function applyCustomerLivePayload(payload) {
+            if (!payload || typeof payload !== "object") {
+                return;
+            }
+
+            if (typeof payload.unreadCount !== "undefined") {
+                setCustomerNotificationBadgeCount(payload.unreadCount);
+            }
+
+            if (Array.isArray(payload.notifications)) {
+                saveCustomerNotifications(payload.notifications);
+                renderCustomerNotificationList();
+            }
+
+            var nextSignature = String(payload.ordersSignature || "").trim();
+            var shouldRefreshOrders = false;
+
+            if (nextSignature !== "" && nextSignature !== customerLiveLastOrdersSignature) {
+                shouldRefreshOrders = true;
+            }
+
+            if (shouldRefreshOrders && Array.isArray(payload.orders)) {
+                saveStoredOrders(payload.orders);
+                renderOrderStatusList();
+
+                if (activeCartView === "order-status") {
+                    showCartToast("Order status updated");
+                }
+            }
+
+            if (nextSignature !== "") {
+                customerLiveLastOrdersSignature = nextSignature;
+            }
+        }
+
+        function pollCustomerLiveUpdates() {
+            if (!customerNotificationLiveEndpoint || customerLivePollInFlight || !customerNotificationTrigger) {
+                return;
+            }
+
+            var requestUrl = customerNotificationLiveEndpoint
+                + (customerNotificationLiveEndpoint.indexOf("?") >= 0 ? "&" : "?")
+                + "t=" + encodeURIComponent(String(Date.now()))
+                + "&limit=20";
+
+            customerLivePollInFlight = true;
+
+            window.fetch(requestUrl, {
+                method: "GET",
+                headers: {
+                    Accept: "application/json"
+                },
+                credentials: "same-origin"
+            }).then(function (response) {
+                return response.json().catch(function () {
+                    return {
+                        ok: false
+                    };
+                }).then(function (payload) {
+                    return {
+                        ok: response.ok,
+                        payload: payload
+                    };
+                });
+            }).then(function (result) {
+                if (!result.ok || !result.payload || !result.payload.ok) {
+                    return;
+                }
+
+                applyCustomerLivePayload(result.payload);
+            }).catch(function () {
+                // Ignore transient polling failures and retry on next interval.
+            }).finally(function () {
+                customerLivePollInFlight = false;
+            });
+        }
+
+        function initializeCustomerLiveUpdates() {
+            if (customerLivePollTimerId !== null) {
+                return;
+            }
+
+            if (!customerNotificationTrigger || !customerNotificationLiveEndpoint) {
+                return;
+            }
+
+            pollCustomerLiveUpdates();
+            customerLivePollTimerId = window.setInterval(pollCustomerLiveUpdates, customerLivePollIntervalMs);
         }
 
         function findStoredOrderById(orderId) {
@@ -7458,6 +7887,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 var orderItem = document.createElement("article");
                 orderItem.className = "profile-order-item";
+                orderItem.setAttribute("data-cart-order-entry-id", String(order.id || ""));
 
                 var orderMeta = document.createElement("div");
                 orderMeta.className = "profile-order-meta";
@@ -7562,6 +7992,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 orderStatusList.appendChild(orderItem);
             });
 
+            if (orderStatusFocusId) {
+                highlightOrderStatusEntry(orderStatusFocusId);
+                orderStatusFocusId = "";
+            }
+
             startReceiptCountdownTicker();
         }
 
@@ -7612,6 +8047,45 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 var orderId = cancelButton.getAttribute("data-cart-order-id") || "";
                 openOrderCancelModal(orderId);
+            });
+        }
+
+        if (customerNotificationTrigger) {
+            customerNotificationTrigger.addEventListener("click", function () {
+                openCustomerNotificationModal();
+                pollCustomerLiveUpdates();
+            });
+        }
+
+        customerNotificationModalCloseButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                closeCustomerNotificationModal();
+            });
+        });
+
+        if (customerNotificationList) {
+            customerNotificationList.addEventListener("click", function (event) {
+                var notificationItem = event.target.closest("[data-customer-notification-item]");
+
+                if (!notificationItem) {
+                    return;
+                }
+
+                var notificationId = String(notificationItem.getAttribute("data-customer-notification-id") || "").trim();
+                var targetView = String(notificationItem.getAttribute("data-customer-notification-target-view") || "order-status").trim().toLowerCase();
+                var orderId = String(notificationItem.getAttribute("data-customer-notification-order-id") || "").trim();
+
+                closeCustomerNotificationModal();
+
+                if (targetView === "order-status") {
+                    if (orderId) {
+                        orderStatusFocusId = orderId;
+                    }
+
+                    setCartView("order-status");
+                }
+
+                markCustomerNotificationAsRead(notificationId);
             });
         }
 
@@ -7937,6 +8411,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+            if (event.key === "Escape" && customerNotificationModal && !customerNotificationModal.hidden) {
+                closeCustomerNotificationModal();
+                return;
+            }
+
             if (event.key === "Escape" && gcashModal && !gcashModal.hidden) {
                 closeGcashModal();
             }
@@ -7948,7 +8427,13 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        setCartView("cart");
+        saveCustomerNotifications(customerNotifications);
+        setCustomerNotificationBadgeCount(customerNotificationUnreadCount);
+        renderCustomerNotificationList();
+
+        setCartView(customerInitialView, {
+            persist: false
+        });
 
         function getMethodValue(inputList, fallbackValue) {
             var checked = Array.prototype.find.call(inputList, function (input) {
@@ -8500,6 +8985,7 @@ document.addEventListener("DOMContentLoaded", function () {
         updateDeliveryFields();
         saveBookingSnapshot();
         renderCartItems();
+        initializeCustomerLiveUpdates();
     }
 
     initializeCustomerMessageModal();

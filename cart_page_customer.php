@@ -25,6 +25,7 @@ require_once __DIR__ . '/config/products_repository.php';
 require_once __DIR__ . '/config/event_packages_repository.php';
 require_once __DIR__ . '/config/customer_orders_repository.php';
 require_once __DIR__ . '/config/gcash_qr_repository.php';
+require_once __DIR__ . '/config/customer_notifications_repository.php';
 
 $productsRepository = load_products_repository();
 $eventPackagesRepository = load_event_packages_repository();
@@ -59,6 +60,14 @@ $orderSubmitEndpoint = $assetBase . 'customer_order_submit.php';
 $orderCancelEndpoint = $assetBase . 'customer_order_cancel.php';
 $orderReceiptUploadEndpoint = $assetBase . 'customer_order_upload_receipt.php';
 $customerOrders = [];
+$customerOrdersSignature = '';
+$customerNotifications = [];
+$customerNotificationsForFrontend = [];
+$customerNotificationUnreadCount = 0;
+$customerNotificationLiveUpdatesEndpoint = $assetBase . 'customer_notifications_live_updates.php';
+$customerNotificationMarkReadEndpoint = $assetBase . 'customer_notifications_mark_read.php';
+$requestedCartView = strtolower(trim((string) ($_GET['view'] ?? 'cart')));
+$initialCartView = $requestedCartView === 'order-status' ? 'order-status' : 'cart';
 $gcashQrSettings = load_gcash_qr_repository();
 $gcashQrImagePath = trim((string) ($gcashQrSettings['qrImagePath'] ?? ''));
 $gcashPaymentInfo = [
@@ -68,7 +77,19 @@ $gcashPaymentInfo = [
 ];
 
 if ($isCustomerLoggedIn) {
-    $customerOrders = load_customer_orders_for_customer($_SESSION['customer_id'] ?? '');
+    $customerId = (string) ($_SESSION['customer_id'] ?? '');
+    $customerOrders = load_customer_orders_for_customer($customerId);
+    $customerOrdersSignature = customer_orders_live_state_signature_for_customer($customerId);
+    $customerNotifications = load_customer_notifications_for_customer($customerId, null, 20);
+    $customerNotificationUnreadCount = count_unread_customer_notifications_for_customer($customerId, $customerNotifications);
+
+    foreach ($customerNotifications as $notificationRecord) {
+        if (!is_array($notificationRecord)) {
+            continue;
+        }
+
+        $customerNotificationsForFrontend[] = map_customer_notification_for_frontend($notificationRecord);
+    }
 }
 
 ?>
@@ -83,11 +104,11 @@ if ($isCustomerLoggedIn) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260407-5">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260407-7">
 </head>
 <body class="cart-page">
     <header class="site-header">
-        <div class="topbar">
+        <div class="topbar topbar-customer-cart">
             <a class="brand-badge" href="<?php echo htmlspecialchars($homePath, ENT_QUOTES, 'UTF-8'); ?>">
                 <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/images/main_logo.png" alt="The Nifty Fifty">
             </a>
@@ -108,6 +129,20 @@ if ($isCustomerLoggedIn) {
 
             <a class="topbar-link" href="#" data-message-us-open>Message us</a>
             <?php if ($isCustomerLoggedIn): ?>
+                <button
+                    class="topbar-notification-button topbar-notification-button-icon-only"
+                    type="button"
+                    aria-label="Notifications"
+                    title="Notifications"
+                    data-customer-notification-trigger
+                >
+                    <span class="topbar-notification-icon-wrap" aria-hidden="true">
+                        <img class="topbar-notification-icon" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/notifications.svg" alt="">
+                        <span class="cart-count topbar-notification-count" data-customer-notification-count aria-hidden="true"><?php echo htmlspecialchars((string) $customerNotificationUnreadCount, ENT_QUOTES, 'UTF-8'); ?></span>
+                    </span>
+                </button>
+            <?php endif; ?>
+            <?php if ($isCustomerLoggedIn): ?>
                 <div class="dropdown topbar-account-menu">
                     <button class="account-pill account-pill-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?>
@@ -127,8 +162,22 @@ if ($isCustomerLoggedIn) {
         </div>
 
         <nav class="section-nav" aria-label="Customer navigation">
-            <button type="button" class="section-nav-filter is-active" data-cart-nav="cart" aria-current="page">Cart</button>
-            <button type="button" class="section-nav-section" data-cart-nav="order-status">Order Status</button>
+            <button
+                type="button"
+                class="section-nav-filter<?php echo $initialCartView === 'cart' ? ' is-active' : ''; ?>"
+                data-cart-nav="cart"
+                <?php echo $initialCartView === 'cart' ? 'aria-current="page"' : ''; ?>
+            >
+                Cart
+            </button>
+            <button
+                type="button"
+                class="section-nav-section<?php echo $initialCartView === 'order-status' ? ' is-active' : ''; ?>"
+                data-cart-nav="order-status"
+                <?php echo $initialCartView === 'order-status' ? 'aria-current="page"' : ''; ?>
+            >
+                Order Status
+            </button>
         </nav>
     </header>
 
@@ -527,6 +576,21 @@ if ($isCustomerLoggedIn) {
 
     <?php require __DIR__ . '/customer_message_modal.php'; ?>
 
+    <?php if ($isCustomerLoggedIn): ?>
+        <section class="profile-modal cart-customer-notification-modal" data-customer-notification-modal hidden>
+            <div class="profile-modal-backdrop" data-customer-notification-close></div>
+            <div class="profile-modal-dialog cart-customer-notification-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-customer-notification-title">
+                <div class="cart-customer-notification-head">
+                    <h3 id="cart-customer-notification-title">Notifications</h3>
+                    <button type="button" class="profile-order-action" data-customer-notification-close>Close</button>
+                </div>
+
+                <div class="cart-customer-notification-list" data-customer-notification-list role="list"></div>
+                <p class="cart-customer-notification-empty" data-customer-notification-empty hidden>No notifications yet.</p>
+            </div>
+        </section>
+    <?php endif; ?>
+
     <section class="profile-modal cart-order-cancel-modal" data-cart-order-cancel-modal hidden>
         <div class="profile-modal-backdrop" data-cart-order-cancel-close></div>
         <div class="profile-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-order-cancel-title">
@@ -613,10 +677,16 @@ if ($isCustomerLoggedIn) {
         window.__creatyCustomerOrderSubmitEndpoint = <?php echo json_encode($orderSubmitEndpoint, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerOrderCancelEndpoint = <?php echo json_encode($orderCancelEndpoint, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerOrderReceiptUploadEndpoint = <?php echo json_encode($orderReceiptUploadEndpoint, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerOrdersSignature = <?php echo json_encode($customerOrdersSignature, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerNotifications = <?php echo json_encode($customerNotificationsForFrontend, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerNotificationUnreadCount = <?php echo json_encode($customerNotificationUnreadCount, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerNotificationLiveEndpoint = <?php echo json_encode($customerNotificationLiveUpdatesEndpoint, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerNotificationMarkReadEndpoint = <?php echo json_encode($customerNotificationMarkReadEndpoint, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerInitialView = <?php echo json_encode($initialCartView, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyGcashPaymentInfo = <?php echo json_encode($gcashPaymentInfo, JSON_UNESCAPED_SLASHES); ?>;
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-5"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-6"></script>
 </body>
 </html>
