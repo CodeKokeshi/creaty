@@ -57,6 +57,7 @@ if (is_array($eventPackagesRepository)) {
 $availableCartItemIds = array_values(array_unique($availableCartItemIds));
 $orderSubmitEndpoint = $assetBase . 'customer_order_submit.php';
 $orderCancelEndpoint = $assetBase . 'customer_order_cancel.php';
+$orderReceiptUploadEndpoint = $assetBase . 'customer_order_upload_receipt.php';
 $customerOrders = [];
 $gcashQrSettings = load_gcash_qr_repository();
 $gcashQrImagePath = trim((string) ($gcashQrSettings['qrImagePath'] ?? ''));
@@ -82,7 +83,7 @@ if ($isCustomerLoggedIn) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260403-3">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260403-5">
 </head>
 <body class="cart-page">
     <header class="site-header">
@@ -544,7 +545,7 @@ if ($isCustomerLoggedIn) {
         <div class="profile-modal-backdrop" data-cart-gcash-close></div>
         <div class="profile-modal-dialog cart-gcash-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-gcash-title">
             <h3 id="cart-gcash-title">Send Payment Here</h3>
-            <p>Scan the following QR Code in your Gcash:</p>
+            <p data-cart-gcash-instruction>Scan the following QR Code in your Gcash:</p>
 
             <div class="cart-gcash-qr-box">
                 <img src="" alt="GCash QR code" data-cart-gcash-qr-image hidden>
@@ -553,6 +554,22 @@ if ($isCustomerLoggedIn) {
 
             <p class="cart-gcash-meta"><strong>Name:</strong> <span data-cart-gcash-name>-</span></p>
             <p class="cart-gcash-meta"><strong>Number:</strong> <span data-cart-gcash-number>-</span></p>
+
+            <div class="cart-gcash-receipt-block" data-cart-gcash-receipt-block hidden>
+                <input type="file" accept="image/*" data-cart-gcash-receipt-file hidden>
+                <p class="cart-gcash-receipt-timer" data-cart-gcash-receipt-timer hidden></p>
+
+                <div class="cart-gcash-upload-row">
+                    <span class="cart-gcash-upload-filename" data-cart-gcash-receipt-filename>No file selected</span>
+                    <button type="button" class="profile-order-action secondary" data-cart-gcash-receipt-select>Select Image</button>
+                </div>
+
+                <button type="button" class="profile-order-action primary" data-cart-gcash-upload>
+                    Upload Payment Receipt
+                </button>
+
+                <p class="cart-gcash-upload-message" data-cart-gcash-upload-message hidden></p>
+            </div>
 
             <div class="profile-modal-actions">
                 <button type="button" class="profile-order-action" data-cart-gcash-close>Back</button>
@@ -578,10 +595,11 @@ if ($isCustomerLoggedIn) {
         window.__creatyCustomerOrders = <?php echo json_encode($customerOrders, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerOrderSubmitEndpoint = <?php echo json_encode($orderSubmitEndpoint, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerOrderCancelEndpoint = <?php echo json_encode($orderCancelEndpoint, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerOrderReceiptUploadEndpoint = <?php echo json_encode($orderReceiptUploadEndpoint, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyGcashPaymentInfo = <?php echo json_encode($gcashPaymentInfo, JSON_UNESCAPED_SLASHES); ?>;
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260403-5"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260403-7"></script>
 </body>
 </html>

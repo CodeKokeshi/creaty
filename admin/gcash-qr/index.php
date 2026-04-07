@@ -40,7 +40,7 @@ $accountNumber = (string) ($gcashSettings['accountNumber'] ?? '');
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260403-3">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260403-4">
     <style>
         body {
             background: #0c0e12;
@@ -59,7 +59,7 @@ $accountNumber = (string) ($gcashSettings['accountNumber'] ?? '');
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 14px;
             background: rgba(255, 255, 255, 0.03);
-            padding: 1rem;
+            padding: 1.05rem;
             display: grid;
             gap: 1rem;
         }
@@ -75,13 +75,20 @@ $accountNumber = (string) ($gcashSettings['accountNumber'] ?? '');
             margin: 0.35rem 0 0;
             color: #d2d7de;
             font-size: 0.9rem;
+            max-width: 860px;
         }
 
         .gcash-editor-grid {
             display: grid;
-            grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
-            gap: 1rem;
+            grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+            gap: 1.1rem;
             align-items: start;
+        }
+
+        .gcash-editor-left {
+            display: grid;
+            gap: 0.7rem;
+            align-content: start;
         }
 
         .gcash-preview-wrap {
@@ -142,7 +149,16 @@ $accountNumber = (string) ($gcashSettings['accountNumber'] ?? '');
 
         .gcash-controls {
             display: grid;
-            gap: 0.7rem;
+            gap: 0.65rem;
+        }
+
+        .gcash-form-panel {
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 0.9rem;
+            display: grid;
+            gap: 0.78rem;
         }
 
         .gcash-action-row {
@@ -191,7 +207,7 @@ $accountNumber = (string) ($gcashSettings['accountNumber'] ?? '');
 
         .gcash-fields {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: 1fr;
             gap: 0.8rem;
         }
 
@@ -216,12 +232,14 @@ $accountNumber = (string) ($gcashSettings['accountNumber'] ?? '');
             justify-content: flex-end;
             gap: 0.6rem;
             flex-wrap: wrap;
+            margin-top: 0.35rem;
         }
 
         .gcash-feedback {
             margin: 0;
             font-size: 0.84rem;
             line-height: 1.45;
+            min-height: 1.2rem;
         }
 
         .gcash-feedback.is-success {
@@ -237,8 +255,12 @@ $accountNumber = (string) ($gcashSettings['accountNumber'] ?? '');
                 grid-template-columns: 1fr;
             }
 
-            .gcash-fields {
-                grid-template-columns: 1fr;
+            .gcash-submit-row {
+                justify-content: stretch;
+            }
+
+            .gcash-submit-row .gcash-action-btn {
+                width: 100%;
             }
         }
     </style>
@@ -277,49 +299,50 @@ $accountNumber = (string) ($gcashSettings['accountNumber'] ?? '');
             </header>
 
             <div class="gcash-editor-grid">
-                <div class="gcash-preview-wrap" data-gcash-preview-wrap>
-                    <img src="<?php echo htmlspecialchars($qrImageUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="GCash QR preview" data-gcash-preview-img<?php echo $qrImageUrl === '' ? ' hidden' : ''; ?>>
-                    <p class="gcash-preview-empty" data-gcash-preview-empty<?php echo $qrImageUrl !== '' ? ' hidden' : ''; ?>>No QR image set yet. Click Browse to upload.</p>
-                    <div class="gcash-preview-overlay" aria-hidden="true"></div>
-                </div>
-
-                <div class="gcash-controls">
-                    <input type="file" accept="image/*" data-gcash-file hidden>
-
-                    <div class="gcash-action-row">
-                        <button class="gcash-action-btn" type="button" data-gcash-browse>Browse</button>
-                        <button class="gcash-action-btn" type="button" data-gcash-recrop>Recrop</button>
+                <section class="gcash-editor-left">
+                    <div class="gcash-preview-wrap" data-gcash-preview-wrap>
+                        <img src="<?php echo htmlspecialchars($qrImageUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="GCash QR preview" data-gcash-preview-img<?php echo $qrImageUrl === '' ? ' hidden' : ''; ?>>
+                        <p class="gcash-preview-empty" data-gcash-preview-empty<?php echo $qrImageUrl !== '' ? ' hidden' : ''; ?>>No QR image set yet. Click Browse to upload.</p>
+                        <div class="gcash-preview-overlay" aria-hidden="true"></div>
                     </div>
 
-                    <div class="gcash-crop-panel" data-gcash-crop-panel hidden>
-                        <p>Drag to reposition. Use the slider or mouse wheel to zoom.</p>
-                        <input type="range" min="1" max="3" step="0.01" value="1" data-gcash-zoom>
+                    <div class="gcash-controls">
                         <div class="gcash-action-row">
-                            <button class="gcash-action-btn" type="button" data-gcash-crop-cancel>Cancel Crop</button>
-                            <button class="gcash-action-btn" type="button" data-gcash-crop-save>Save Crop</button>
+                            <input type="file" accept="image/*" data-gcash-file hidden>
+                            <button class="gcash-action-btn" type="button" data-gcash-browse>Browse</button>
+                            <button class="gcash-action-btn" type="button" data-gcash-recrop>Recrop</button>
+                        </div>
+
+                        <div class="gcash-crop-panel" data-gcash-crop-panel hidden>
+                            <p>Drag to reposition. Use the slider or mouse wheel to zoom.</p>
+                            <input type="range" min="1" max="3" step="0.01" value="1" data-gcash-zoom>
+                            <div class="gcash-action-row">
+                                <button class="gcash-action-btn" type="button" data-gcash-crop-cancel>Cancel Crop</button>
+                                <button class="gcash-action-btn" type="button" data-gcash-crop-save>Save Crop</button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </section>
+
+                <form data-gcash-form class="gcash-form-panel">
+                    <div class="gcash-fields">
+                        <label>
+                            <span>GCash Account Name</span>
+                            <input type="text" maxlength="120" data-gcash-name value="<?php echo htmlspecialchars($accountName, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Enter account owner name" required>
+                        </label>
+                        <label>
+                            <span>GCash Number</span>
+                            <input type="text" maxlength="40" data-gcash-number value="<?php echo htmlspecialchars($accountNumber, ENT_QUOTES, 'UTF-8'); ?>" placeholder="09xxxxxxxxx" required>
+                        </label>
+                    </div>
+
+                    <div class="gcash-submit-row">
+                        <button class="gcash-action-btn" type="submit" data-gcash-submit>Save GCash QR Settings</button>
+                    </div>
+
+                    <p class="gcash-feedback" data-gcash-feedback></p>
+                </form>
             </div>
-
-            <form data-gcash-form>
-                <div class="gcash-fields">
-                    <label>
-                        <span>GCash Account Name</span>
-                        <input type="text" maxlength="120" data-gcash-name value="<?php echo htmlspecialchars($accountName, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Enter account owner name" required>
-                    </label>
-                    <label>
-                        <span>GCash Number</span>
-                        <input type="text" maxlength="40" data-gcash-number value="<?php echo htmlspecialchars($accountNumber, ENT_QUOTES, 'UTF-8'); ?>" placeholder="09xxxxxxxxx" required>
-                    </label>
-                </div>
-
-                <div class="gcash-submit-row">
-                    <button class="gcash-action-btn" type="submit" data-gcash-submit>Save GCash QR Settings</button>
-                </div>
-
-                <p class="gcash-feedback" data-gcash-feedback></p>
-            </form>
         </section>
     </main>
 

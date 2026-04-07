@@ -20,12 +20,82 @@ $accountLabel = 'Admin';
 $adminHomePath = $routeBase . 'dashboard/';
 $logoutPath = $routeBase . 'logout.php';
 $notificationsPath = $routeBase . 'notifications/';
+$bookingsPath = $routeBase . 'dashboard/?admin_view=bookings';
 $markReadEndpoint = $routeBase . 'notifications/mark_read.php';
+$liveUpdatesEndpoint = $routeBase . 'notifications/live_updates.php';
 
 require_once __DIR__ . '/config/message_notifications_repository.php';
 
 $notifications = load_message_notifications_repository();
 $adminNotificationCount = count_unread_message_notifications($notifications);
+
+$notificationTabOptions = ['inbox', 'orders'];
+$requestedNotificationTab = strtolower(trim((string) ($_GET['tab'] ?? '')));
+$savedNotificationTab = strtolower(trim((string) ($_COOKIE['creaty_admin_notifications_tab'] ?? '')));
+
+if (in_array($requestedNotificationTab, $notificationTabOptions, true)) {
+    $activeNotificationTab = $requestedNotificationTab;
+} elseif (in_array($savedNotificationTab, $notificationTabOptions, true)) {
+    $activeNotificationTab = $savedNotificationTab;
+} else {
+    $activeNotificationTab = 'inbox';
+}
+
+if (!headers_sent()) {
+    $isSecureRequest = !empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off';
+    setcookie('creaty_admin_notifications_tab', $activeNotificationTab, time() + (60 * 60 * 24 * 365), '/', '', $isSecureRequest, true);
+}
+
+$notificationsForView = array_values($notifications);
+usort($notificationsForView, function ($left, $right) {
+    $leftRead = (bool) ($left['is_read'] ?? false);
+    $rightRead = (bool) ($right['is_read'] ?? false);
+
+    if ($leftRead !== $rightRead) {
+        return $leftRead <=> $rightRead;
+    }
+
+    $leftTimestamp = strtotime((string) ($left['created_at'] ?? ''));
+    $rightTimestamp = strtotime((string) ($right['created_at'] ?? ''));
+
+    $leftValue = $leftTimestamp !== false ? (int) $leftTimestamp : 0;
+    $rightValue = $rightTimestamp !== false ? (int) $rightTimestamp : 0;
+
+    return $rightValue <=> $leftValue;
+});
+
+$inboxNotificationsForView = [];
+$orderNotificationsForView = [];
+
+foreach ($notificationsForView as $notificationRecord) {
+    if (!is_array($notificationRecord)) {
+        continue;
+    }
+
+    $normalizedNotificationRecord = normalize_message_notification_record($notificationRecord);
+
+    if (($normalizedNotificationRecord['type'] ?? 'message') === 'order') {
+        $orderNotificationsForView[] = $normalizedNotificationRecord;
+        continue;
+    }
+
+    $inboxNotificationsForView[] = $normalizedNotificationRecord;
+}
+
+$activeNotificationsForView = $activeNotificationTab === 'orders'
+    ? $orderNotificationsForView
+    : $inboxNotificationsForView;
+
+$inboxTabPath = $notificationsPath . '?tab=inbox';
+$ordersTabPath = $notificationsPath . '?tab=orders';
+$currentNotificationsPath = $notificationsPath . '?tab=' . rawurlencode($activeNotificationTab);
+$activeTabTitle = $activeNotificationTab === 'orders' ? 'Orders' : 'Inbox';
+$activeTabDescription = $activeNotificationTab === 'orders'
+    ? 'New booking order alerts appear here so they do not clutter inbox messages.'
+    : 'Customer messages and non-order updates appear here.';
+$activeTabListAriaLabel = $activeNotificationTab === 'orders'
+    ? 'Order notifications'
+    : 'Inbox notifications';
 
 function format_message_notification_datetime(string $value): string
 {
@@ -57,6 +127,19 @@ function message_notification_view_data(array $notification): array
     $summary = trim((string) ($notification['summary'] ?? ''));
     if ($summary === '') {
         $summary = $title;
+    }
+
+    $orderId = trim((string) ($payload['order_id'] ?? ''));
+    if ($type === 'order' && $orderId !== '') {
+        $orderLabel = strtoupper($orderId);
+
+        if ($title === '' || strtolower($title) === 'notification') {
+            $title = 'A new order has been placed: ' . $orderLabel;
+        }
+
+        if ($summary === '' || strtolower($summary) === 'notification') {
+            $summary = 'A new order has been placed: ' . $orderLabel;
+        }
     }
 
     $senderName = trim((string) ($payload['sender_name'] ?? ($notification['sender_name'] ?? 'System')));
@@ -102,6 +185,7 @@ function message_notification_view_data(array $notification): array
         'sender_name' => $senderName,
         'sender_email' => $senderEmail,
         'message' => $messageBody,
+        'order_id' => strtoupper($orderId),
         'attachments' => array_values($attachments),
         'is_read' => (bool) ($notification['is_read'] ?? false),
         'created_at' => (string) ($notification['created_at'] ?? ''),
@@ -119,7 +203,7 @@ function message_notification_view_data(array $notification): array
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260402-2">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260407-2">
 </head>
 <body class="events-page admin-notifications-page">
     <header class="site-header">
@@ -135,7 +219,7 @@ function message_notification_view_data(array $notification): array
             <div class="topbar-admin-actions">
                 <a
                     class="topbar-notification-button"
-                    href="<?php echo htmlspecialchars($notificationsPath, ENT_QUOTES, 'UTF-8'); ?>"
+                    href="<?php echo htmlspecialchars($currentNotificationsPath, ENT_QUOTES, 'UTF-8'); ?>"
                     aria-label="Notifications"
                     title="Notifications"
                     data-admin-notification-trigger
@@ -162,28 +246,40 @@ function message_notification_view_data(array $notification): array
             </div>
         </div>
 
-        <nav class="section-nav section-nav-disabled" aria-label="Notifications view">
-            <span class="section-nav-filter is-disabled" aria-disabled="true">INBOX</span>
-            <span class="section-nav-section is-disabled" aria-disabled="true">NOTIFICATIONS</span>
-            <span class="section-nav-filter is-disabled" aria-disabled="true">DETAILS</span>
+        <nav class="section-nav admin-notification-tabs" aria-label="Notifications view">
+            <a
+                class="section-nav-filter<?php echo $activeNotificationTab === 'inbox' ? ' is-active' : ''; ?>"
+                href="<?php echo htmlspecialchars($inboxTabPath, ENT_QUOTES, 'UTF-8'); ?>"
+                <?php echo $activeNotificationTab === 'inbox' ? 'aria-current="page"' : ''; ?>
+            >
+                INBOX
+            </a>
+            <a
+                class="section-nav-filter<?php echo $activeNotificationTab === 'orders' ? ' is-active' : ''; ?>"
+                href="<?php echo htmlspecialchars($ordersTabPath, ENT_QUOTES, 'UTF-8'); ?>"
+                <?php echo $activeNotificationTab === 'orders' ? 'aria-current="page"' : ''; ?>
+            >
+                ORDERS
+            </a>
         </nav>
     </header>
 
     <main class="admin-notifications-shell">
         <section class="admin-notifications-panel reveal" aria-labelledby="admin-notifications-title">
             <div class="admin-notifications-head">
-                <h1 id="admin-notifications-title">Notifications</h1>
-                <p>Message notifications are listed here now. This list is ready for additional types like bookings and products.</p>
+                <h1 id="admin-notifications-title"><?php echo htmlspecialchars($activeTabTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+                <p><?php echo htmlspecialchars($activeTabDescription, ENT_QUOTES, 'UTF-8'); ?></p>
             </div>
 
-            <?php if (!$notifications): ?>
-                <p class="admin-notifications-empty">No notifications yet.</p>
+            <?php if (!$activeNotificationsForView): ?>
+                <p class="admin-notifications-empty">No <?php echo htmlspecialchars(strtolower($activeTabTitle), ENT_QUOTES, 'UTF-8'); ?> notifications yet.</p>
             <?php else: ?>
-                <?php $notificationsForView = array_reverse($notifications); ?>
-                <div class="admin-notifications-list" role="list" aria-label="Notification inbox">
-                    <?php foreach ($notificationsForView as $notification): ?>
+                <div class="admin-notifications-list" role="list" aria-label="<?php echo htmlspecialchars($activeTabListAriaLabel, ENT_QUOTES, 'UTF-8'); ?>">
+                    <?php foreach ($activeNotificationsForView as $notification): ?>
                         <?php
                             $view = message_notification_view_data(is_array($notification) ? $notification : []);
+                            $orderIdForView = trim((string) ($view['order_id'] ?? ''));
+                            $bookingsUrlForView = $view['type'] === 'order' ? $bookingsPath : '';
                             $attachmentsJson = json_encode($view['attachments'], JSON_UNESCAPED_SLASHES);
 
                             if (!is_string($attachmentsJson)) {
@@ -202,6 +298,8 @@ function message_notification_view_data(array $notification): array
                             data-notification-sender="<?php echo htmlspecialchars($view['sender_name'], ENT_QUOTES, 'UTF-8'); ?>"
                             data-notification-email="<?php echo htmlspecialchars($view['sender_email'], ENT_QUOTES, 'UTF-8'); ?>"
                             data-notification-message="<?php echo htmlspecialchars($view['message'], ENT_QUOTES, 'UTF-8'); ?>"
+                            data-notification-order-id="<?php echo htmlspecialchars($orderIdForView, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-notification-bookings-url="<?php echo htmlspecialchars($bookingsUrlForView, ENT_QUOTES, 'UTF-8'); ?>"
                             data-notification-created-at="<?php echo htmlspecialchars($view['created_at_label'], ENT_QUOTES, 'UTF-8'); ?>"
                             data-notification-attachments="<?php echo htmlspecialchars($attachmentsJson, ENT_QUOTES, 'UTF-8'); ?>"
                             data-notification-is-read="<?php echo $view['is_read'] ? '1' : '0'; ?>"
@@ -248,9 +346,10 @@ function message_notification_view_data(array $notification): array
 
     <script>
         window.__creatyAdminNotificationMarkReadEndpoint = <?php echo json_encode($markReadEndpoint, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyAdminNotificationLiveEndpoint = <?php echo json_encode($liveUpdatesEndpoint, JSON_UNESCAPED_SLASHES); ?>;
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260402-5"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-3"></script>
 </body>
 </html>

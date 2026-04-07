@@ -27,6 +27,7 @@ if (!isset($_SESSION['customer_id']) || isset($_SESSION['user_id'])) {
 }
 
 require_once __DIR__ . '/config/customer_orders_repository.php';
+require_once __DIR__ . '/config/message_notifications_repository.php';
 
 $rawBody = file_get_contents('php://input');
 $decodedBody = json_decode((string) $rawBody, true);
@@ -65,6 +66,11 @@ if ($createdOrder === null) {
         'ok' => false,
         'message' => 'Unable to save your booking right now.',
     ]);
+}
+
+$createdOrderId = trim((string) ($createdOrder['id'] ?? ''));
+if ($createdOrderId !== '') {
+    append_order_placed_notification($createdOrderId);
 }
 
 customer_order_submit_respond(200, [

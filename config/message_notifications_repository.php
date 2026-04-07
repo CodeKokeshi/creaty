@@ -263,6 +263,39 @@ function append_message_notification($senderName, $senderEmail, $subject, $messa
     return $newRecord;
 }
 
+function append_order_placed_notification($orderId)
+{
+    $normalizedOrderId = strtoupper(trim((string) $orderId));
+
+    if ($normalizedOrderId === '') {
+        return null;
+    }
+
+    $notifications = load_message_notifications_repository();
+    $title = 'A new order has been placed: ' . $normalizedOrderId;
+
+    $newRecord = normalize_message_notification_record([
+        'id' => message_notification_generate_id(),
+        'type' => 'order',
+        'title' => $title,
+        'summary' => $title,
+        'payload' => [
+            'order_id' => $normalizedOrderId,
+        ],
+        'is_read' => false,
+        'created_at' => gmdate('c'),
+        'read_at' => '',
+    ]);
+
+    array_unshift($notifications, $newRecord);
+
+    if (!save_message_notifications_repository($notifications)) {
+        return null;
+    }
+
+    return $newRecord;
+}
+
 function count_unread_message_notifications($notifications = null)
 {
     $source = is_array($notifications) ? $notifications : load_message_notifications_repository();
@@ -274,6 +307,31 @@ function count_unread_message_notifications($notifications = null)
         }
 
         if (!($record['is_read'] ?? false)) {
+            $count++;
+        }
+    }
+
+    return $count;
+}
+
+function count_unread_message_notifications_by_type($type, $notifications = null)
+{
+    $targetType = normalize_message_notification_type($type);
+    $source = is_array($notifications) ? $notifications : load_message_notifications_repository();
+    $count = 0;
+
+    foreach ($source as $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        $normalized = normalize_message_notification_record($record);
+
+        if ($normalized['type'] !== $targetType) {
+            continue;
+        }
+
+        if (!$normalized['is_read']) {
             $count++;
         }
     }
@@ -338,6 +396,35 @@ function mark_all_message_notifications_as_read($notifications = null)
         $normalized = normalize_message_notification_record($record);
 
         if (!$normalized['is_read']) {
+            $normalized['is_read'] = true;
+            $normalized['read_at'] = $readTimestamp;
+            $changed = true;
+        }
+
+        $source[$index] = $normalized;
+    }
+
+    return [
+        'notifications' => array_values($source),
+        'changed' => $changed,
+    ];
+}
+
+function mark_all_message_notifications_as_read_by_type($type, $notifications = null)
+{
+    $targetType = normalize_message_notification_type($type);
+    $source = is_array($notifications) ? $notifications : load_message_notifications_repository();
+    $changed = false;
+    $readTimestamp = gmdate('c');
+
+    foreach ($source as $index => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        $normalized = normalize_message_notification_record($record);
+
+        if ($normalized['type'] === $targetType && !$normalized['is_read']) {
             $normalized['is_read'] = true;
             $normalized['read_at'] = $readTimestamp;
             $changed = true;

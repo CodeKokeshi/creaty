@@ -27,21 +27,36 @@ $accountLabel = 'Admin';
 $adminHomePath = $routeBase . 'dashboard/';
 $logoutPath = $routeBase . 'logout.php';
 $notificationsPath = $routeBase . 'notifications/';
+$liveUpdatesEndpoint = $routeBase . 'notifications/live_updates.php';
 $manageBrandsPath = $routeBase . 'brands/';
 $manageCategoriesPath = $routeBase . 'categories/';
 $setGcashQrPath = $routeBase . 'gcash-qr/';
-
-require_once __DIR__ . '/config/message_notifications_repository.php';
-
-$adminNotificationCount = count_unread_message_notifications();
-
-require_once __DIR__ . '/config/db.php';
-require_once __DIR__ . '/config/customer_orders_repository.php';
 
 $initialAdminPanel = strtolower(trim((string) ($_GET['admin_view'] ?? '')));
 if (!in_array($initialAdminPanel, ['equipments', 'bookings', 'reports', 'users'], true)) {
     $initialAdminPanel = '';
 }
+
+require_once __DIR__ . '/config/message_notifications_repository.php';
+
+$adminNotifications = load_message_notifications_repository();
+
+if ($initialAdminPanel === 'bookings') {
+    $markOrderReadResult = mark_all_message_notifications_as_read_by_type('order', $adminNotifications);
+
+    if (!empty($markOrderReadResult['changed']) && !empty($markOrderReadResult['notifications']) && is_array($markOrderReadResult['notifications'])) {
+        save_message_notifications_repository($markOrderReadResult['notifications']);
+    }
+
+    if (!empty($markOrderReadResult['notifications']) && is_array($markOrderReadResult['notifications'])) {
+        $adminNotifications = $markOrderReadResult['notifications'];
+    }
+}
+
+$adminNotificationCount = count_unread_message_notifications($adminNotifications);
+
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/config/customer_orders_repository.php';
 
 $adminUsersFlashMessage = (isset($_GET['created']) && (string) $_GET['created'] === '1')
     ? 'User account created successfully.'
@@ -262,8 +277,10 @@ if ($customerUsersResult instanceof mysqli_result) {
 
 $dashboardBookings = [];
 $adminBookingDetails = [];
+$customerBookingsRecords = load_customer_orders_repository();
+$adminBookingsSignature = customer_orders_live_state_signature($customerBookingsRecords);
 
-foreach (load_customer_orders_repository() as $bookingRecord) {
+foreach ($customerBookingsRecords as $bookingRecord) {
     if (!is_array($bookingRecord)) {
         continue;
     }
@@ -274,7 +291,21 @@ foreach (load_customer_orders_repository() as $bookingRecord) {
     }
 
     $bookingStatusToken = normalize_customer_order_status_token($bookingRecord['status'] ?? 'pending');
-    $bookingStatusLabel = strtoupper(str_replace('-', ' ', $bookingStatusToken));
+    $paymentMethodToken = normalize_customer_order_payment_method($bookingRecord['payment_method'] ?? '');
+    $paymentReceiptPath = normalize_customer_order_asset_path($bookingRecord['payment_receipt_path'] ?? '');
+    $paymentReceiptUploadedAt = trim((string) ($bookingRecord['payment_receipt_uploaded_at'] ?? ''));
+    $isWaitingForPaymentReceipt = $bookingStatusToken === 'pending'
+        && $paymentMethodToken === 'gcash'
+        && $paymentReceiptPath === '';
+    $bookingStatusLabel = $isWaitingForPaymentReceipt
+        ? 'WAITING FOR PAYMENT RECEIPT'
+        : strtoupper(str_replace('-', ' ', $bookingStatusToken));
+    $bookingStatusClass = $isWaitingForPaymentReceipt
+        ? 'status-waiting-receipt'
+        : 'status-' . $bookingStatusToken;
+    $paymentReceiptUrl = $paymentReceiptPath !== ''
+        ? $assetBase . ltrim($paymentReceiptPath, '/')
+        : '';
     $bookingTimestampRaw = trim((string) ($bookingRecord['created_at'] ?? ''));
     $bookingTimestamp = strtotime($bookingTimestampRaw);
     $bookingTimestampLabel = $bookingTimestamp
@@ -294,7 +325,7 @@ foreach (load_customer_orders_repository() as $bookingRecord) {
         'order' => $orderNumberLabel,
         'time' => $bookingTimestampLabel,
         'status' => $bookingStatusLabel,
-        'statusClass' => 'status-' . $bookingStatusToken,
+        'statusClass' => $bookingStatusClass,
     ];
 
     $adminBookingDetails[] = [
@@ -304,7 +335,7 @@ foreach (load_customer_orders_repository() as $bookingRecord) {
         'orderNumber' => $orderNumberLabel,
         'timestamp' => $bookingTimestampLabel,
         'status' => $bookingStatusLabel,
-        'statusClass' => 'status-' . $bookingStatusToken,
+        'statusClass' => $bookingStatusClass,
         'items' => is_array($bookingRecord['items'] ?? null) ? array_values($bookingRecord['items']) : [],
         'receiveDate' => (string) ($bookingRecord['receive_date'] ?? ''),
         'receiveTime' => (string) ($bookingRecord['receive_time'] ?? ''),
@@ -316,7 +347,11 @@ foreach (load_customer_orders_repository() as $bookingRecord) {
         'courier' => (string) ($bookingRecord['courier'] ?? ''),
         'cancelReason' => (string) ($bookingRecord['cancel_reason'] ?? ''),
         'cancelBy' => (string) ($bookingRecord['canceled_by'] ?? ''),
-        'paymentMethod' => (string) ($bookingRecord['payment_method'] ?? ''),
+        'paymentMethod' => $paymentMethodToken,
+        'paymentReceiptPath' => $paymentReceiptPath,
+        'paymentReceiptUrl' => $paymentReceiptUrl,
+        'paymentReceiptUploadedAt' => $paymentReceiptUploadedAt,
+        'waitingForPaymentReceipt' => $isWaitingForPaymentReceipt,
     ];
 }
 
@@ -939,7 +974,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260403-3">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260403-4">
 </head>
 <body
     class="home-page-customer"
@@ -1221,6 +1256,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <p><strong>Returning Method:</strong> <span data-admin-booking-detail-returning-method>-</span></p>
                     <p><strong>Courier:</strong> <span data-admin-booking-detail-courier>-</span></p>
                     <p><strong>Payment Method:</strong> <span data-admin-booking-detail-payment-method>-</span></p>
+                    <p><strong>Payment Receipt:</strong> <span data-admin-booking-detail-receipt-state>-</span></p>
                     <p><strong>Cancel Reason:</strong> <span data-admin-booking-detail-cancel-reason>-</span></p>
                 </div>
 
@@ -1228,6 +1264,17 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <h3>Ordered Items</h3>
                     <ul class="admin-booking-detail-items" data-admin-booking-detail-items></ul>
                 </div>
+
+                <div class="admin-booking-detail-receipt-wrap" data-admin-booking-detail-receipt-wrap hidden>
+                    <h3>Uploaded Payment Receipt</h3>
+                    <a class="admin-booking-detail-receipt-link" href="#" target="_blank" rel="noopener" data-admin-booking-detail-receipt-link hidden>
+                        <img src="" alt="Payment receipt" data-admin-booking-detail-receipt-image>
+                    </a>
+                    <p class="admin-booking-detail-receipt-empty" data-admin-booking-detail-receipt-empty hidden>No payment receipt uploaded yet.</p>
+                    <p class="admin-booking-detail-receipt-meta" data-admin-booking-detail-receipt-meta hidden></p>
+                </div>
+
+                <p class="admin-booking-detail-status-note" data-admin-booking-detail-status-note hidden></p>
 
                 <form class="admin-booking-detail-actions" method="post" action="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_booking_status.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-booking-status-form>
                     <input type="hidden" name="order_id" value="" data-admin-booking-status-order-id>
@@ -1905,6 +1952,8 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script>
         window.__creatyAdminBookings = <?php echo json_encode($adminBookingDetails, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyAdminBookingsSignature = <?php echo json_encode($adminBookingsSignature, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyAdminNotificationLiveEndpoint = <?php echo json_encode($liveUpdatesEndpoint, JSON_UNESCAPED_SLASHES); ?>;
     </script>
     <script>
         function updateFieldLabels() {
@@ -1933,7 +1982,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         }
         document.addEventListener('DOMContentLoaded', updateFieldLabels);
     </script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260403-4"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-3"></script>
 </body>
 </html>
 

@@ -2610,6 +2610,14 @@ button {
     line-height: 1.5;
 }
 
+.cart-order-status-countdown {
+    margin: 0;
+    color: #f9e79e;
+    font-size: 0.79rem;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
 .cart-order-status-reason {
     margin: 0;
     color: #ffbebe;
@@ -2910,6 +2918,58 @@ button {
 
 .cart-gcash-meta strong {
     color: #ffffff;
+}
+
+.cart-gcash-receipt-block {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 0.15rem;
+    padding-top: 0.55rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.cart-gcash-receipt-timer {
+    margin: 0;
+    color: #f9e79e;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+.cart-gcash-upload-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+}
+
+.cart-gcash-upload-filename {
+    min-height: 38px;
+    flex: 1;
+    min-width: 0;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    color: #e7dddd;
+    font-size: 0.84rem;
+    display: flex;
+    align-items: center;
+    padding: 0 0.7rem;
+    line-height: 1.4;
+}
+
+.cart-gcash-upload-message {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.cart-gcash-upload-message.is-error {
+    color: #ffbebe;
+}
+
+.cart-gcash-upload-message.is-success {
+    color: #bff0cd;
 }
 
 .cart-unavailable-modal-backdrop {
@@ -4098,6 +4158,14 @@ button {
     width: min(100%, 1280px);
     margin: 0 auto;
     padding: 1.4rem 1rem 2.8rem;
+}
+
+.admin-notification-tabs {
+    gap: 0.9rem;
+}
+
+.admin-notification-tabs > a {
+    text-decoration: none;
 }
 
 .admin-notifications-panel {
@@ -6933,6 +7001,19 @@ button {
         justify-content: center;
     }
 
+    .admin-notifications-page .admin-notification-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.4rem;
+        padding: 0.5rem 0.85rem;
+    }
+
+    .admin-notifications-page .admin-notification-tabs > a {
+        width: auto;
+        min-width: 122px;
+    }
+
     .filter-panel {
         left: 50%;
         min-width: min(220px, calc(100vw - 2rem));
@@ -7225,6 +7306,7 @@ button {
 .admin-bookings-status {
     min-width: 140px;
     min-height: 30px;
+    max-width: 260px;
     border-radius: 999px;
     display: flex;
     align-items: center;
@@ -7232,7 +7314,10 @@ button {
     font-size: 0.82rem;
     font-weight: 700;
     letter-spacing: 0.02em;
-    padding: 0 1rem;
+    line-height: 1.25;
+    white-space: normal;
+    text-align: center;
+    padding: 0.3rem 0.9rem;
     margin: 0 auto;
 }
 
@@ -7240,6 +7325,11 @@ button {
 .admin-bookings-status.status-pending {
     background-color: #d9d9d9;
     color: #111214;
+}
+
+.admin-bookings-status.status-waiting-receipt {
+    background-color: #6f7787;
+    color: #f0f3fb;
 }
 
 .admin-bookings-status.status-approved,
@@ -7369,6 +7459,58 @@ button {
     font-size: 0.84rem;
 }
 
+.admin-booking-detail-receipt-wrap {
+    margin-top: 0.95rem;
+    display: grid;
+    gap: 0.55rem;
+}
+
+.admin-booking-detail-receipt-wrap h3 {
+    margin: 0;
+    font-size: 0.88rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.admin-booking-detail-receipt-link {
+    width: min(100%, 360px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.5rem;
+    display: block;
+}
+
+.admin-booking-detail-receipt-link img {
+    width: 100%;
+    height: auto;
+    max-height: 280px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.admin-booking-detail-receipt-empty,
+.admin-booking-detail-receipt-meta,
+.admin-booking-detail-status-note {
+    margin: 0;
+    font-size: 0.83rem;
+    line-height: 1.45;
+}
+
+.admin-booking-detail-receipt-empty {
+    color: #d8d8db;
+}
+
+.admin-booking-detail-receipt-meta {
+    color: #ced3dd;
+}
+
+.admin-booking-detail-status-note {
+    margin-top: 0.85rem;
+    color: #ffe6a9;
+}
+
 .admin-booking-detail-actions {
     margin-top: 1rem;
     display: grid;
@@ -7387,6 +7529,11 @@ button {
     letter-spacing: 0.05em;
     text-transform: uppercase;
     cursor: pointer;
+}
+
+.admin-booking-action:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 .admin-booking-action.is-approve {

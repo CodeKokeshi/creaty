@@ -41,6 +41,25 @@ if ($nextStatusToken === 'canceled' && $cancelReason === '') {
     exit;
 }
 
+$currentOrder = find_customer_order_record_by_id($orderId);
+
+if (!is_array($currentOrder)) {
+    header('Location: ' . $redirectTarget);
+    exit;
+}
+
+$currentStatusToken = normalize_customer_order_status_token($currentOrder['status'] ?? 'pending');
+if ($currentStatusToken === 'canceled') {
+    header('Location: ' . $redirectTarget);
+    exit;
+}
+
+$isWaitingForPaymentReceipt = customer_order_requires_payment_receipt($currentOrder);
+if ($isWaitingForPaymentReceipt && $nextStatusToken !== 'canceled') {
+    header('Location: ' . $redirectTarget);
+    exit;
+}
+
 $updatedOrder = update_customer_order_status_by_id(
     $orderId,
     $nextStatus,

@@ -19,6 +19,16 @@ function customer_order_allowed_status_tokens()
     return ['pending', 'approved', 'ongoing', 'return', 'completed', 'canceled'];
 }
 
+function customer_order_payment_receipt_timeout_seconds()
+{
+    return 10 * 60;
+}
+
+function customer_order_payment_receipt_timeout_reason()
+{
+    return 'Failure to upload payment receipt.';
+}
+
 function normalize_customer_order_status_token($value)
 {
     $status = strtolower(trim((string) $value));
@@ -111,7 +121,7 @@ function normalize_customer_order_courier($value)
 
 function normalize_customer_order_canceled_by($value)
 {
-    return normalize_customer_order_method($value, ['admin', 'customer']);
+    return normalize_customer_order_method($value, ['admin', 'customer', 'system']);
 }
 
 function normalize_customer_order_cancel_reason($value)
@@ -128,6 +138,91 @@ function normalize_customer_order_cancel_reason($value)
     }
 
     return trim((string) substr($reason, 0, 500));
+}
+
+function normalize_customer_order_asset_path($value)
+{
+    $path = trim((string) $value);
+    $path = str_replace('\\', '/', $path);
+
+    if ($path === '' || strpos($path, '..') !== false) {
+        return '';
+    }
+
+    $path = ltrim($path, '/');
+
+    if (!preg_match('/^[a-zA-Z0-9_\-\/.]+$/', $path)) {
+        return '';
+    }
+
+    return $path;
+}
+
+function normalize_customer_order_receipt_uploaded_at($value)
+{
+    $timestamp = trim((string) $value);
+
+    if ($timestamp === '') {
+        return '';
+    }
+
+    return $timestamp;
+}
+
+function customer_order_payment_receipt_deadline_timestamp($record)
+{
+    if (!is_array($record)) {
+        return null;
+    }
+
+    $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+    $paymentMethod = normalize_customer_order_payment_method($record['payment_method'] ?? '');
+    $receiptPath = normalize_customer_order_asset_path($record['payment_receipt_path'] ?? '');
+    $createdAtRaw = trim((string) ($record['created_at'] ?? ''));
+
+    if ($statusToken !== 'pending' || $paymentMethod !== 'gcash' || $receiptPath !== '' || $createdAtRaw === '') {
+        return null;
+    }
+
+    $createdAtTimestamp = strtotime($createdAtRaw);
+
+    if ($createdAtTimestamp === false) {
+        return null;
+    }
+
+    return (int) $createdAtTimestamp + customer_order_payment_receipt_timeout_seconds();
+}
+
+function expire_customer_orders_missing_payment_receipts($orders, &$didExpire = false, $nowTimestamp = null)
+{
+    $didExpire = false;
+
+    if (!is_array($orders)) {
+        return [];
+    }
+
+    $currentTimestamp = is_int($nowTimestamp) ? $nowTimestamp : time();
+    $cancelReason = customer_order_payment_receipt_timeout_reason();
+
+    foreach ($orders as $index => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        $deadlineTimestamp = customer_order_payment_receipt_deadline_timestamp($record);
+
+        if ($deadlineTimestamp === null || $deadlineTimestamp > $currentTimestamp) {
+            continue;
+        }
+
+        $record['status'] = 'canceled';
+        $record['cancel_reason'] = $cancelReason;
+        $record['canceled_by'] = 'system';
+        $orders[$index] = normalize_customer_order_record($record);
+        $didExpire = true;
+    }
+
+    return $orders;
 }
 
 function normalize_customer_order_items($items)
@@ -198,6 +293,9 @@ function normalize_customer_order_record($record)
     $courier = normalize_customer_order_courier($record['courier'] ?? '');
     $cancelReason = normalize_customer_order_cancel_reason($record['cancel_reason'] ?? '');
     $canceledBy = normalize_customer_order_canceled_by($record['canceled_by'] ?? '');
+    $paymentMethod = normalize_customer_order_payment_method($record['payment_method'] ?? '');
+    $paymentReceiptPath = normalize_customer_order_asset_path($record['payment_receipt_path'] ?? $record['paymentReceiptPath'] ?? '');
+    $paymentReceiptUploadedAt = normalize_customer_order_receipt_uploaded_at($record['payment_receipt_uploaded_at'] ?? $record['paymentReceiptUploadedAt'] ?? '');
 
     if ($receivingMethod !== 'delivery' && $returningMethod !== 'delivery') {
         $courier = '';
@@ -208,6 +306,15 @@ function normalize_customer_order_record($record)
         $canceledBy = '';
     } elseif ($canceledBy === '') {
         $canceledBy = 'admin';
+    }
+
+    if ($paymentMethod !== 'gcash') {
+        $paymentReceiptPath = '';
+        $paymentReceiptUploadedAt = '';
+    } elseif ($paymentReceiptPath === '') {
+        $paymentReceiptUploadedAt = '';
+    } elseif ($paymentReceiptUploadedAt === '') {
+        $paymentReceiptUploadedAt = gmdate('c');
     }
 
     return [
@@ -227,7 +334,9 @@ function normalize_customer_order_record($record)
         'courier' => $courier,
         'cancel_reason' => $cancelReason,
         'canceled_by' => $canceledBy,
-        'payment_method' => normalize_customer_order_payment_method($record['payment_method'] ?? ''),
+        'payment_method' => $paymentMethod,
+        'payment_receipt_path' => $paymentReceiptPath,
+        'payment_receipt_uploaded_at' => $paymentReceiptUploadedAt,
         'created_at' => $createdAt,
     ];
 }
@@ -264,6 +373,13 @@ function load_customer_orders_repository()
         $orders[] = $normalized;
     }
 
+    $didExpireOrders = false;
+    $orders = expire_customer_orders_missing_payment_receipts($orders, $didExpireOrders);
+
+    if ($didExpireOrders) {
+        save_customer_orders_repository($orders);
+    }
+
     return $orders;
 }
 
@@ -293,11 +409,86 @@ function save_customer_orders_repository($orders)
     return file_put_contents(customer_orders_repository_path(), $encoded . PHP_EOL, LOCK_EX) !== false;
 }
 
+function find_customer_order_record_by_id($orderId)
+{
+    $targetOrderId = trim((string) $orderId);
+
+    if ($targetOrderId === '') {
+        return null;
+    }
+
+    foreach (load_customer_orders_repository() as $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        if ((string) ($record['id'] ?? '') !== $targetOrderId) {
+            continue;
+        }
+
+        return $record;
+    }
+
+    return null;
+}
+
+function customer_order_requires_payment_receipt($record)
+{
+    if (!is_array($record)) {
+        return false;
+    }
+
+    $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+    $paymentMethod = normalize_customer_order_payment_method($record['payment_method'] ?? '');
+    $receiptPath = normalize_customer_order_asset_path($record['payment_receipt_path'] ?? '');
+
+    return $statusToken === 'pending' && $paymentMethod === 'gcash' && $receiptPath === '';
+}
+
+function customer_orders_live_state_signature($orders)
+{
+    if (!is_array($orders)) {
+        return '';
+    }
+
+    $signatureRows = [];
+
+    foreach ($orders as $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        $orderId = trim((string) ($record['id'] ?? ''));
+        if ($orderId === '') {
+            continue;
+        }
+
+        $signatureRows[] = [
+            'id' => $orderId,
+            'status' => normalize_customer_order_status_token($record['status'] ?? 'pending'),
+            'cancel_reason' => normalize_customer_order_cancel_reason($record['cancel_reason'] ?? ''),
+            'canceled_by' => normalize_customer_order_canceled_by($record['canceled_by'] ?? ''),
+            'payment_receipt_path' => normalize_customer_order_asset_path($record['payment_receipt_path'] ?? ''),
+            'payment_receipt_uploaded_at' => normalize_customer_order_receipt_uploaded_at($record['payment_receipt_uploaded_at'] ?? ''),
+        ];
+    }
+
+    $encodedRows = json_encode($signatureRows, JSON_UNESCAPED_SLASHES);
+
+    if (!is_string($encodedRows)) {
+        return '';
+    }
+
+    return sha1($encodedRows);
+}
+
 function map_customer_order_for_frontend($record)
 {
     if (!is_array($record)) {
         return [];
     }
+
+    $paymentReceiptDeadlineTimestamp = customer_order_payment_receipt_deadline_timestamp($record);
 
     return [
         'id' => (string) ($record['id'] ?? ''),
@@ -314,6 +505,10 @@ function map_customer_order_for_frontend($record)
         'cancelReason' => (string) ($record['cancel_reason'] ?? ''),
         'cancelBy' => (string) ($record['canceled_by'] ?? ''),
         'paymentMethod' => (string) ($record['payment_method'] ?? ''),
+        'paymentReceiptPath' => (string) ($record['payment_receipt_path'] ?? ''),
+        'paymentReceiptUploadedAt' => (string) ($record['payment_receipt_uploaded_at'] ?? ''),
+        'paymentReceiptDeadlineAt' => $paymentReceiptDeadlineTimestamp !== null ? gmdate('c', $paymentReceiptDeadlineTimestamp) : '',
+        'paymentReceiptTimeoutSeconds' => customer_order_payment_receipt_timeout_seconds(),
         'createdAt' => (string) ($record['created_at'] ?? ''),
     ];
 }
@@ -386,6 +581,8 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
         'cancel_reason' => '',
         'canceled_by' => '',
         'payment_method' => $payload['paymentMethod'] ?? '',
+        'payment_receipt_path' => '',
+        'payment_receipt_uploaded_at' => '',
         'created_at' => gmdate('c'),
     ]);
 
@@ -415,6 +612,10 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
         ? normalize_customer_order_canceled_by($canceledBy)
         : '';
 
+    if ($statusToken === 'canceled' && $normalizedCancelReason === '') {
+        return null;
+    }
+
     if ($statusToken === 'canceled' && $normalizedCanceledBy === '') {
         $normalizedCanceledBy = 'admin';
     }
@@ -430,9 +631,175 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
             continue;
         }
 
+        $currentStatusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+
+        // Canceled bookings are terminal and cannot transition to any other state.
+        if ($currentStatusToken === 'canceled') {
+            return null;
+        }
+
+        // While waiting for a GCash receipt, admin can only cancel.
+        if (customer_order_requires_payment_receipt($record) && $statusToken !== 'canceled') {
+            return null;
+        }
+
         $record['status'] = $statusLabel;
         $record['cancel_reason'] = $normalizedCancelReason;
         $record['canceled_by'] = $normalizedCanceledBy;
+        $orders[$index] = normalize_customer_order_record($record);
+        $updatedOrder = $orders[$index];
+        break;
+    }
+
+    if ($updatedOrder === null) {
+        return null;
+    }
+
+    if (!save_customer_orders_repository($orders)) {
+        return null;
+    }
+
+    return map_customer_order_for_frontend($updatedOrder);
+}
+
+function save_customer_order_payment_receipt_from_data_url($imageDataUrl, $projectRoot, $orderId)
+{
+    $dataUrl = trim((string) $imageDataUrl);
+
+    if (!preg_match('/^data:image\/(png|jpe?g|webp);base64,(.+)$/i', $dataUrl, $matches)) {
+        throw new RuntimeException('Invalid payment receipt image payload.');
+    }
+
+    $binary = base64_decode((string) ($matches[2] ?? ''), true);
+    if ($binary === false) {
+        throw new RuntimeException('Invalid payment receipt image data.');
+    }
+
+    $extensionRaw = strtolower((string) ($matches[1] ?? 'png'));
+    $extension = $extensionRaw === 'jpeg' ? 'jpg' : $extensionRaw;
+
+    $targetDirRelative = 'assets/payment_receipts';
+    $targetDir = rtrim((string) $projectRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR
+        . str_replace('/', DIRECTORY_SEPARATOR, $targetDirRelative);
+
+    if (!is_dir($targetDir) && !mkdir($targetDir, 0777, true) && !is_dir($targetDir)) {
+        throw new RuntimeException('Unable to access payment receipt directory.');
+    }
+
+    $safeOrderId = strtolower(trim((string) preg_replace('/[^a-z0-9-]+/i', '-', (string) $orderId), '-'));
+    if ($safeOrderId === '') {
+        $safeOrderId = 'order';
+    }
+
+    $filename = $safeOrderId . '-receipt.' . $extension;
+    $absolutePath = $targetDir . DIRECTORY_SEPARATOR . $filename;
+
+    if (file_put_contents($absolutePath, $binary, LOCK_EX) === false) {
+        throw new RuntimeException('Unable to save payment receipt image.');
+    }
+
+    return $targetDirRelative . '/' . $filename;
+}
+
+function upload_customer_order_receipt_for_customer($customerId, $orderId, $imageDataUrl, $projectRoot)
+{
+    $targetCustomerId = trim((string) $customerId);
+    $targetOrderId = trim((string) $orderId);
+
+    if ($targetCustomerId === '' || $targetOrderId === '') {
+        return null;
+    }
+
+    $orders = load_customer_orders_repository();
+    $matchedOrderIndex = -1;
+
+    foreach ($orders as $index => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        if ((string) ($record['id'] ?? '') !== $targetOrderId) {
+            continue;
+        }
+
+        if ((string) ($record['customer_id'] ?? '') !== $targetCustomerId) {
+            return null;
+        }
+
+        $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+        $paymentMethod = normalize_customer_order_payment_method($record['payment_method'] ?? '');
+
+        if ($statusToken !== 'pending' || $paymentMethod !== 'gcash') {
+            return null;
+        }
+
+        $matchedOrderIndex = $index;
+        break;
+    }
+
+    if ($matchedOrderIndex < 0) {
+        return null;
+    }
+
+    $receiptPath = save_customer_order_payment_receipt_from_data_url($imageDataUrl, $projectRoot, $targetOrderId);
+    $record = $orders[$matchedOrderIndex];
+    $record['payment_receipt_path'] = $receiptPath;
+    $record['payment_receipt_uploaded_at'] = gmdate('c');
+    $orders[$matchedOrderIndex] = normalize_customer_order_record($record);
+    $updatedOrder = $orders[$matchedOrderIndex];
+
+    if (!save_customer_orders_repository($orders)) {
+        return null;
+    }
+
+    return map_customer_order_for_frontend($updatedOrder);
+}
+
+function cancel_pending_gcash_order_for_customer_due_to_receipt_failure($customerId, $orderId, $cancelReason = '')
+{
+    $targetCustomerId = trim((string) $customerId);
+    $targetOrderId = trim((string) $orderId);
+    $normalizedReason = normalize_customer_order_cancel_reason($cancelReason);
+
+    if ($normalizedReason === '') {
+        $normalizedReason = customer_order_payment_receipt_timeout_reason();
+    }
+
+    if ($targetCustomerId === '' || $targetOrderId === '') {
+        return null;
+    }
+
+    $orders = load_customer_orders_repository();
+    $updatedOrder = null;
+
+    foreach ($orders as $index => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        if ((string) ($record['id'] ?? '') !== $targetOrderId) {
+            continue;
+        }
+
+        if ((string) ($record['customer_id'] ?? '') !== $targetCustomerId) {
+            return null;
+        }
+
+        $currentStatusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+        $paymentMethod = normalize_customer_order_payment_method($record['payment_method'] ?? '');
+        $receiptPath = normalize_customer_order_asset_path($record['payment_receipt_path'] ?? '');
+
+        if ($currentStatusToken === 'canceled') {
+            return map_customer_order_for_frontend($record);
+        }
+
+        if ($currentStatusToken !== 'pending' || $paymentMethod !== 'gcash' || $receiptPath !== '') {
+            return null;
+        }
+
+        $record['status'] = 'canceled';
+        $record['cancel_reason'] = $normalizedReason;
+        $record['canceled_by'] = 'system';
         $orders[$index] = normalize_customer_order_record($record);
         $updatedOrder = $orders[$index];
         break;

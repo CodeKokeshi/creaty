@@ -22,8 +22,20 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminNotificationModalAttachments = adminNotificationModal ? adminNotificationModal.querySelector("[data-admin-notification-modal-attachments]") : null;
     var adminNotificationModalEmpty = adminNotificationModal ? adminNotificationModal.querySelector("[data-admin-notification-modal-empty]") : null;
     var adminNotificationCountBadges = document.querySelectorAll("[data-admin-notification-count], .topbar-notification-count");
+    var adminNotificationTriggers = document.querySelectorAll("[data-admin-notification-trigger]");
     var adminNotificationMarkReadEndpoint = typeof window.__creatyAdminNotificationMarkReadEndpoint === "string"
         ? String(window.__creatyAdminNotificationMarkReadEndpoint || "")
+        : "";
+    var adminNotificationLiveEndpoint = typeof window.__creatyAdminNotificationLiveEndpoint === "string"
+        ? String(window.__creatyAdminNotificationLiveEndpoint || "")
+        : "";
+    var adminLivePollIntervalMs = 4000;
+    var adminLivePollTimerId = null;
+    var adminLivePollInFlight = false;
+    var adminLiveLastOrderId = "";
+    var adminLiveLastUnreadOrderCount = null;
+    var adminLiveLastOrdersSignature = typeof window.__creatyAdminBookingsSignature === "string"
+        ? String(window.__creatyAdminBookingsSignature || "").trim()
         : "";
     var promoBanner = document.querySelector(".promo-banner");
     var promoCarousel = promoBanner ? promoBanner.querySelector(".promo-carousel") : null;
@@ -85,8 +97,15 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminBookingDetailReturningMethod = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-returning-method]") : null;
     var adminBookingDetailCourier = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-courier]") : null;
     var adminBookingDetailPaymentMethod = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-payment-method]") : null;
+    var adminBookingDetailReceiptState = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receipt-state]") : null;
     var adminBookingDetailCancelReason = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-cancel-reason]") : null;
     var adminBookingDetailItems = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-items]") : null;
+    var adminBookingDetailReceiptWrap = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receipt-wrap]") : null;
+    var adminBookingDetailReceiptLink = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receipt-link]") : null;
+    var adminBookingDetailReceiptImage = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receipt-image]") : null;
+    var adminBookingDetailReceiptEmpty = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receipt-empty]") : null;
+    var adminBookingDetailReceiptMeta = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receipt-meta]") : null;
+    var adminBookingDetailStatusNote = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-status-note]") : null;
     var adminBookingStatusForm = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-status-form]") : null;
     var adminBookingStatusOrderIdInput = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-status-order-id]") : null;
     var adminBookingNextStatusInput = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-next-status]") : null;
@@ -99,6 +118,14 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminBookingCancelError = adminBookingCancelBackdrop ? adminBookingCancelBackdrop.querySelector("[data-admin-booking-cancel-error]") : null;
     var adminBookingCancelConfirmButton = adminBookingCancelBackdrop ? adminBookingCancelBackdrop.querySelector("[data-admin-booking-cancel-confirm]") : null;
     var adminBookingsSource = Array.isArray(window.__creatyAdminBookings) ? window.__creatyAdminBookings : [];
+    var initialAdminBookingRecord = adminBookingsSource.length ? adminBookingsSource[0] : null;
+    var initialAdminBookingId = initialAdminBookingRecord && initialAdminBookingRecord.id
+        ? String(initialAdminBookingRecord.id)
+        : "";
+
+    if (initialAdminBookingId) {
+        adminLiveLastOrderId = initialAdminBookingId.toUpperCase();
+    }
     var shouldOpenAdminEquipmentArchiveModal = document.body.getAttribute("data-admin-open-equipment-archive-modal") === "true";
     var shouldOpenAdminEquipmentStatusModal = document.body.getAttribute("data-admin-open-equipment-status-modal") === "true";
     var adminActionModalBackdrop = document.querySelector("[data-admin-action-modal-backdrop]");
@@ -891,6 +918,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
         adminNotificationItems.forEach(function (item) {
             item.addEventListener("click", function () {
+                var typeValue = String(item.getAttribute("data-notification-type") || "").toLowerCase().trim();
+
+                if (typeValue === "order") {
+                    var bookingsUrl = String(item.getAttribute("data-notification-bookings-url") || "").trim();
+
+                    if (bookingsUrl !== "") {
+                        window.location.href = bookingsUrl;
+                        return;
+                    }
+                }
+
                 openAdminNotificationModal(item);
             });
         });
@@ -908,6 +946,185 @@ document.addEventListener("DOMContentLoaded", function () {
 
             closeAdminNotificationModal();
         });
+    }
+
+    function normalizeAdminNotificationCount(value) {
+        var parsed = Number.parseInt(String(value || "0"), 10);
+
+        if (!Number.isFinite(parsed) || parsed < 0) {
+            return 0;
+        }
+
+        return parsed;
+    }
+
+    function setAllAdminNotificationBadgeCounts(nextCount) {
+        var normalizedCount = normalizeAdminNotificationCount(nextCount);
+
+        adminNotificationCountBadges.forEach(function (badge) {
+            badge.textContent = String(normalizedCount);
+        });
+    }
+
+    function resolveAdminNotificationLiveEndpoint() {
+        if (adminNotificationLiveEndpoint) {
+            return adminNotificationLiveEndpoint;
+        }
+
+        var firstTrigger = adminNotificationTriggers.length ? adminNotificationTriggers[0] : null;
+        if (!firstTrigger) {
+            return "";
+        }
+
+        var href = String(firstTrigger.getAttribute("href") || "").trim();
+        if (!href) {
+            return "";
+        }
+
+        href = href.split("#")[0];
+        href = href.split("?")[0];
+
+        if (href.slice(-1) !== "/") {
+            href += "/";
+        }
+
+        adminNotificationLiveEndpoint = href + "live_updates.php";
+        return adminNotificationLiveEndpoint;
+    }
+
+    function isAdminDashboardBookingsPanelActive() {
+        var dashboardNav = document.querySelector("[data-admin-dashboard-nav]");
+
+        if (!dashboardNav || !dashboardNav.classList.contains("is-swapped")) {
+            return false;
+        }
+
+        var activePill = dashboardNav.querySelector("[data-admin-nav-pill].is-active");
+        var activeTarget = activePill ? String(activePill.getAttribute("data-admin-panel-target") || "").toLowerCase() : "";
+
+        return activeTarget === "bookings";
+    }
+
+    function applyAdminLiveNotificationsPayload(payload) {
+        if (!payload || typeof payload !== "object") {
+            return;
+        }
+
+        var unreadCount = normalizeAdminNotificationCount(payload.unreadCount);
+        var unreadOrderCount = normalizeAdminNotificationCount(payload.unreadOrderCount);
+        var latestOrderId = String(payload.latestOrderId || "").trim().toUpperCase();
+        var ordersSignature = String(payload.ordersSignature || "").trim();
+        var bookingsPanelActive = isAdminDashboardBookingsPanelActive();
+        var shouldReloadBookings = false;
+
+        setAllAdminNotificationBadgeCounts(unreadCount);
+
+        if (bookingsPanelActive) {
+            if (latestOrderId !== "" && latestOrderId !== adminLiveLastOrderId) {
+                shouldReloadBookings = true;
+            }
+
+            if (ordersSignature !== "" && adminLiveLastOrdersSignature !== "" && ordersSignature !== adminLiveLastOrdersSignature) {
+                shouldReloadBookings = true;
+            }
+        }
+
+        if (shouldReloadBookings) {
+            window.location.reload();
+            return;
+        }
+
+        if (latestOrderId !== "") {
+            adminLiveLastOrderId = latestOrderId;
+        }
+
+        if (ordersSignature !== "") {
+            adminLiveLastOrdersSignature = ordersSignature;
+        }
+
+        adminLiveLastUnreadOrderCount = unreadOrderCount;
+    }
+
+    function pollAdminLiveNotifications() {
+        var endpoint = resolveAdminNotificationLiveEndpoint();
+
+        if (!endpoint || adminLivePollInFlight) {
+            return;
+        }
+
+        var bookingsPanelActive = isAdminDashboardBookingsPanelActive();
+        var requestUrl = endpoint
+            + (endpoint.indexOf("?") >= 0 ? "&" : "?")
+            + "t=" + encodeURIComponent(String(Date.now()))
+            + "&clear_order=" + (bookingsPanelActive ? "1" : "0");
+
+        adminLivePollInFlight = true;
+
+        fetch(requestUrl, {
+            method: "GET",
+            headers: {
+                Accept: "application/json"
+            },
+            credentials: "same-origin"
+        })
+            .then(function (response) {
+                return response.json().catch(function () {
+                    return {
+                        ok: false
+                    };
+                }).then(function (payload) {
+                    return {
+                        ok: response.ok,
+                        payload: payload
+                    };
+                });
+            })
+            .then(function (result) {
+                if (!result.ok || !result.payload || !result.payload.ok) {
+                    return;
+                }
+
+                applyAdminLiveNotificationsPayload(result.payload);
+            })
+            .catch(function () {
+                // Ignore polling failures and retry on next interval.
+            })
+            .finally(function () {
+                adminLivePollInFlight = false;
+            });
+    }
+
+    function initializeAdminLiveNotifications() {
+        if (adminLivePollTimerId !== null) {
+            return;
+        }
+
+        if (!adminNotificationTriggers.length && !adminNotificationCountBadges.length) {
+            return;
+        }
+
+        if (!resolveAdminNotificationLiveEndpoint()) {
+            return;
+        }
+
+        pollAdminLiveNotifications();
+        adminLivePollTimerId = window.setInterval(pollAdminLiveNotifications, adminLivePollIntervalMs);
+
+        var dashboardNav = document.querySelector("[data-admin-dashboard-nav]");
+
+        if (dashboardNav) {
+            dashboardNav.addEventListener("click", function (event) {
+                var trigger = event.target.closest("[data-admin-nav-pill], [data-admin-nav-swap]");
+
+                if (!trigger) {
+                    return;
+                }
+
+                window.setTimeout(function () {
+                    pollAdminLiveNotifications();
+                }, 80);
+            });
+        }
     }
 
     function hideAdminUndoToast() {
@@ -4805,6 +5022,28 @@ document.addEventListener("DOMContentLoaded", function () {
         return token ? token : "-";
     }
 
+    function formatAdminBookingReceiptTimestamp(value) {
+        var normalized = String(value || "").trim();
+
+        if (!normalized) {
+            return "";
+        }
+
+        var parsed = new Date(normalized);
+
+        if (Number.isNaN(parsed.getTime())) {
+            return normalized;
+        }
+
+        return parsed.toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+        });
+    }
+
     function findAdminBookingById(bookingId) {
         var targetId = String(bookingId || "").trim();
 
@@ -4835,6 +5074,21 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        var statusClass = normalizeAdminBookingStatusClass(booking.statusClass || "status-pending");
+        var statusToken = statusClass.replace(/^status-/, "");
+        var isCanceled = statusToken === "canceled";
+        var paymentMethodToken = String(booking.paymentMethod || "").toLowerCase().trim();
+        var paymentReceiptPath = String(booking.paymentReceiptPath || "").trim();
+        var paymentReceiptUrl = String(booking.paymentReceiptUrl || "").trim();
+        var paymentReceiptUploadedAt = String(booking.paymentReceiptUploadedAt || "").trim();
+        var hasPaymentReceipt = paymentReceiptUrl !== "" || paymentReceiptPath !== "";
+        var isWaitingForPaymentReceipt = Boolean(booking.waitingForPaymentReceipt)
+            || (statusToken === "pending" && paymentMethodToken === "gcash" && !hasPaymentReceipt);
+
+        if (!paymentReceiptUrl && paymentReceiptPath) {
+            paymentReceiptUrl = paymentReceiptPath;
+        }
+
         if (adminBookingDetailName) {
             adminBookingDetailName.textContent = String(booking.name || "-");
         }
@@ -4853,7 +5107,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (adminBookingDetailStatus) {
-            var statusClass = normalizeAdminBookingStatusClass(booking.statusClass || "status-pending");
             adminBookingDetailStatus.className = "admin-bookings-status " + statusClass;
             adminBookingDetailStatus.textContent = String(booking.status || "PENDING");
         }
@@ -4885,6 +5138,87 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminBookingDetailPaymentMethod) {
             adminBookingDetailPaymentMethod.textContent = formatAdminBookingPayment(booking.paymentMethod);
+        }
+
+        if (adminBookingDetailReceiptState) {
+            if (paymentMethodToken !== "gcash") {
+                adminBookingDetailReceiptState.textContent = "Not Required";
+            } else if (hasPaymentReceipt) {
+                adminBookingDetailReceiptState.textContent = "Uploaded";
+            } else {
+                adminBookingDetailReceiptState.textContent = "Waiting for Upload";
+            }
+        }
+
+        if (adminBookingDetailReceiptWrap) {
+            adminBookingDetailReceiptWrap.hidden = paymentMethodToken !== "gcash";
+        }
+
+        if (adminBookingDetailReceiptLink) {
+            adminBookingDetailReceiptLink.hidden = !hasPaymentReceipt;
+
+            if (hasPaymentReceipt) {
+                adminBookingDetailReceiptLink.href = paymentReceiptUrl;
+            } else {
+                adminBookingDetailReceiptLink.removeAttribute("href");
+            }
+        }
+
+        if (adminBookingDetailReceiptImage) {
+            if (hasPaymentReceipt) {
+                adminBookingDetailReceiptImage.src = paymentReceiptUrl;
+                adminBookingDetailReceiptImage.hidden = false;
+            } else {
+                adminBookingDetailReceiptImage.hidden = true;
+                adminBookingDetailReceiptImage.removeAttribute("src");
+            }
+        }
+
+        if (adminBookingDetailReceiptEmpty) {
+            adminBookingDetailReceiptEmpty.hidden = hasPaymentReceipt || paymentMethodToken !== "gcash";
+        }
+
+        if (adminBookingDetailReceiptMeta) {
+            if (hasPaymentReceipt) {
+                var uploadedAtLabel = formatAdminBookingReceiptTimestamp(paymentReceiptUploadedAt);
+                adminBookingDetailReceiptMeta.textContent = uploadedAtLabel
+                    ? "Uploaded at: " + uploadedAtLabel
+                    : "Payment receipt uploaded.";
+                adminBookingDetailReceiptMeta.hidden = false;
+            } else {
+                adminBookingDetailReceiptMeta.hidden = true;
+                adminBookingDetailReceiptMeta.textContent = "";
+            }
+        }
+
+        if (adminBookingDetailStatusNote) {
+            if (isWaitingForPaymentReceipt) {
+                adminBookingDetailStatusNote.textContent = "Waiting for payment receipt upload. Only cancellation is allowed while waiting.";
+                adminBookingDetailStatusNote.hidden = false;
+            } else if (isCanceled) {
+                adminBookingDetailStatusNote.textContent = "This booking is canceled and cannot be changed.";
+                adminBookingDetailStatusNote.hidden = false;
+            } else {
+                adminBookingDetailStatusNote.textContent = "";
+                adminBookingDetailStatusNote.hidden = true;
+            }
+        }
+
+        var hideStatusActions = isWaitingForPaymentReceipt || isCanceled;
+
+        adminBookingStatusSubmitButtons.forEach(function (button) {
+            button.disabled = hideStatusActions;
+            button.hidden = hideStatusActions;
+        });
+
+        if (adminBookingCancelOpenButton) {
+            var canCancelBooking = !isCanceled;
+            adminBookingCancelOpenButton.disabled = !canCancelBooking;
+            adminBookingCancelOpenButton.hidden = !canCancelBooking;
+        }
+
+        if (adminBookingStatusForm) {
+            adminBookingStatusForm.hidden = isCanceled;
         }
 
         activeAdminBookingCancelReason = String(booking.cancelReason || "").trim();
@@ -5654,6 +5988,9 @@ document.addEventListener("DOMContentLoaded", function () {
         var orderCancelEndpoint = typeof window.__creatyCustomerOrderCancelEndpoint === "string"
             ? String(window.__creatyCustomerOrderCancelEndpoint || "")
             : "";
+        var orderReceiptUploadEndpoint = typeof window.__creatyCustomerOrderReceiptUploadEndpoint === "string"
+            ? String(window.__creatyCustomerOrderReceiptUploadEndpoint || "")
+            : "";
         var serverOrders = Array.isArray(window.__creatyCustomerOrders)
             ? window.__creatyCustomerOrders.slice()
             : [];
@@ -5674,10 +6011,25 @@ document.addEventListener("DOMContentLoaded", function () {
         var gcashModalQrEmpty = gcashModal ? gcashModal.querySelector("[data-cart-gcash-qr-empty]") : null;
         var gcashModalName = gcashModal ? gcashModal.querySelector("[data-cart-gcash-name]") : null;
         var gcashModalNumber = gcashModal ? gcashModal.querySelector("[data-cart-gcash-number]") : null;
+        var gcashModalInstruction = gcashModal ? gcashModal.querySelector("[data-cart-gcash-instruction]") : null;
+        var gcashReceiptBlock = gcashModal ? gcashModal.querySelector("[data-cart-gcash-receipt-block]") : null;
+        var gcashReceiptFileInput = gcashModal ? gcashModal.querySelector("[data-cart-gcash-receipt-file]") : null;
+        var gcashReceiptSelectButton = gcashModal ? gcashModal.querySelector("[data-cart-gcash-receipt-select]") : null;
+        var gcashReceiptFilename = gcashModal ? gcashModal.querySelector("[data-cart-gcash-receipt-filename]") : null;
+        var gcashReceiptTimer = gcashModal ? gcashModal.querySelector("[data-cart-gcash-receipt-timer]") : null;
+        var gcashUploadButton = gcashModal ? gcashModal.querySelector("[data-cart-gcash-upload]") : null;
+        var gcashUploadMessage = gcashModal ? gcashModal.querySelector("[data-cart-gcash-upload-message]") : null;
         var gcashPaymentInfo = normalizeGcashPaymentInfo(window.__creatyGcashPaymentInfo);
+        var paymentReceiptTimeoutSecondsDefault = 10 * 60;
+        var paymentReceiptAutoCancelReason = "Failure to upload payment receipt.";
         var activeCancelOrderId = "";
         var pendingGcashOrderRecord = null;
+        var activeGcashUploadOrderId = "";
+        var activeGcashModalMode = "";
         var isSubmittingPendingOrder = false;
+        var isUploadingGcashReceipt = false;
+        var receiptCountdownIntervalId = null;
+        var isAutoCancelReloadQueued = false;
         var availableCartItemIdsSource = Array.isArray(window.__creatyCartAvailableItemIds) ? window.__creatyCartAvailableItemIds : [];
         var availableCartItemIdsSet = availableCartItemIdsSource.reduce(function (set, itemId) {
             if (typeof itemId === "string" && itemId) {
@@ -5845,6 +6197,60 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
+        function setGcashUploadMessage(message, isError) {
+            if (!gcashUploadMessage) {
+                return;
+            }
+
+            var text = String(message || "").trim();
+            gcashUploadMessage.textContent = text;
+            gcashUploadMessage.hidden = text === "";
+            gcashUploadMessage.classList.toggle("is-error", Boolean(isError) && text !== "");
+            gcashUploadMessage.classList.toggle("is-success", !Boolean(isError) && text !== "");
+        }
+
+        function resetGcashReceiptSelection() {
+            if (gcashReceiptFileInput) {
+                gcashReceiptFileInput.value = "";
+            }
+
+            if (gcashReceiptFilename) {
+                gcashReceiptFilename.textContent = "No file selected";
+            }
+
+            setGcashUploadMessage("", false);
+        }
+
+        function setGcashModalMode(mode) {
+            var normalizedMode = mode === "upload-receipt" ? "upload-receipt" : "confirm-booking";
+            activeGcashModalMode = normalizedMode;
+
+            if (gcashModalInstruction) {
+                gcashModalInstruction.textContent = normalizedMode === "upload-receipt"
+                    ? "Scan the QR in GCash, complete your payment, then upload your receipt below."
+                    : "Scan the following QR Code in your Gcash:";
+            }
+
+            if (gcashModalContinueButton) {
+                gcashModalContinueButton.hidden = normalizedMode !== "confirm-booking";
+            }
+
+            if (gcashReceiptBlock) {
+                gcashReceiptBlock.hidden = normalizedMode !== "upload-receipt";
+            }
+
+            if (normalizedMode !== "upload-receipt") {
+                if (gcashReceiptTimer) {
+                    gcashReceiptTimer.hidden = true;
+                    gcashReceiptTimer.textContent = "";
+                }
+                resetGcashReceiptSelection();
+                return;
+            }
+
+            updateGcashModalReceiptTimer();
+        }
+
         function closeGcashModal() {
             if (!gcashModal) {
                 return;
@@ -5852,21 +6258,53 @@ document.addEventListener("DOMContentLoaded", function () {
 
             gcashModal.hidden = true;
             pendingGcashOrderRecord = null;
+            activeGcashUploadOrderId = "";
+            activeGcashModalMode = "";
+            isUploadingGcashReceipt = false;
+
+            if (gcashUploadButton) {
+                gcashUploadButton.disabled = false;
+            }
+
+            if (gcashReceiptSelectButton) {
+                gcashReceiptSelectButton.disabled = false;
+            }
 
             if (gcashModalContinueButton) {
                 gcashModalContinueButton.disabled = false;
             }
+
+            if (gcashReceiptTimer) {
+                gcashReceiptTimer.hidden = true;
+                gcashReceiptTimer.textContent = "";
+            }
+
+            resetGcashReceiptSelection();
+            startReceiptCountdownTicker();
         }
 
-        function openGcashModal(orderRecord) {
+        function openGcashModal(options) {
+            var modalOptions = options && typeof options === "object" ? options : {};
+            var mode = modalOptions.mode === "upload-receipt" ? "upload-receipt" : "confirm-booking";
+            var orderRecord = mode === "confirm-booking" ? (modalOptions.orderRecord || null) : null;
+            var orderId = mode === "upload-receipt" ? String(modalOptions.orderId || "").trim() : "";
+
             if (!gcashModal) {
-                handlePendingOrderSubmission(orderRecord);
+                if (mode === "confirm-booking" && orderRecord) {
+                    handlePendingOrderSubmission(orderRecord);
+                }
                 return;
             }
 
             pendingGcashOrderRecord = orderRecord;
+            activeGcashUploadOrderId = orderId;
             setGcashModalDetails();
+            resetGcashReceiptSelection();
+            setGcashModalMode(mode);
             gcashModal.hidden = false;
+
+            updateGcashModalReceiptTimer();
+            startReceiptCountdownTicker();
         }
 
         unavailableModalCloseButtons.forEach(function (button) {
@@ -5917,6 +6355,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 return null;
             }
 
+            var parsedTimeoutSeconds = Number.parseInt(
+                order.paymentReceiptTimeoutSeconds || order.payment_receipt_timeout_seconds,
+                10
+            );
+            var timeoutSeconds = Number.isFinite(parsedTimeoutSeconds) && parsedTimeoutSeconds > 0
+                ? parsedTimeoutSeconds
+                : paymentReceiptTimeoutSecondsDefault;
+
             var items = Array.isArray(order.items)
                 ? order.items.map(function (item) {
                     if (!item || typeof item !== "object") {
@@ -5947,8 +6393,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 place: String(order.place || ""),
                 cancelReason: String(order.cancelReason || order.cancel_reason || ""),
                 cancelBy: String(order.cancelBy || order.cancel_by || ""),
-                paymentMethod: String(order.paymentMethod || ""),
-                createdAt: String(order.createdAt || "")
+                paymentMethod: String(order.paymentMethod || order.payment_method || ""),
+                paymentReceiptPath: String(order.paymentReceiptPath || order.payment_receipt_path || ""),
+                paymentReceiptUploadedAt: String(order.paymentReceiptUploadedAt || order.payment_receipt_uploaded_at || ""),
+                paymentReceiptDeadlineAt: String(order.paymentReceiptDeadlineAt || order.payment_receipt_deadline_at || ""),
+                paymentReceiptTimeoutSeconds: timeoutSeconds,
+                createdAt: String(order.createdAt || order.created_at || "")
             };
         }
 
@@ -5975,6 +6425,258 @@ document.addEventListener("DOMContentLoaded", function () {
                 .filter(function (order) {
                     return Boolean(order);
                 });
+        }
+
+        function findStoredOrderById(orderId) {
+            var targetOrderId = String(orderId || "").trim();
+
+            if (!targetOrderId) {
+                return null;
+            }
+
+            var matchedOrder = null;
+
+            getStoredOrders().some(function (order) {
+                if (!order || typeof order !== "object") {
+                    return false;
+                }
+
+                if (String(order.id || "") !== targetOrderId) {
+                    return false;
+                }
+
+                matchedOrder = order;
+                return true;
+            });
+
+            return matchedOrder;
+        }
+
+        function parseOrderTimestampToMs(value) {
+            var rawValue = String(value || "").trim();
+
+            if (!rawValue) {
+                return Number.NaN;
+            }
+
+            var parsedValue = Date.parse(rawValue);
+
+            if (!Number.isFinite(parsedValue)) {
+                return Number.NaN;
+            }
+
+            return parsedValue;
+        }
+
+        function getOrderPaymentReceiptTimeoutSeconds(order) {
+            if (!order || typeof order !== "object") {
+                return paymentReceiptTimeoutSecondsDefault;
+            }
+
+            var parsedValue = Number.parseInt(order.paymentReceiptTimeoutSeconds, 10);
+
+            if (!Number.isFinite(parsedValue) || parsedValue < 1) {
+                return paymentReceiptTimeoutSecondsDefault;
+            }
+
+            return parsedValue;
+        }
+
+        function getOrderPaymentReceiptDeadlineMs(order) {
+            if (!order || typeof order !== "object") {
+                return Number.NaN;
+            }
+
+            var explicitDeadlineMs = parseOrderTimestampToMs(order.paymentReceiptDeadlineAt);
+
+            if (Number.isFinite(explicitDeadlineMs)) {
+                return explicitDeadlineMs;
+            }
+
+            var createdAtMs = parseOrderTimestampToMs(order.createdAt);
+
+            if (!Number.isFinite(createdAtMs)) {
+                return Number.NaN;
+            }
+
+            return createdAtMs + (getOrderPaymentReceiptTimeoutSeconds(order) * 1000);
+        }
+
+        function getOrderPaymentReceiptCountdownState(order) {
+            var defaultState = {
+                active: false,
+                expired: false,
+                remainingSeconds: 0,
+                timeoutSeconds: paymentReceiptTimeoutSecondsDefault,
+                deadlineMs: Number.NaN
+            };
+
+            if (!order || typeof order !== "object") {
+                return defaultState;
+            }
+
+            var statusSlug = String(order.status || "").toLowerCase().trim();
+            var paymentMethodSlug = String(order.paymentMethod || "").toLowerCase().trim();
+            var hasPaymentReceipt = String(order.paymentReceiptPath || "").trim() !== "";
+            var timeoutSeconds = getOrderPaymentReceiptTimeoutSeconds(order);
+
+            defaultState.timeoutSeconds = timeoutSeconds;
+
+            if (statusSlug !== "pending" || paymentMethodSlug !== "gcash" || hasPaymentReceipt) {
+                return defaultState;
+            }
+
+            var deadlineMs = getOrderPaymentReceiptDeadlineMs(order);
+
+            if (!Number.isFinite(deadlineMs)) {
+                return defaultState;
+            }
+
+            var remainingMs = deadlineMs - Date.now();
+            var remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+
+            return {
+                active: true,
+                expired: remainingMs <= 0,
+                remainingSeconds: remainingSeconds,
+                timeoutSeconds: timeoutSeconds,
+                deadlineMs: deadlineMs
+            };
+        }
+
+        function formatOrderReceiptCountdown(remainingSeconds) {
+            var parsedValue = Number.parseInt(remainingSeconds, 10);
+            var safeSeconds = Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : 0;
+            var minutes = Math.floor(safeSeconds / 60);
+            var seconds = safeSeconds % 60;
+
+            return padTwo(minutes) + ":" + padTwo(seconds);
+        }
+
+        function buildOrderReceiptCountdownLabel(remainingSeconds) {
+            return "Time left to upload payment receipt: " + formatOrderReceiptCountdown(remainingSeconds);
+        }
+
+        function applyLocalPaymentReceiptTimeouts() {
+            var existingOrders = getStoredOrders();
+            var didChange = false;
+
+            var nextOrders = existingOrders.map(function (order) {
+                if (!order || typeof order !== "object") {
+                    return order;
+                }
+
+                var countdownState = getOrderPaymentReceiptCountdownState(order);
+
+                if (!countdownState.active || !countdownState.expired) {
+                    return order;
+                }
+
+                didChange = true;
+
+                return Object.assign({}, order, {
+                    status: "Canceled",
+                    cancelReason: paymentReceiptAutoCancelReason,
+                    cancelBy: "system"
+                });
+            });
+
+            if (didChange) {
+                saveStoredOrders(nextOrders);
+
+                if (bookingNote) {
+                    bookingNote.textContent = "Booking canceled automatically: payment receipt was not uploaded within 10 minutes.";
+                }
+
+                queueAutoCancelStateRefresh();
+            }
+
+            return didChange;
+        }
+
+        function updateGcashModalReceiptTimer() {
+            if (!gcashReceiptTimer) {
+                return;
+            }
+
+            if (!gcashModal || gcashModal.hidden || activeGcashModalMode !== "upload-receipt") {
+                gcashReceiptTimer.hidden = true;
+                gcashReceiptTimer.textContent = "";
+                return;
+            }
+
+            var targetOrder = findStoredOrderById(activeGcashUploadOrderId);
+            var countdownState = getOrderPaymentReceiptCountdownState(targetOrder);
+
+            if (!countdownState.active) {
+                gcashReceiptTimer.hidden = true;
+                gcashReceiptTimer.textContent = "";
+                return;
+            }
+
+            gcashReceiptTimer.hidden = false;
+            gcashReceiptTimer.textContent = buildOrderReceiptCountdownLabel(countdownState.remainingSeconds);
+        }
+
+        function stopReceiptCountdownTicker() {
+            if (receiptCountdownIntervalId === null) {
+                return;
+            }
+
+            window.clearInterval(receiptCountdownIntervalId);
+            receiptCountdownIntervalId = null;
+        }
+
+        function updateReceiptCountdownTicker() {
+            if (applyLocalPaymentReceiptTimeouts()) {
+                return;
+            }
+
+            if (orderStatusList) {
+                var countdownNodes = orderStatusList.querySelectorAll("[data-cart-receipt-countdown]");
+
+                countdownNodes.forEach(function (node) {
+                    var orderId = String(node.getAttribute("data-cart-order-id") || "").trim();
+                    var order = findStoredOrderById(orderId);
+                    var countdownState = getOrderPaymentReceiptCountdownState(order);
+
+                    if (!countdownState.active) {
+                        node.textContent = "Payment receipt timer is unavailable.";
+                        return;
+                    }
+
+                    node.textContent = buildOrderReceiptCountdownLabel(countdownState.remainingSeconds);
+                });
+            }
+
+            updateGcashModalReceiptTimer();
+        }
+
+        function startReceiptCountdownTicker() {
+            stopReceiptCountdownTicker();
+
+            var hasOrderCountdown = Boolean(orderStatusList && orderStatusList.querySelector("[data-cart-receipt-countdown]"));
+            var hasModalCountdown = Boolean(gcashModal && !gcashModal.hidden && activeGcashModalMode === "upload-receipt");
+
+            if (!hasOrderCountdown && !hasModalCountdown) {
+                return;
+            }
+
+            updateReceiptCountdownTicker();
+            receiptCountdownIntervalId = window.setInterval(updateReceiptCountdownTicker, 1000);
+        }
+
+        function queueAutoCancelStateRefresh() {
+            if (isAutoCancelReloadQueued) {
+                return;
+            }
+
+            isAutoCancelReloadQueued = true;
+            stopReceiptCountdownTicker();
+
+            window.setTimeout(function () {
+                window.location.reload();
+            }, 250);
         }
 
         function submitPendingOrder(orderRecord) {
@@ -6043,6 +6745,45 @@ document.addEventListener("DOMContentLoaded", function () {
                             ? String(payload.message)
                             : "Unable to cancel booking right now.";
                         throw new Error(errorMessage);
+                    }
+
+                    return payload;
+                });
+            });
+        }
+
+        function submitOrderReceiptUpload(orderId, imageDataUrl) {
+            if (!orderReceiptUploadEndpoint) {
+                return Promise.reject(new Error("Receipt upload endpoint is unavailable."));
+            }
+
+            return window.fetch(orderReceiptUploadEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                },
+                body: JSON.stringify({
+                    orderId: String(orderId || ""),
+                    imageDataUrl: String(imageDataUrl || "")
+                })
+            }).then(function (response) {
+                return response.text().then(function (rawBody) {
+                    var payload = {};
+
+                    try {
+                        payload = JSON.parse(rawBody);
+                    } catch (error) {
+                        payload = {};
+                    }
+
+                    if (!response.ok || !payload || payload.ok !== true) {
+                        var errorMessage = payload && payload.message
+                            ? String(payload.message)
+                            : "Unable to upload payment receipt right now.";
+                        var uploadError = new Error(errorMessage);
+                        uploadError.payload = payload;
+                        throw uploadError;
                     }
 
                     return payload;
@@ -6231,6 +6972,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+            if (applyLocalPaymentReceiptTimeouts()) {
+                return;
+            }
             orderStatusList.innerHTML = "";
 
             var allOrders = getStoredOrders();
@@ -6243,7 +6987,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 var statusText = String(order.status || "Pending");
                 var statusSlug = statusText.toLowerCase().replace(/[^a-z0-9]+/g, "-");
                 var paymentMethodSlug = String(order.paymentMethod || "").toLowerCase().trim();
+                var hasPaymentReceipt = String(order.paymentReceiptPath || "").trim() !== "";
                 var cancelReason = String(order.cancelReason || "").trim();
+                var countdownState = getOrderPaymentReceiptCountdownState(order);
                 var orderedText = "Ordered: " + buildOrderItemsSummary(order.items);
                 var receiveSchedule = formatOrderSchedule(order.receiveDate, order.receiveTime);
                 var returnSchedule = formatOrderSchedule(order.returnDate, order.returnTime);
@@ -6273,14 +7019,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 orderMeta.appendChild(scheduleLine);
                 orderMeta.appendChild(statusBadge);
 
+                if (countdownState.active) {
+                    var countdownLine = document.createElement("p");
+                    countdownLine.className = "cart-order-status-countdown";
+                    countdownLine.setAttribute("data-cart-receipt-countdown", "true");
+                    countdownLine.setAttribute("data-cart-order-id", String(order.id || ""));
+                    countdownLine.textContent = buildOrderReceiptCountdownLabel(countdownState.remainingSeconds);
+                    orderMeta.appendChild(countdownLine);
+                }
+
                 if (statusSlug === "canceled" && cancelReason) {
-                    var cancelBy = String(order.cancelBy || "").toLowerCase().trim();
-                    var reasonPrefix = cancelBy === "customer"
-                        ? "You canceled this order for reason(s): "
-                        : "Your order has been cancelled by the Rental Services for reason(s): ";
                     var reasonLine = document.createElement("p");
                     reasonLine.className = "cart-order-status-reason";
-                    reasonLine.textContent = reasonPrefix + cancelReason;
+                    reasonLine.textContent = /^reason\s*:/i.test(cancelReason)
+                        ? cancelReason
+                        : "Reason: " + cancelReason;
                     orderMeta.appendChild(reasonLine);
                 }
 
@@ -6289,11 +7042,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 var actionWrap = document.createElement("div");
                 actionWrap.className = "cart-order-status-actions";
 
-                if (statusSlug === "pending" && paymentMethodSlug === "gcash") {
+                if (statusSlug === "pending" && paymentMethodSlug === "gcash" && !countdownState.expired) {
                     var pendingAction = document.createElement("button");
                     pendingAction.type = "button";
                     pendingAction.className = "profile-order-action primary";
-                    pendingAction.textContent = "Upload Payment Receipt";
+                    pendingAction.textContent = hasPaymentReceipt
+                        ? "Update Payment Receipt"
+                        : "Upload Payment Receipt";
                     pendingAction.setAttribute("data-cart-order-upload", "true");
                     pendingAction.setAttribute("data-cart-order-id", String(order.id || ""));
                     actionWrap.classList.add("is-stacked");
@@ -6318,13 +7073,35 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 orderStatusList.appendChild(orderItem);
             });
+
+            startReceiptCountdownTicker();
         }
 
         if (orderStatusList) {
             orderStatusList.addEventListener("click", function (event) {
                 var uploadButton = event.target.closest("[data-cart-order-upload]");
                 if (uploadButton) {
-                    showCartToast("Receipt upload will be available soon.");
+                    var targetOrderId = String(uploadButton.getAttribute("data-cart-order-id") || "").trim();
+
+                    if (!targetOrderId) {
+                        return;
+                    }
+
+                    var targetOrder = findStoredOrderById(targetOrderId);
+                    var countdownState = getOrderPaymentReceiptCountdownState(targetOrder);
+
+                    if (countdownState.active && countdownState.expired) {
+                        if (applyLocalPaymentReceiptTimeouts()) {
+                            renderOrderStatusList();
+                        }
+
+                        return;
+                    }
+
+                    openGcashModal({
+                        mode: "upload-receipt",
+                        orderId: targetOrderId
+                    });
                     return;
                 }
 
@@ -6350,14 +7127,201 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
+        if (gcashReceiptSelectButton && gcashReceiptFileInput) {
+            gcashReceiptSelectButton.addEventListener("click", function () {
+                if (isUploadingGcashReceipt) {
+                    return;
+                }
+
+                gcashReceiptFileInput.click();
+            });
+        }
+
+        if (gcashReceiptFileInput) {
+            gcashReceiptFileInput.addEventListener("change", function () {
+                if (gcashReceiptFilename) {
+                    if (gcashReceiptFileInput.files && gcashReceiptFileInput.files.length > 0) {
+                        gcashReceiptFilename.textContent = gcashReceiptFileInput.files[0].name;
+                    } else {
+                        gcashReceiptFilename.textContent = "No file selected";
+                    }
+                }
+
+                setGcashUploadMessage("", false);
+            });
+        }
+
         if (gcashModalContinueButton) {
             gcashModalContinueButton.addEventListener("click", function () {
+                if (activeGcashModalMode !== "confirm-booking") {
+                    return;
+                }
+
                 if (!pendingGcashOrderRecord) {
                     closeGcashModal();
                     return;
                 }
 
                 handlePendingOrderSubmission(pendingGcashOrderRecord);
+            });
+        }
+
+        if (gcashUploadButton) {
+            gcashUploadButton.addEventListener("click", function () {
+                if (activeGcashModalMode !== "upload-receipt") {
+                    return;
+                }
+
+                var orderId = String(activeGcashUploadOrderId || "").trim();
+                if (!orderId) {
+                    setGcashUploadMessage("Order reference is missing.", true);
+                    return;
+                }
+
+                var targetOrder = findStoredOrderById(orderId);
+                var countdownState = getOrderPaymentReceiptCountdownState(targetOrder);
+
+                if (countdownState.active && countdownState.expired) {
+                    if (applyLocalPaymentReceiptTimeouts()) {
+                        renderOrderStatusList();
+                    }
+
+                    closeGcashModal();
+                    return;
+                }
+
+                if (!gcashReceiptFileInput || !gcashReceiptFileInput.files || !gcashReceiptFileInput.files.length) {
+                    setGcashUploadMessage("Please select a receipt image first.", true);
+                    return;
+                }
+
+                if (isUploadingGcashReceipt) {
+                    return;
+                }
+
+                var selectedFile = gcashReceiptFileInput.files[0];
+                var reader = new FileReader();
+
+                isUploadingGcashReceipt = true;
+                gcashUploadButton.disabled = true;
+
+                if (gcashReceiptSelectButton) {
+                    gcashReceiptSelectButton.disabled = true;
+                }
+
+                setGcashUploadMessage("Uploading payment receipt...", false);
+
+                reader.onload = function (loadEvent) {
+                    var imageDataUrl = String(loadEvent && loadEvent.target && loadEvent.target.result ? loadEvent.target.result : "");
+
+                    if (imageDataUrl.indexOf("data:image/") !== 0) {
+                        setGcashUploadMessage("Please upload a valid image file.", true);
+                        isUploadingGcashReceipt = false;
+                        gcashUploadButton.disabled = false;
+
+                        if (gcashReceiptSelectButton) {
+                            gcashReceiptSelectButton.disabled = false;
+                        }
+
+                        return;
+                    }
+
+                    submitOrderReceiptUpload(orderId, imageDataUrl)
+                        .then(function (responsePayload) {
+                            var savedOrder = normalizeStoredOrder(responsePayload.order || null);
+
+                            if (!savedOrder) {
+                                throw new Error("Unable to refresh booking receipt status.");
+                            }
+
+                            var existingOrders = getStoredOrders();
+                            var hasMatch = false;
+                            var nextOrders = existingOrders.map(function (order) {
+                                if (order.id === savedOrder.id) {
+                                    hasMatch = true;
+                                    return savedOrder;
+                                }
+
+                                return order;
+                            });
+
+                            if (!hasMatch) {
+                                nextOrders.unshift(savedOrder);
+                            }
+
+                            saveStoredOrders(nextOrders);
+                            renderOrderStatusList();
+                            closeGcashModal();
+
+                            if (bookingNote) {
+                                bookingNote.textContent = "Payment receipt uploaded. Waiting for admin review.";
+                            }
+
+                            showCartToast("Payment receipt uploaded");
+                            setCartView("order-status");
+                        })
+                        .catch(function (error) {
+                            var errorPayload = error && error.payload && typeof error.payload === "object"
+                                ? error.payload
+                                : null;
+                            var autoCanceledOrder = normalizeStoredOrder(errorPayload && errorPayload.order ? errorPayload.order : null);
+
+                            if (autoCanceledOrder && String(autoCanceledOrder.status || "").toLowerCase().trim() === "canceled") {
+                                var existingOrders = getStoredOrders();
+                                var hasMatch = false;
+                                var nextOrders = existingOrders.map(function (order) {
+                                    if (order.id === autoCanceledOrder.id) {
+                                        hasMatch = true;
+                                        return autoCanceledOrder;
+                                    }
+
+                                    return order;
+                                });
+
+                                if (!hasMatch) {
+                                    nextOrders.unshift(autoCanceledOrder);
+                                }
+
+                                saveStoredOrders(nextOrders);
+                                renderOrderStatusList();
+                                closeGcashModal();
+
+                                if (bookingNote) {
+                                    bookingNote.textContent = error && error.message
+                                        ? String(error.message)
+                                        : "Booking canceled automatically because payment receipt upload failed.";
+                                }
+
+                                showCartToast("Booking canceled");
+                                setCartView("order-status");
+                                return;
+                            }
+
+                            setGcashUploadMessage(error && error.message
+                                ? String(error.message)
+                                : "Unable to upload payment receipt right now.", true);
+                        })
+                        .finally(function () {
+                            isUploadingGcashReceipt = false;
+                            gcashUploadButton.disabled = false;
+
+                            if (gcashReceiptSelectButton) {
+                                gcashReceiptSelectButton.disabled = false;
+                            }
+                        });
+                };
+
+                reader.onerror = function () {
+                    setGcashUploadMessage("Unable to read the selected image.", true);
+                    isUploadingGcashReceipt = false;
+                    gcashUploadButton.disabled = false;
+
+                    if (gcashReceiptSelectButton) {
+                        gcashReceiptSelectButton.disabled = false;
+                    }
+                };
+
+                reader.readAsDataURL(selectedFile);
             });
         }
 
@@ -6996,7 +7960,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 var paymentMethod = String(pendingOrder.paymentMethod || "").toLowerCase().trim();
                 if (paymentMethod === "gcash") {
                     bookingNote.textContent = "Review the GCash payment details, then tap Continue Booking.";
-                    openGcashModal(pendingOrder);
+                    openGcashModal({
+                        mode: "confirm-booking",
+                        orderRecord: pendingOrder
+                    });
                     return;
                 }
 
@@ -7013,6 +7980,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     initializeCustomerMessageModal();
+    initializeAdminLiveNotifications();
     initializeAdminNotificationsPage();
     syncCartCountBadges();
     initializeAddToCartButtons();
