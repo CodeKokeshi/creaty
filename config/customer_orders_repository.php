@@ -16,12 +16,12 @@ function customer_order_generate_id()
 
 function customer_order_allowed_status_tokens()
 {
-    return ['pending', 'approved', 'ongoing', 'return', 'completed', 'canceled', 'rejected', 'refunded'];
+    return ['pending', 'approved', 'ongoing', 'return', 'completed', 'canceled', 'awaiting-refund', 'rejected', 'refunded'];
 }
 
 function customer_order_status_requires_reason($statusToken)
 {
-    return in_array((string) $statusToken, ['canceled', 'rejected', 'refunded'], true);
+    return in_array((string) $statusToken, ['canceled', 'awaiting-refund', 'rejected', 'refunded'], true);
 }
 
 function customer_order_is_terminal_status($statusToken)
@@ -64,6 +64,10 @@ function normalize_customer_order_status($value)
 
     if ($statusToken === 'return') {
         return 'Return';
+    }
+
+    if ($statusToken === 'awaiting-refund') {
+        return 'Awaiting Refund';
     }
 
     return ucfirst($statusToken);
@@ -190,6 +194,26 @@ function customer_order_requires_payment_review($record)
     $receiptPath = normalize_customer_order_asset_path($record['payment_receipt_path'] ?? '');
 
     return $statusToken === 'pending' && $paymentMethod === 'gcash' && $receiptPath !== '';
+}
+
+function customer_order_requires_refund_after_cancellation($record)
+{
+    if (!is_array($record)) {
+        return false;
+    }
+
+    $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+    $paymentMethod = normalize_customer_order_payment_method($record['payment_method'] ?? '');
+    $receiptPath = normalize_customer_order_asset_path($record['payment_receipt_path'] ?? '');
+
+    return $statusToken === 'approved' && $paymentMethod === 'gcash' && $receiptPath !== '';
+}
+
+function customer_order_resolve_cancellation_status_token($record)
+{
+    return customer_order_requires_refund_after_cancellation($record)
+        ? 'awaiting-refund'
+        : 'canceled';
 }
 
 function customer_order_payment_receipt_deadline_timestamp($record)
@@ -698,9 +722,8 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
     }
 
     $settings = is_array($options) ? $options : [];
-    $statusToken = normalize_customer_order_status_token($nextStatus);
-    $statusLabel = normalize_customer_order_status($statusToken);
-    $statusNeedsReason = customer_order_status_requires_reason($statusToken);
+    $requestedStatusToken = normalize_customer_order_status_token($nextStatus);
+    $statusNeedsReason = customer_order_status_requires_reason($requestedStatusToken);
     $normalizedCancelReason = $statusNeedsReason
         ? normalize_customer_order_cancel_reason($cancelReason)
         : '';
@@ -716,6 +739,11 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
 
     if ($statusNeedsReason && $normalizedCanceledBy === '') {
         $normalizedCanceledBy = 'admin';
+    }
+
+    // Awaiting-refund is a system transition created through cancellation of an approved paid booking.
+    if ($requestedStatusToken === 'awaiting-refund') {
+        return null;
     }
 
     $orders = load_customer_orders_repository();
@@ -734,28 +762,42 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
         $currentStatusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
         $isWaitingForPaymentReceipt = customer_order_requires_payment_receipt($record);
         $isWaitingForPaymentReview = customer_order_requires_payment_review($record);
+        $resolvedStatusToken = $requestedStatusToken;
+
+        if ($requestedStatusToken === 'canceled') {
+            $resolvedStatusToken = customer_order_resolve_cancellation_status_token($record);
+        }
+
+        $resolvedStatusLabel = normalize_customer_order_status($resolvedStatusToken);
 
         // Terminal bookings cannot transition to any other state.
         if (customer_order_is_terminal_status($currentStatusToken)) {
             return null;
         }
 
+        // Awaiting-refund bookings can only proceed to refunded.
+        if ($currentStatusToken === 'awaiting-refund' && $resolvedStatusToken !== 'refunded') {
+            return null;
+        }
+
         // While waiting for a GCash receipt, admin can only cancel.
-        if ($isWaitingForPaymentReceipt && $statusToken !== 'canceled') {
+        if ($isWaitingForPaymentReceipt && $requestedStatusToken !== 'canceled') {
             return null;
         }
 
         // During receipt review, admin can only approve, reject, or refund.
-        if ($isWaitingForPaymentReview && !in_array($statusToken, ['approved', 'rejected', 'refunded'], true)) {
+        if ($isWaitingForPaymentReview && !in_array($requestedStatusToken, ['approved', 'rejected', 'refunded'], true)) {
             return null;
         }
 
-        if ($statusToken === 'rejected' && !$isWaitingForPaymentReview) {
+        if ($requestedStatusToken === 'rejected' && !$isWaitingForPaymentReview) {
             return null;
         }
 
-        if ($statusToken === 'refunded') {
-            if (!$isWaitingForPaymentReview || $refundProofDataUrl === '' || $projectRoot === '') {
+        if ($resolvedStatusToken === 'refunded') {
+            $isRefundFromAwaitingState = $currentStatusToken === 'awaiting-refund';
+
+            if ((!$isWaitingForPaymentReview && !$isRefundFromAwaitingState) || $refundProofDataUrl === '' || $projectRoot === '') {
                 return null;
             }
 
@@ -770,12 +812,12 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
             $record['refund_proof_uploaded_at'] = '';
         }
 
-        $record['status'] = $statusLabel;
+        $record['status'] = $resolvedStatusLabel;
         $record['cancel_reason'] = $normalizedCancelReason;
         $record['canceled_by'] = $normalizedCanceledBy;
         $orders[$index] = normalize_customer_order_record($record);
         $updatedOrder = $orders[$index];
-        $didStatusChange = $currentStatusToken !== $statusToken;
+        $didStatusChange = $currentStatusToken !== $resolvedStatusToken;
         break;
     }
 
@@ -796,8 +838,8 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
             append_customer_order_status_notification(
                 (string) ($updatedOrder['customer_id'] ?? ''),
                 (string) ($updatedOrder['id'] ?? $targetOrderId),
-                $statusToken,
-                (string) ($updatedOrder['status'] ?? $statusLabel),
+                normalize_customer_order_status_token($updatedOrder['status'] ?? $requestedStatusToken),
+                (string) ($updatedOrder['status'] ?? normalize_customer_order_status($requestedStatusToken)),
                 (string) ($updatedOrder['cancel_reason'] ?? '')
             );
         }
@@ -1045,7 +1087,7 @@ function cancel_customer_order_for_customer($customerId, $orderId, $cancelReason
             return null;
         }
 
-        $record['status'] = 'canceled';
+        $record['status'] = customer_order_resolve_cancellation_status_token($record);
         $record['cancel_reason'] = $normalizedReason;
         $record['canceled_by'] = 'customer';
         $orders[$index] = normalize_customer_order_record($record);

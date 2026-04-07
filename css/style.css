@@ -4897,6 +4897,11 @@ button {
     color: #ffbebe;
 }
 
+.profile-order-status.status-awaiting-refund {
+    border-color: rgba(244, 194, 110, 0.52);
+    color: #ffe3b4;
+}
+
 .profile-order-status.status-rejected {
     border-color: rgba(245, 152, 152, 0.5);
     color: #ffd0d0;
@@ -7566,6 +7571,11 @@ button {
 .admin-bookings-status.status-canceled {
     background-color: #a42c2c;
     color: #ffe2e2;
+}
+
+.admin-bookings-status.status-awaiting-refund {
+    background-color: #7f5b1f;
+    color: #fff1cf;
 }
 
 .admin-bookings-status.status-rejected {

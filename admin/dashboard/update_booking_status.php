@@ -37,6 +37,12 @@ if ($orderId === '') {
 }
 
 $nextStatusToken = normalize_customer_order_status_token($nextStatus);
+
+if ($nextStatusToken === 'awaiting-refund') {
+    header('Location: ' . $redirectTarget);
+    exit;
+}
+
 if (customer_order_status_requires_reason($nextStatusToken) && $cancelReason === '') {
     header('Location: ' . $redirectTarget);
     exit;
@@ -56,6 +62,11 @@ if (!is_array($currentOrder)) {
 
 $currentStatusToken = normalize_customer_order_status_token($currentOrder['status'] ?? 'pending');
 if (customer_order_is_terminal_status($currentStatusToken)) {
+    header('Location: ' . $redirectTarget);
+    exit;
+}
+
+if ($currentStatusToken === 'awaiting-refund' && $nextStatusToken !== 'refunded') {
     header('Location: ' . $redirectTarget);
     exit;
 }

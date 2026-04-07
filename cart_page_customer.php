@@ -104,7 +104,7 @@ if ($isCustomerLoggedIn) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260407-7">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260407-8">
 </head>
 <body class="cart-page">
     <header class="site-header">
@@ -129,20 +129,6 @@ if ($isCustomerLoggedIn) {
 
             <a class="topbar-link" href="#" data-message-us-open>Message us</a>
             <?php if ($isCustomerLoggedIn): ?>
-                <button
-                    class="topbar-notification-button topbar-notification-button-icon-only"
-                    type="button"
-                    aria-label="Notifications"
-                    title="Notifications"
-                    data-customer-notification-trigger
-                >
-                    <span class="topbar-notification-icon-wrap" aria-hidden="true">
-                        <img class="topbar-notification-icon" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/notifications.svg" alt="">
-                        <span class="cart-count topbar-notification-count" data-customer-notification-count aria-hidden="true"><?php echo htmlspecialchars((string) $customerNotificationUnreadCount, ENT_QUOTES, 'UTF-8'); ?></span>
-                    </span>
-                </button>
-            <?php endif; ?>
-            <?php if ($isCustomerLoggedIn): ?>
                 <div class="dropdown topbar-account-menu">
                     <button class="account-pill account-pill-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?>
@@ -156,6 +142,19 @@ if ($isCustomerLoggedIn) {
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
                     </ul>
                 </div>
+
+                <button
+                    class="topbar-notification-button topbar-notification-button-icon-only"
+                    type="button"
+                    aria-label="Notifications"
+                    title="Notifications"
+                    data-customer-notification-trigger
+                >
+                    <span class="topbar-notification-icon-wrap" aria-hidden="true">
+                        <img class="topbar-notification-icon" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/notifications.svg" alt="">
+                        <span class="cart-count topbar-notification-count" data-customer-notification-count aria-hidden="true"><?php echo htmlspecialchars((string) $customerNotificationUnreadCount, ENT_QUOTES, 'UTF-8'); ?></span>
+                    </span>
+                </button>
             <?php else: ?>
                 <a class="account-pill" href="<?php echo htmlspecialchars($loginPath, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?></a>
             <?php endif; ?>
@@ -687,6 +686,6 @@ if ($isCustomerLoggedIn) {
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-6"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-7"></script>
 </body>
 </html>

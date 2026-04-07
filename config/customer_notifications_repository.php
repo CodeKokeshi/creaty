@@ -345,7 +345,9 @@ function build_customer_order_status_notification_content($orderId, $statusToken
     $statusText = trim((string) $statusLabel);
 
     if ($statusText === '') {
-        $statusText = $normalizedStatusToken !== '' ? ucfirst($normalizedStatusToken) : 'Updated';
+        $statusText = $normalizedStatusToken !== ''
+            ? ucwords(str_replace('-', ' ', $normalizedStatusToken))
+            : 'Updated';
     }
 
     $reason = trim((string) $cancelReason);
@@ -372,6 +374,15 @@ function build_customer_order_status_notification_content($orderId, $statusToken
             'summary' => $reason !== ''
                 ? 'Reason: ' . $reason
                 : 'Your order payment has been refunded.',
+        ];
+    }
+
+    if ($normalizedStatusToken === 'awaiting-refund') {
+        return [
+            'title' => 'Refund pending for ' . $orderLabel,
+            'summary' => $reason !== ''
+                ? 'Reason: ' . $reason . ' Refund is now being processed.'
+                : 'Your approved order was canceled and is now awaiting refund processing.',
         ];
     }
 

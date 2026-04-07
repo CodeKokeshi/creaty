@@ -4,7 +4,7 @@
         "customer_id": "4",
         "customer_name": "qwe qwe",
         "customer_email": "qwe@gmail.com",
-        "status": "Approved",
+        "status": "Refunded",
         "items": [
             {
                 "name": "Canon 700D",
@@ -20,13 +20,13 @@
         "receiving_method": "pickup",
         "returning_method": "pickup",
         "courier": "",
-        "cancel_reason": "",
-        "canceled_by": "",
+        "cancel_reason": "Valid reason.",
+        "canceled_by": "admin",
         "payment_method": "gcash",
         "payment_receipt_path": "assets/payment_receipts/ord-20260407082503-1cac4652-receipt.jpg",
         "payment_receipt_uploaded_at": "2026-04-07T08:25:11+00:00",
-        "refund_proof_path": "",
-        "refund_proof_uploaded_at": "",
+        "refund_proof_path": "assets/refund_receipts/ord-20260407082503-1cac4652-refund.png",
+        "refund_proof_uploaded_at": "2026-04-07T09:33:47+00:00",
         "created_at": "2026-04-07T08:25:03+00:00"
     },
     {

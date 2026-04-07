@@ -5213,6 +5213,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var statusTokenFromRecord = String(booking.statusToken || "").toLowerCase().trim();
         var statusToken = statusTokenFromRecord || statusClass.replace(/^status-/, "");
         var isCanceled = statusToken === "canceled";
+        var isAwaitingRefund = statusToken === "awaiting-refund";
         var isRejected = statusToken === "rejected";
         var isRefunded = statusToken === "refunded";
         var isTerminalStatus = isCanceled || isRejected || isRefunded;
@@ -5302,7 +5303,9 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (adminBookingDetailRefundProofState) {
-            if (statusToken !== "refunded") {
+            if (statusToken === "awaiting-refund") {
+                adminBookingDetailRefundProofState.textContent = "Required";
+            } else if (statusToken !== "refunded") {
                 adminBookingDetailRefundProofState.textContent = "Not Required";
             } else if (hasRefundProof) {
                 adminBookingDetailRefundProofState.textContent = "Uploaded";
@@ -5400,6 +5403,9 @@ document.addEventListener("DOMContentLoaded", function () {
             } else if (isWaitingForPaymentReview) {
                 adminBookingDetailStatusNote.textContent = "Payment receipt uploaded. Choose Approve, Reject, or Refund to continue.";
                 adminBookingDetailStatusNote.hidden = false;
+            } else if (isAwaitingRefund) {
+                adminBookingDetailStatusNote.textContent = "This approved booking was canceled and is now awaiting refund. Upload refund proof to complete the process.";
+                adminBookingDetailStatusNote.hidden = false;
             } else if (isRejected) {
                 adminBookingDetailStatusNote.textContent = "Payment receipt was rejected. This booking cannot be changed.";
                 adminBookingDetailStatusNote.hidden = false;
@@ -5416,11 +5422,11 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         var visibleSubmitStatusMap = {
-            pending: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview,
-            approved: !isTerminalStatus && !isWaitingForPaymentReceipt,
-            ongoing: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview,
-            return: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview,
-            completed: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview
+            pending: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund,
+            approved: !isTerminalStatus && !isWaitingForPaymentReceipt && !isAwaitingRefund,
+            ongoing: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund,
+            return: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund,
+            completed: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund
         };
 
         if (isWaitingForPaymentReview) {
@@ -5429,6 +5435,14 @@ document.addEventListener("DOMContentLoaded", function () {
             visibleSubmitStatusMap.return = false;
             visibleSubmitStatusMap.completed = false;
             visibleSubmitStatusMap.approved = true;
+        }
+
+        if (isAwaitingRefund) {
+            visibleSubmitStatusMap.pending = false;
+            visibleSubmitStatusMap.approved = false;
+            visibleSubmitStatusMap.ongoing = false;
+            visibleSubmitStatusMap.return = false;
+            visibleSubmitStatusMap.completed = false;
         }
 
         adminBookingStatusSubmitButtons.forEach(function (button) {
@@ -5440,13 +5454,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
         adminBookingReviewOpenButtons.forEach(function (button) {
             var mode = String(button.getAttribute("data-admin-booking-review-mode") || "").toLowerCase().trim();
-            var isVisible = isWaitingForPaymentReview && (mode === "rejected" || mode === "refunded");
+            var isVisible = false;
+
+            if (mode === "rejected") {
+                isVisible = isWaitingForPaymentReview;
+            } else if (mode === "refunded") {
+                isVisible = isWaitingForPaymentReview || isAwaitingRefund;
+            }
+
             button.disabled = !isVisible;
             button.hidden = !isVisible;
         });
 
         if (adminBookingCancelOpenButton) {
-            var canCancelBooking = !isTerminalStatus && !isWaitingForPaymentReview;
+            var canCancelBooking = !isTerminalStatus && !isWaitingForPaymentReview && !isAwaitingRefund;
             adminBookingCancelOpenButton.disabled = !canCancelBooking;
             adminBookingCancelOpenButton.hidden = !canCancelBooking;
         }
@@ -7918,6 +7939,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 var shouldShowReason = (statusSlug === "canceled" || statusSlug === "rejected" || statusSlug === "refunded") && cancelReason;
+                var isAwaitingRefund = statusSlug === "awaiting-refund" || statusToken === "awaiting-refund";
+
+                shouldShowReason = shouldShowReason || (isAwaitingRefund && cancelReason);
 
                 if (shouldShowReason) {
                     var reasonLine = document.createElement("p");
@@ -7928,12 +7952,21 @@ document.addEventListener("DOMContentLoaded", function () {
                         defaultReasonPrefix = "Rejection reason: ";
                     } else if (statusSlug === "refunded") {
                         defaultReasonPrefix = "Refund reason: ";
+                    } else if (isAwaitingRefund) {
+                        defaultReasonPrefix = "Cancellation reason: ";
                     }
 
-                    reasonLine.textContent = /^(reason|rejection reason|refund reason)\s*:/i.test(cancelReason)
+                    reasonLine.textContent = /^(reason|cancellation reason|rejection reason|refund reason)\s*:/i.test(cancelReason)
                         ? cancelReason
                         : defaultReasonPrefix + cancelReason;
                     orderMeta.appendChild(reasonLine);
+                }
+
+                if (isAwaitingRefund) {
+                    var refundPendingLine = document.createElement("p");
+                    refundPendingLine.className = "cart-order-status-refund-proof";
+                    refundPendingLine.textContent = "Refund is being processed. The refund proof screenshot will be available once completed.";
+                    orderMeta.appendChild(refundPendingLine);
                 }
 
                 if (statusSlug === "refunded" || statusToken === "refunded") {

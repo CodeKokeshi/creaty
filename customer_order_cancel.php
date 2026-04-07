@@ -64,8 +64,13 @@ if ($updatedOrder === null) {
     ]);
 }
 
+$updatedStatusToken = normalize_customer_order_status_token($updatedOrder['status'] ?? 'canceled');
+$successMessage = $updatedStatusToken === 'awaiting-refund'
+    ? 'Booking canceled. Your refund is now being processed.'
+    : 'Booking canceled successfully.';
+
 customer_order_cancel_respond(200, [
     'ok' => true,
-    'message' => 'Booking canceled successfully.',
+    'message' => $successMessage,
     'order' => $updatedOrder,
 ]);
