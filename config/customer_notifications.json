@@ -1,5 +1,31 @@
 [
     {
+        "id": "cust-notif-20260407094322-a70f327e",
+        "customer_id": "4",
+        "type": "order-status",
+        "order_id": "ORD-20260407093942-8C2FF058",
+        "status_token": "awaiting-refund",
+        "title": "Refund pending for ORD-20260407093942-8C2FF058",
+        "summary": "Reason: Cancelled Refund is now being processed.",
+        "target_view": "order-status",
+        "is_read": false,
+        "created_at": "2026-04-07T09:43:22+00:00",
+        "read_at": ""
+    },
+    {
+        "id": "cust-notif-20260407094237-ead8ef0d",
+        "customer_id": "4",
+        "type": "order-status",
+        "order_id": "ORD-20260407093942-8C2FF058",
+        "status_token": "approved",
+        "title": "Payment approved for ORD-20260407093942-8C2FF058",
+        "summary": "Your payment was approved. Order status is now Approved.",
+        "target_view": "order-status",
+        "is_read": false,
+        "created_at": "2026-04-07T09:42:37+00:00",
+        "read_at": ""
+    },
+    {
         "id": "cust-notif-20260407093347-a9410e72",
         "customer_id": "4",
         "type": "order-status",

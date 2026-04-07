@@ -7708,6 +7708,8 @@ button {
 .admin-booking-detail-refund-wrap {
     margin-top: 0.95rem;
     display: grid;
+    justify-items: center;
+    text-align: center;
     gap: 0.55rem;
 }
 
@@ -7766,7 +7768,9 @@ button {
 }
 
 .admin-booking-detail-status-note {
-    margin-top: 0.85rem;
+    margin: 0.85rem auto 0;
+    max-width: 560px;
+    text-align: center;
     color: #ffe6a9;
 }
 

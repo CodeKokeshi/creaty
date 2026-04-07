@@ -1,5 +1,17 @@
 [
     {
+        "id": "notif-20260407093942-761a9dbf",
+        "type": "order",
+        "title": "A new order has been placed: ORD-20260407093942-8C2FF058",
+        "summary": "A new order has been placed: ORD-20260407093942-8C2FF058",
+        "payload": {
+            "order_id": "ORD-20260407093942-8C2FF058"
+        },
+        "is_read": true,
+        "created_at": "2026-04-07T09:39:42+00:00",
+        "read_at": "2026-04-07T09:39:43+00:00"
+    },
+    {
         "id": "notif-20260407082503-5879a40b",
         "type": "order",
         "title": "A new order has been placed: ORD-20260407082503-1CAC4652",
