@@ -312,6 +312,10 @@ foreach ($customerBookingsRecords as $bookingRecord) {
     }
 
     $bookingStatusToken = normalize_customer_order_status_token($bookingRecord['status'] ?? 'pending');
+    $forReturnState = customer_order_for_return_state($bookingRecord);
+    $forReturnDeadlineTimestamp = is_int($forReturnState['deadline_ts'] ?? null)
+        ? (int) $forReturnState['deadline_ts']
+        : null;
     $paymentMethodToken = normalize_customer_order_payment_method($bookingRecord['payment_method'] ?? '');
     $paymentReceiptPath = normalize_customer_order_asset_path($bookingRecord['payment_receipt_path'] ?? '');
     $paymentReceiptUploadedAt = trim((string) ($bookingRecord['payment_receipt_uploaded_at'] ?? ''));
@@ -333,7 +337,9 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         ? 'WAITING FOR PAYMENT RECEIPT'
         : ($isWaitingForPaymentReview
             ? 'PAYMENT REVIEW'
-            : strtoupper(str_replace('-', ' ', $bookingStatusToken)));
+            : ($bookingStatusToken === 'return'
+                ? 'FOR RETURN'
+                : strtoupper(str_replace('-', ' ', $bookingStatusToken))));
     $bookingStatusClass = $isWaitingForPaymentReceipt
         ? 'status-waiting-receipt'
         : ($isWaitingForPaymentReview ? 'status-review' : 'status-' . $bookingStatusToken);
@@ -393,6 +399,15 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         'refundProofUploadedAt' => $refundProofUploadedAt,
         'waitingForPaymentReceipt' => $isWaitingForPaymentReceipt,
         'waitingForPaymentReview' => $isWaitingForPaymentReview,
+        'forReturnGraceSeconds' => (int) ($forReturnState['grace_seconds'] ?? customer_order_for_return_grace_seconds()),
+        'forReturnPenaltyPerHour' => (int) ($forReturnState['penalty_per_hour'] ?? customer_order_for_return_penalty_per_hour()),
+        'forReturnDeadlineAt' => $forReturnDeadlineTimestamp !== null
+            ? customer_order_now_iso8601($forReturnDeadlineTimestamp)
+            : '',
+        'forReturnRemainingSeconds' => max(0, (int) ($forReturnState['remaining_seconds'] ?? 0)),
+        'forReturnOverdueSeconds' => max(0, (int) ($forReturnState['overdue_seconds'] ?? 0)),
+        'forReturnPenaltyHours' => max(0, (int) ($forReturnState['penalty_hours'] ?? 0)),
+        'forReturnPenaltyAmount' => max(0, (int) ($forReturnState['penalty_amount'] ?? 0)),
     ];
 }
 
@@ -1335,12 +1350,10 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <input type="hidden" name="next_status" value="" data-admin-booking-next-status>
                     <input type="hidden" name="cancel_reason" value="" data-admin-booking-cancel-reason-input>
                     <input type="hidden" name="refund_proof_data_url" value="" data-admin-booking-refund-proof-input>
-                    <button type="submit" name="next_status" value="pending" class="admin-booking-action" data-admin-booking-status-submit>Set Pending</button>
                     <button type="submit" name="next_status" value="approved" class="admin-booking-action is-approve" data-admin-booking-status-submit>Approve</button>
                     <button type="button" class="admin-booking-action is-reject" data-admin-booking-review-open data-admin-booking-review-mode="rejected">Reject</button>
                     <button type="button" class="admin-booking-action is-refund" data-admin-booking-review-open data-admin-booking-review-mode="refunded">Refund</button>
-                    <button type="submit" name="next_status" value="ongoing" class="admin-booking-action is-ongoing" data-admin-booking-status-submit>Mark Ongoing</button>
-                    <button type="submit" name="next_status" value="return" class="admin-booking-action is-return" data-admin-booking-status-submit>Mark Return</button>
+                    <button type="submit" name="next_status" value="returned-early" class="admin-booking-action is-early-return" data-admin-booking-status-submit>Returned Early</button>
                     <button type="submit" name="next_status" value="completed" class="admin-booking-action is-complete" data-admin-booking-status-submit>Complete</button>
                     <button type="button" class="admin-booking-action is-cancel" data-admin-booking-cancel-open>Cancel</button>
                 </form>

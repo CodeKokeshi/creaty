@@ -1,5 +1,38 @@
 [
     {
+        "id": "ord-20260408090100-nikond60",
+        "customer_id": "4",
+        "customer_name": "qwe qwe",
+        "customer_email": "qwe@gmail.com",
+        "status": "Completed",
+        "items": [
+            {
+                "name": "Nikon D60",
+                "qty": 1,
+                "days": 2,
+                "item_id": "camera-nikon-d60",
+                "item_type": "camera",
+                "product_key": "nikon-d60"
+            }
+        ],
+        "receive_date": "2026-04-07",
+        "receive_time": "08:00",
+        "return_date": "2026-04-09",
+        "return_time": "08:00",
+        "place": "Walter Mart Entrance, Carmona",
+        "receiving_method": "pickup",
+        "returning_method": "pickup",
+        "courier": "",
+        "cancel_reason": "",
+        "canceled_by": "",
+        "payment_method": "cash-pickup",
+        "payment_receipt_path": "",
+        "payment_receipt_uploaded_at": "",
+        "refund_proof_path": "",
+        "refund_proof_uploaded_at": "",
+        "created_at": "2026-04-08T09:01:00+08:00"
+    },
+    {
         "id": "ord-20260408121913-220cf65c",
         "customer_id": "4",
         "customer_name": "qwe qwe",
@@ -133,7 +166,7 @@
         "customer_id": "4",
         "customer_name": "qwe qwe",
         "customer_email": "qwe@gmail.com",
-        "status": "Ongoing",
+        "status": "Pending",
         "items": [
             {
                 "name": "Canon 700D",

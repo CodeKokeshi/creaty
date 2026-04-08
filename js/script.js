@@ -5212,6 +5212,82 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    function parseAdminBookingTimestampToMs(value) {
+        var normalized = String(value || "").trim();
+
+        if (!normalized) {
+            return Number.NaN;
+        }
+
+        var parsedValue = Date.parse(normalized);
+
+        if (!Number.isFinite(parsedValue)) {
+            return Number.NaN;
+        }
+
+        return parsedValue;
+    }
+
+    function formatAdminBookingCountdown(totalSeconds) {
+        var parsedSeconds = Number.parseInt(totalSeconds, 10);
+        var safeSeconds = Number.isFinite(parsedSeconds) && parsedSeconds > 0 ? parsedSeconds : 0;
+        var hours = Math.floor(safeSeconds / 3600);
+        var minutes = Math.floor((safeSeconds % 3600) / 60);
+        var seconds = safeSeconds % 60;
+
+        return padTwo(hours) + ":" + padTwo(minutes) + ":" + padTwo(seconds);
+    }
+
+    function getAdminBookingForReturnState(booking) {
+        var defaultState = {
+            active: false,
+            remainingSeconds: 0,
+            overdueSeconds: 0,
+            penaltyPerHour: 50,
+            penaltyHours: 0,
+            penaltyAmount: 0
+        };
+
+        if (!booking || typeof booking !== "object") {
+            return defaultState;
+        }
+
+        var statusToken = String(booking.statusToken || "").toLowerCase().trim();
+
+        if (statusToken !== "return") {
+            return defaultState;
+        }
+
+        var penaltyPerHourRaw = Number.parseInt(booking.forReturnPenaltyPerHour, 10);
+        var penaltyPerHour = Number.isFinite(penaltyPerHourRaw) && penaltyPerHourRaw > 0
+            ? penaltyPerHourRaw
+            : 50;
+        var deadlineMs = parseAdminBookingTimestampToMs(booking.forReturnDeadlineAt);
+
+        if (!Number.isFinite(deadlineMs)) {
+            return Object.assign({}, defaultState, {
+                active: true,
+                penaltyPerHour: penaltyPerHour
+            });
+        }
+
+        var deltaMs = deadlineMs - Date.now();
+        var remainingSeconds = Math.max(0, Math.ceil(deltaMs / 1000));
+        var overdueSeconds = Math.max(0, Math.ceil((-deltaMs) / 1000));
+        var penaltyHours = overdueSeconds > 0
+            ? Math.ceil(overdueSeconds / 3600)
+            : 0;
+
+        return {
+            active: true,
+            remainingSeconds: remainingSeconds,
+            overdueSeconds: overdueSeconds,
+            penaltyPerHour: penaltyPerHour,
+            penaltyHours: penaltyHours,
+            penaltyAmount: penaltyHours * penaltyPerHour
+        };
+    }
+
     function findAdminBookingById(bookingId) {
         var targetId = String(bookingId || "").trim();
 
@@ -5246,11 +5322,15 @@ document.addEventListener("DOMContentLoaded", function () {
         var statusTokenFromRecord = String(booking.statusToken || "").toLowerCase().trim();
         var statusToken = statusTokenFromRecord || statusClass.replace(/^status-/, "");
         var isApproved = statusToken === "approved";
+        var isOngoing = statusToken === "ongoing";
+        var isForReturn = statusToken === "return";
+        var isCompleted = statusToken === "completed";
         var isCanceled = statusToken === "canceled";
         var isAwaitingRefund = statusToken === "awaiting-refund";
         var isRejected = statusToken === "rejected";
         var isRefunded = statusToken === "refunded";
-        var isTerminalStatus = isCanceled || isRejected || isRefunded;
+        var isTerminalStatus = isCompleted || isCanceled || isRejected || isRefunded;
+        var forReturnState = getAdminBookingForReturnState(booking);
         var paymentMethodToken = String(booking.paymentMethod || "").toLowerCase().trim();
         var customerGcashName = String(booking.customerGcashName || "").trim();
         var customerGcashNumber = String(booking.customerGcashNumber || "").trim();
@@ -5453,6 +5533,32 @@ document.addEventListener("DOMContentLoaded", function () {
             } else if (isApproved) {
                 adminBookingDetailStatusNote.textContent = "Payment is approved. Only cancellation is allowed manually. Status will switch to Ongoing automatically at the receiving date/time.";
                 adminBookingDetailStatusNote.hidden = false;
+            } else if (isOngoing) {
+                adminBookingDetailStatusNote.textContent = "Camera is currently with the customer. You can only use Returned Early to complete this booking before the scheduled return time.";
+                adminBookingDetailStatusNote.hidden = false;
+            } else if (isForReturn) {
+                if (forReturnState.active && forReturnState.overdueSeconds <= 0) {
+                    adminBookingDetailStatusNote.textContent = "For Return grace time left: "
+                        + formatAdminBookingCountdown(forReturnState.remainingSeconds)
+                        + ". After this window, a penalty of \u20B1"
+                        + Number(forReturnState.penaltyPerHour).toFixed(2)
+                        + " per hour starts until manually completed.";
+                } else if (forReturnState.active) {
+                    adminBookingDetailStatusNote.textContent = "For Return overdue penalty: \u20B1"
+                        + Number(forReturnState.penaltyAmount).toFixed(2)
+                        + " (\u20B1"
+                        + Number(forReturnState.penaltyPerHour).toFixed(2)
+                        + "/hour). Settle this in person, then mark Complete manually.";
+                } else {
+                    adminBookingDetailStatusNote.textContent = "Booking is For Return. After the one-hour grace period, a \u20B1"
+                        + Number(booking.forReturnPenaltyPerHour || 50).toFixed(2)
+                        + "/hour penalty applies until manually completed.";
+                }
+
+                adminBookingDetailStatusNote.hidden = false;
+            } else if (isCompleted) {
+                adminBookingDetailStatusNote.textContent = "Booking is completed and cannot be changed.";
+                adminBookingDetailStatusNote.hidden = false;
             } else if (isRejected) {
                 adminBookingDetailStatusNote.textContent = "Payment receipt was rejected. This booking cannot be changed.";
                 adminBookingDetailStatusNote.hidden = false;
@@ -5469,26 +5575,24 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         var visibleSubmitStatusMap = {
-            pending: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund && !isApproved,
-            approved: !isTerminalStatus && !isWaitingForPaymentReceipt && !isAwaitingRefund && !isApproved,
-            ongoing: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund && !isApproved,
-            return: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund && !isApproved,
-            completed: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund && !isApproved
+            approved: false,
+            "returned-early": false,
+            completed: false
         };
 
         if (isWaitingForPaymentReview) {
-            visibleSubmitStatusMap.pending = false;
-            visibleSubmitStatusMap.ongoing = false;
-            visibleSubmitStatusMap.return = false;
-            visibleSubmitStatusMap.completed = false;
             visibleSubmitStatusMap.approved = true;
-        }
-
-        if (isAwaitingRefund) {
-            visibleSubmitStatusMap.pending = false;
+        } else if (!isTerminalStatus && !isWaitingForPaymentReceipt && !isAwaitingRefund) {
+            if (statusToken === "pending") {
+                visibleSubmitStatusMap.approved = true;
+            } else if (isOngoing) {
+                visibleSubmitStatusMap["returned-early"] = true;
+            } else if (isForReturn) {
+                visibleSubmitStatusMap.completed = true;
+            }
+        } else if (isAwaitingRefund) {
             visibleSubmitStatusMap.approved = false;
-            visibleSubmitStatusMap.ongoing = false;
-            visibleSubmitStatusMap.return = false;
+            visibleSubmitStatusMap["returned-early"] = false;
             visibleSubmitStatusMap.completed = false;
         }
 
@@ -5514,7 +5618,10 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         if (adminBookingCancelOpenButton) {
-            var canCancelBooking = !isTerminalStatus && !isWaitingForPaymentReview && !isAwaitingRefund;
+            var canCancelBooking = !isTerminalStatus
+                && !isWaitingForPaymentReview
+                && !isAwaitingRefund
+                && (statusToken === "pending" || statusToken === "approved");
             adminBookingCancelOpenButton.disabled = !canCancelBooking;
             adminBookingCancelOpenButton.hidden = !canCancelBooking;
         }
@@ -7324,7 +7431,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return {
                 id: String(order.id || ""),
                 status: String(order.status || "Pending"),
-                statusToken: String(order.statusToken || order.status_token || ""),
+                statusToken: String(order.statusToken || order.status_token || "").toLowerCase().trim(),
                 items: items,
                 receiveDate: String(order.receiveDate || ""),
                 receiveTime: String(order.receiveTime || ""),
@@ -7337,6 +7444,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 paymentReceiptPath: String(order.paymentReceiptPath || order.payment_receipt_path || ""),
                 paymentReceiptUploadedAt: String(order.paymentReceiptUploadedAt || order.payment_receipt_uploaded_at || ""),
                 paymentReceiptDeadlineAt: String(order.paymentReceiptDeadlineAt || order.payment_receipt_deadline_at || ""),
+                forReturnGraceSeconds: Number.parseInt(order.forReturnGraceSeconds || order.for_return_grace_seconds || 3600, 10),
+                forReturnPenaltyPerHour: Number.parseInt(order.forReturnPenaltyPerHour || order.for_return_penalty_per_hour || 50, 10),
+                forReturnDeadlineAt: String(order.forReturnDeadlineAt || order.for_return_deadline_at || ""),
+                forReturnRemainingSeconds: Number.parseInt(order.forReturnRemainingSeconds || order.for_return_remaining_seconds || 0, 10),
+                forReturnOverdueSeconds: Number.parseInt(order.forReturnOverdueSeconds || order.for_return_overdue_seconds || 0, 10),
+                forReturnPenaltyHours: Number.parseInt(order.forReturnPenaltyHours || order.for_return_penalty_hours || 0, 10),
+                forReturnPenaltyAmount: Number.parseInt(order.forReturnPenaltyAmount || order.for_return_penalty_amount || 0, 10),
                 refundProofPath: String(order.refundProofPath || order.refund_proof_path || ""),
                 refundProofUploadedAt: String(order.refundProofUploadedAt || order.refund_proof_uploaded_at || ""),
                 paymentReceiptTimeoutSeconds: timeoutSeconds,
@@ -7589,6 +7703,99 @@ document.addEventListener("DOMContentLoaded", function () {
             return "Upload time left: " + formatOrderReceiptCountdown(remainingSeconds);
         }
 
+        function getOrderForReturnPenaltyPerHour(order) {
+            if (!order || typeof order !== "object") {
+                return 50;
+            }
+
+            var parsedValue = Number.parseInt(order.forReturnPenaltyPerHour, 10);
+
+            if (!Number.isFinite(parsedValue) || parsedValue < 1) {
+                return 50;
+            }
+
+            return parsedValue;
+        }
+
+        function getOrderForReturnDeadlineMs(order) {
+            if (!order || typeof order !== "object") {
+                return Number.NaN;
+            }
+
+            return parseOrderTimestampToMs(order.forReturnDeadlineAt);
+        }
+
+        function getOrderForReturnState(order) {
+            var defaultState = {
+                active: false,
+                remainingSeconds: 0,
+                overdueSeconds: 0,
+                penaltyPerHour: 50,
+                penaltyHours: 0,
+                penaltyAmount: 0,
+                deadlineMs: Number.NaN
+            };
+
+            if (!order || typeof order !== "object") {
+                return defaultState;
+            }
+
+            var statusToken = String(order.statusToken || "").toLowerCase().trim();
+
+            if (statusToken !== "return") {
+                return defaultState;
+            }
+
+            var penaltyPerHour = getOrderForReturnPenaltyPerHour(order);
+            var deadlineMs = getOrderForReturnDeadlineMs(order);
+
+            if (!Number.isFinite(deadlineMs)) {
+                return Object.assign({}, defaultState, {
+                    active: true,
+                    penaltyPerHour: penaltyPerHour
+                });
+            }
+
+            var deltaMs = deadlineMs - Date.now();
+            var remainingSeconds = Math.max(0, Math.ceil(deltaMs / 1000));
+            var overdueSeconds = Math.max(0, Math.ceil((-deltaMs) / 1000));
+            var penaltyHours = overdueSeconds > 0
+                ? Math.ceil(overdueSeconds / 3600)
+                : 0;
+
+            return {
+                active: true,
+                remainingSeconds: remainingSeconds,
+                overdueSeconds: overdueSeconds,
+                penaltyPerHour: penaltyPerHour,
+                penaltyHours: penaltyHours,
+                penaltyAmount: penaltyHours * penaltyPerHour,
+                deadlineMs: deadlineMs
+            };
+        }
+
+        function formatOrderForReturnCountdown(remainingSeconds) {
+            var parsedValue = Number.parseInt(remainingSeconds, 10);
+            var safeSeconds = Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : 0;
+            var hours = Math.floor(safeSeconds / 3600);
+            var minutes = Math.floor((safeSeconds % 3600) / 60);
+            var seconds = safeSeconds % 60;
+
+            return padTwo(hours) + ":" + padTwo(minutes) + ":" + padTwo(seconds);
+        }
+
+        function buildOrderForReturnCountdownLabel(remainingSeconds) {
+            return "For Return grace time left: " + formatOrderForReturnCountdown(remainingSeconds);
+        }
+
+        function buildOrderForReturnPenaltyLabel(penaltyAmount, penaltyPerHour) {
+            return "Overdue penalty: "
+                + formatPeso(penaltyAmount)
+                + " ("
+                + formatPeso(penaltyPerHour)
+                + "/hour)";
+        }
+
         function applyLocalPaymentReceiptTimeouts() {
             var existingOrders = getStoredOrders();
             var didChange = false;
@@ -7666,6 +7873,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (orderStatusList) {
                 var countdownNodes = orderStatusList.querySelectorAll("[data-cart-receipt-countdown]");
+                var forReturnNodes = orderStatusList.querySelectorAll("[data-cart-for-return]");
 
                 countdownNodes.forEach(function (node) {
                     var orderId = String(node.getAttribute("data-cart-order-id") || "").trim();
@@ -7679,6 +7887,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     node.textContent = buildOrderReceiptCountdownLabel(countdownState.remainingSeconds);
                 });
+
+                forReturnNodes.forEach(function (node) {
+                    var orderId = String(node.getAttribute("data-cart-order-id") || "").trim();
+                    var order = findStoredOrderById(orderId);
+                    var forReturnState = getOrderForReturnState(order);
+
+                    if (!forReturnState.active) {
+                        node.textContent = "For Return timer is unavailable.";
+                        node.classList.remove("is-overdue");
+                        return;
+                    }
+
+                    if (forReturnState.overdueSeconds > 0) {
+                        node.classList.add("is-overdue");
+                        node.textContent = buildOrderForReturnPenaltyLabel(
+                            forReturnState.penaltyAmount,
+                            forReturnState.penaltyPerHour
+                        );
+                        return;
+                    }
+
+                    node.classList.remove("is-overdue");
+                    node.textContent = buildOrderForReturnCountdownLabel(forReturnState.remainingSeconds);
+                });
             }
 
             updateGcashModalReceiptTimer();
@@ -7688,9 +7920,10 @@ document.addEventListener("DOMContentLoaded", function () {
             stopReceiptCountdownTicker();
 
             var hasOrderCountdown = Boolean(orderStatusList && orderStatusList.querySelector("[data-cart-receipt-countdown]"));
+            var hasForReturnCountdown = Boolean(orderStatusList && orderStatusList.querySelector("[data-cart-for-return]"));
             var hasModalCountdown = Boolean(gcashModal && !gcashModal.hidden && activeGcashModalMode === "upload-receipt");
 
-            if (!hasOrderCountdown && !hasModalCountdown) {
+            if (!hasOrderCountdown && !hasForReturnCountdown && !hasModalCountdown) {
                 return;
             }
 
@@ -8048,6 +8281,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 var statusText = String(order.status || "Pending");
                 var statusSlug = statusText.toLowerCase().replace(/[^a-z0-9]+/g, "-");
                 var statusToken = String(order.statusToken || "").toLowerCase().trim();
+                var statusClassToken = statusToken || statusSlug;
                 var paymentMethodSlug = String(order.paymentMethod || "").toLowerCase().trim();
                 var hasPaymentReceipt = String(order.paymentReceiptPath || "").trim() !== "";
                 var refundProofPath = String(order.refundProofPath || "").trim();
@@ -8055,6 +8289,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 var hasRefundProof = refundProofUrl !== "";
                 var cancelReason = String(order.cancelReason || "").trim();
                 var countdownState = getOrderPaymentReceiptCountdownState(order);
+                var forReturnState = getOrderForReturnState(order);
                 var orderedText = "Ordered: " + buildOrderItemsSummary(order.items);
                 var receiveSchedule = formatOrderSchedule(order.receiveDate, order.receiveTime);
                 var returnSchedule = formatOrderSchedule(order.returnDate, order.returnTime);
@@ -8078,7 +8313,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 scheduleLine.textContent = scheduleText;
 
                 var statusBadge = document.createElement("span");
-                statusBadge.className = "profile-order-status status-" + statusSlug;
+                statusBadge.className = "profile-order-status status-" + statusClassToken;
                 statusBadge.textContent = statusText;
 
                 orderMeta.appendChild(orderedLine);
@@ -8092,6 +8327,25 @@ document.addEventListener("DOMContentLoaded", function () {
                     countdownLine.setAttribute("data-cart-order-id", String(order.id || ""));
                     countdownLine.textContent = buildOrderReceiptCountdownLabel(countdownState.remainingSeconds);
                     orderMeta.appendChild(countdownLine);
+                }
+
+                if (forReturnState.active) {
+                    var forReturnLine = document.createElement("p");
+                    forReturnLine.className = "cart-order-status-for-return";
+                    forReturnLine.setAttribute("data-cart-for-return", "true");
+                    forReturnLine.setAttribute("data-cart-order-id", String(order.id || ""));
+
+                    if (forReturnState.overdueSeconds > 0) {
+                        forReturnLine.classList.add("is-overdue");
+                        forReturnLine.textContent = buildOrderForReturnPenaltyLabel(
+                            forReturnState.penaltyAmount,
+                            forReturnState.penaltyPerHour
+                        );
+                    } else {
+                        forReturnLine.textContent = buildOrderForReturnCountdownLabel(forReturnState.remainingSeconds);
+                    }
+
+                    orderMeta.appendChild(forReturnLine);
                 }
 
                 var shouldShowReason = (statusSlug === "canceled" || statusSlug === "rejected" || statusSlug === "refunded") && cancelReason;
@@ -8162,7 +8416,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     actionWrap.appendChild(pendingAction);
                 }
 
-                var canCancelOrder = orderCancelEndpoint !== "" && (statusSlug === "pending" || statusSlug === "approved");
+                var canCancelOrder = orderCancelEndpoint !== "" && (statusToken === "pending" || statusToken === "approved");
 
                 if (canCancelOrder) {
                     var cancelAction = document.createElement("button");

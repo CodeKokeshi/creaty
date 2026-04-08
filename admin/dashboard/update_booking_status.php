@@ -37,6 +37,7 @@ if ($orderId === '') {
 }
 
 $nextStatusToken = normalize_customer_order_status_token($nextStatus);
+$isReturnedEarlyAction = customer_order_is_returned_early_request($nextStatus);
 
 if ($nextStatusToken === 'awaiting-refund') {
     header('Location: ' . $redirectTarget);
@@ -83,9 +84,41 @@ if ($isWaitingForPaymentReview && !in_array($nextStatusToken, ['approved', 'reje
     exit;
 }
 
+if (
+    $currentStatusToken === 'pending'
+    && !$isWaitingForPaymentReceipt
+    && !$isWaitingForPaymentReview
+    && !in_array($nextStatusToken, ['approved', 'canceled'], true)
+) {
+    header('Location: ' . $redirectTarget);
+    exit;
+}
+
 if ($currentStatusToken === 'approved' && $nextStatusToken !== 'canceled') {
     header('Location: ' . $redirectTarget);
     exit;
+}
+
+if ($currentStatusToken === 'ongoing' && (!$isReturnedEarlyAction || $nextStatusToken !== 'completed')) {
+    header('Location: ' . $redirectTarget);
+    exit;
+}
+
+if ($currentStatusToken === 'return' && $nextStatusToken !== 'completed') {
+    header('Location: ' . $redirectTarget);
+    exit;
+}
+
+if ($nextStatusToken === 'completed') {
+    if ($isReturnedEarlyAction && $currentStatusToken !== 'ongoing') {
+        header('Location: ' . $redirectTarget);
+        exit;
+    }
+
+    if (!$isReturnedEarlyAction && $currentStatusToken !== 'return') {
+        header('Location: ' . $redirectTarget);
+        exit;
+    }
 }
 
 $updatedOrder = update_customer_order_status_by_id(

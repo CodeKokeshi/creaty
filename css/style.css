@@ -2618,6 +2618,18 @@ button {
     line-height: 1.45;
 }
 
+.cart-order-status-for-return {
+    margin: 0;
+    color: #ffd59c;
+    font-size: 0.79rem;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+.cart-order-status-for-return.is-overdue {
+    color: #ffb4b4;
+}
+
 .cart-order-status-reason {
     margin: 0;
     color: #ffbebe;
@@ -5069,6 +5081,11 @@ button {
 }
 
 .profile-order-status.status-return {
+    border-color: rgba(245, 190, 118, 0.5);
+    color: #ffdca8;
+}
+
+.profile-order-status.status-for-return {
     border-color: rgba(245, 190, 118, 0.5);
     color: #ffdca8;
 }
@@ -8041,6 +8058,12 @@ button {
     border-color: rgba(104, 149, 255, 0.62);
     background: rgba(74, 109, 191, 0.26);
     color: #e6edff;
+}
+
+.admin-booking-action.is-early-return {
+    border-color: rgba(129, 203, 252, 0.64);
+    background: rgba(48, 113, 171, 0.26);
+    color: #dff4ff;
 }
 
 .admin-booking-action.is-return {

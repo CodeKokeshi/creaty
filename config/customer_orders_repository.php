@@ -133,7 +133,7 @@ function customer_order_status_requires_reason($statusToken)
 
 function customer_order_is_terminal_status($statusToken)
 {
-    return in_array((string) $statusToken, ['canceled', 'rejected', 'refunded'], true);
+    return in_array((string) $statusToken, ['completed', 'canceled', 'rejected', 'refunded'], true);
 }
 
 function customer_order_payment_receipt_timeout_seconds()
@@ -146,6 +146,35 @@ function customer_order_payment_receipt_timeout_reason()
     return 'Failure to upload payment receipt.';
 }
 
+function customer_order_for_return_grace_seconds()
+{
+    return 60 * 60;
+}
+
+function customer_order_for_return_penalty_per_hour()
+{
+    return 50;
+}
+
+function customer_order_open_reservation_end_timestamp()
+{
+    return 2147483647;
+}
+
+function customer_order_returned_early_status_aliases()
+{
+    return ['returned-early', 'return-early', 'early-return'];
+}
+
+function customer_order_is_returned_early_request($value)
+{
+    $status = strtolower(trim((string) $value));
+    $status = preg_replace('/[^a-z0-9-]+/', '-', $status) ?? $status;
+    $status = trim((string) $status, '-');
+
+    return in_array($status, customer_order_returned_early_status_aliases(), true);
+}
+
 function normalize_customer_order_status_token($value)
 {
     $status = strtolower(trim((string) $value));
@@ -156,6 +185,8 @@ function normalize_customer_order_status_token($value)
         $status = 'approved';
     } elseif ($status === 'past-return') {
         $status = 'return';
+    } elseif (in_array($status, customer_order_returned_early_status_aliases(), true)) {
+        $status = 'completed';
     }
 
     if (!in_array($status, customer_order_allowed_status_tokens(), true)) {
@@ -170,7 +201,7 @@ function normalize_customer_order_status($value)
     $statusToken = normalize_customer_order_status_token($value);
 
     if ($statusToken === 'return') {
-        return 'Return';
+        return 'For Return';
     }
 
     if ($statusToken === 'awaiting-refund') {
@@ -318,6 +349,69 @@ function customer_order_receiving_timestamp($record)
     );
 }
 
+function customer_order_return_schedule_timestamp($record)
+{
+    if (!is_array($record)) {
+        return null;
+    }
+
+    return customer_order_schedule_timestamp(
+        $record['return_date'] ?? '',
+        $record['return_time'] ?? ''
+    );
+}
+
+function customer_order_for_return_state($record, $nowTimestamp = null)
+{
+    $defaultState = [
+        'active' => false,
+        'deadline_ts' => null,
+        'remaining_seconds' => 0,
+        'overdue_seconds' => 0,
+        'penalty_hours' => 0,
+        'penalty_amount' => 0,
+        'penalty_per_hour' => customer_order_for_return_penalty_per_hour(),
+        'grace_seconds' => customer_order_for_return_grace_seconds(),
+    ];
+
+    if (!is_array($record)) {
+        return $defaultState;
+    }
+
+    $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+
+    if ($statusToken !== 'return') {
+        return $defaultState;
+    }
+
+    $returnTimestamp = customer_order_return_schedule_timestamp($record);
+
+    if ($returnTimestamp === null) {
+        return $defaultState;
+    }
+
+    $currentTimestamp = is_int($nowTimestamp) ? $nowTimestamp : time();
+    $graceSeconds = customer_order_for_return_grace_seconds();
+    $deadlineTimestamp = $returnTimestamp + $graceSeconds;
+    $remainingSeconds = max(0, $deadlineTimestamp - $currentTimestamp);
+    $overdueSeconds = max(0, $currentTimestamp - $deadlineTimestamp);
+    $penaltyHours = $overdueSeconds > 0
+        ? (int) ceil($overdueSeconds / 3600)
+        : 0;
+    $penaltyPerHour = customer_order_for_return_penalty_per_hour();
+
+    return [
+        'active' => true,
+        'deadline_ts' => $deadlineTimestamp,
+        'remaining_seconds' => $remainingSeconds,
+        'overdue_seconds' => $overdueSeconds,
+        'penalty_hours' => $penaltyHours,
+        'penalty_amount' => $penaltyHours * $penaltyPerHour,
+        'penalty_per_hour' => $penaltyPerHour,
+        'grace_seconds' => $graceSeconds,
+    ];
+}
+
 function advance_customer_orders_to_ongoing_by_receiving_schedule($orders, &$didAdvance = false, $nowTimestamp = null, &$advancedOrders = null)
 {
     $didAdvance = false;
@@ -349,6 +443,49 @@ function advance_customer_orders_to_ongoing_by_receiving_schedule($orders, &$did
         }
 
         $record['status'] = 'ongoing';
+        $record['cancel_reason'] = '';
+        $record['canceled_by'] = '';
+        $normalizedRecord = normalize_customer_order_record($record);
+        $orders[$index] = $normalizedRecord;
+        $advancedOrders[] = $normalizedRecord;
+        $didAdvance = true;
+    }
+
+    return $orders;
+}
+
+function advance_customer_orders_to_for_return_by_schedule($orders, &$didAdvance = false, $nowTimestamp = null, &$advancedOrders = null)
+{
+    $didAdvance = false;
+
+    if (!is_array($advancedOrders)) {
+        $advancedOrders = [];
+    }
+
+    if (!is_array($orders)) {
+        return [];
+    }
+
+    $currentTimestamp = is_int($nowTimestamp) ? $nowTimestamp : time();
+
+    foreach ($orders as $index => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+
+        if ($statusToken !== 'ongoing') {
+            continue;
+        }
+
+        $returnTimestamp = customer_order_return_schedule_timestamp($record);
+
+        if ($returnTimestamp === null || $returnTimestamp > $currentTimestamp) {
+            continue;
+        }
+
+        $record['status'] = 'return';
         $record['cancel_reason'] = '';
         $record['canceled_by'] = '';
         $normalizedRecord = normalize_customer_order_record($record);
@@ -912,6 +1049,7 @@ function customer_order_build_camera_reservation_intervals($orders, $products, $
         }
 
         $requirements = customer_order_extract_camera_item_requirements($record['items'] ?? [], $products, $lookup);
+        $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
 
         if ($requirements === []) {
             continue;
@@ -925,14 +1063,20 @@ function customer_order_build_camera_reservation_intervals($orders, $products, $
                 $days = max($days, $orderDurationDays);
             }
 
+            $endTimestamp = $startTimestamp + ($days * 86400);
+
+            if ($statusToken === 'return') {
+                $endTimestamp = max($endTimestamp, customer_order_open_reservation_end_timestamp());
+            }
+
             $intervals[] = [
                 'order_id' => (string) ($record['id'] ?? ''),
                 'product_key' => $productKey,
                 'qty' => $qty,
                 'days' => $days,
                 'start_ts' => $startTimestamp,
-                'end_ts' => $startTimestamp + ($days * 86400),
-                'status_token' => normalize_customer_order_status_token($record['status'] ?? 'pending'),
+                'end_ts' => $endTimestamp,
+                'status_token' => $statusToken,
             ];
         }
     }
@@ -1155,16 +1299,27 @@ function customer_order_build_equipment_availability_payload($options = [])
         }
 
         $startTimestamp = (int) ($interval['start_ts'] ?? 0);
+        $endTimestamp = (int) ($interval['end_ts'] ?? 0);
 
         if ($startTimestamp <= 0) {
             continue;
+        }
+
+        $payloadDays = max(1, (int) ($interval['days'] ?? 1));
+
+        if ($endTimestamp > $startTimestamp) {
+            $derivedDays = (int) ceil(($endTimestamp - $startTimestamp) / 86400);
+
+            if ($derivedDays > 0) {
+                $payloadDays = max($payloadDays, min(36500, $derivedDays));
+            }
         }
 
         $reservationsPayload[] = [
             'orderId' => (string) ($interval['order_id'] ?? ''),
             'productKey' => $productKey,
             'qty' => max(1, (int) ($interval['qty'] ?? 1)),
-            'days' => max(1, (int) ($interval['days'] ?? 1)),
+            'days' => $payloadDays,
             'startDate' => customer_order_local_datetime_format_from_timestamp($startTimestamp, 'Y-m-d'),
             'startTime' => customer_order_local_datetime_format_from_timestamp($startTimestamp, 'H:i'),
             'statusToken' => (string) ($interval['status_token'] ?? ''),
@@ -1372,7 +1527,40 @@ function load_customer_orders_repository()
         }
     }
 
-    if ($didNormalizeOrders && !$didExpireOrders && !$didAdvanceOrders) {
+    $didAdvanceToReturnOrders = false;
+    $advancedToReturnOrders = [];
+    $orders = advance_customer_orders_to_for_return_by_schedule(
+        $orders,
+        $didAdvanceToReturnOrders,
+        null,
+        $advancedToReturnOrders
+    );
+
+    if ($didAdvanceToReturnOrders) {
+        save_customer_orders_repository($orders);
+
+        if (!function_exists('append_customer_order_status_notification')) {
+            require_once __DIR__ . '/customer_notifications_repository.php';
+        }
+
+        if (function_exists('append_customer_order_status_notification')) {
+            foreach ($advancedToReturnOrders as $advancedToReturnOrder) {
+                if (!is_array($advancedToReturnOrder)) {
+                    continue;
+                }
+
+                append_customer_order_status_notification(
+                    (string) ($advancedToReturnOrder['customer_id'] ?? ''),
+                    (string) ($advancedToReturnOrder['id'] ?? ''),
+                    normalize_customer_order_status_token($advancedToReturnOrder['status'] ?? 'pending'),
+                    (string) ($advancedToReturnOrder['status'] ?? ''),
+                    ''
+                );
+            }
+        }
+    }
+
+    if ($didNormalizeOrders && !$didExpireOrders && !$didAdvanceOrders && !$didAdvanceToReturnOrders) {
         save_customer_orders_repository($orders);
     }
 
@@ -1513,6 +1701,10 @@ function map_customer_order_for_frontend($record)
 
     $paymentReceiptDeadlineTimestamp = customer_order_payment_receipt_deadline_timestamp($record);
     $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+    $forReturnState = customer_order_for_return_state($record);
+    $forReturnDeadlineTimestamp = is_int($forReturnState['deadline_ts'] ?? null)
+        ? (int) $forReturnState['deadline_ts']
+        : null;
 
     return [
         'id' => (string) ($record['id'] ?? ''),
@@ -1538,6 +1730,15 @@ function map_customer_order_for_frontend($record)
             ? customer_order_now_iso8601($paymentReceiptDeadlineTimestamp)
             : '',
         'paymentReceiptTimeoutSeconds' => customer_order_payment_receipt_timeout_seconds(),
+        'forReturnGraceSeconds' => (int) ($forReturnState['grace_seconds'] ?? customer_order_for_return_grace_seconds()),
+        'forReturnPenaltyPerHour' => (int) ($forReturnState['penalty_per_hour'] ?? customer_order_for_return_penalty_per_hour()),
+        'forReturnDeadlineAt' => $forReturnDeadlineTimestamp !== null
+            ? customer_order_now_iso8601($forReturnDeadlineTimestamp)
+            : '',
+        'forReturnRemainingSeconds' => max(0, (int) ($forReturnState['remaining_seconds'] ?? 0)),
+        'forReturnOverdueSeconds' => max(0, (int) ($forReturnState['overdue_seconds'] ?? 0)),
+        'forReturnPenaltyHours' => max(0, (int) ($forReturnState['penalty_hours'] ?? 0)),
+        'forReturnPenaltyAmount' => max(0, (int) ($forReturnState['penalty_amount'] ?? 0)),
         'createdAt' => (string) ($record['created_at'] ?? ''),
     ];
 }
@@ -1652,6 +1853,7 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
     }
 
     $settings = is_array($options) ? $options : [];
+    $isReturnedEarlyRequest = customer_order_is_returned_early_request($nextStatus);
     $requestedStatusToken = normalize_customer_order_status_token($nextStatus);
     $statusNeedsReason = customer_order_status_requires_reason($requestedStatusToken);
     $normalizedCancelReason = $statusNeedsReason
@@ -1720,10 +1922,41 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
             return null;
         }
 
+        // Pending cash bookings can only be approved or canceled.
+        if (
+            $currentStatusToken === 'pending'
+            && !$isWaitingForPaymentReceipt
+            && !$isWaitingForPaymentReview
+            && !in_array($resolvedStatusToken, ['approved', 'canceled'], true)
+        ) {
+            return null;
+        }
+
         // After payment approval, only cancellation is allowed manually.
         // Transition to ongoing is automatic at receiving date/time.
         if ($currentStatusToken === 'approved' && $requestedStatusToken !== 'canceled') {
             return null;
+        }
+
+        // During ongoing rental, only Returned Early action is allowed.
+        if ($currentStatusToken === 'ongoing' && (!$isReturnedEarlyRequest || $resolvedStatusToken !== 'completed')) {
+            return null;
+        }
+
+        // For-return bookings can only be completed manually.
+        if ($currentStatusToken === 'return' && $resolvedStatusToken !== 'completed') {
+            return null;
+        }
+
+        // Manual complete is only allowed from For Return, except Returned Early while Ongoing.
+        if ($resolvedStatusToken === 'completed') {
+            if ($isReturnedEarlyRequest && $currentStatusToken !== 'ongoing') {
+                return null;
+            }
+
+            if (!$isReturnedEarlyRequest && $currentStatusToken !== 'return') {
+                return null;
+            }
         }
 
         if ($requestedStatusToken === 'rejected' && !$isWaitingForPaymentReview) {
