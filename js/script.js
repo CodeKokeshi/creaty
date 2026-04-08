@@ -5245,6 +5245,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var statusClass = normalizeAdminBookingStatusClass(booking.statusClass || "status-pending");
         var statusTokenFromRecord = String(booking.statusToken || "").toLowerCase().trim();
         var statusToken = statusTokenFromRecord || statusClass.replace(/^status-/, "");
+        var isApproved = statusToken === "approved";
         var isCanceled = statusToken === "canceled";
         var isAwaitingRefund = statusToken === "awaiting-refund";
         var isRejected = statusToken === "rejected";
@@ -5449,6 +5450,9 @@ document.addEventListener("DOMContentLoaded", function () {
             } else if (isAwaitingRefund) {
                 adminBookingDetailStatusNote.textContent = "This approved booking was canceled and is now awaiting refund. Upload refund proof to complete the process.";
                 adminBookingDetailStatusNote.hidden = false;
+            } else if (isApproved) {
+                adminBookingDetailStatusNote.textContent = "Payment is approved. Only cancellation is allowed manually. Status will switch to Ongoing automatically at the receiving date/time.";
+                adminBookingDetailStatusNote.hidden = false;
             } else if (isRejected) {
                 adminBookingDetailStatusNote.textContent = "Payment receipt was rejected. This booking cannot be changed.";
                 adminBookingDetailStatusNote.hidden = false;
@@ -5465,11 +5469,11 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         var visibleSubmitStatusMap = {
-            pending: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund,
-            approved: !isTerminalStatus && !isWaitingForPaymentReceipt && !isAwaitingRefund,
-            ongoing: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund,
-            return: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund,
-            completed: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund
+            pending: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund && !isApproved,
+            approved: !isTerminalStatus && !isWaitingForPaymentReceipt && !isAwaitingRefund && !isApproved,
+            ongoing: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund && !isApproved,
+            return: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund && !isApproved,
+            completed: !isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund && !isApproved
         };
 
         if (isWaitingForPaymentReview) {
@@ -6505,8 +6509,8 @@ document.addEventListener("DOMContentLoaded", function () {
         var gcashModalInstruction = gcashModal ? gcashModal.querySelector("[data-cart-gcash-instruction]") : null;
         var gcashReceiptBlock = gcashModal ? gcashModal.querySelector("[data-cart-gcash-receipt-block]") : null;
         var gcashCustomerInfoWrap = gcashModal ? gcashModal.querySelector("[data-cart-customer-gcash-info]") : null;
-        var gcashCustomerNameInput = gcashModal ? gcashModal.querySelector("[data-cart-customer-gcash-name]") : null;
-        var gcashCustomerNumberInput = gcashModal ? gcashModal.querySelector("[data-cart-customer-gcash-number]") : null;
+        var gcashCustomerNameValue = gcashModal ? gcashModal.querySelector("[data-cart-customer-gcash-name-value]") : null;
+        var gcashCustomerNumberValue = gcashModal ? gcashModal.querySelector("[data-cart-customer-gcash-number-value]") : null;
         var gcashReceiptFileInput = gcashModal ? gcashModal.querySelector("[data-cart-gcash-receipt-file]") : null;
         var gcashReceiptSelectButton = gcashModal ? gcashModal.querySelector("[data-cart-gcash-receipt-select]") : null;
         var gcashReceiptFilename = gcashModal ? gcashModal.querySelector("[data-cart-gcash-receipt-filename]") : null;
@@ -6687,12 +6691,12 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function setCustomerGcashModalFields() {
-            if (gcashCustomerNameInput) {
-                gcashCustomerNameInput.value = String(customerGcashInfo.gcashName || "");
+            if (gcashCustomerNameValue) {
+                gcashCustomerNameValue.textContent = String(customerGcashInfo.gcashName || "").trim() || "-";
             }
 
-            if (gcashCustomerNumberInput) {
-                gcashCustomerNumberInput.value = String(customerGcashInfo.gcashNumber || "");
+            if (gcashCustomerNumberValue) {
+                gcashCustomerNumberValue.textContent = String(customerGcashInfo.gcashNumber || "").trim() || "-";
             }
         }
 
@@ -7115,8 +7119,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (gcashModalInstruction) {
                 gcashModalInstruction.textContent = normalizedMode === "upload-receipt"
-                    ? "Scan the QR in GCash, complete your payment, then upload your receipt below."
-                    : "Scan the following QR Code in your Gcash:";
+                    ? "Scan QR in GCash, pay, then upload your receipt."
+                    : "Scan QR in GCash to continue.";
             }
 
             if (gcashModalContinueButton) {
@@ -7549,7 +7553,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function buildOrderReceiptCountdownLabel(remainingSeconds) {
-            return "Time left to upload payment receipt: " + formatOrderReceiptCountdown(remainingSeconds);
+            return "Upload time left: " + formatOrderReceiptCountdown(remainingSeconds);
         }
 
         function applyLocalPaymentReceiptTimeouts() {
@@ -7947,6 +7951,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 return null;
             }
 
+            if (!booking.receiveDate || !booking.receiveTime || !booking.returnDate || !booking.returnTime) {
+                return null;
+            }
+
             return {
                 id: "booking-" + Date.now() + "-" + Math.floor(Math.random() * 900 + 100),
                 status: "Pending",
@@ -8307,12 +8315,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
-                var customerGcashName = gcashCustomerNameInput
-                    ? String(gcashCustomerNameInput.value || "").trim()
-                    : String(customerGcashInfo.gcashName || "").trim();
-                var customerGcashNumber = gcashCustomerNumberInput
-                    ? String(gcashCustomerNumberInput.value || "").trim()
-                    : String(customerGcashInfo.gcashNumber || "").trim();
+                var customerGcashName = String(customerGcashInfo.gcashName || "").trim();
+                var customerGcashNumber = String(customerGcashInfo.gcashNumber || "").trim();
 
                 if (!gcashReceiptFileInput || !gcashReceiptFileInput.files || !gcashReceiptFileInput.files.length) {
                     setGcashUploadMessage("Please select a receipt image first.", true);
@@ -8584,17 +8588,132 @@ document.addEventListener("DOMContentLoaded", function () {
             return checked ? checked.value : fallbackValue;
         }
 
-        function restoreBookingDefaults() {
-            var now = new Date();
-            var today = now.toISOString().slice(0, 10);
+        var cartBookingOpenHour = 8;
+        var cartBookingCloseHour = 17;
+        var cartBookingSameDayCutoffHour = 15;
+        var cartBookingLeadHours = 2;
+        var cartBookingTopHourReloadTimerId = null;
 
-            if (receiveDateInput) {
-                receiveDateInput.min = today;
-                receiveDateInput.value = bookingState.receiveDate || today;
+        function parseCartBookingSlotHour(timeValue) {
+            var normalized = String(timeValue || "").trim();
+            var matches = normalized.match(/^(\d{2}):(\d{2})$/);
+
+            if (!matches) {
+                return null;
             }
 
-            if (returnDateInput) {
-                returnDateInput.min = receiveDateInput ? receiveDateInput.value : today;
+            var hour = Number.parseInt(matches[1], 10);
+            var minute = Number.parseInt(matches[2], 10);
+
+            if (!Number.isFinite(hour) || !Number.isFinite(minute) || minute !== 0) {
+                return null;
+            }
+
+            return hour;
+        }
+
+        function getCartBookingContext() {
+            var now = new Date();
+            var todayDate = getStartOfDay(now);
+            var todayKey = dateKeyFromDate(todayDate);
+            var currentHour = now.getHours();
+            var minimumDate = new Date(
+                todayDate.getFullYear(),
+                todayDate.getMonth(),
+                todayDate.getDate() + (currentHour >= cartBookingSameDayCutoffHour ? 1 : 0)
+            );
+
+            return {
+                todayKey: todayKey,
+                currentHour: currentHour,
+                minimumDateKey: dateKeyFromDate(minimumDate),
+                sameDayMinimumHour: Math.max(cartBookingOpenHour, currentHour + cartBookingLeadHours)
+            };
+        }
+
+        function syncReceiveDateConstraints() {
+            if (!receiveDateInput) {
+                return;
+            }
+
+            var context = getCartBookingContext();
+            var selectedDate = String(receiveDateInput.value || "").trim();
+
+            receiveDateInput.min = context.minimumDateKey;
+
+            if (!selectedDate || selectedDate < context.minimumDateKey) {
+                receiveDateInput.value = context.minimumDateKey;
+            }
+        }
+
+        function syncReceiveTimeConstraints() {
+            if (!receiveDateInput || !receiveTimeSelect) {
+                return;
+            }
+
+            var context = getCartBookingContext();
+            var selectedDate = String(receiveDateInput.value || "").trim();
+            var isSameDayBooking = selectedDate === context.todayKey;
+            var minimumHour = isSameDayBooking ? context.sameDayMinimumHour : cartBookingOpenHour;
+            var firstValidSlotValue = "";
+            var hasSelectedValidSlot = false;
+
+            Array.prototype.forEach.call(receiveTimeSelect.options, function (option) {
+                var optionHour = parseCartBookingSlotHour(option.value);
+                var isValidSlot = Number.isFinite(optionHour)
+                    && optionHour >= cartBookingOpenHour
+                    && optionHour <= cartBookingCloseHour
+                    && (!isSameDayBooking || optionHour >= minimumHour);
+
+                option.disabled = !isValidSlot;
+
+                if (isValidSlot && firstValidSlotValue === "") {
+                    firstValidSlotValue = option.value;
+                }
+
+                if (isValidSlot && option.value === receiveTimeSelect.value) {
+                    hasSelectedValidSlot = true;
+                }
+            });
+
+            if (!hasSelectedValidSlot) {
+                receiveTimeSelect.value = firstValidSlotValue;
+            }
+        }
+
+        function enforceReceiveScheduleConstraints() {
+            syncReceiveDateConstraints();
+            syncReceiveTimeConstraints();
+        }
+
+        function scheduleCartTopOfHourReload() {
+            if (!bookingCard) {
+                return;
+            }
+
+            if (cartBookingTopHourReloadTimerId !== null) {
+                window.clearTimeout(cartBookingTopHourReloadTimerId);
+                cartBookingTopHourReloadTimerId = null;
+            }
+
+            var now = new Date();
+            var msUntilNextHour = ((59 - now.getMinutes()) * 60 + (59 - now.getSeconds())) * 1000
+                + (1000 - now.getMilliseconds());
+
+            if (!Number.isFinite(msUntilNextHour) || msUntilNextHour < 1) {
+                msUntilNextHour = 1000;
+            }
+
+            cartBookingTopHourReloadTimerId = window.setTimeout(function () {
+                window.location.reload();
+            }, msUntilNextHour);
+        }
+
+        function restoreBookingDefaults() {
+            var context = getCartBookingContext();
+
+            if (receiveDateInput) {
+                receiveDateInput.value = bookingState.receiveDate || context.minimumDateKey;
             }
 
             if (placeSelect) {
@@ -8613,6 +8732,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (receiveTimeSelect && bookingState.receiveTime) {
                 receiveTimeSelect.value = bookingState.receiveTime;
+            }
+
+            enforceReceiveScheduleConstraints();
+
+            if (returnDateInput) {
+                returnDateInput.min = receiveDateInput ? receiveDateInput.value : context.minimumDateKey;
             }
 
             if (paymentSelect) {
@@ -8653,6 +8778,8 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!bookingCard) {
                 return {};
             }
+
+            enforceReceiveScheduleConstraints();
 
             var derivedSchedule = buildDerivedReturnSchedule();
 
@@ -9023,6 +9150,7 @@ document.addEventListener("DOMContentLoaded", function () {
             bookingCard.querySelectorAll("[data-booking-field], input[name='receivingMethod'], input[name='returningMethod']").forEach(function (control) {
                 control.addEventListener("change", function () {
                     if (control === receiveDateInput || control === receiveTimeSelect) {
+                        enforceReceiveScheduleConstraints();
                         syncReturnDateTimeFromReceive();
                     }
 
@@ -9065,6 +9193,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (confirmButton && bookingNote) {
             confirmButton.addEventListener("click", function () {
+                enforceReceiveScheduleConstraints();
                 syncReturnDateTimeFromReceive();
                 saveBookingSnapshot();
 
@@ -9126,6 +9255,7 @@ document.addEventListener("DOMContentLoaded", function () {
         updateDeliveryFields();
         saveBookingSnapshot();
         renderCartItems();
+        scheduleCartTopOfHourReload();
         initializeCustomerLiveUpdates();
     }
 

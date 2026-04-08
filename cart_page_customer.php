@@ -110,7 +110,7 @@ if ($isCustomerLoggedIn) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260407-9">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260408-3">
 </head>
 <body class="cart-page">
     <header class="site-header">
@@ -613,8 +613,11 @@ if ($isCustomerLoggedIn) {
     <section class="profile-modal cart-gcash-modal" data-cart-gcash-modal hidden>
         <div class="profile-modal-backdrop" data-cart-gcash-close></div>
         <div class="profile-modal-dialog cart-gcash-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-gcash-title">
-            <h3 id="cart-gcash-title">Send Payment Here</h3>
-            <p data-cart-gcash-instruction>Scan the following QR Code in your Gcash:</p>
+            <div class="cart-gcash-head">
+                <h3 id="cart-gcash-title">GCash Payment</h3>
+                <button type="button" class="cart-gcash-close-button" data-cart-gcash-close aria-label="Close payment modal">X</button>
+            </div>
+            <p data-cart-gcash-instruction>Scan QR in GCash.</p>
 
             <div class="cart-gcash-qr-box">
                 <img src="" alt="GCash QR code" data-cart-gcash-qr-image hidden>
@@ -629,32 +632,27 @@ if ($isCustomerLoggedIn) {
                 <p class="cart-gcash-receipt-timer" data-cart-gcash-receipt-timer hidden></p>
 
                 <div class="cart-gcash-customer-info" data-cart-customer-gcash-info>
-                    <h4>Your GCash Information</h4>
-                    <label class="cart-gcash-customer-field">
-                        <span>GCash Name</span>
-                        <input type="text" data-cart-customer-gcash-name maxlength="120" placeholder="Enter your GCash name">
-                    </label>
-                    <label class="cart-gcash-customer-field">
-                        <span>GCash Number</span>
-                        <input type="text" data-cart-customer-gcash-number maxlength="40" placeholder="Enter your GCash number">
-                    </label>
-                    <p class="cart-gcash-customer-note">Keep this updated so refunds are sent to the correct account.</p>
+                    <div class="cart-gcash-customer-head">
+                        <h4>Your GCash</h4>
+                        <a class="cart-gcash-customer-edit-link" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Edit Info</a>
+                    </div>
+                    <p class="cart-gcash-customer-meta"><strong>Name:</strong> <span data-cart-customer-gcash-name-value>-</span></p>
+                    <p class="cart-gcash-customer-meta"><strong>Number:</strong> <span data-cart-customer-gcash-number-value>-</span></p>
                 </div>
 
                 <div class="cart-gcash-upload-row">
                     <span class="cart-gcash-upload-filename" data-cart-gcash-receipt-filename>No file selected</span>
-                    <button type="button" class="profile-order-action secondary" data-cart-gcash-receipt-select>Select Image</button>
+                    <button type="button" class="profile-order-action secondary" data-cart-gcash-receipt-select>Select Receipt</button>
                 </div>
 
                 <button type="button" class="profile-order-action primary" data-cart-gcash-upload>
-                    Upload Payment Receipt
+                    Upload Receipt
                 </button>
 
                 <p class="cart-gcash-upload-message" data-cart-gcash-upload-message hidden></p>
             </div>
 
             <div class="profile-modal-actions">
-                <button type="button" class="profile-order-action" data-cart-gcash-close>Back</button>
                 <button type="button" class="profile-order-action primary" data-cart-gcash-continue>Continue Booking</button>
             </div>
         </div>
@@ -706,6 +704,6 @@ if ($isCustomerLoggedIn) {
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-8"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260408-2"></script>
 </body>
 </html>

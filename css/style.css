@@ -3017,6 +3017,7 @@ button {
 
 .cart-gcash-modal {
     z-index: 65;
+    padding: 1rem;
 }
 
 .cart-refund-proof-modal {
@@ -3024,8 +3025,40 @@ button {
 }
 
 .cart-gcash-dialog {
-    width: min(100% - 2rem, 540px);
-    gap: 0.8rem;
+    width: min(100%, 500px);
+    padding: 0.9rem;
+    gap: 0.6rem;
+}
+
+.cart-gcash-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+}
+
+.cart-gcash-close-button {
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f1f1;
+    font-size: 0.92rem;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
+}
+
+.cart-gcash-close-button:hover,
+.cart-gcash-close-button:focus-visible {
+    border-color: rgba(255, 255, 255, 0.54);
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
 }
 
 .cart-refund-proof-dialog {
@@ -3064,7 +3097,7 @@ button {
 }
 
 .cart-gcash-qr-box {
-    width: min(100%, 260px);
+    width: min(100%, 220px);
     aspect-ratio: 1 / 1;
     margin: 0 auto;
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -3102,48 +3135,58 @@ button {
 
 .cart-gcash-customer-info {
     display: grid;
-    gap: 0.45rem;
+    gap: 0.35rem;
     border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.03);
-    padding: 0.65rem;
+    padding: 0.55rem 0.65rem;
+}
+
+.cart-gcash-customer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
 }
 
 .cart-gcash-customer-info h4 {
     margin: 0;
     color: #f7eeee;
-    font-size: 0.84rem;
+    font-size: 0.8rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
 }
 
-.cart-gcash-customer-field {
-    display: grid;
-    gap: 0.28rem;
-}
-
-.cart-gcash-customer-field span {
-    color: #d8d8db;
+.cart-gcash-customer-edit-link {
+    color: #f0d79e;
     font-size: 0.76rem;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+    text-decoration: underline;
+    text-underline-offset: 0.12rem;
 }
 
-.cart-gcash-customer-field input {
-    width: 100%;
-    min-height: 38px;
-    border: 1px solid rgba(255, 255, 255, 0.24);
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.06);
+.cart-gcash-customer-edit-link:hover,
+.cart-gcash-customer-edit-link:focus-visible {
+    color: #ffe5aa;
+}
+
+.cart-gcash-customer-meta {
+    margin: 0;
+    color: #d8d8db;
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.cart-gcash-customer-meta strong {
     color: #f4f4f4;
-    padding: 0 0.65rem;
 }
 
 .cart-gcash-customer-note {
     margin: 0;
     color: #ced3dd;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     line-height: 1.45;
 }
 

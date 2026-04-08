@@ -1,5 +1,44 @@
 [
     {
+        "id": "cust-notif-20260408104144-148427ba",
+        "customer_id": "4",
+        "type": "order-status",
+        "order_id": "ORD-20260408095945-1ED939EE",
+        "status_token": "ongoing",
+        "title": "Order status updated: ORD-20260408095945-1ED939EE",
+        "summary": "Your order status is now Ongoing.",
+        "target_view": "order-status",
+        "is_read": false,
+        "created_at": "2026-04-08T10:41:44+00:00",
+        "read_at": ""
+    },
+    {
+        "id": "cust-notif-20260408100115-5965c97a",
+        "customer_id": "4",
+        "type": "order-status",
+        "order_id": "ORD-20260408095945-1ED939EE",
+        "status_token": "approved",
+        "title": "Payment approved for ORD-20260408095945-1ED939EE",
+        "summary": "Your payment was approved. Order status is now Approved.",
+        "target_view": "order-status",
+        "is_read": false,
+        "created_at": "2026-04-08T10:01:15+00:00",
+        "read_at": ""
+    },
+    {
+        "id": "cust-notif-20260408095442-3e1036c6",
+        "customer_id": "4",
+        "type": "order-status",
+        "order_id": "ORD-20260408094442-A2A099B0",
+        "status_token": "canceled",
+        "title": "Order canceled: ORD-20260408094442-A2A099B0",
+        "summary": "Reason: Failure to upload payment receipt.",
+        "target_view": "order-status",
+        "is_read": false,
+        "created_at": "2026-04-08T09:54:42+00:00",
+        "read_at": ""
+    },
+    {
         "id": "cust-notif-20260407103718-da43eebb",
         "customer_id": "4",
         "type": "order-status",

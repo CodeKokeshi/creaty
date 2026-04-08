@@ -95,6 +95,179 @@ function normalize_customer_order_time($value)
     return $normalized;
 }
 
+function customer_order_booking_shop_open_hour()
+{
+    return 8;
+}
+
+function customer_order_booking_shop_close_hour()
+{
+    return 17;
+}
+
+function customer_order_booking_same_day_cutoff_hour()
+{
+    return 15;
+}
+
+function customer_order_booking_lead_hours()
+{
+    return 2;
+}
+
+function customer_order_booking_time_slot_hour($timeValue)
+{
+    $time = normalize_customer_order_time($timeValue);
+
+    if (!preg_match('/^(\d{2}):(\d{2})$/', $time, $matches)) {
+        return null;
+    }
+
+    $hour = (int) ($matches[1] ?? -1);
+    $minute = (int) ($matches[2] ?? -1);
+
+    if ($hour < 0 || $hour > 23 || $minute !== 0) {
+        return null;
+    }
+
+    return $hour;
+}
+
+function customer_order_is_valid_booking_time_slot($timeValue)
+{
+    $hour = customer_order_booking_time_slot_hour($timeValue);
+
+    if ($hour === null) {
+        return false;
+    }
+
+    return $hour >= customer_order_booking_shop_open_hour()
+        && $hour <= customer_order_booking_shop_close_hour();
+}
+
+function customer_order_min_receiving_date_by_now($nowTimestamp = null)
+{
+    $currentTimestamp = is_int($nowTimestamp) ? $nowTimestamp : time();
+    $todayDate = date('Y-m-d', $currentTimestamp);
+    $currentHour = (int) date('G', $currentTimestamp);
+
+    if ($currentHour >= customer_order_booking_same_day_cutoff_hour()) {
+        $tomorrowTimestamp = strtotime($todayDate . ' +1 day');
+        if ($tomorrowTimestamp === false) {
+            return $todayDate;
+        }
+
+        return date('Y-m-d', $tomorrowTimestamp);
+    }
+
+    return $todayDate;
+}
+
+function customer_order_is_valid_receiving_schedule($receiveDateValue, $receiveTimeValue, $nowTimestamp = null)
+{
+    $receiveDate = normalize_customer_order_date($receiveDateValue);
+    $receiveTime = normalize_customer_order_time($receiveTimeValue);
+
+    if ($receiveDate === '' || $receiveTime === '' || !customer_order_is_valid_booking_time_slot($receiveTime)) {
+        return false;
+    }
+
+    $currentTimestamp = is_int($nowTimestamp) ? $nowTimestamp : time();
+    $todayDate = date('Y-m-d', $currentTimestamp);
+    $minimumDate = customer_order_min_receiving_date_by_now($currentTimestamp);
+
+    if ($receiveDate < $minimumDate) {
+        return false;
+    }
+
+    if ($receiveDate !== $todayDate) {
+        return true;
+    }
+
+    $currentHour = (int) date('G', $currentTimestamp);
+
+    if ($currentHour >= customer_order_booking_same_day_cutoff_hour()) {
+        return false;
+    }
+
+    $selectedHour = customer_order_booking_time_slot_hour($receiveTime);
+    if ($selectedHour === null) {
+        return false;
+    }
+
+    $minimumHour = max(
+        customer_order_booking_shop_open_hour(),
+        $currentHour + customer_order_booking_lead_hours()
+    );
+
+    return $selectedHour >= $minimumHour
+        && $selectedHour <= customer_order_booking_shop_close_hour();
+}
+
+function customer_order_receiving_timestamp($record)
+{
+    if (!is_array($record)) {
+        return null;
+    }
+
+    $receiveDate = normalize_customer_order_date($record['receive_date'] ?? '');
+    $receiveTime = normalize_customer_order_time($record['receive_time'] ?? '');
+
+    if ($receiveDate === '' || $receiveTime === '' || !customer_order_is_valid_booking_time_slot($receiveTime)) {
+        return null;
+    }
+
+    $timestamp = strtotime($receiveDate . ' ' . $receiveTime);
+
+    if ($timestamp === false) {
+        return null;
+    }
+
+    return (int) $timestamp;
+}
+
+function advance_customer_orders_to_ongoing_by_receiving_schedule($orders, &$didAdvance = false, $nowTimestamp = null, &$advancedOrders = null)
+{
+    $didAdvance = false;
+
+    if (!is_array($advancedOrders)) {
+        $advancedOrders = [];
+    }
+
+    if (!is_array($orders)) {
+        return [];
+    }
+
+    $currentTimestamp = is_int($nowTimestamp) ? $nowTimestamp : time();
+
+    foreach ($orders as $index => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+        if ($statusToken !== 'approved') {
+            continue;
+        }
+
+        $receivingTimestamp = customer_order_receiving_timestamp($record);
+
+        if ($receivingTimestamp === null || $receivingTimestamp > $currentTimestamp) {
+            continue;
+        }
+
+        $record['status'] = 'ongoing';
+        $record['cancel_reason'] = '';
+        $record['canceled_by'] = '';
+        $normalizedRecord = normalize_customer_order_record($record);
+        $orders[$index] = $normalizedRecord;
+        $advancedOrders[] = $normalizedRecord;
+        $didAdvance = true;
+    }
+
+    return $orders;
+}
+
 function normalize_customer_order_payment_method($value)
 {
     $method = strtolower(trim((string) $value));
@@ -467,6 +640,34 @@ function load_customer_orders_repository()
         }
     }
 
+    $didAdvanceOrders = false;
+    $advancedOrders = [];
+    $orders = advance_customer_orders_to_ongoing_by_receiving_schedule($orders, $didAdvanceOrders, null, $advancedOrders);
+
+    if ($didAdvanceOrders) {
+        save_customer_orders_repository($orders);
+
+        if (!function_exists('append_customer_order_status_notification')) {
+            require_once __DIR__ . '/customer_notifications_repository.php';
+        }
+
+        if (function_exists('append_customer_order_status_notification')) {
+            foreach ($advancedOrders as $advancedOrder) {
+                if (!is_array($advancedOrder)) {
+                    continue;
+                }
+
+                append_customer_order_status_notification(
+                    (string) ($advancedOrder['customer_id'] ?? ''),
+                    (string) ($advancedOrder['id'] ?? ''),
+                    normalize_customer_order_status_token($advancedOrder['status'] ?? 'pending'),
+                    (string) ($advancedOrder['status'] ?? ''),
+                    ''
+                );
+            }
+        }
+    }
+
     return $orders;
 }
 
@@ -674,8 +875,16 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
 
     $payload = is_array($orderPayload) ? $orderPayload : [];
     $items = normalize_customer_order_items($payload['items'] ?? []);
+    $receiveDate = normalize_customer_order_date($payload['receiveDate'] ?? '');
+    $receiveTime = normalize_customer_order_time($payload['receiveTime'] ?? '');
+    $returnDate = normalize_customer_order_date($payload['returnDate'] ?? '');
+    $returnTime = normalize_customer_order_time($payload['returnTime'] ?? '');
 
     if ($items === []) {
+        return null;
+    }
+
+    if (!customer_order_is_valid_receiving_schedule($receiveDate, $receiveTime)) {
         return null;
     }
 
@@ -688,10 +897,10 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
         'customer_email' => trim((string) $customerEmail),
         'status' => 'pending',
         'items' => $items,
-        'receive_date' => $payload['receiveDate'] ?? '',
-        'receive_time' => $payload['receiveTime'] ?? '',
-        'return_date' => $payload['returnDate'] ?? '',
-        'return_time' => $payload['returnTime'] ?? '',
+        'receive_date' => $receiveDate,
+        'receive_time' => $receiveTime,
+        'return_date' => $returnDate,
+        'return_time' => $returnTime,
         'place' => $payload['place'] ?? '',
         'receiving_method' => $payload['receivingMethod'] ?? '',
         'returning_method' => $payload['returningMethod'] ?? '',
@@ -787,6 +996,12 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
 
         // During receipt review, admin can only approve, reject, or refund.
         if ($isWaitingForPaymentReview && !in_array($requestedStatusToken, ['approved', 'rejected', 'refunded'], true)) {
+            return null;
+        }
+
+        // After payment approval, only cancellation is allowed manually.
+        // Transition to ongoing is automatic at receiving date/time.
+        if ($currentStatusToken === 'approved' && $requestedStatusToken !== 'canceled') {
             return null;
         }
 

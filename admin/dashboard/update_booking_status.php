@@ -83,6 +83,11 @@ if ($isWaitingForPaymentReview && !in_array($nextStatusToken, ['approved', 'reje
     exit;
 }
 
+if ($currentStatusToken === 'approved' && $nextStatusToken !== 'canceled') {
+    header('Location: ' . $redirectTarget);
+    exit;
+}
+
 $updatedOrder = update_customer_order_status_by_id(
     $orderId,
     $nextStatus,
