@@ -1045,11 +1045,9 @@ document.addEventListener("DOMContentLoaded", function () {
         setAllAdminNotificationBadgeCounts(unreadCount);
 
         if (bookingsPanelActive) {
-            if (latestOrderId !== "" && latestOrderId !== adminLiveLastOrderId) {
-                shouldReloadBookings = true;
-            }
-
-            if (ordersSignature !== "" && adminLiveLastOrdersSignature !== "" && ordersSignature !== adminLiveLastOrdersSignature) {
+            if (ordersSignature !== "" && adminLiveLastOrdersSignature !== "") {
+                shouldReloadBookings = ordersSignature !== adminLiveLastOrdersSignature;
+            } else if (latestOrderId !== "" && adminLiveLastOrderId !== "" && latestOrderId !== adminLiveLastOrderId) {
                 shouldReloadBookings = true;
             }
         }

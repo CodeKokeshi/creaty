@@ -183,6 +183,8 @@ function normalize_customer_order_status_token($value)
 
     if ($status === 'confirmed') {
         $status = 'approved';
+    } elseif ($status === 'for-return') {
+        $status = 'return';
     } elseif ($status === 'past-return') {
         $status = 'return';
     } elseif (in_array($status, customer_order_returned_early_status_aliases(), true)) {
