@@ -61,6 +61,11 @@ if ($isAdminView) {
 }
 
 require __DIR__ . '/config/products_repository.php';
+
+if (!$isAdminView) {
+    require_once __DIR__ . '/config/customer_orders_repository.php';
+}
+
 $products = load_products_repository();
 $productBrandOptions = load_product_brands_repository();
 $productBrandValueMap = product_brand_value_map($productBrandOptions);
@@ -326,6 +331,14 @@ if (!$selectedInformationImages) {
 
 $selectedInformationImages = array_values($selectedInformationImages);
 $productListPath = $homePath . '#featured-products-title';
+$equipmentAvailability = [];
+
+if (!$isAdminView && function_exists('customer_order_build_equipment_availability_payload')) {
+    $equipmentAvailability = customer_order_build_equipment_availability_payload([
+        'product_key_filter' => [$productKey],
+        'horizon_days' => 1095,
+    ]);
+}
 ?>
 
 <!DOCTYPE html>
@@ -338,7 +351,7 @@ $productListPath = $homePath . '#featured-products-title';
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260325-1">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260408-6">
 </head>
 <body class="product-page">
     <header class="site-header">
@@ -1592,9 +1605,13 @@ $productListPath = $homePath . '#featured-products-title';
 
     <?php if (!$isAdminView): ?>
         <?php require __DIR__ . '/customer_message_modal.php'; ?>
+
+        <script>
+            window.__creatyEquipmentAvailability = <?php echo json_encode($equipmentAvailability, JSON_UNESCAPED_SLASHES); ?>;
+        </script>
     <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-3"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260408-6"></script>
 </body>
 </html>

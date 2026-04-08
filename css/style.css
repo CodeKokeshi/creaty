@@ -3558,6 +3558,116 @@ button {
     grid-template-columns: minmax(186px, 1.45fr) minmax(0, 1fr);
 }
 
+.cart-receive-date-display {
+    min-height: 46px;
+    border: 1px solid rgba(17, 18, 20, 0.08);
+    border-radius: 12px;
+    background: var(--cart-field-bg);
+    color: #111214;
+    display: flex;
+    align-items: center;
+    padding: 0 0.85rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+}
+
+.cart-receive-date-display.is-empty {
+    color: rgba(17, 18, 20, 0.54);
+}
+
+.cart-receive-date-display.is-selected {
+    background: #ece3a9;
+    border-color: rgba(17, 18, 20, 0.18);
+    color: #111214;
+    font-weight: 700;
+}
+
+.cart-receive-calendar {
+    margin-top: 0.72rem;
+    padding: 0.72rem;
+    border: 1px solid var(--cart-panel-line);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    display: grid;
+    gap: 0.55rem;
+}
+
+.cart-receive-calendar-head {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 34px;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.cart-receive-calendar-title {
+    margin: 0;
+    text-align: center;
+    color: var(--cart-accent);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.cart-receive-calendar-nav {
+    width: 34px;
+    min-height: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #f4f4f4;
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.cart-receive-calendar-nav:hover,
+.cart-receive-calendar-nav:focus-visible {
+    border-color: rgba(236, 227, 169, 0.56);
+    background: rgba(236, 227, 169, 0.14);
+}
+
+.cart-receive-calendar-nav:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+    border-color: rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.cart-receive-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.34rem;
+}
+
+.cart-receive-calendar-day-name {
+    min-height: 28px;
+    display: grid;
+    place-items: center;
+    color: rgba(244, 244, 244, 0.68);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.cart-receive-calendar-grid .date-calendar-cell {
+    min-height: 32px;
+    border-radius: 9px;
+    font-size: 0.78rem;
+}
+
+.cart-receive-calendar-grid .date-calendar-day {
+    border-width: 1px;
+}
+
+.cart-receive-calendar-note {
+    margin: 0;
+    color: #ffd7d7;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
 .cart-inline-fields > * {
     min-width: 0;
 }
@@ -3958,9 +4068,15 @@ button {
     font-weight: 700;
 }
 
+.calendar-date.is-unavailable {
+    background: #b24545;
+    color: #fef0f0;
+    font-weight: 700;
+}
+
 .calendar-date.is-past {
-    background: rgba(153, 56, 56, 0.3);
-    color: #7f2f2f;
+    background: #9c3c3c;
+    color: #ffe5e5;
     font-weight: 700;
 }
 
@@ -5348,20 +5464,32 @@ button {
 }
 
 .date-calendar-day.is-unavailable {
-    background: rgba(17, 18, 20, 0.08);
-    color: rgba(17, 18, 20, 0.42);
+    background: #b24545;
+    border-color: #8f3232;
+    color: #fef0f0;
     cursor: not-allowed;
 }
 
 .date-calendar-day.is-past {
-    background: rgba(153, 56, 56, 0.3);
-    border-color: rgba(103, 34, 34, 0.62);
-    color: #7f2f2f;
+    background: #9c3c3c;
+    border-color: #7f2f2f;
+    color: #ffe5e5;
     cursor: not-allowed;
 }
 
 .date-calendar-day.is-selected {
-    box-shadow: 0 0 0 2px #111214 inset;
+    background: #ece3a9;
+    border-color: #c4b450;
+    color: #111214;
+    box-shadow: 0 0 0 1px rgba(17, 18, 20, 0.2) inset;
+}
+
+.date-calendar-day.is-available.is-selected:hover,
+.date-calendar-day.is-available.is-selected:focus-visible {
+    background: #f2eab9;
+    border-color: #cbbc63;
+    color: #111214;
+    filter: none;
 }
 
 .date-calendar-day.is-available:hover,
@@ -7442,7 +7570,8 @@ button {
     }
 
     .cart-booking-card input[type="date"],
-    .cart-booking-card select {
+    .cart-booking-card select,
+    .cart-receive-date-display {
         font-size: 1rem;
     }
 

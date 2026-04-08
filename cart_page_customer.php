@@ -57,6 +57,9 @@ if (is_array($eventPackagesRepository)) {
 }
 
 $availableCartItemIds = array_values(array_unique($availableCartItemIds));
+$equipmentAvailability = customer_order_build_equipment_availability_payload([
+    'horizon_days' => 1095,
+]);
 $orderSubmitEndpoint = $assetBase . 'customer_order_submit.php';
 $orderCancelEndpoint = $assetBase . 'customer_order_cancel.php';
 $orderReceiptUploadEndpoint = $assetBase . 'customer_order_upload_receipt.php';
@@ -110,7 +113,7 @@ if ($isCustomerLoggedIn) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260408-3">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260408-6">
 </head>
 <body class="cart-page">
     <header class="site-header">
@@ -446,7 +449,8 @@ if ($isCustomerLoggedIn) {
                     <div class="cart-booking-group">
                         <h2>Receiving Date/Time:</h2>
                         <div class="cart-inline-fields">
-                            <input type="date" data-booking-field="receiveDate">
+                            <input type="date" data-booking-field="receiveDate" hidden aria-hidden="true" tabindex="-1">
+                            <div class="cart-receive-date-display" data-receive-date-display>Select a receiving date</div>
                             <select data-booking-field="receiveTime">
                                 <option value="08:00">08:00 AM</option>
                                 <option value="09:00">09:00 AM</option>
@@ -459,6 +463,16 @@ if ($isCustomerLoggedIn) {
                                 <option value="16:00">04:00 PM</option>
                                 <option value="17:00">05:00 PM</option>
                             </select>
+                        </div>
+
+                        <div class="cart-receive-calendar" data-receive-date-calendar>
+                            <div class="cart-receive-calendar-head">
+                                <button type="button" class="cart-receive-calendar-nav" data-receive-calendar-nav="prev" aria-label="Previous month">&#10094;</button>
+                                <p class="cart-receive-calendar-title" data-receive-calendar-title>Receiving Date</p>
+                                <button type="button" class="cart-receive-calendar-nav" data-receive-calendar-nav="next" aria-label="Next month">&#10095;</button>
+                            </div>
+                            <div class="cart-receive-calendar-grid" data-receive-calendar-grid></div>
+                            <p class="cart-receive-calendar-note" data-receive-calendar-note hidden>No available receiving dates in the current window for your selected items.</p>
                         </div>
 
                         <label class="cart-form-line">
@@ -701,9 +715,10 @@ if ($isCustomerLoggedIn) {
         window.__creatyCustomerInitialView = <?php echo json_encode($initialCartView, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyGcashPaymentInfo = <?php echo json_encode($gcashPaymentInfo, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerGcashInfo = <?php echo json_encode($customerGcashInfo, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyEquipmentAvailability = <?php echo json_encode($equipmentAvailability, JSON_UNESCAPED_SLASHES); ?>;
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260408-2"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260408-6"></script>
 </body>
 </html>

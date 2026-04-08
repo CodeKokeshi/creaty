@@ -480,14 +480,624 @@ function normalize_customer_order_items($items)
             $days = 1;
         }
 
-        $normalized[] = [
+        $itemId = trim((string) ($item['item_id'] ?? $item['itemId'] ?? $item['id'] ?? ''));
+        $itemType = normalize_customer_order_item_type($item['item_type'] ?? $item['itemType'] ?? $item['type'] ?? '');
+        $productKey = normalize_customer_order_product_key($item['product_key'] ?? $item['productKey'] ?? '');
+
+        if ($productKey === '') {
+            $productKey = customer_order_extract_product_key_from_item_id($itemId);
+        }
+
+        $normalizedItem = [
             'name' => $name,
             'qty' => $qty,
             'days' => $days,
         ];
+
+        if ($itemId !== '') {
+            $normalizedItem['item_id'] = $itemId;
+        }
+
+        if ($itemType !== '') {
+            $normalizedItem['item_type'] = $itemType;
+        }
+
+        if ($productKey !== '') {
+            $normalizedItem['product_key'] = $productKey;
+        }
+
+        $normalized[] = $normalizedItem;
     }
 
     return $normalized;
+}
+
+function normalize_customer_order_item_type($value)
+{
+    $type = strtolower(trim((string) $value));
+    $type = preg_replace('/[^a-z0-9-]+/', '-', $type) ?? $type;
+    $type = trim((string) $type, '-');
+
+    return $type;
+}
+
+function normalize_customer_order_product_key($value)
+{
+    $key = strtolower(trim((string) $value));
+    $key = preg_replace('/[^a-z0-9-]+/', '-', $key) ?? $key;
+    $key = trim((string) $key, '-');
+
+    return $key;
+}
+
+function customer_order_extract_product_key_from_item_id($itemId)
+{
+    $value = strtolower(trim((string) $itemId));
+
+    if (strpos($value, 'camera-') !== 0) {
+        return '';
+    }
+
+    return normalize_customer_order_product_key(substr($value, 7));
+}
+
+function customer_order_normalize_lookup_label($value)
+{
+    $label = strtolower(trim((string) $value));
+    $label = preg_replace('/\s+/', ' ', $label) ?? $label;
+
+    return trim((string) $label);
+}
+
+function customer_order_load_products_for_availability()
+{
+    if (!function_exists('load_products_repository')) {
+        require_once __DIR__ . '/products_repository.php';
+    }
+
+    $products = load_products_repository();
+
+    return is_array($products) ? $products : [];
+}
+
+function customer_order_load_inventory_for_availability()
+{
+    if (!function_exists('load_equipment_inventory_repository')) {
+        require_once __DIR__ . '/equipment_inventory_repository.php';
+    }
+
+    $inventory = load_equipment_inventory_repository();
+
+    return is_array($inventory) ? $inventory : [];
+}
+
+function customer_order_product_name_lookup_map($products)
+{
+    $lookup = [];
+
+    foreach ($products as $productKey => $product) {
+        if (!is_string($productKey) || trim($productKey) === '' || !is_array($product)) {
+            continue;
+        }
+
+        $normalizedKey = normalize_customer_order_product_key($productKey);
+        if ($normalizedKey === '') {
+            continue;
+        }
+
+        $brand = trim((string) ($product['brand'] ?? ''));
+        $name = trim((string) ($product['name'] ?? ''));
+        $label = customer_order_normalize_lookup_label($brand . ' ' . $name);
+
+        if ($label !== '' && !isset($lookup[$label])) {
+            $lookup[$label] = $normalizedKey;
+        }
+
+        $nameOnly = customer_order_normalize_lookup_label($name);
+
+        if ($nameOnly !== '' && !isset($lookup[$nameOnly])) {
+            $lookup[$nameOnly] = $normalizedKey;
+        }
+    }
+
+    return $lookup;
+}
+
+function customer_order_resolve_item_product_key($item, $products, $nameLookup = null)
+{
+    if (!is_array($item)) {
+        return '';
+    }
+
+    $explicitKey = normalize_customer_order_product_key($item['product_key'] ?? $item['productKey'] ?? '');
+
+    if ($explicitKey !== '' && isset($products[$explicitKey]) && is_array($products[$explicitKey])) {
+        return $explicitKey;
+    }
+
+    $itemId = trim((string) ($item['item_id'] ?? $item['itemId'] ?? $item['id'] ?? ''));
+    $itemType = normalize_customer_order_item_type($item['item_type'] ?? $item['itemType'] ?? $item['type'] ?? '');
+    $productKeyFromId = customer_order_extract_product_key_from_item_id($itemId);
+
+    if ($productKeyFromId !== '' && isset($products[$productKeyFromId]) && is_array($products[$productKeyFromId])) {
+        return $productKeyFromId;
+    }
+
+    if ($itemType !== '' && $itemType !== 'camera') {
+        return '';
+    }
+
+    $lookup = is_array($nameLookup)
+        ? $nameLookup
+        : customer_order_product_name_lookup_map($products);
+
+    $nameKey = customer_order_normalize_lookup_label($item['name'] ?? '');
+
+    if ($nameKey === '' || !isset($lookup[$nameKey])) {
+        return '';
+    }
+
+    return normalize_customer_order_product_key($lookup[$nameKey]);
+}
+
+function customer_order_extract_camera_item_requirements($items, $products, $nameLookup = null)
+{
+    if (!is_array($items) || !is_array($products) || !$products) {
+        return [];
+    }
+
+    $lookup = is_array($nameLookup)
+        ? $nameLookup
+        : customer_order_product_name_lookup_map($products);
+    $requirements = [];
+
+    foreach ($items as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $productKey = customer_order_resolve_item_product_key($item, $products, $lookup);
+
+        if ($productKey === '') {
+            continue;
+        }
+
+        $qty = (int) ($item['qty'] ?? 1);
+        $days = (int) ($item['days'] ?? 1);
+
+        if ($qty < 1) {
+            $qty = 1;
+        }
+
+        if ($days < 1) {
+            $days = 1;
+        }
+
+        if (!isset($requirements[$productKey])) {
+            $requirements[$productKey] = [
+                'qty' => 0,
+                'days' => 0,
+            ];
+        }
+
+        $requirements[$productKey]['qty'] += $qty;
+        $requirements[$productKey]['days'] = max(
+            (int) ($requirements[$productKey]['days'] ?? 0),
+            $days
+        );
+    }
+
+    foreach ($requirements as $productKey => $entry) {
+        $requirements[$productKey]['qty'] = max(1, (int) ($entry['qty'] ?? 1));
+        $requirements[$productKey]['days'] = max(1, (int) ($entry['days'] ?? 1));
+    }
+
+    return $requirements;
+}
+
+function customer_order_occupancy_status_tokens()
+{
+    return ['pending', 'approved', 'ongoing', 'return'];
+}
+
+function customer_order_record_occupies_inventory($record)
+{
+    if (!is_array($record)) {
+        return false;
+    }
+
+    $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+
+    return in_array($statusToken, customer_order_occupancy_status_tokens(), true);
+}
+
+function customer_order_normalize_equipment_status_token($value)
+{
+    if (function_exists('normalize_equipment_status_token')) {
+        return normalize_equipment_status_token($value);
+    }
+
+    $status = strtolower(trim((string) $value));
+    $status = preg_replace('/[^a-z0-9-]+/', '-', $status) ?? $status;
+    $status = trim((string) $status, '-');
+
+    return $status;
+}
+
+function customer_order_unit_counts_for_capacity($unit)
+{
+    if (!is_array($unit)) {
+        return false;
+    }
+
+    $statusToken = customer_order_normalize_equipment_status_token($unit['status'] ?? 'available');
+
+    return $statusToken !== 'retired';
+}
+
+function customer_order_product_capacity_map($products, $inventory)
+{
+    $capacities = [];
+
+    foreach ($products as $productKey => $product) {
+        if (!is_string($productKey) || trim($productKey) === '' || !is_array($product)) {
+            continue;
+        }
+
+        $normalizedKey = normalize_customer_order_product_key($productKey);
+        if ($normalizedKey === '') {
+            continue;
+        }
+
+        $capacity = 1;
+
+        if (isset($inventory[$normalizedKey]) && is_array($inventory[$normalizedKey])) {
+            $units = is_array($inventory[$normalizedKey]['units'] ?? null)
+                ? $inventory[$normalizedKey]['units']
+                : [];
+
+            $activeUnitCount = 0;
+
+            foreach ($units as $unit) {
+                if (!customer_order_unit_counts_for_capacity($unit)) {
+                    continue;
+                }
+
+                $activeUnitCount++;
+            }
+
+            $capacity = $activeUnitCount;
+        }
+
+        $capacities[$normalizedKey] = max(0, (int) $capacity);
+    }
+
+    return $capacities;
+}
+
+function customer_order_schedule_timestamp($receiveDateValue, $receiveTimeValue)
+{
+    $receiveDate = normalize_customer_order_date($receiveDateValue);
+    $receiveTime = normalize_customer_order_time($receiveTimeValue);
+
+    if ($receiveDate === '' || $receiveTime === '' || !customer_order_is_valid_booking_time_slot($receiveTime)) {
+        return null;
+    }
+
+    $timestamp = strtotime($receiveDate . ' ' . $receiveTime);
+
+    if ($timestamp === false) {
+        return null;
+    }
+
+    return (int) $timestamp;
+}
+
+function customer_order_build_camera_reservation_intervals($orders, $products, $nameLookup = null)
+{
+    if (!is_array($orders) || !is_array($products) || !$products) {
+        return [];
+    }
+
+    $lookup = is_array($nameLookup)
+        ? $nameLookup
+        : customer_order_product_name_lookup_map($products);
+    $intervals = [];
+
+    foreach ($orders as $record) {
+        if (!is_array($record) || !customer_order_record_occupies_inventory($record)) {
+            continue;
+        }
+
+        $startTimestamp = customer_order_schedule_timestamp($record['receive_date'] ?? '', $record['receive_time'] ?? '');
+
+        if ($startTimestamp === null) {
+            continue;
+        }
+
+        $returnTimestamp = customer_order_schedule_timestamp($record['return_date'] ?? '', $record['return_time'] ?? '');
+        $orderDurationDays = null;
+
+        if ($returnTimestamp !== null && $returnTimestamp > $startTimestamp) {
+            $orderDurationDays = (int) ceil(($returnTimestamp - $startTimestamp) / 86400);
+
+            if ($orderDurationDays < 1) {
+                $orderDurationDays = 1;
+            }
+        }
+
+        $requirements = customer_order_extract_camera_item_requirements($record['items'] ?? [], $products, $lookup);
+
+        if ($requirements === []) {
+            continue;
+        }
+
+        foreach ($requirements as $productKey => $requirement) {
+            $qty = max(1, (int) ($requirement['qty'] ?? 1));
+            $days = max(1, (int) ($requirement['days'] ?? 1));
+
+            if ($orderDurationDays !== null) {
+                $days = max($days, $orderDurationDays);
+            }
+
+            $intervals[] = [
+                'order_id' => (string) ($record['id'] ?? ''),
+                'product_key' => $productKey,
+                'qty' => $qty,
+                'days' => $days,
+                'start_ts' => $startTimestamp,
+                'end_ts' => $startTimestamp + ($days * 86400),
+                'status_token' => normalize_customer_order_status_token($record['status'] ?? 'pending'),
+            ];
+        }
+    }
+
+    return $intervals;
+}
+
+function customer_order_group_intervals_by_product($intervals)
+{
+    $grouped = [];
+
+    foreach ((array) $intervals as $interval) {
+        if (!is_array($interval)) {
+            continue;
+        }
+
+        $productKey = normalize_customer_order_product_key($interval['product_key'] ?? '');
+
+        if ($productKey === '') {
+            continue;
+        }
+
+        if (!isset($grouped[$productKey])) {
+            $grouped[$productKey] = [];
+        }
+
+        $grouped[$productKey][] = $interval;
+    }
+
+    return $grouped;
+}
+
+function customer_order_product_label_by_key($products, $productKey)
+{
+    $normalizedKey = normalize_customer_order_product_key($productKey);
+
+    if ($normalizedKey === '' || !isset($products[$normalizedKey]) || !is_array($products[$normalizedKey])) {
+        return '';
+    }
+
+    $product = $products[$normalizedKey];
+    $brand = trim((string) ($product['brand'] ?? ''));
+    $name = trim((string) ($product['name'] ?? ''));
+
+    return trim($brand . ' ' . $name);
+}
+
+function customer_order_requirements_fit_schedule($requirements, $scheduleTimestamp, $intervalsByProduct, $capacityMap, $excludeOrderId = '', &$failureDetails = null)
+{
+    $excludeId = trim((string) $excludeOrderId);
+    $failureDetails = [];
+
+    foreach ((array) $requirements as $productKey => $entry) {
+        $normalizedKey = normalize_customer_order_product_key($productKey);
+        $requiredQty = max(1, (int) ($entry['qty'] ?? 1));
+        $requiredDays = max(1, (int) ($entry['days'] ?? 1));
+        $capacity = max(0, (int) ($capacityMap[$normalizedKey] ?? 0));
+
+        if ($requiredQty > $capacity) {
+            $failureDetails = [
+                'product_key' => $normalizedKey,
+                'required_qty' => $requiredQty,
+                'occupied_qty' => 0,
+                'capacity' => $capacity,
+            ];
+
+            return false;
+        }
+
+        $candidateEnd = $scheduleTimestamp + ($requiredDays * 86400);
+        $occupiedQty = 0;
+        $activeIntervals = isset($intervalsByProduct[$normalizedKey]) && is_array($intervalsByProduct[$normalizedKey])
+            ? $intervalsByProduct[$normalizedKey]
+            : [];
+
+        foreach ($activeIntervals as $interval) {
+            if (!is_array($interval)) {
+                continue;
+            }
+
+            $intervalOrderId = trim((string) ($interval['order_id'] ?? ''));
+
+            if ($excludeId !== '' && $intervalOrderId !== '' && $intervalOrderId === $excludeId) {
+                continue;
+            }
+
+            $existingStart = (int) ($interval['start_ts'] ?? 0);
+            $existingEnd = (int) ($interval['end_ts'] ?? 0);
+
+            if ($scheduleTimestamp >= $existingEnd || $candidateEnd <= $existingStart) {
+                continue;
+            }
+
+            $occupiedQty += max(1, (int) ($interval['qty'] ?? 1));
+        }
+
+        if (($occupiedQty + $requiredQty) > $capacity) {
+            $failureDetails = [
+                'product_key' => $normalizedKey,
+                'required_qty' => $requiredQty,
+                'occupied_qty' => $occupiedQty,
+                'capacity' => $capacity,
+            ];
+
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function customer_order_validate_camera_schedule_availability($items, $receiveDate, $receiveTime, $orders = null, &$errorMessage = '', $excludeOrderId = '')
+{
+    $errorMessage = '';
+    $scheduleTimestamp = customer_order_schedule_timestamp($receiveDate, $receiveTime);
+
+    if ($scheduleTimestamp === null) {
+        $errorMessage = 'Invalid receiving date/time selected.';
+        return false;
+    }
+
+    $products = customer_order_load_products_for_availability();
+    $nameLookup = customer_order_product_name_lookup_map($products);
+    $requirements = customer_order_extract_camera_item_requirements($items, $products, $nameLookup);
+
+    // Non-camera orders are not constrained by camera unit occupancy.
+    if ($requirements === []) {
+        return true;
+    }
+
+    $inventory = customer_order_load_inventory_for_availability();
+    $capacityMap = customer_order_product_capacity_map($products, $inventory);
+    $orderRecords = is_array($orders) ? $orders : load_customer_orders_repository();
+    $intervals = customer_order_build_camera_reservation_intervals($orderRecords, $products, $nameLookup);
+    $intervalsByProduct = customer_order_group_intervals_by_product($intervals);
+    $failure = [];
+
+    if (!customer_order_requirements_fit_schedule($requirements, $scheduleTimestamp, $intervalsByProduct, $capacityMap, $excludeOrderId, $failure)) {
+        $failedProductKey = normalize_customer_order_product_key($failure['product_key'] ?? '');
+        $productLabel = customer_order_product_label_by_key($products, $failedProductKey);
+
+        if ($productLabel !== '') {
+            $errorMessage = 'Selected receiving schedule is occupied for ' . $productLabel . '.';
+        } else {
+            $errorMessage = 'Selected receiving schedule is occupied for one or more items.';
+        }
+
+        return false;
+    }
+
+    return true;
+}
+
+function customer_order_build_equipment_availability_payload($options = [])
+{
+    $settings = is_array($options) ? $options : [];
+    $allProducts = customer_order_load_products_for_availability();
+    $inventory = customer_order_load_inventory_for_availability();
+    $filterSource = $settings['product_key_filter'] ?? [];
+    $filteredKeys = [];
+
+    if (is_string($filterSource)) {
+        $filterSource = [$filterSource];
+    }
+
+    foreach ((array) $filterSource as $candidateKey) {
+        $normalizedKey = normalize_customer_order_product_key($candidateKey);
+
+        if ($normalizedKey === '') {
+            continue;
+        }
+
+        $filteredKeys[$normalizedKey] = true;
+    }
+
+    $selectedProducts = [];
+
+    foreach ($allProducts as $productKey => $product) {
+        if (!is_string($productKey) || trim($productKey) === '' || !is_array($product)) {
+            continue;
+        }
+
+        $normalizedKey = normalize_customer_order_product_key($productKey);
+
+        if ($normalizedKey === '') {
+            continue;
+        }
+
+        if ($filteredKeys && !isset($filteredKeys[$normalizedKey])) {
+            continue;
+        }
+
+        $selectedProducts[$normalizedKey] = $product;
+    }
+
+    $nameLookup = customer_order_product_name_lookup_map($allProducts);
+    $capacityMap = customer_order_product_capacity_map($selectedProducts, $inventory);
+    $orders = load_customer_orders_repository();
+    $intervals = customer_order_build_camera_reservation_intervals($orders, $allProducts, $nameLookup);
+    $reservationsPayload = [];
+    $productsPayload = [];
+    $horizonDays = max(30, min(1095, (int) ($settings['horizon_days'] ?? 730)));
+
+    foreach ($selectedProducts as $productKey => $product) {
+        $productsPayload[$productKey] = [
+            'capacity' => max(0, (int) ($capacityMap[$productKey] ?? 0)),
+            'label' => customer_order_product_label_by_key($allProducts, $productKey),
+        ];
+    }
+
+    foreach ($intervals as $interval) {
+        if (!is_array($interval)) {
+            continue;
+        }
+
+        $productKey = normalize_customer_order_product_key($interval['product_key'] ?? '');
+
+        if ($productKey === '' || !isset($productsPayload[$productKey])) {
+            continue;
+        }
+
+        $startTimestamp = (int) ($interval['start_ts'] ?? 0);
+
+        if ($startTimestamp <= 0) {
+            continue;
+        }
+
+        $reservationsPayload[] = [
+            'orderId' => (string) ($interval['order_id'] ?? ''),
+            'productKey' => $productKey,
+            'qty' => max(1, (int) ($interval['qty'] ?? 1)),
+            'days' => max(1, (int) ($interval['days'] ?? 1)),
+            'startDate' => date('Y-m-d', $startTimestamp),
+            'startTime' => date('H:i', $startTimestamp),
+            'statusToken' => (string) ($interval['status_token'] ?? ''),
+        ];
+    }
+
+    return [
+        'generatedAt' => gmdate('c'),
+        'horizonDays' => $horizonDays,
+        'booking' => [
+            'openHour' => customer_order_booking_shop_open_hour(),
+            'closeHour' => customer_order_booking_shop_close_hour(),
+            'sameDayCutoffHour' => customer_order_booking_same_day_cutoff_hour(),
+            'leadHours' => customer_order_booking_lead_hours(),
+        ],
+        'products' => $productsPayload,
+        'reservations' => $reservationsPayload,
+    ];
 }
 
 function normalize_customer_order_record($record)
@@ -865,11 +1475,13 @@ function load_customer_orders_for_customer($customerId)
     return $filtered;
 }
 
-function append_customer_order_for_customer($customerId, $customerName, $customerEmail, $orderPayload)
+function append_customer_order_for_customer($customerId, $customerName, $customerEmail, $orderPayload, &$errorMessage = '')
 {
+    $errorMessage = '';
     $targetCustomerId = trim((string) $customerId);
 
     if ($targetCustomerId === '') {
+        $errorMessage = 'Please log in to place a booking.';
         return null;
     }
 
@@ -881,14 +1493,23 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
     $returnTime = normalize_customer_order_time($payload['returnTime'] ?? '');
 
     if ($items === []) {
+        $errorMessage = 'At least one item is required to create a booking.';
         return null;
     }
 
     if (!customer_order_is_valid_receiving_schedule($receiveDate, $receiveTime)) {
+        $errorMessage = 'Selected receiving date/time is invalid.';
         return null;
     }
 
     $allOrders = load_customer_orders_repository();
+
+    if (!customer_order_validate_camera_schedule_availability($items, $receiveDate, $receiveTime, $allOrders, $availabilityError)) {
+        $errorMessage = $availabilityError !== ''
+            ? $availabilityError
+            : 'Selected receiving schedule is occupied for one or more items.';
+        return null;
+    }
 
     $newOrder = normalize_customer_order_record([
         'id' => customer_order_generate_id(),

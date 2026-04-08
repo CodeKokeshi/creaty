@@ -6395,9 +6395,17 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
+                var normalizedItemId = String(itemId || "").toLowerCase().trim();
+                var productKey = "";
+
+                if (normalizedItemId.indexOf("camera-") === 0) {
+                    productKey = normalizedItemId.slice(7);
+                }
+
                 addOrUpdateCartItem({
                     id: itemId,
                     type: button.getAttribute("data-item-type") || "item",
+                    productKey: productKey,
                     name: button.getAttribute("data-item-name") || "Unnamed Item",
                     copy: button.getAttribute("data-item-copy") || "",
                     image: button.getAttribute("data-item-image") || "",
@@ -6437,6 +6445,12 @@ document.addEventListener("DOMContentLoaded", function () {
         var courierSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='courier']") : null;
         var placeSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='place']") : null;
         var receiveDateInput = bookingCard ? bookingCard.querySelector("[data-booking-field='receiveDate']") : null;
+        var receiveDateDisplay = bookingCard ? bookingCard.querySelector("[data-receive-date-display]") : null;
+        var receiveDateCalendar = bookingCard ? bookingCard.querySelector("[data-receive-date-calendar]") : null;
+        var receiveDateCalendarTitle = bookingCard ? bookingCard.querySelector("[data-receive-calendar-title]") : null;
+        var receiveDateCalendarGrid = bookingCard ? bookingCard.querySelector("[data-receive-calendar-grid]") : null;
+        var receiveDateCalendarNote = bookingCard ? bookingCard.querySelector("[data-receive-calendar-note]") : null;
+        var receiveDateCalendarNavButtons = bookingCard ? bookingCard.querySelectorAll("[data-receive-calendar-nav]") : [];
         var returnDateInput = bookingCard ? bookingCard.querySelector("[data-booking-field='returnDate']") : null;
         var receiveTimeSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='receiveTime']") : null;
         var returnTimeSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='returnTime']") : null;
@@ -6550,6 +6564,8 @@ document.addEventListener("DOMContentLoaded", function () {
             return set;
         }, {});
         var hasAvailabilitySnapshot = Object.keys(availableCartItemIdsSet).length > 0;
+        var receiveDateCalendarCursor = null;
+        var receiveCalendarWeekdays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
         function isUnavailableCartItem(item) {
             if (!item || !item.id || !hasAvailabilitySnapshot) {
@@ -7277,12 +7293,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     var qty = Number.parseInt(item.qty, 10);
                     var days = Number.parseInt(item.days, 10);
+                    var itemId = String(item.item_id || item.itemId || item.id || "").trim();
+                    var itemType = String(item.item_type || item.itemType || item.type || "").trim();
+                    var productKey = String(item.product_key || item.productKey || "").trim().toLowerCase();
 
-                    return {
+                    var normalizedItem = {
                         name: String(item.name || "Item"),
                         qty: Number.isFinite(qty) && qty > 0 ? qty : 1,
                         days: Number.isFinite(days) && days > 0 ? days : 1
                     };
+
+                    if (itemId) {
+                        normalizedItem.itemId = itemId;
+                    }
+
+                    if (itemType) {
+                        normalizedItem.itemType = itemType;
+                    }
+
+                    if (productKey) {
+                        normalizedItem.productKey = productKey;
+                    }
+
+                    return normalizedItem;
                 }).filter(function (item) {
                     return Boolean(item);
                 })
@@ -7935,16 +7968,39 @@ document.addEventListener("DOMContentLoaded", function () {
         function createPendingOrderRecord(items) {
             var booking = getBookingSnapshot();
             var source = Array.isArray(items) ? items : getCartItems();
+
+            if (!hasValidCurrentReceiveSchedule(source)) {
+                return null;
+            }
+
             var normalizedItems = source
                 .filter(function (item) {
                     return item && !isUnavailableCartItem(item);
                 })
                 .map(function (item) {
-                    return {
+                    var normalizedItem = {
                         name: String(item.name || "Item"),
                         qty: Number.isFinite(item.qty) && item.qty > 0 ? item.qty : 1,
                         days: Number.isFinite(item.days) && item.days > 0 ? item.days : 1
                     };
+
+                    var itemId = String(item.id || item.itemId || item.item_id || "").trim();
+                    var itemType = String(item.type || item.itemType || item.item_type || "").trim();
+                    var productKey = extractCameraProductKeyFromCartItem(item);
+
+                    if (itemId) {
+                        normalizedItem.itemId = itemId;
+                    }
+
+                    if (itemType) {
+                        normalizedItem.itemType = itemType;
+                    }
+
+                    if (productKey) {
+                        normalizedItem.productKey = productKey;
+                    }
+
+                    return normalizedItem;
                 });
 
             if (!normalizedItems.length) {
@@ -8588,10 +8644,311 @@ document.addEventListener("DOMContentLoaded", function () {
             return checked ? checked.value : fallbackValue;
         }
 
-        var cartBookingOpenHour = 8;
-        var cartBookingCloseHour = 17;
-        var cartBookingSameDayCutoffHour = 15;
-        var cartBookingLeadHours = 2;
+        function normalizeCartEquipmentAvailabilityPayload(rawValue) {
+            var source = rawValue && typeof rawValue === "object" ? rawValue : {};
+            var bookingSource = source.booking && typeof source.booking === "object"
+                ? source.booking
+                : {};
+            var productsSource = source.products && typeof source.products === "object"
+                ? source.products
+                : {};
+            var reservationsSource = Array.isArray(source.reservations) ? source.reservations : [];
+            var capacities = {};
+            var reservationsByProduct = {};
+            var horizonParsed = Number.parseInt(source.horizonDays, 10);
+            var horizonDays = Number.isFinite(horizonParsed) ? horizonParsed : 730;
+
+            function normalizeHour(value, fallbackValue) {
+                var parsedValue = Number.parseInt(value, 10);
+
+                if (!Number.isFinite(parsedValue)) {
+                    return fallbackValue;
+                }
+
+                return Math.max(0, Math.min(23, parsedValue));
+            }
+
+            var openHour = normalizeHour(bookingSource.openHour, 8);
+            var closeHour = normalizeHour(bookingSource.closeHour, 17);
+            var sameDayCutoffHour = normalizeHour(bookingSource.sameDayCutoffHour, 15);
+            var leadHoursParsed = Number.parseInt(bookingSource.leadHours, 10);
+            var leadHours = Number.isFinite(leadHoursParsed) && leadHoursParsed >= 0
+                ? leadHoursParsed
+                : 2;
+
+            if (closeHour < openHour) {
+                closeHour = openHour;
+            }
+
+            horizonDays = Math.max(30, Math.min(1095, horizonDays));
+
+            Object.keys(productsSource).forEach(function (productKeyRaw) {
+                var normalizedProductKey = String(productKeyRaw || "").trim().toLowerCase();
+                if (!normalizedProductKey) {
+                    return;
+                }
+
+                var productRecord = productsSource[productKeyRaw];
+                var capacityParsed = Number.parseInt(productRecord && productRecord.capacity, 10);
+                var capacity = Number.isFinite(capacityParsed) ? capacityParsed : 0;
+
+                capacities[normalizedProductKey] = Math.max(0, capacity);
+            });
+
+            reservationsSource.forEach(function (reservation) {
+                if (!reservation || typeof reservation !== "object") {
+                    return;
+                }
+
+                var productKey = String(reservation.productKey || "").trim().toLowerCase();
+                var qtyParsed = Number.parseInt(reservation.qty, 10);
+                var daysParsed = Number.parseInt(reservation.days, 10);
+                var qty = Number.isFinite(qtyParsed) && qtyParsed > 0 ? qtyParsed : 1;
+                var days = Number.isFinite(daysParsed) && daysParsed > 0 ? daysParsed : 1;
+                var startDate = String(reservation.startDate || "").trim();
+                var startTime = String(reservation.startTime || "").trim();
+                var startTimestamp = parseCartLocalScheduleTimestamp(startDate, startTime);
+
+                if (!productKey || !Number.isFinite(startTimestamp)) {
+                    return;
+                }
+
+                if (!reservationsByProduct[productKey]) {
+                    reservationsByProduct[productKey] = [];
+                }
+
+                reservationsByProduct[productKey].push({
+                    qty: qty,
+                    startTs: startTimestamp,
+                    endTs: startTimestamp + (days * 24 * 60 * 60 * 1000)
+                });
+            });
+
+            return {
+                booking: {
+                    openHour: openHour,
+                    closeHour: closeHour,
+                    sameDayCutoffHour: sameDayCutoffHour,
+                    leadHours: leadHours
+                },
+                capacities: capacities,
+                reservationsByProduct: reservationsByProduct,
+                horizonDays: horizonDays
+            };
+        }
+
+        function parseCartDateKey(dateKey) {
+            var normalized = String(dateKey || "").trim();
+            var matches = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+            if (!matches) {
+                return null;
+            }
+
+            var year = Number.parseInt(matches[1], 10);
+            var month = Number.parseInt(matches[2], 10);
+            var day = Number.parseInt(matches[3], 10);
+            var parsedDate = new Date(year, month - 1, day);
+
+            if (
+                Number.isNaN(parsedDate.getTime())
+                || parsedDate.getFullYear() !== year
+                || (parsedDate.getMonth() + 1) !== month
+                || parsedDate.getDate() !== day
+            ) {
+                return null;
+            }
+
+            return {
+                year: year,
+                month: month,
+                day: day
+            };
+        }
+
+        function parseCartLocalScheduleTimestamp(dateKey, timeValue) {
+            var dateParts = parseCartDateKey(dateKey);
+            var hour = parseCartBookingSlotHour(timeValue);
+
+            if (!dateParts || !Number.isFinite(hour)) {
+                return Number.NaN;
+            }
+
+            var parsedDate = new Date(dateParts.year, dateParts.month - 1, dateParts.day, hour, 0, 0, 0);
+
+            if (
+                Number.isNaN(parsedDate.getTime())
+                || parsedDate.getFullYear() !== dateParts.year
+                || (parsedDate.getMonth() + 1) !== dateParts.month
+                || parsedDate.getDate() !== dateParts.day
+                || parsedDate.getHours() !== hour
+            ) {
+                return Number.NaN;
+            }
+
+            return parsedDate.getTime();
+        }
+
+        function addDaysToDateKey(dateKey, dayOffset) {
+            var dateParts = parseCartDateKey(dateKey);
+
+            if (!dateParts) {
+                return "";
+            }
+
+            var shiftedDate = new Date(dateParts.year, dateParts.month - 1, dateParts.day + dayOffset);
+
+            if (Number.isNaN(shiftedDate.getTime())) {
+                return "";
+            }
+
+            return dateKeyFromDate(shiftedDate);
+        }
+
+        function dateFromCartDateKey(dateKey) {
+            var parts = parseCartDateKey(dateKey);
+
+            if (!parts) {
+                return null;
+            }
+
+            var parsedDate = new Date(parts.year, parts.month - 1, parts.day);
+
+            if (Number.isNaN(parsedDate.getTime())) {
+                return null;
+            }
+
+            return parsedDate;
+        }
+
+        function monthIndexFromDate(dateValue) {
+            if (!(dateValue instanceof Date) || Number.isNaN(dateValue.getTime())) {
+                return 0;
+            }
+
+            return (dateValue.getFullYear() * 12) + dateValue.getMonth();
+        }
+
+        function syncReceiveDateDisplay() {
+            if (!receiveDateDisplay || !receiveDateInput) {
+                return;
+            }
+
+            var selectedDate = String(receiveDateInput.value || "").trim();
+
+            if (!selectedDate) {
+                receiveDateDisplay.textContent = "Select a receiving date";
+                receiveDateDisplay.classList.add("is-empty");
+                receiveDateDisplay.classList.remove("is-selected");
+                return;
+            }
+
+            receiveDateDisplay.textContent = formatDateDisplay(selectedDate);
+            receiveDateDisplay.classList.remove("is-empty");
+            receiveDateDisplay.classList.add("is-selected");
+        }
+
+        function clampReceiveDateCalendarCursor(context) {
+            if (!(receiveDateCalendarCursor instanceof Date) || Number.isNaN(receiveDateCalendarCursor.getTime())) {
+                var minimumDateForCursor = dateFromCartDateKey(context.minimumDateKey);
+                receiveDateCalendarCursor = minimumDateForCursor
+                    ? new Date(minimumDateForCursor.getFullYear(), minimumDateForCursor.getMonth(), 1)
+                    : new Date();
+            }
+
+            var minimumDate = dateFromCartDateKey(context.minimumDateKey);
+
+            if (!minimumDate) {
+                return;
+            }
+
+            var minimumMonth = new Date(minimumDate.getFullYear(), minimumDate.getMonth(), 1);
+            var maximumDate = new Date(
+                minimumDate.getFullYear(),
+                minimumDate.getMonth(),
+                minimumDate.getDate() + cartBookingAvailabilityHorizonDays
+            );
+            var maximumMonth = new Date(maximumDate.getFullYear(), maximumDate.getMonth(), 1);
+            var cursorMonthIndex = monthIndexFromDate(receiveDateCalendarCursor);
+            var minimumMonthIndex = monthIndexFromDate(minimumMonth);
+            var maximumMonthIndex = monthIndexFromDate(maximumMonth);
+
+            if (cursorMonthIndex < minimumMonthIndex) {
+                receiveDateCalendarCursor = minimumMonth;
+                return;
+            }
+
+            if (cursorMonthIndex > maximumMonthIndex) {
+                receiveDateCalendarCursor = maximumMonth;
+            }
+        }
+
+        function updateReceiveDateCalendarNavState(context) {
+            if (!receiveDateCalendarNavButtons.length) {
+                return;
+            }
+
+            var minimumDate = dateFromCartDateKey(context.minimumDateKey);
+
+            if (!minimumDate) {
+                return;
+            }
+
+            var minimumMonthIndex = monthIndexFromDate(new Date(minimumDate.getFullYear(), minimumDate.getMonth(), 1));
+            var maximumDate = new Date(
+                minimumDate.getFullYear(),
+                minimumDate.getMonth(),
+                minimumDate.getDate() + cartBookingAvailabilityHorizonDays
+            );
+            var maximumMonthIndex = monthIndexFromDate(new Date(maximumDate.getFullYear(), maximumDate.getMonth(), 1));
+            var cursorMonthIndex = monthIndexFromDate(receiveDateCalendarCursor);
+
+            receiveDateCalendarNavButtons.forEach(function (button) {
+                var direction = String(button.getAttribute("data-receive-calendar-nav") || "").trim().toLowerCase();
+
+                if (direction === "prev") {
+                    button.disabled = cursorMonthIndex <= minimumMonthIndex;
+                    return;
+                }
+
+                if (direction === "next") {
+                    button.disabled = cursorMonthIndex >= maximumMonthIndex;
+                }
+            });
+        }
+
+        function extractCameraProductKeyFromCartItem(item) {
+            if (!item || typeof item !== "object") {
+                return "";
+            }
+
+            var itemType = String(item.type || item.itemType || item.item_type || "").trim().toLowerCase();
+
+            if (itemType && itemType !== "camera") {
+                return "";
+            }
+
+            var productKey = String(item.productKey || item.product_key || "").trim().toLowerCase();
+
+            if (!productKey) {
+                var itemId = String(item.id || item.itemId || item.item_id || "").trim().toLowerCase();
+
+                if (itemId.indexOf("camera-") === 0) {
+                    productKey = itemId.slice(7);
+                }
+            }
+
+            productKey = productKey.replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
+
+            return productKey;
+        }
+
+        var equipmentAvailability = normalizeCartEquipmentAvailabilityPayload(window.__creatyEquipmentAvailability);
+        var cartBookingOpenHour = equipmentAvailability.booking.openHour;
+        var cartBookingCloseHour = equipmentAvailability.booking.closeHour;
+        var cartBookingSameDayCutoffHour = equipmentAvailability.booking.sameDayCutoffHour;
+        var cartBookingLeadHours = equipmentAvailability.booking.leadHours;
+        var cartBookingAvailabilityHorizonDays = equipmentAvailability.horizonDays;
         var cartBookingTopHourReloadTimerId = null;
 
         function parseCartBookingSlotHour(timeValue) {
@@ -8610,6 +8967,285 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             return hour;
+        }
+
+        function buildCartCameraRequirements(sourceItems) {
+            var source = Array.isArray(sourceItems) ? sourceItems : getCartItems();
+            var requirements = {};
+
+            source.forEach(function (item) {
+                if (!item || isUnavailableCartItem(item)) {
+                    return;
+                }
+
+                var productKey = extractCameraProductKeyFromCartItem(item);
+
+                if (!productKey) {
+                    return;
+                }
+
+                var qtyParsed = Number.parseInt(item.qty, 10);
+                var daysParsed = Number.parseInt(item.days, 10);
+                var qty = Number.isFinite(qtyParsed) && qtyParsed > 0 ? qtyParsed : 1;
+                var days = Number.isFinite(daysParsed) && daysParsed > 0 ? daysParsed : 1;
+
+                if (!requirements[productKey]) {
+                    requirements[productKey] = {
+                        qty: 0,
+                        days: 0
+                    };
+                }
+
+                requirements[productKey].qty += qty;
+                requirements[productKey].days = Math.max(requirements[productKey].days, days);
+            });
+
+            return requirements;
+        }
+
+        function isCartSlotWithinPolicy(dateKey, slotHour, context) {
+            if (!Number.isFinite(slotHour)) {
+                return false;
+            }
+
+            if (slotHour < cartBookingOpenHour || slotHour > cartBookingCloseHour) {
+                return false;
+            }
+
+            if (!dateKey || dateKey < context.minimumDateKey) {
+                return false;
+            }
+
+            if (dateKey === context.todayKey && slotHour < context.sameDayMinimumHour) {
+                return false;
+            }
+
+            return true;
+        }
+
+        function isCartScheduleAvailableForRequirements(dateKey, timeValue, requirements) {
+            var startTimestamp = parseCartLocalScheduleTimestamp(dateKey, timeValue);
+
+            if (!Number.isFinite(startTimestamp)) {
+                return false;
+            }
+
+            var requirementKeys = Object.keys(requirements || {});
+
+            if (!requirementKeys.length) {
+                return true;
+            }
+
+            return requirementKeys.every(function (productKey) {
+                var requirement = requirements[productKey] || {};
+                var requiredQty = Number.parseInt(requirement.qty, 10);
+                var requiredDays = Number.parseInt(requirement.days, 10);
+
+                requiredQty = Number.isFinite(requiredQty) && requiredQty > 0 ? requiredQty : 1;
+                requiredDays = Number.isFinite(requiredDays) && requiredDays > 0 ? requiredDays : 1;
+
+                var capacityParsed = Number.parseInt(equipmentAvailability.capacities[productKey], 10);
+                var capacity = Number.isFinite(capacityParsed)
+                    ? Math.max(0, capacityParsed)
+                    : 1;
+
+                if (requiredQty > capacity) {
+                    return false;
+                }
+
+                var requiredEnd = startTimestamp + (requiredDays * 24 * 60 * 60 * 1000);
+                var occupiedQty = 0;
+                var intervals = Array.isArray(equipmentAvailability.reservationsByProduct[productKey])
+                    ? equipmentAvailability.reservationsByProduct[productKey]
+                    : [];
+
+                intervals.forEach(function (interval) {
+                    if (!interval || typeof interval !== "object") {
+                        return;
+                    }
+
+                    var intervalQtyParsed = Number.parseInt(interval.qty, 10);
+                    var intervalQty = Number.isFinite(intervalQtyParsed) && intervalQtyParsed > 0
+                        ? intervalQtyParsed
+                        : 1;
+                    var intervalStart = Number(interval.startTs);
+                    var intervalEnd = Number(interval.endTs);
+
+                    if (!Number.isFinite(intervalStart) || !Number.isFinite(intervalEnd)) {
+                        return;
+                    }
+
+                    if (startTimestamp >= intervalEnd || requiredEnd <= intervalStart) {
+                        return;
+                    }
+
+                    occupiedQty += intervalQty;
+                });
+
+                return (occupiedQty + requiredQty) <= capacity;
+            });
+        }
+
+        function getAvailableReceiveSlotsForDate(dateKey, requirements, context) {
+            if (!receiveTimeSelect) {
+                return [];
+            }
+
+            var slots = [];
+
+            Array.prototype.forEach.call(receiveTimeSelect.options, function (option) {
+                var slotHour = parseCartBookingSlotHour(option.value);
+
+                if (!isCartSlotWithinPolicy(dateKey, slotHour, context)) {
+                    return;
+                }
+
+                if (!isCartScheduleAvailableForRequirements(dateKey, option.value, requirements)) {
+                    return;
+                }
+
+                slots.push(option.value);
+            });
+
+            return slots;
+        }
+
+        function findNextAvailableReceiveSchedule(requirements, preferredDateKey, context) {
+            var startingDateKey = preferredDateKey && preferredDateKey >= context.minimumDateKey
+                ? preferredDateKey
+                : context.minimumDateKey;
+
+            var normalizedStartKey = addDaysToDateKey(startingDateKey, 0);
+
+            if (!normalizedStartKey) {
+                normalizedStartKey = addDaysToDateKey(context.minimumDateKey, 0);
+            }
+
+            if (!normalizedStartKey) {
+                return null;
+            }
+
+            for (var dayOffset = 0; dayOffset <= cartBookingAvailabilityHorizonDays; dayOffset += 1) {
+                var candidateDateKey = addDaysToDateKey(normalizedStartKey, dayOffset);
+
+                if (!candidateDateKey) {
+                    continue;
+                }
+
+                var availableSlots = getAvailableReceiveSlotsForDate(candidateDateKey, requirements, context);
+
+                if (!availableSlots.length) {
+                    continue;
+                }
+
+                return {
+                    dateKey: candidateDateKey,
+                    timeValue: availableSlots[0],
+                    slots: availableSlots
+                };
+            }
+
+            return null;
+        }
+
+        function renderReceiveDateCalendar(items) {
+            if (!receiveDateCalendarGrid || !receiveDateInput) {
+                syncReceiveDateDisplay();
+                return;
+            }
+
+            var context = getCartBookingContext();
+            var requirements = buildCartCameraRequirements(items);
+            var selectedDate = String(receiveDateInput.value || "").trim();
+            var minimumDate = dateFromCartDateKey(context.minimumDateKey);
+
+            if (!selectedDate || selectedDate < context.minimumDateKey) {
+                selectedDate = context.minimumDateKey;
+            }
+
+            if (!(receiveDateCalendarCursor instanceof Date) || Number.isNaN(receiveDateCalendarCursor.getTime())) {
+                var selectedDateObject = dateFromCartDateKey(selectedDate);
+                var seedDate = selectedDateObject || minimumDate || new Date();
+                receiveDateCalendarCursor = new Date(seedDate.getFullYear(), seedDate.getMonth(), 1);
+            }
+
+            clampReceiveDateCalendarCursor(context);
+
+            var monthLabelDate = new Date(
+                receiveDateCalendarCursor.getFullYear(),
+                receiveDateCalendarCursor.getMonth(),
+                1
+            );
+
+            if (receiveDateCalendarTitle) {
+                receiveDateCalendarTitle.textContent = monthLabelDate.toLocaleDateString("en-US", {
+                    month: "long",
+                    year: "numeric"
+                });
+            }
+
+            receiveDateCalendarGrid.innerHTML = "";
+
+            receiveCalendarWeekdays.forEach(function (weekdayLabel) {
+                var weekdayNode = document.createElement("span");
+                weekdayNode.className = "cart-receive-calendar-day-name";
+                weekdayNode.textContent = weekdayLabel;
+                receiveDateCalendarGrid.appendChild(weekdayNode);
+            });
+
+            var year = receiveDateCalendarCursor.getFullYear();
+            var month = receiveDateCalendarCursor.getMonth();
+            var firstWeekday = new Date(year, month, 1).getDay();
+            var daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            for (var leadingIndex = 0; leadingIndex < firstWeekday; leadingIndex += 1) {
+                var leadingNode = document.createElement("span");
+                leadingNode.className = "date-calendar-cell is-empty";
+                leadingNode.setAttribute("aria-hidden", "true");
+                receiveDateCalendarGrid.appendChild(leadingNode);
+            }
+
+            for (var day = 1; day <= daysInMonth; day += 1) {
+                var dayDate = new Date(year, month, day);
+                var dateKey = dateKeyFromDate(dayDate);
+                var availableSlots = getAvailableReceiveSlotsForDate(dateKey, requirements, context);
+                var isAvailable = availableSlots.length > 0;
+                var isPastOrBlocked = dateKey < context.minimumDateKey;
+                var dayButton = document.createElement("button");
+
+                dayButton.type = "button";
+                dayButton.className = "date-calendar-cell date-calendar-day";
+                dayButton.textContent = String(day);
+                dayButton.setAttribute("data-receive-calendar-date", dateKey);
+                dayButton.setAttribute("aria-label", dayDate.toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric"
+                }));
+
+                if (isPastOrBlocked) {
+                    dayButton.classList.add("is-past", "is-unavailable");
+                    dayButton.disabled = true;
+                } else if (isAvailable) {
+                    dayButton.classList.add("is-available");
+
+                    if (selectedDate === dateKey) {
+                        dayButton.classList.add("is-selected");
+                    }
+                } else {
+                    dayButton.classList.add("is-unavailable");
+                    dayButton.disabled = true;
+                }
+
+                receiveDateCalendarGrid.appendChild(dayButton);
+            }
+
+            updateReceiveDateCalendarNavState(context);
+            syncReceiveDateDisplay();
+
+            if (receiveDateCalendarNote) {
+                receiveDateCalendarNote.hidden = findNextAvailableReceiveSchedule(requirements, context.minimumDateKey, context) !== null;
+            }
         }
 
         function getCartBookingContext() {
@@ -8631,39 +9267,63 @@ document.addEventListener("DOMContentLoaded", function () {
             };
         }
 
-        function syncReceiveDateConstraints() {
+        function syncReceiveDateConstraints(items) {
             if (!receiveDateInput) {
                 return;
             }
 
             var context = getCartBookingContext();
+            var requirements = buildCartCameraRequirements(items);
             var selectedDate = String(receiveDateInput.value || "").trim();
 
             receiveDateInput.min = context.minimumDateKey;
 
             if (!selectedDate || selectedDate < context.minimumDateKey) {
-                receiveDateInput.value = context.minimumDateKey;
+                selectedDate = context.minimumDateKey;
             }
+
+            var dateSlots = getAvailableReceiveSlotsForDate(selectedDate, requirements, context);
+
+            if (!dateSlots.length) {
+                var fallbackSchedule = findNextAvailableReceiveSchedule(requirements, selectedDate, context);
+
+                if (fallbackSchedule) {
+                    selectedDate = fallbackSchedule.dateKey;
+
+                    if (receiveTimeSelect && fallbackSchedule.timeValue) {
+                        receiveTimeSelect.value = fallbackSchedule.timeValue;
+                    }
+                }
+            }
+
+            receiveDateInput.value = selectedDate;
         }
 
-        function syncReceiveTimeConstraints() {
+        function syncReceiveTimeConstraints(items) {
             if (!receiveDateInput || !receiveTimeSelect) {
                 return;
             }
 
             var context = getCartBookingContext();
+            var requirements = buildCartCameraRequirements(items);
             var selectedDate = String(receiveDateInput.value || "").trim();
-            var isSameDayBooking = selectedDate === context.todayKey;
-            var minimumHour = isSameDayBooking ? context.sameDayMinimumHour : cartBookingOpenHour;
+            var availableSlots = getAvailableReceiveSlotsForDate(selectedDate, requirements, context);
+
+            if (!availableSlots.length) {
+                var fallbackSchedule = findNextAvailableReceiveSchedule(requirements, selectedDate, context);
+
+                if (fallbackSchedule) {
+                    selectedDate = fallbackSchedule.dateKey;
+                    receiveDateInput.value = selectedDate;
+                    availableSlots = Array.isArray(fallbackSchedule.slots) ? fallbackSchedule.slots : [];
+                }
+            }
+
             var firstValidSlotValue = "";
             var hasSelectedValidSlot = false;
 
             Array.prototype.forEach.call(receiveTimeSelect.options, function (option) {
-                var optionHour = parseCartBookingSlotHour(option.value);
-                var isValidSlot = Number.isFinite(optionHour)
-                    && optionHour >= cartBookingOpenHour
-                    && optionHour <= cartBookingCloseHour
-                    && (!isSameDayBooking || optionHour >= minimumHour);
+                var isValidSlot = availableSlots.indexOf(option.value) >= 0;
 
                 option.disabled = !isValidSlot;
 
@@ -8681,9 +9341,29 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        function enforceReceiveScheduleConstraints() {
-            syncReceiveDateConstraints();
-            syncReceiveTimeConstraints();
+        function hasValidCurrentReceiveSchedule(items) {
+            if (!receiveDateInput || !receiveTimeSelect) {
+                return true;
+            }
+
+            var selectedDate = String(receiveDateInput.value || "").trim();
+            var selectedTime = String(receiveTimeSelect.value || "").trim();
+
+            if (!selectedDate || !selectedTime) {
+                return false;
+            }
+
+            var context = getCartBookingContext();
+            var requirements = buildCartCameraRequirements(items);
+            var availableSlots = getAvailableReceiveSlotsForDate(selectedDate, requirements, context);
+
+            return availableSlots.indexOf(selectedTime) >= 0;
+        }
+
+        function enforceReceiveScheduleConstraints(items) {
+            syncReceiveDateConstraints(items);
+            syncReceiveTimeConstraints(items);
+            renderReceiveDateCalendar(items);
         }
 
         function scheduleCartTopOfHourReload() {
@@ -8734,7 +9414,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 receiveTimeSelect.value = bookingState.receiveTime;
             }
 
-            enforceReceiveScheduleConstraints();
+            enforceReceiveScheduleConstraints(getCartItems());
 
             if (returnDateInput) {
                 returnDateInput.min = receiveDateInput ? receiveDateInput.value : context.minimumDateKey;
@@ -8779,7 +9459,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return {};
             }
 
-            enforceReceiveScheduleConstraints();
+            enforceReceiveScheduleConstraints(getCartItems());
 
             var derivedSchedule = buildDerivedReturnSchedule();
 
@@ -8886,6 +9566,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+            enforceReceiveScheduleConstraints(items);
+
             var receiveDateValue = receiveDateInput ? String(receiveDateInput.value || "").trim() : "";
             var derivedSchedule = buildDerivedReturnSchedule(items);
 
@@ -8984,8 +9666,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+            var didAdjustItemQuantities = false;
+
             items.forEach(function (item) {
                 var itemIsUnavailable = isUnavailableCartItem(item);
+                var itemProductKey = extractCameraProductKeyFromCartItem(item);
+                var capacityParsed = Number.parseInt(equipmentAvailability.capacities[itemProductKey], 10);
+                var quantityMax = Number.isFinite(capacityParsed)
+                    ? Math.max(1, capacityParsed)
+                    : 20;
+
+                if (!itemIsUnavailable && item.qty > quantityMax) {
+                    item.qty = quantityMax;
+                    didAdjustItemQuantities = true;
+                }
+
                 var lineTotal = itemIsUnavailable ? 0 : (item.price * item.qty * item.days);
                 var nameLabel = String(item.name).toUpperCase();
                 var card = document.createElement("article");
@@ -8997,7 +9692,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         '<p>' + escapeHtml(item.copy) + '</p>' +
                         '<label class="cart-mini-field">' +
                             '<span>Qty</span>' +
-                            '<input type="number" min="1" max="20" value="' + item.qty + '" data-cart-edit="qty"' + (itemIsUnavailable ? ' disabled' : '') + '>' +
+                            '<input type="number" min="1" max="' + quantityMax + '" value="' + item.qty + '" data-cart-edit="qty"' + (itemIsUnavailable ? ' disabled' : '') + '>' +
                         '</label>' +
                     '</div>' +
                     '<div class="cart-item-thumb' + (itemIsUnavailable ? ' cart-item-thumb-missing' : '') + '">' +
@@ -9017,6 +9712,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 panel.appendChild(card);
             });
+
+            if (didAdjustItemQuantities) {
+                saveCartItems(items);
+                enforceReceiveScheduleConstraints(items);
+                syncReturnDateTimeFromReceive(items);
+                saveBookingSnapshot();
+            }
 
             panel.querySelectorAll(".cart-item-thumb-image").forEach(function (imageNode) {
                 imageNode.addEventListener("error", function () {
@@ -9081,8 +9783,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
             var itemId = card.getAttribute("data-cart-item-id");
             var nextValue = Number.parseInt(target.value, 10);
+            var maxValue = Number.parseInt(target.getAttribute("max"), 10);
+
             if (!Number.isFinite(nextValue) || nextValue < 1) {
                 nextValue = 1;
+            }
+
+            if (Number.isFinite(maxValue) && maxValue > 0 && nextValue > maxValue) {
+                nextValue = maxValue;
             }
 
             target.value = String(nextValue);
@@ -9097,10 +9805,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
             saveCartItems(items);
 
-            if (field === "days") {
-                syncReturnDateTimeFromReceive(items);
-                saveBookingSnapshot();
-            }
+            enforceReceiveScheduleConstraints(items);
+            syncReturnDateTimeFromReceive(items);
+            saveBookingSnapshot();
 
             renderCartItems();
         }
@@ -9122,6 +9829,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             saveCartItems(filteredItems);
+            enforceReceiveScheduleConstraints(filteredItems);
             syncReturnDateTimeFromReceive(filteredItems);
             saveBookingSnapshot();
             renderCartItems();
@@ -9129,6 +9837,74 @@ document.addEventListener("DOMContentLoaded", function () {
 
         panel.addEventListener("input", handleCartPanelInput);
         panel.addEventListener("change", handleCartPanelInput);
+
+        function shiftReceiveDateCalendarMonth(monthOffset) {
+            if (!receiveDateCalendarGrid) {
+                return;
+            }
+
+            if (!(receiveDateCalendarCursor instanceof Date) || Number.isNaN(receiveDateCalendarCursor.getTime())) {
+                var context = getCartBookingContext();
+                var seedDate = dateFromCartDateKey(receiveDateInput ? receiveDateInput.value : "")
+                    || dateFromCartDateKey(context.minimumDateKey)
+                    || new Date();
+                receiveDateCalendarCursor = new Date(seedDate.getFullYear(), seedDate.getMonth(), 1);
+            }
+
+            receiveDateCalendarCursor = new Date(
+                receiveDateCalendarCursor.getFullYear(),
+                receiveDateCalendarCursor.getMonth() + monthOffset,
+                1
+            );
+
+            clampReceiveDateCalendarCursor(getCartBookingContext());
+            renderReceiveDateCalendar(getCartItems());
+        }
+
+        if (receiveDateCalendarGrid) {
+            receiveDateCalendarGrid.addEventListener("click", function (event) {
+                var dateButton = event.target.closest("[data-receive-calendar-date]");
+
+                if (!dateButton || dateButton.disabled || !receiveDateInput) {
+                    return;
+                }
+
+                var selectedDate = String(dateButton.getAttribute("data-receive-calendar-date") || "").trim();
+
+                if (!selectedDate) {
+                    return;
+                }
+
+                var selectedDateParts = parseCartDateKey(selectedDate);
+                if (!selectedDateParts) {
+                    return;
+                }
+
+                receiveDateInput.value = selectedDate;
+                receiveDateCalendarCursor = new Date(selectedDateParts.year, selectedDateParts.month - 1, 1);
+
+                var currentItems = getCartItems();
+                enforceReceiveScheduleConstraints(currentItems);
+                syncReturnDateTimeFromReceive(currentItems);
+                saveBookingSnapshot();
+                refreshTotals();
+            });
+        }
+
+        receiveDateCalendarNavButtons.forEach(function (navButton) {
+            navButton.addEventListener("click", function () {
+                var direction = String(navButton.getAttribute("data-receive-calendar-nav") || "").trim().toLowerCase();
+
+                if (direction === "prev") {
+                    shiftReceiveDateCalendarMonth(-1);
+                    return;
+                }
+
+                if (direction === "next") {
+                    shiftReceiveDateCalendarMonth(1);
+                }
+            });
+        });
 
         [returnDateInput, returnTimeSelect].forEach(function (lockedControl) {
             if (!lockedControl) {
@@ -9150,8 +9926,9 @@ document.addEventListener("DOMContentLoaded", function () {
             bookingCard.querySelectorAll("[data-booking-field], input[name='receivingMethod'], input[name='returningMethod']").forEach(function (control) {
                 control.addEventListener("change", function () {
                     if (control === receiveDateInput || control === receiveTimeSelect) {
-                        enforceReceiveScheduleConstraints();
-                        syncReturnDateTimeFromReceive();
+                        var currentItems = getCartItems();
+                        enforceReceiveScheduleConstraints(currentItems);
+                        syncReturnDateTimeFromReceive(currentItems);
                     }
 
                     updateDeliveryFields();
@@ -9193,13 +9970,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (confirmButton && bookingNote) {
             confirmButton.addEventListener("click", function () {
-                enforceReceiveScheduleConstraints();
-                syncReturnDateTimeFromReceive();
+                var items = getCartItems();
+
+                enforceReceiveScheduleConstraints(items);
+                syncReturnDateTimeFromReceive(items);
                 saveBookingSnapshot();
 
-                var items = getCartItems();
                 if (!items.length) {
                     bookingNote.textContent = "Add at least one item before confirming your demo booking.";
+                    return;
+                }
+
+                if (!hasValidCurrentReceiveSchedule(items)) {
+                    bookingNote.textContent = "No available receiving slots for the selected quantities and rental days. Adjust your cart or choose a later schedule.";
                     return;
                 }
 
@@ -9208,6 +9991,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (unavailableItems.length) {
                     openUnavailableModal(unavailableItems, function () {
                         var remainingItems = removeUnavailableCartItems();
+                        enforceReceiveScheduleConstraints(remainingItems);
                         syncReturnDateTimeFromReceive(remainingItems);
                         saveBookingSnapshot();
                         renderCartItems();
@@ -9251,7 +10035,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         renderOrderStatusList();
         restoreBookingDefaults();
-        syncReturnDateTimeFromReceive();
+        enforceReceiveScheduleConstraints(getCartItems());
+        syncReturnDateTimeFromReceive(getCartItems());
         updateDeliveryFields();
         saveBookingSnapshot();
         renderCartItems();
@@ -9274,9 +10059,145 @@ document.addEventListener("DOMContentLoaded", function () {
         var gridContainer = document.getElementById("calendar-grid-container");
         var calendarDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
         var calendarProductKey = (calendarCard.getAttribute("data-product-key") || "").toLowerCase();
+        var calendarAvailabilityPayload = window.__creatyEquipmentAvailability && typeof window.__creatyEquipmentAvailability === "object"
+            ? window.__creatyEquipmentAvailability
+            : {};
+        var calendarBookingSource = calendarAvailabilityPayload.booking && typeof calendarAvailabilityPayload.booking === "object"
+            ? calendarAvailabilityPayload.booking
+            : {};
+        var calendarProductsSource = calendarAvailabilityPayload.products && typeof calendarAvailabilityPayload.products === "object"
+            ? calendarAvailabilityPayload.products
+            : {};
+        var calendarReservationsSource = Array.isArray(calendarAvailabilityPayload.reservations)
+            ? calendarAvailabilityPayload.reservations
+            : [];
+        var calendarOpenHourParsed = Number.parseInt(calendarBookingSource.openHour, 10);
+        var calendarCloseHourParsed = Number.parseInt(calendarBookingSource.closeHour, 10);
+        var calendarCutoffHourParsed = Number.parseInt(calendarBookingSource.sameDayCutoffHour, 10);
+        var calendarLeadHoursParsed = Number.parseInt(calendarBookingSource.leadHours, 10);
+        var calendarOpenHour = Number.isFinite(calendarOpenHourParsed) ? Math.max(0, Math.min(23, calendarOpenHourParsed)) : 8;
+        var calendarCloseHour = Number.isFinite(calendarCloseHourParsed) ? Math.max(0, Math.min(23, calendarCloseHourParsed)) : 17;
+        var calendarSameDayCutoffHour = Number.isFinite(calendarCutoffHourParsed) ? Math.max(0, Math.min(23, calendarCutoffHourParsed)) : 15;
+        var calendarLeadHours = Number.isFinite(calendarLeadHoursParsed) && calendarLeadHoursParsed >= 0 ? calendarLeadHoursParsed : 2;
+        var calendarProductCapacity = 1;
+        var calendarReservations = [];
 
         if (!calendarProductKey) {
             calendarProductKey = extractProductKeyFromHref(window.location.search || "");
+        }
+
+        if (calendarCloseHour < calendarOpenHour) {
+            calendarCloseHour = calendarOpenHour;
+        }
+
+        if (calendarProductKey && calendarProductsSource[calendarProductKey]) {
+            var productCapacityParsed = Number.parseInt(calendarProductsSource[calendarProductKey].capacity, 10);
+
+            if (Number.isFinite(productCapacityParsed)) {
+                calendarProductCapacity = Math.max(0, productCapacityParsed);
+            }
+        }
+
+        function parseCalendarSlotHour(timeValue) {
+            var normalized = String(timeValue || "").trim();
+            var matches = normalized.match(/^(\d{2}):(\d{2})$/);
+
+            if (!matches) {
+                return null;
+            }
+
+            var hour = Number.parseInt(matches[1], 10);
+            var minute = Number.parseInt(matches[2], 10);
+
+            if (!Number.isFinite(hour) || !Number.isFinite(minute) || minute !== 0) {
+                return null;
+            }
+
+            return hour;
+        }
+
+        function parseCalendarDateKey(dateKey) {
+            var normalized = String(dateKey || "").trim();
+            var matches = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+            if (!matches) {
+                return null;
+            }
+
+            var year = Number.parseInt(matches[1], 10);
+            var month = Number.parseInt(matches[2], 10);
+            var day = Number.parseInt(matches[3], 10);
+            var parsedDate = new Date(year, month - 1, day);
+
+            if (
+                Number.isNaN(parsedDate.getTime())
+                || parsedDate.getFullYear() !== year
+                || (parsedDate.getMonth() + 1) !== month
+                || parsedDate.getDate() !== day
+            ) {
+                return null;
+            }
+
+            return {
+                year: year,
+                month: month,
+                day: day
+            };
+        }
+
+        function parseCalendarScheduleTimestamp(dateKey, timeValue) {
+            var dateParts = parseCalendarDateKey(dateKey);
+            var hour = parseCalendarSlotHour(timeValue);
+
+            if (!dateParts || !Number.isFinite(hour)) {
+                return Number.NaN;
+            }
+
+            var scheduleDate = new Date(dateParts.year, dateParts.month - 1, dateParts.day, hour, 0, 0, 0);
+
+            if (
+                Number.isNaN(scheduleDate.getTime())
+                || scheduleDate.getFullYear() !== dateParts.year
+                || (scheduleDate.getMonth() + 1) !== dateParts.month
+                || scheduleDate.getDate() !== dateParts.day
+                || scheduleDate.getHours() !== hour
+            ) {
+                return Number.NaN;
+            }
+
+            return scheduleDate.getTime();
+        }
+
+        if (calendarProductKey) {
+            calendarReservationsSource.forEach(function (reservation) {
+                if (!reservation || typeof reservation !== "object") {
+                    return;
+                }
+
+                var reservationProductKey = String(reservation.productKey || "").trim().toLowerCase();
+
+                if (!reservationProductKey || reservationProductKey !== calendarProductKey) {
+                    return;
+                }
+
+                var qtyParsed = Number.parseInt(reservation.qty, 10);
+                var daysParsed = Number.parseInt(reservation.days, 10);
+                var qty = Number.isFinite(qtyParsed) && qtyParsed > 0 ? qtyParsed : 1;
+                var days = Number.isFinite(daysParsed) && daysParsed > 0 ? daysParsed : 1;
+                var startDate = String(reservation.startDate || "").trim();
+                var startTime = String(reservation.startTime || "").trim();
+                var startTs = parseCalendarScheduleTimestamp(startDate, startTime);
+
+                if (!Number.isFinite(startTs)) {
+                    return;
+                }
+
+                calendarReservations.push({
+                    qty: qty,
+                    startTs: startTs,
+                    endTs: startTs + (days * 24 * 60 * 60 * 1000)
+                });
+            });
         }
 
         function setStartOfDay(dateValue) {
@@ -9287,6 +10208,92 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function getCalendarToday() {
             return setStartOfDay(new Date());
+        }
+
+        function getCalendarBookingContext() {
+            var now = new Date();
+            var today = getCalendarToday();
+            var currentHour = now.getHours();
+            var minimumDate = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                today.getDate() + (currentHour >= calendarSameDayCutoffHour ? 1 : 0)
+            );
+
+            return {
+                todayKey: dateKeyFromDate(today),
+                minimumDateKey: dateKeyFromDate(minimumDate),
+                sameDayMinimumHour: Math.max(calendarOpenHour, currentHour + calendarLeadHours)
+            };
+        }
+
+        function isCalendarSlotAvailable(dateKey, slotHour, bookingContext) {
+            if (!Number.isFinite(slotHour)) {
+                return false;
+            }
+
+            if (slotHour < calendarOpenHour || slotHour > calendarCloseHour) {
+                return false;
+            }
+
+            if (!dateKey || dateKey < bookingContext.minimumDateKey) {
+                return false;
+            }
+
+            if (dateKey === bookingContext.todayKey && slotHour < bookingContext.sameDayMinimumHour) {
+                return false;
+            }
+
+            if (calendarProductCapacity < 1) {
+                return false;
+            }
+
+            var slotTimeValue = padTwo(slotHour) + ":00";
+            var startTs = parseCalendarScheduleTimestamp(dateKey, slotTimeValue);
+
+            if (!Number.isFinite(startTs)) {
+                return false;
+            }
+
+            var endTs = startTs + (24 * 60 * 60 * 1000);
+            var occupiedQty = 0;
+
+            calendarReservations.forEach(function (reservation) {
+                if (!reservation || typeof reservation !== "object") {
+                    return;
+                }
+
+                var reservationStart = Number(reservation.startTs);
+                var reservationEnd = Number(reservation.endTs);
+                var reservationQtyParsed = Number.parseInt(reservation.qty, 10);
+                var reservationQty = Number.isFinite(reservationQtyParsed) && reservationQtyParsed > 0
+                    ? reservationQtyParsed
+                    : 1;
+
+                if (!Number.isFinite(reservationStart) || !Number.isFinite(reservationEnd)) {
+                    return;
+                }
+
+                if (startTs >= reservationEnd || endTs <= reservationStart) {
+                    return;
+                }
+
+                occupiedQty += reservationQty;
+            });
+
+            return (occupiedQty + 1) <= calendarProductCapacity;
+        }
+
+        function isCalendarDateAvailable(dateKey) {
+            var bookingContext = getCalendarBookingContext();
+
+            for (var slotHour = calendarOpenHour; slotHour <= calendarCloseHour; slotHour += 1) {
+                if (isCalendarSlotAvailable(dateKey, slotHour, bookingContext)) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         function rebuildYearOptions() {
@@ -9376,14 +10383,17 @@ document.addEventListener("DOMContentLoaded", function () {
                         nextDate++;
                     } else {
                         var currentDate = new Date(selectedYear, selectedMonth, date);
+                        var dateKey = dateKeyFromDate(currentDate);
                         var isPastDay = currentDate < effectiveToday;
-                        var isAvailableDay = !isPastDay;
+                        var isAvailableDay = !isPastDay && isCalendarDateAvailable(dateKey);
                         var classes = "calendar-date";
 
                         if (isPastDay) {
-                            classes += " is-past";
+                            classes += " is-past is-unavailable";
                         } else if (isAvailableDay) {
                             classes += " is-available";
+                        } else {
+                            classes += " is-unavailable";
                         }
                         
                         html += '<span class="' + classes + '">' + date + '</span>';

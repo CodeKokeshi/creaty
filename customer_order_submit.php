@@ -54,14 +54,26 @@ $customerId = (string) ($_SESSION['customer_id'] ?? '');
 $customerName = (string) ($_SESSION['customer_name'] ?? ('Customer #' . $customerId));
 $customerEmail = (string) ($_SESSION['customer_email'] ?? '');
 
+$submitErrorMessage = '';
+
 $createdOrder = append_customer_order_for_customer(
     $customerId,
     $customerName,
     $customerEmail,
-    $payload
+    $payload,
+    $submitErrorMessage
 );
 
 if ($createdOrder === null) {
+    $normalizedError = trim((string) $submitErrorMessage);
+
+    if ($normalizedError !== '') {
+        customer_order_submit_respond(422, [
+            'ok' => false,
+            'message' => $normalizedError,
+        ]);
+    }
+
     customer_order_submit_respond(500, [
         'ok' => false,
         'message' => 'Unable to save your booking right now.',
