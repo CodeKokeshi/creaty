@@ -59,6 +59,25 @@ require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/customer_orders_repository.php';
 require_once __DIR__ . '/config/customer_gcash_profiles_repository.php';
 
+function format_admin_local_datetime_label($value, $uppercase = false)
+{
+    $raw = trim((string) $value);
+
+    if ($raw === '') {
+        return '-';
+    }
+
+    try {
+        $parsed = new DateTimeImmutable($raw);
+        $parsed = $parsed->setTimezone(new DateTimeZone('Asia/Manila'));
+        $label = $parsed->format('M d, Y h:i A');
+    } catch (Throwable $error) {
+        $label = $raw;
+    }
+
+    return $uppercase ? strtoupper($label) : $label;
+}
+
 $adminUsersFlashMessage = (isset($_GET['created']) && (string) $_GET['created'] === '1')
     ? 'User account created successfully.'
     : '';
@@ -325,10 +344,7 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         ? $assetBase . ltrim($refundProofPath, '/')
         : '';
     $bookingTimestampRaw = trim((string) ($bookingRecord['created_at'] ?? ''));
-    $bookingTimestamp = strtotime($bookingTimestampRaw);
-    $bookingTimestampLabel = $bookingTimestamp
-        ? strtoupper(date('M d, Y h:i A', $bookingTimestamp))
-        : '-';
+    $bookingTimestampLabel = format_admin_local_datetime_label($bookingTimestampRaw, true);
 
     $customerName = trim((string) ($bookingRecord['customer_name'] ?? ''));
     if ($customerName === '') {
@@ -1611,10 +1627,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                         <tbody>
                             <?php foreach ($archivedEquipmentRows as $archivedEquipmentRow): ?>
                                 <?php
-                                    $archivedTimestamp = strtotime((string) ($archivedEquipmentRow['archivedAt'] ?? ''));
-                                    $archivedAtLabel = $archivedTimestamp
-                                        ? date('M d, Y h:i A', $archivedTimestamp)
-                                        : (string) ($archivedEquipmentRow['archivedAt'] ?? '-');
+                                    $archivedAtLabel = format_admin_local_datetime_label((string) ($archivedEquipmentRow['archivedAt'] ?? ''));
                                     $archivedStatus = (string) ($archivedEquipmentRow['status'] ?? 'available');
                                     $archivedStatusLabel = (string) ($equipmentStatusLabels[$archivedStatus] ?? strtoupper(str_replace('-', ' ', $archivedStatus)));
                                 ?>

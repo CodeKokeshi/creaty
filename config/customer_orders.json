@@ -4,7 +4,7 @@
         "customer_id": "4",
         "customer_name": "qwe qwe",
         "customer_email": "qwe@gmail.com",
-        "status": "Pending",
+        "status": "Approved",
         "items": [
             {
                 "name": "Fuji X A3",
@@ -27,10 +27,10 @@
         "canceled_by": "",
         "payment_method": "gcash",
         "payment_receipt_path": "assets/payment_receipts/ord-20260408121913-220cf65c-receipt.png",
-        "payment_receipt_uploaded_at": "2026-04-08T12:19:19+00:00",
+        "payment_receipt_uploaded_at": "2026-04-08T20:19:19+08:00",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-08T12:19:13+00:00"
+        "created_at": "2026-04-08T20:19:13+08:00"
     },
     {
         "id": "ord-20260408121526-0fe10340",
@@ -60,10 +60,10 @@
         "canceled_by": "",
         "payment_method": "gcash",
         "payment_receipt_path": "assets/payment_receipts/ord-20260408121526-0fe10340-receipt.png",
-        "payment_receipt_uploaded_at": "2026-04-08T12:15:36+00:00",
+        "payment_receipt_uploaded_at": "2026-04-08T20:15:36+08:00",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-08T12:15:26+00:00"
+        "created_at": "2026-04-08T20:15:26+08:00"
     },
     {
         "id": "ord-20260408115927-45a41a9f",
@@ -93,10 +93,10 @@
         "canceled_by": "",
         "payment_method": "gcash",
         "payment_receipt_path": "assets/payment_receipts/ord-20260408115927-45a41a9f-receipt.png",
-        "payment_receipt_uploaded_at": "2026-04-08T11:59:34+00:00",
+        "payment_receipt_uploaded_at": "2026-04-08T19:59:34+08:00",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-08T11:59:27+00:00"
+        "created_at": "2026-04-08T19:59:27+08:00"
     },
     {
         "id": "ord-20260408104804-401ea86c",
@@ -126,7 +126,7 @@
         "payment_receipt_uploaded_at": "",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-08T10:48:04+00:00"
+        "created_at": "2026-04-08T18:48:04+08:00"
     },
     {
         "id": "ord-20260408095945-1ed939ee",
@@ -153,10 +153,10 @@
         "canceled_by": "",
         "payment_method": "gcash",
         "payment_receipt_path": "assets/payment_receipts/ord-20260408095945-1ed939ee-receipt.jpg",
-        "payment_receipt_uploaded_at": "2026-04-08T10:00:07+00:00",
+        "payment_receipt_uploaded_at": "2026-04-08T18:00:07+08:00",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-08T09:59:45+00:00"
+        "created_at": "2026-04-08T17:59:45+08:00"
     },
     {
         "id": "ord-20260408094442-a2a099b0",
@@ -186,7 +186,7 @@
         "payment_receipt_uploaded_at": "",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-08T09:44:42+00:00"
+        "created_at": "2026-04-08T17:44:42+08:00"
     },
     {
         "id": "ord-20260407102716-48a98419",
@@ -216,7 +216,7 @@
         "payment_receipt_uploaded_at": "",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-07T10:27:16+00:00"
+        "created_at": "2026-04-07T18:27:16+08:00"
     },
     {
         "id": "ord-20260407093942-8c2ff058",
@@ -243,10 +243,10 @@
         "canceled_by": "customer",
         "payment_method": "gcash",
         "payment_receipt_path": "assets/payment_receipts/ord-20260407093942-8c2ff058-receipt.jpg",
-        "payment_receipt_uploaded_at": "2026-04-07T09:41:36+00:00",
+        "payment_receipt_uploaded_at": "2026-04-07T17:41:36+08:00",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-07T09:39:42+00:00"
+        "created_at": "2026-04-07T17:39:42+08:00"
     },
     {
         "id": "ord-20260407082503-1cac4652",
@@ -273,10 +273,10 @@
         "canceled_by": "admin",
         "payment_method": "gcash",
         "payment_receipt_path": "assets/payment_receipts/ord-20260407082503-1cac4652-receipt.jpg",
-        "payment_receipt_uploaded_at": "2026-04-07T08:25:11+00:00",
+        "payment_receipt_uploaded_at": "2026-04-07T16:25:11+08:00",
         "refund_proof_path": "assets/refund_receipts/ord-20260407082503-1cac4652-refund.png",
-        "refund_proof_uploaded_at": "2026-04-07T09:33:47+00:00",
-        "created_at": "2026-04-07T08:25:03+00:00"
+        "refund_proof_uploaded_at": "2026-04-07T17:33:47+08:00",
+        "created_at": "2026-04-07T16:25:03+08:00"
     },
     {
         "id": "ord-20260407053104-bd398c69",
@@ -303,10 +303,10 @@
         "canceled_by": "admin",
         "payment_method": "gcash",
         "payment_receipt_path": "assets/payment_receipts/ord-20260407053104-bd398c69-receipt.png",
-        "payment_receipt_uploaded_at": "2026-04-07T05:31:14+00:00",
+        "payment_receipt_uploaded_at": "2026-04-07T13:31:14+08:00",
         "refund_proof_path": "assets/refund_receipts/ord-20260407053104-bd398c69-refund.png",
-        "refund_proof_uploaded_at": "2026-04-07T05:31:36+00:00",
-        "created_at": "2026-04-07T05:31:04+00:00"
+        "refund_proof_uploaded_at": "2026-04-07T13:31:36+08:00",
+        "created_at": "2026-04-07T13:31:04+08:00"
     },
     {
         "id": "ord-20260407045420-9192b506",
@@ -333,10 +333,10 @@
         "canceled_by": "admin",
         "payment_method": "gcash",
         "payment_receipt_path": "assets/payment_receipts/ord-20260407045420-9192b506-receipt.jpg",
-        "payment_receipt_uploaded_at": "2026-04-07T04:54:36+00:00",
+        "payment_receipt_uploaded_at": "2026-04-07T12:54:36+08:00",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-07T04:54:20+00:00"
+        "created_at": "2026-04-07T12:54:20+08:00"
     },
     {
         "id": "ord-20260407044120-90d01d8d",
@@ -366,7 +366,7 @@
         "payment_receipt_uploaded_at": "",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-07T04:41:20+00:00"
+        "created_at": "2026-04-07T12:41:20+08:00"
     },
     {
         "id": "ord-20260407043647-c4a7b694",
@@ -396,7 +396,7 @@
         "payment_receipt_uploaded_at": "",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-07T04:36:47+00:00"
+        "created_at": "2026-04-07T12:36:47+08:00"
     },
     {
         "id": "ord-20260407043629-0a7291ab",
@@ -426,7 +426,7 @@
         "payment_receipt_uploaded_at": "",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-07T04:36:29+00:00"
+        "created_at": "2026-04-07T12:36:29+08:00"
     },
     {
         "id": "ord-20260407042017-468bdf33",
@@ -456,7 +456,7 @@
         "payment_receipt_uploaded_at": "",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-07T04:20:17+00:00"
+        "created_at": "2026-04-07T12:20:17+08:00"
     },
     {
         "id": "ord-20260407033744-b40315ab",
@@ -486,7 +486,7 @@
         "payment_receipt_uploaded_at": "",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-07T03:37:44+00:00"
+        "created_at": "2026-04-07T11:37:44+08:00"
     },
     {
         "id": "ord-20260403123400-1faa36b9",
@@ -513,10 +513,10 @@
         "canceled_by": "customer",
         "payment_method": "gcash",
         "payment_receipt_path": "assets/payment_receipts/ord-20260403123400-1faa36b9-receipt.jpg",
-        "payment_receipt_uploaded_at": "2026-04-03T12:34:07+00:00",
+        "payment_receipt_uploaded_at": "2026-04-03T20:34:07+08:00",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-03T12:34:00+00:00"
+        "created_at": "2026-04-03T20:34:00+08:00"
     },
     {
         "id": "ord-20260403091322-fbd7a60d",
@@ -546,7 +546,7 @@
         "payment_receipt_uploaded_at": "",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-03T09:13:22+00:00"
+        "created_at": "2026-04-03T17:13:22+08:00"
     },
     {
         "id": "ord-20260403073907-66aba70c",
@@ -576,7 +576,7 @@
         "payment_receipt_uploaded_at": "",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-03T07:39:07+00:00"
+        "created_at": "2026-04-03T15:39:07+08:00"
     },
     {
         "id": "ord-20260403073837-d28981e3",
@@ -606,6 +606,6 @@
         "payment_receipt_uploaded_at": "",
         "refund_proof_path": "",
         "refund_proof_uploaded_at": "",
-        "created_at": "2026-04-03T07:38:37+00:00"
+        "created_at": "2026-04-03T15:38:37+08:00"
     }
 ]

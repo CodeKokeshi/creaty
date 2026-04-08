@@ -5,12 +5,119 @@ function customer_orders_repository_path()
     return __DIR__ . '/customer_orders.json';
 }
 
+function customer_order_timezone_name()
+{
+    return 'Asia/Manila';
+}
+
+function customer_order_timezone()
+{
+    static $timezone = null;
+
+    if ($timezone instanceof DateTimeZone) {
+        return $timezone;
+    }
+
+    try {
+        $timezone = new DateTimeZone(customer_order_timezone_name());
+    } catch (Throwable $error) {
+        $timezone = new DateTimeZone('UTC');
+    }
+
+    return $timezone;
+}
+
+function customer_order_datetime_from_timestamp($timestamp = null)
+{
+    $resolvedTimestamp = is_int($timestamp) ? $timestamp : time();
+
+    return (new DateTimeImmutable('@' . $resolvedTimestamp))
+        ->setTimezone(customer_order_timezone());
+}
+
+function customer_order_now_iso8601($timestamp = null)
+{
+    return customer_order_datetime_from_timestamp($timestamp)->format('c');
+}
+
+function customer_order_parse_datetime_value($value)
+{
+    $raw = trim((string) $value);
+
+    if ($raw === '') {
+        return null;
+    }
+
+    try {
+        $parsed = new DateTimeImmutable($raw, customer_order_timezone());
+    } catch (Throwable $error) {
+        return null;
+    }
+
+    return $parsed->setTimezone(customer_order_timezone());
+}
+
+function customer_order_normalize_timestamp_value($value)
+{
+    $raw = trim((string) $value);
+
+    if ($raw === '') {
+        return '';
+    }
+
+    $parsed = customer_order_parse_datetime_value($raw);
+
+    if (!$parsed instanceof DateTimeImmutable) {
+        return $raw;
+    }
+
+    return $parsed->format('c');
+}
+
+function customer_order_local_date_key_from_timestamp($timestamp)
+{
+    return customer_order_datetime_from_timestamp((int) $timestamp)->format('Y-m-d');
+}
+
+function customer_order_local_hour_from_timestamp($timestamp)
+{
+    return (int) customer_order_datetime_from_timestamp((int) $timestamp)->format('G');
+}
+
+function customer_order_local_datetime_format_from_timestamp($timestamp, $format)
+{
+    return customer_order_datetime_from_timestamp((int) $timestamp)->format((string) $format);
+}
+
+function customer_order_parse_schedule_datetime($dateValue, $timeValue)
+{
+    $date = normalize_customer_order_date($dateValue);
+    $time = normalize_customer_order_time($timeValue);
+
+    if ($date === '' || $time === '' || !customer_order_is_valid_booking_time_slot($time)) {
+        return null;
+    }
+
+    $schedule = DateTimeImmutable::createFromFormat('Y-m-d H:i', $date . ' ' . $time, customer_order_timezone());
+    $errors = DateTimeImmutable::getLastErrors();
+
+    if (
+        !$schedule instanceof DateTimeImmutable
+        || ((int) ($errors['warning_count'] ?? 0)) > 0
+        || ((int) ($errors['error_count'] ?? 0)) > 0
+    ) {
+        return null;
+    }
+
+    return $schedule;
+}
+
 function customer_order_generate_id()
 {
     try {
-        return 'ord-' . gmdate('YmdHis') . '-' . bin2hex(random_bytes(4));
+        return 'ord-' . customer_order_datetime_from_timestamp()->format('YmdHis') . '-' . bin2hex(random_bytes(4));
     } catch (Throwable $error) {
-        return 'ord-' . gmdate('YmdHis') . '-' . substr(md5(uniqid('', true)), 0, 8);
+        return 'ord-' . customer_order_datetime_from_timestamp()->format('YmdHis') . '-' . substr(md5(uniqid('', true)), 0, 8);
     }
 }
 
@@ -148,16 +255,11 @@ function customer_order_is_valid_booking_time_slot($timeValue)
 function customer_order_min_receiving_date_by_now($nowTimestamp = null)
 {
     $currentTimestamp = is_int($nowTimestamp) ? $nowTimestamp : time();
-    $todayDate = date('Y-m-d', $currentTimestamp);
-    $currentHour = (int) date('G', $currentTimestamp);
+    $todayDate = customer_order_local_date_key_from_timestamp($currentTimestamp);
+    $currentHour = customer_order_local_hour_from_timestamp($currentTimestamp);
 
     if ($currentHour >= customer_order_booking_same_day_cutoff_hour()) {
-        $tomorrowTimestamp = strtotime($todayDate . ' +1 day');
-        if ($tomorrowTimestamp === false) {
-            return $todayDate;
-        }
-
-        return date('Y-m-d', $tomorrowTimestamp);
+        return customer_order_local_date_key_from_timestamp($currentTimestamp + 86400);
     }
 
     return $todayDate;
@@ -173,7 +275,7 @@ function customer_order_is_valid_receiving_schedule($receiveDateValue, $receiveT
     }
 
     $currentTimestamp = is_int($nowTimestamp) ? $nowTimestamp : time();
-    $todayDate = date('Y-m-d', $currentTimestamp);
+    $todayDate = customer_order_local_date_key_from_timestamp($currentTimestamp);
     $minimumDate = customer_order_min_receiving_date_by_now($currentTimestamp);
 
     if ($receiveDate < $minimumDate) {
@@ -184,7 +286,7 @@ function customer_order_is_valid_receiving_schedule($receiveDateValue, $receiveT
         return true;
     }
 
-    $currentHour = (int) date('G', $currentTimestamp);
+    $currentHour = customer_order_local_hour_from_timestamp($currentTimestamp);
 
     if ($currentHour >= customer_order_booking_same_day_cutoff_hour()) {
         return false;
@@ -210,20 +312,10 @@ function customer_order_receiving_timestamp($record)
         return null;
     }
 
-    $receiveDate = normalize_customer_order_date($record['receive_date'] ?? '');
-    $receiveTime = normalize_customer_order_time($record['receive_time'] ?? '');
-
-    if ($receiveDate === '' || $receiveTime === '' || !customer_order_is_valid_booking_time_slot($receiveTime)) {
-        return null;
-    }
-
-    $timestamp = strtotime($receiveDate . ' ' . $receiveTime);
-
-    if ($timestamp === false) {
-        return null;
-    }
-
-    return (int) $timestamp;
+    return customer_order_schedule_timestamp(
+        $record['receive_date'] ?? '',
+        $record['receive_time'] ?? ''
+    );
 }
 
 function advance_customer_orders_to_ongoing_by_receiving_schedule($orders, &$didAdvance = false, $nowTimestamp = null, &$advancedOrders = null)
@@ -347,13 +439,7 @@ function normalize_customer_order_asset_path($value)
 
 function normalize_customer_order_receipt_uploaded_at($value)
 {
-    $timestamp = trim((string) $value);
-
-    if ($timestamp === '') {
-        return '';
-    }
-
-    return $timestamp;
+    return customer_order_normalize_timestamp_value($value);
 }
 
 function customer_order_requires_payment_review($record)
@@ -402,6 +488,12 @@ function customer_order_payment_receipt_deadline_timestamp($record)
 
     if ($statusToken !== 'pending' || $paymentMethod !== 'gcash' || $receiptPath !== '' || $createdAtRaw === '') {
         return null;
+    }
+
+    $createdAt = customer_order_parse_datetime_value($createdAtRaw);
+
+    if ($createdAt instanceof DateTimeImmutable) {
+        return (int) $createdAt->getTimestamp() + customer_order_payment_receipt_timeout_seconds();
     }
 
     $createdAtTimestamp = strtotime($createdAtRaw);
@@ -777,20 +869,13 @@ function customer_order_product_capacity_map($products, $inventory)
 
 function customer_order_schedule_timestamp($receiveDateValue, $receiveTimeValue)
 {
-    $receiveDate = normalize_customer_order_date($receiveDateValue);
-    $receiveTime = normalize_customer_order_time($receiveTimeValue);
+    $schedule = customer_order_parse_schedule_datetime($receiveDateValue, $receiveTimeValue);
 
-    if ($receiveDate === '' || $receiveTime === '' || !customer_order_is_valid_booking_time_slot($receiveTime)) {
+    if (!$schedule instanceof DateTimeImmutable) {
         return null;
     }
 
-    $timestamp = strtotime($receiveDate . ' ' . $receiveTime);
-
-    if ($timestamp === false) {
-        return null;
-    }
-
-    return (int) $timestamp;
+    return (int) $schedule->getTimestamp();
 }
 
 function customer_order_build_camera_reservation_intervals($orders, $products, $nameLookup = null)
@@ -1080,14 +1165,14 @@ function customer_order_build_equipment_availability_payload($options = [])
             'productKey' => $productKey,
             'qty' => max(1, (int) ($interval['qty'] ?? 1)),
             'days' => max(1, (int) ($interval['days'] ?? 1)),
-            'startDate' => date('Y-m-d', $startTimestamp),
-            'startTime' => date('H:i', $startTimestamp),
+            'startDate' => customer_order_local_datetime_format_from_timestamp($startTimestamp, 'Y-m-d'),
+            'startTime' => customer_order_local_datetime_format_from_timestamp($startTimestamp, 'H:i'),
             'statusToken' => (string) ($interval['status_token'] ?? ''),
         ];
     }
 
     return [
-        'generatedAt' => gmdate('c'),
+        'generatedAt' => customer_order_now_iso8601(),
         'horizonDays' => $horizonDays,
         'booking' => [
             'openHour' => customer_order_booking_shop_open_hour(),
@@ -1116,9 +1201,9 @@ function normalize_customer_order_record($record)
         $id = customer_order_generate_id();
     }
 
-    $createdAt = trim((string) ($record['created_at'] ?? ''));
+    $createdAt = customer_order_normalize_timestamp_value($record['created_at'] ?? '');
     if ($createdAt === '') {
-        $createdAt = gmdate('c');
+        $createdAt = customer_order_now_iso8601();
     }
 
     $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
@@ -1152,7 +1237,7 @@ function normalize_customer_order_record($record)
     } elseif ($paymentReceiptPath === '') {
         $paymentReceiptUploadedAt = '';
     } elseif ($paymentReceiptUploadedAt === '') {
-        $paymentReceiptUploadedAt = gmdate('c');
+        $paymentReceiptUploadedAt = customer_order_now_iso8601();
     }
 
     if ($statusToken !== 'refunded') {
@@ -1161,7 +1246,7 @@ function normalize_customer_order_record($record)
     } elseif ($refundProofPath === '') {
         $refundProofUploadedAt = '';
     } elseif ($refundProofUploadedAt === '') {
-        $refundProofUploadedAt = gmdate('c');
+        $refundProofUploadedAt = customer_order_now_iso8601();
     }
 
     return [
@@ -1211,9 +1296,18 @@ function load_customer_orders_repository()
     }
 
     $orders = [];
+    $didNormalizeOrders = false;
 
     foreach ($decoded as $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
         $normalized = normalize_customer_order_record($record);
+
+        if (!$didNormalizeOrders && $normalized != $record) {
+            $didNormalizeOrders = true;
+        }
 
         if ($normalized['customer_id'] === '') {
             continue;
@@ -1276,6 +1370,10 @@ function load_customer_orders_repository()
                 );
             }
         }
+    }
+
+    if ($didNormalizeOrders && !$didExpireOrders && !$didAdvanceOrders) {
+        save_customer_orders_repository($orders);
     }
 
     return $orders;
@@ -1436,7 +1534,9 @@ function map_customer_order_for_frontend($record)
         'paymentReceiptUploadedAt' => (string) ($record['payment_receipt_uploaded_at'] ?? ''),
         'refundProofPath' => (string) ($record['refund_proof_path'] ?? ''),
         'refundProofUploadedAt' => (string) ($record['refund_proof_uploaded_at'] ?? ''),
-        'paymentReceiptDeadlineAt' => $paymentReceiptDeadlineTimestamp !== null ? gmdate('c', $paymentReceiptDeadlineTimestamp) : '',
+        'paymentReceiptDeadlineAt' => $paymentReceiptDeadlineTimestamp !== null
+            ? customer_order_now_iso8601($paymentReceiptDeadlineTimestamp)
+            : '',
         'paymentReceiptTimeoutSeconds' => customer_order_payment_receipt_timeout_seconds(),
         'createdAt' => (string) ($record['created_at'] ?? ''),
     ];
@@ -1531,7 +1631,7 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
         'payment_method' => $payload['paymentMethod'] ?? '',
         'payment_receipt_path' => '',
         'payment_receipt_uploaded_at' => '',
-        'created_at' => gmdate('c'),
+        'created_at' => customer_order_now_iso8601(),
     ]);
 
     array_unshift($allOrders, $newOrder);
@@ -1639,7 +1739,7 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
 
             try {
                 $record['refund_proof_path'] = save_customer_order_refund_proof_from_data_url($refundProofDataUrl, $projectRoot, $targetOrderId);
-                $record['refund_proof_uploaded_at'] = gmdate('c');
+                $record['refund_proof_uploaded_at'] = customer_order_now_iso8601();
             } catch (Throwable $error) {
                 return null;
             }
@@ -1805,7 +1905,7 @@ function upload_customer_order_receipt_for_customer($customerId, $orderId, $imag
     $receiptPath = save_customer_order_payment_receipt_from_data_url($imageDataUrl, $projectRoot, $targetOrderId);
     $record = $orders[$matchedOrderIndex];
     $record['payment_receipt_path'] = $receiptPath;
-    $record['payment_receipt_uploaded_at'] = gmdate('c');
+    $record['payment_receipt_uploaded_at'] = customer_order_now_iso8601();
     $orders[$matchedOrderIndex] = normalize_customer_order_record($record);
     $updatedOrder = $orders[$matchedOrderIndex];
 
