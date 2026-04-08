@@ -57,6 +57,7 @@ $adminNotificationCount = count_unread_message_notifications($adminNotifications
 
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/customer_orders_repository.php';
+require_once __DIR__ . '/config/customer_gcash_profiles_repository.php';
 
 $adminUsersFlashMessage = (isset($_GET['created']) && (string) $_GET['created'] === '1')
     ? 'User account created successfully.'
@@ -278,6 +279,7 @@ if ($customerUsersResult instanceof mysqli_result) {
 $dashboardBookings = [];
 $adminBookingDetails = [];
 $customerBookingsRecords = load_customer_orders_repository();
+$customerGcashProfiles = load_customer_gcash_profiles_repository();
 $adminBookingsSignature = customer_orders_live_state_signature($customerBookingsRecords);
 
 foreach ($customerBookingsRecords as $bookingRecord) {
@@ -296,6 +298,12 @@ foreach ($customerBookingsRecords as $bookingRecord) {
     $paymentReceiptUploadedAt = trim((string) ($bookingRecord['payment_receipt_uploaded_at'] ?? ''));
     $refundProofPath = normalize_customer_order_asset_path($bookingRecord['refund_proof_path'] ?? '');
     $refundProofUploadedAt = trim((string) ($bookingRecord['refund_proof_uploaded_at'] ?? ''));
+    $customerGcashProfile = find_customer_gcash_profile_for_customer(
+        (string) ($bookingRecord['customer_id'] ?? ''),
+        $customerGcashProfiles
+    );
+    $customerGcashName = trim((string) ($customerGcashProfile['gcash_name'] ?? ''));
+    $customerGcashNumber = trim((string) ($customerGcashProfile['gcash_number'] ?? ''));
     $isWaitingForPaymentReceipt = $bookingStatusToken === 'pending'
         && $paymentMethodToken === 'gcash'
         && $paymentReceiptPath === '';
@@ -359,6 +367,8 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         'cancelReason' => (string) ($bookingRecord['cancel_reason'] ?? ''),
         'cancelBy' => (string) ($bookingRecord['canceled_by'] ?? ''),
         'paymentMethod' => $paymentMethodToken,
+        'customerGcashName' => $customerGcashName,
+        'customerGcashNumber' => $customerGcashNumber,
         'paymentReceiptPath' => $paymentReceiptPath,
         'paymentReceiptUrl' => $paymentReceiptUrl,
         'paymentReceiptUploadedAt' => $paymentReceiptUploadedAt,
@@ -989,7 +999,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260407-8">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260408-2">
 </head>
 <body
     class="home-page-customer"
@@ -1271,6 +1281,8 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <p><strong>Returning Method:</strong> <span data-admin-booking-detail-returning-method>-</span></p>
                     <p><strong>Courier:</strong> <span data-admin-booking-detail-courier>-</span></p>
                     <p><strong>Payment Method:</strong> <span data-admin-booking-detail-payment-method>-</span></p>
+                    <p><strong>Customer GCash Name:</strong> <span data-admin-booking-detail-customer-gcash-name>-</span></p>
+                    <p><strong>Customer GCash Number:</strong> <span data-admin-booking-detail-customer-gcash-number>-</span></p>
                     <p><strong>Payment Receipt:</strong> <span data-admin-booking-detail-receipt-state>-</span></p>
                     <p><strong>Refund Proof:</strong> <span data-admin-booking-detail-refund-proof-state>-</span></p>
                     <p><strong>Reason:</strong> <span data-admin-booking-detail-cancel-reason>-</span></p>
@@ -1327,6 +1339,12 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                 </div>
 
                 <p class="admin-booking-review-copy" data-admin-booking-review-copy>Provide a reason for this decision. This will be visible to the customer in Order Status.</p>
+
+                <div class="admin-booking-review-customer-gcash" data-admin-booking-review-customer-gcash hidden>
+                    <p><strong>Customer GCash Name:</strong> <span data-admin-booking-review-customer-gcash-name>-</span></p>
+                    <p><strong>Customer GCash Number:</strong> <span data-admin-booking-review-customer-gcash-number>-</span></p>
+                </div>
+
                 <textarea class="admin-booking-review-textarea" data-admin-booking-review-reason maxlength="500" placeholder="Enter decision reason"></textarea>
 
                 <div class="admin-booking-review-proof-wrap" data-admin-booking-review-proof-wrap hidden>
@@ -2038,7 +2056,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         }
         document.addEventListener('DOMContentLoaded', updateFieldLabels);
     </script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-7"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260408-1"></script>
 </body>
 </html>
 

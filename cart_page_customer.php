@@ -26,6 +26,7 @@ require_once __DIR__ . '/config/event_packages_repository.php';
 require_once __DIR__ . '/config/customer_orders_repository.php';
 require_once __DIR__ . '/config/gcash_qr_repository.php';
 require_once __DIR__ . '/config/customer_notifications_repository.php';
+require_once __DIR__ . '/config/customer_gcash_profiles_repository.php';
 
 $productsRepository = load_products_repository();
 $eventPackagesRepository = load_event_packages_repository();
@@ -75,6 +76,7 @@ $gcashPaymentInfo = [
     'accountName' => (string) ($gcashQrSettings['accountName'] ?? ''),
     'accountNumber' => (string) ($gcashQrSettings['accountNumber'] ?? '')
 ];
+$customerGcashInfo = map_customer_gcash_profile_for_frontend([]);
 
 if ($isCustomerLoggedIn) {
     $customerId = (string) ($_SESSION['customer_id'] ?? '');
@@ -90,6 +92,10 @@ if ($isCustomerLoggedIn) {
 
         $customerNotificationsForFrontend[] = map_customer_notification_for_frontend($notificationRecord);
     }
+
+    $customerGcashInfo = map_customer_gcash_profile_for_frontend(
+        find_customer_gcash_profile_for_customer($customerId)
+    );
 }
 
 ?>
@@ -104,7 +110,7 @@ if ($isCustomerLoggedIn) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260407-8">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260407-9">
 </head>
 <body class="cart-page">
     <header class="site-header">
@@ -622,6 +628,19 @@ if ($isCustomerLoggedIn) {
                 <input type="file" accept="image/*" data-cart-gcash-receipt-file hidden>
                 <p class="cart-gcash-receipt-timer" data-cart-gcash-receipt-timer hidden></p>
 
+                <div class="cart-gcash-customer-info" data-cart-customer-gcash-info>
+                    <h4>Your GCash Information</h4>
+                    <label class="cart-gcash-customer-field">
+                        <span>GCash Name</span>
+                        <input type="text" data-cart-customer-gcash-name maxlength="120" placeholder="Enter your GCash name">
+                    </label>
+                    <label class="cart-gcash-customer-field">
+                        <span>GCash Number</span>
+                        <input type="text" data-cart-customer-gcash-number maxlength="40" placeholder="Enter your GCash number">
+                    </label>
+                    <p class="cart-gcash-customer-note">Keep this updated so refunds are sent to the correct account.</p>
+                </div>
+
                 <div class="cart-gcash-upload-row">
                     <span class="cart-gcash-upload-filename" data-cart-gcash-receipt-filename>No file selected</span>
                     <button type="button" class="profile-order-action secondary" data-cart-gcash-receipt-select>Select Image</button>
@@ -683,9 +702,10 @@ if ($isCustomerLoggedIn) {
         window.__creatyCustomerNotificationMarkReadEndpoint = <?php echo json_encode($customerNotificationMarkReadEndpoint, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerInitialView = <?php echo json_encode($initialCartView, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyGcashPaymentInfo = <?php echo json_encode($gcashPaymentInfo, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerGcashInfo = <?php echo json_encode($customerGcashInfo, JSON_UNESCAPED_SLASHES); ?>;
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-7"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-8"></script>
 </body>
 </html>

@@ -27,6 +27,7 @@ if (!isset($_SESSION['customer_id']) || isset($_SESSION['user_id'])) {
 }
 
 require_once __DIR__ . '/config/customer_orders_repository.php';
+require_once __DIR__ . '/config/customer_gcash_profiles_repository.php';
 
 $rawBody = file_get_contents('php://input');
 $decodedBody = json_decode((string) $rawBody, true);
@@ -38,6 +39,12 @@ if (isset($payload['order']) && is_array($payload['order'])) {
 
 $orderId = trim((string) ($payload['orderId'] ?? ($_POST['order_id'] ?? '')));
 $imageDataUrl = trim((string) ($payload['imageDataUrl'] ?? ($_POST['image_data_url'] ?? '')));
+$customerGcashName = trim((string) ($payload['customerGcashName'] ?? ($_POST['customer_gcash_name'] ?? '')));
+$customerGcashNumber = trim((string) ($payload['customerGcashNumber'] ?? ($_POST['customer_gcash_number'] ?? '')));
+$hasCustomerGcashPayload = array_key_exists('customerGcashName', $payload)
+    || array_key_exists('customerGcashNumber', $payload)
+    || array_key_exists('customer_gcash_name', $_POST)
+    || array_key_exists('customer_gcash_number', $_POST);
 
 if ($orderId === '') {
     customer_order_upload_receipt_respond(422, [
@@ -91,8 +98,25 @@ if ($updatedOrder === null) {
     ]);
 }
 
+$updatedCustomerGcashProfile = find_customer_gcash_profile_for_customer($customerId);
+
+if ($hasCustomerGcashPayload) {
+    $savedCustomerGcashProfile = upsert_customer_gcash_profile_for_customer(
+        $customerId,
+        $customerGcashName,
+        $customerGcashNumber
+    );
+
+    if (is_array($savedCustomerGcashProfile)) {
+        $updatedCustomerGcashProfile = $savedCustomerGcashProfile;
+    } else {
+        $updatedCustomerGcashProfile = find_customer_gcash_profile_for_customer($customerId);
+    }
+}
+
 customer_order_upload_receipt_respond(200, [
     'ok' => true,
     'message' => 'Payment receipt uploaded successfully.',
     'order' => $updatedOrder,
+    'customerGcashProfile' => map_customer_gcash_profile_for_frontend($updatedCustomerGcashProfile),
 ]);

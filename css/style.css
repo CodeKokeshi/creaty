@@ -3100,6 +3100,53 @@ button {
     color: #ffffff;
 }
 
+.cart-gcash-customer-info {
+    display: grid;
+    gap: 0.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.65rem;
+}
+
+.cart-gcash-customer-info h4 {
+    margin: 0;
+    color: #f7eeee;
+    font-size: 0.84rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.cart-gcash-customer-field {
+    display: grid;
+    gap: 0.28rem;
+}
+
+.cart-gcash-customer-field span {
+    color: #d8d8db;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.cart-gcash-customer-field input {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #f4f4f4;
+    padding: 0 0.65rem;
+}
+
+.cart-gcash-customer-note {
+    margin: 0;
+    color: #ced3dd;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
 .cart-gcash-receipt-block {
     display: grid;
     gap: 0.6rem;
@@ -7781,11 +7828,24 @@ button {
     gap: 0.55rem;
 }
 
+.admin-booking-detail-actions.has-single-visible-action {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+}
+
+.admin-booking-detail-actions.has-single-visible-action .admin-booking-action:not([hidden]) {
+    width: min(320px, 100%);
+}
+
 .admin-booking-action {
     min-height: 38px;
     border: 1px solid rgba(255, 255, 255, 0.28);
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.06);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
     color: #f4f4f4;
     font-size: 0.77rem;
     font-weight: 700;
@@ -7994,6 +8054,26 @@ button {
     color: #d8d8db;
     font-size: 0.84rem;
     line-height: 1.45;
+}
+
+.admin-booking-review-customer-gcash {
+    display: grid;
+    gap: 0.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.65rem;
+}
+
+.admin-booking-review-customer-gcash p {
+    margin: 0;
+    color: #d8d8db;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.admin-booking-review-customer-gcash strong {
+    color: #f4f4f4;
 }
 
 .admin-booking-review-textarea {

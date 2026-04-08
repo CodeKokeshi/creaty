@@ -97,6 +97,8 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminBookingDetailReturningMethod = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-returning-method]") : null;
     var adminBookingDetailCourier = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-courier]") : null;
     var adminBookingDetailPaymentMethod = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-payment-method]") : null;
+    var adminBookingDetailCustomerGcashName = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-customer-gcash-name]") : null;
+    var adminBookingDetailCustomerGcashNumber = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-customer-gcash-number]") : null;
     var adminBookingDetailReceiptState = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receipt-state]") : null;
     var adminBookingDetailRefundProofState = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-refund-proof-state]") : null;
     var adminBookingDetailCancelReason = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-cancel-reason]") : null;
@@ -129,6 +131,9 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminBookingReviewCloseButtons = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelectorAll("[data-admin-booking-review-close]") : [];
     var adminBookingReviewTitle = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-title]") : null;
     var adminBookingReviewCopy = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-copy]") : null;
+    var adminBookingReviewCustomerGcashWrap = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-customer-gcash]") : null;
+    var adminBookingReviewCustomerGcashName = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-customer-gcash-name]") : null;
+    var adminBookingReviewCustomerGcashNumber = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-customer-gcash-number]") : null;
     var adminBookingReviewReasonInput = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-reason]") : null;
     var adminBookingReviewError = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-error]") : null;
     var adminBookingReviewConfirmButton = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-confirm]") : null;
@@ -4824,6 +4829,18 @@ document.addEventListener("DOMContentLoaded", function () {
             adminBookingReviewProofWrap.hidden = true;
         }
 
+        if (adminBookingReviewCustomerGcashWrap) {
+            adminBookingReviewCustomerGcashWrap.hidden = true;
+        }
+
+        if (adminBookingReviewCustomerGcashName) {
+            adminBookingReviewCustomerGcashName.textContent = "-";
+        }
+
+        if (adminBookingReviewCustomerGcashNumber) {
+            adminBookingReviewCustomerGcashNumber.textContent = "-";
+        }
+
         resetAdminBookingReviewProofSelection();
         syncAdminModalBodyLock();
     }
@@ -4837,6 +4854,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!orderId) {
             return;
         }
+
+        var bookingRecord = findAdminBookingById(orderId);
+        var bookingGcashName = bookingRecord ? String(bookingRecord.customerGcashName || "").trim() : "";
+        var bookingGcashNumber = bookingRecord ? String(bookingRecord.customerGcashNumber || "").trim() : "";
 
         var normalizedMode = mode === "refunded" ? "refunded" : "rejected";
         activeAdminBookingReviewMode = normalizedMode;
@@ -4861,6 +4882,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminBookingReviewProofWrap) {
             adminBookingReviewProofWrap.hidden = normalizedMode !== "refunded";
+        }
+
+        if (adminBookingReviewCustomerGcashWrap) {
+            adminBookingReviewCustomerGcashWrap.hidden = normalizedMode !== "refunded";
+        }
+
+        if (adminBookingReviewCustomerGcashName) {
+            adminBookingReviewCustomerGcashName.textContent = bookingGcashName || "-";
+        }
+
+        if (adminBookingReviewCustomerGcashNumber) {
+            adminBookingReviewCustomerGcashNumber.textContent = bookingGcashNumber || "-";
         }
 
         if (adminBookingReviewReasonInput) {
@@ -5218,6 +5251,8 @@ document.addEventListener("DOMContentLoaded", function () {
         var isRefunded = statusToken === "refunded";
         var isTerminalStatus = isCanceled || isRejected || isRefunded;
         var paymentMethodToken = String(booking.paymentMethod || "").toLowerCase().trim();
+        var customerGcashName = String(booking.customerGcashName || "").trim();
+        var customerGcashNumber = String(booking.customerGcashNumber || "").trim();
         var paymentReceiptPath = String(booking.paymentReceiptPath || "").trim();
         var paymentReceiptUrl = String(booking.paymentReceiptUrl || "").trim();
         var paymentReceiptUploadedAt = String(booking.paymentReceiptUploadedAt || "").trim();
@@ -5288,6 +5323,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminBookingDetailPaymentMethod) {
             adminBookingDetailPaymentMethod.textContent = formatAdminBookingPayment(booking.paymentMethod);
+        }
+
+        if (adminBookingDetailCustomerGcashName) {
+            adminBookingDetailCustomerGcashName.textContent = customerGcashName || "-";
+        }
+
+        if (adminBookingDetailCustomerGcashNumber) {
+            adminBookingDetailCustomerGcashNumber.textContent = customerGcashNumber || "-";
         }
 
         if (adminBookingDetailReceiptState) {
@@ -5473,7 +5516,23 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (adminBookingStatusForm) {
+            var visibleActionCount = 0;
+
+            adminBookingStatusForm.querySelectorAll(".admin-booking-action").forEach(function (button) {
+                if (!button.hidden) {
+                    visibleActionCount += 1;
+                }
+            });
+
+            adminBookingStatusForm.classList.toggle("has-single-visible-action", visibleActionCount === 1);
+        }
+
+        if (adminBookingStatusForm) {
             adminBookingStatusForm.hidden = isTerminalStatus;
+
+            if (isTerminalStatus) {
+                adminBookingStatusForm.classList.remove("has-single-visible-action");
+            }
         }
 
         activeAdminBookingCancelReason = String(booking.cancelReason || "").trim();
@@ -6445,6 +6504,9 @@ document.addEventListener("DOMContentLoaded", function () {
         var gcashModalNumber = gcashModal ? gcashModal.querySelector("[data-cart-gcash-number]") : null;
         var gcashModalInstruction = gcashModal ? gcashModal.querySelector("[data-cart-gcash-instruction]") : null;
         var gcashReceiptBlock = gcashModal ? gcashModal.querySelector("[data-cart-gcash-receipt-block]") : null;
+        var gcashCustomerInfoWrap = gcashModal ? gcashModal.querySelector("[data-cart-customer-gcash-info]") : null;
+        var gcashCustomerNameInput = gcashModal ? gcashModal.querySelector("[data-cart-customer-gcash-name]") : null;
+        var gcashCustomerNumberInput = gcashModal ? gcashModal.querySelector("[data-cart-customer-gcash-number]") : null;
         var gcashReceiptFileInput = gcashModal ? gcashModal.querySelector("[data-cart-gcash-receipt-file]") : null;
         var gcashReceiptSelectButton = gcashModal ? gcashModal.querySelector("[data-cart-gcash-receipt-select]") : null;
         var gcashReceiptFilename = gcashModal ? gcashModal.querySelector("[data-cart-gcash-receipt-filename]") : null;
@@ -6452,6 +6514,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var gcashUploadButton = gcashModal ? gcashModal.querySelector("[data-cart-gcash-upload]") : null;
         var gcashUploadMessage = gcashModal ? gcashModal.querySelector("[data-cart-gcash-upload-message]") : null;
         var gcashPaymentInfo = normalizeGcashPaymentInfo(window.__creatyGcashPaymentInfo);
+        var customerGcashInfo = normalizeCustomerGcashInfo(window.__creatyCustomerGcashInfo);
         var paymentReceiptTimeoutSecondsDefault = 10 * 60;
         var paymentReceiptAutoCancelReason = "Failure to upload payment receipt.";
         var customerLivePollIntervalMs = 4000;
@@ -6610,6 +6673,27 @@ document.addEventListener("DOMContentLoaded", function () {
                 accountName: String(source.accountName || "").trim(),
                 accountNumber: String(source.accountNumber || "").trim()
             };
+        }
+
+        function normalizeCustomerGcashInfo(rawValue) {
+            var source = rawValue && typeof rawValue === "object" ? rawValue : {};
+
+            return {
+                customerId: String(source.customerId || source.customer_id || "").trim(),
+                gcashName: String(source.gcashName || source.gcash_name || "").trim(),
+                gcashNumber: String(source.gcashNumber || source.gcash_number || "").trim(),
+                updatedAt: String(source.updatedAt || source.updated_at || "").trim()
+            };
+        }
+
+        function setCustomerGcashModalFields() {
+            if (gcashCustomerNameInput) {
+                gcashCustomerNameInput.value = String(customerGcashInfo.gcashName || "");
+            }
+
+            if (gcashCustomerNumberInput) {
+                gcashCustomerNumberInput.value = String(customerGcashInfo.gcashNumber || "");
+            }
         }
 
         function resolveCartAssetUrl(pathValue) {
@@ -7043,6 +7127,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 gcashReceiptBlock.hidden = normalizedMode !== "upload-receipt";
             }
 
+            if (gcashCustomerInfoWrap) {
+                gcashCustomerInfoWrap.hidden = normalizedMode !== "upload-receipt";
+            }
+
             if (normalizedMode !== "upload-receipt") {
                 if (gcashReceiptTimer) {
                     gcashReceiptTimer.hidden = true;
@@ -7052,6 +7140,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+            setCustomerGcashModalFields();
             updateGcashModalReceiptTimer();
         }
 
@@ -7103,6 +7192,7 @@ document.addEventListener("DOMContentLoaded", function () {
             pendingGcashOrderRecord = orderRecord;
             activeGcashUploadOrderId = orderId;
             setGcashModalDetails();
+            setCustomerGcashModalFields();
             resetGcashReceiptSelection();
             setGcashModalMode(mode);
             gcashModal.hidden = false;
@@ -7657,7 +7747,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        function submitOrderReceiptUpload(orderId, imageDataUrl) {
+        function submitOrderReceiptUpload(orderId, imageDataUrl, customerGcashName, customerGcashNumber) {
             if (!orderReceiptUploadEndpoint) {
                 return Promise.reject(new Error("Receipt upload endpoint is unavailable."));
             }
@@ -7670,7 +7760,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 },
                 body: JSON.stringify({
                     orderId: String(orderId || ""),
-                    imageDataUrl: String(imageDataUrl || "")
+                    imageDataUrl: String(imageDataUrl || ""),
+                    customerGcashName: String(customerGcashName || ""),
+                    customerGcashNumber: String(customerGcashNumber || "")
                 })
             }).then(function (response) {
                 return response.text().then(function (rawBody) {
@@ -8215,6 +8307,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
+                var customerGcashName = gcashCustomerNameInput
+                    ? String(gcashCustomerNameInput.value || "").trim()
+                    : String(customerGcashInfo.gcashName || "").trim();
+                var customerGcashNumber = gcashCustomerNumberInput
+                    ? String(gcashCustomerNumberInput.value || "").trim()
+                    : String(customerGcashInfo.gcashNumber || "").trim();
+
                 if (!gcashReceiptFileInput || !gcashReceiptFileInput.files || !gcashReceiptFileInput.files.length) {
                     setGcashUploadMessage("Please select a receipt image first.", true);
                     return;
@@ -8251,9 +8350,18 @@ document.addEventListener("DOMContentLoaded", function () {
                         return;
                     }
 
-                    submitOrderReceiptUpload(orderId, imageDataUrl)
+                    submitOrderReceiptUpload(orderId, imageDataUrl, customerGcashName, customerGcashNumber)
                         .then(function (responsePayload) {
                             var savedOrder = normalizeStoredOrder(responsePayload.order || null);
+
+                            customerGcashInfo = normalizeCustomerGcashInfo(
+                                responsePayload && responsePayload.customerGcashProfile
+                                    ? responsePayload.customerGcashProfile
+                                    : {
+                                        gcashName: customerGcashName,
+                                        gcashNumber: customerGcashNumber
+                                    }
+                            );
 
                             if (!savedOrder) {
                                 throw new Error("Unable to refresh booking receipt status.");

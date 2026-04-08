@@ -1,5 +1,18 @@
 [
     {
+        "id": "cust-notif-20260407103718-da43eebb",
+        "customer_id": "4",
+        "type": "order-status",
+        "order_id": "ORD-20260407102716-48A98419",
+        "status_token": "canceled",
+        "title": "Order canceled: ORD-20260407102716-48A98419",
+        "summary": "Reason: Failure to upload payment receipt.",
+        "target_view": "order-status",
+        "is_read": false,
+        "created_at": "2026-04-07T10:37:18+00:00",
+        "read_at": ""
+    },
+    {
         "id": "cust-notif-20260407094322-a70f327e",
         "customer_id": "4",
         "type": "order-status",

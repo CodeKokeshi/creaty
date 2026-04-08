@@ -16,6 +16,8 @@ $logoutPath = $logoutPath ?? $assetBase . 'customer-logout/';
 $cartPath = $cartPath ?? $assetBase . 'customer-cart/';
 $eventsPath = $eventsPath ?? $assetBase . 'customer-events/';
 
+require_once __DIR__ . '/config/customer_gcash_profiles_repository.php';
+
 $isCustomerLoggedIn = isset($_SESSION['customer_id']);
 if (!$isCustomerLoggedIn) {
     $currentPageUrl = $_SERVER['REQUEST_URI'] ?? ($assetBase . 'customer-account-settings/');
@@ -36,6 +38,10 @@ $firstNameValue = $firstNameDefault;
 $lastNameValue = $lastNameDefault;
 $emailValue = $emailDefault;
 $phoneValue = '';
+$customerId = (string) ($_SESSION['customer_id'] ?? '');
+$customerGcashProfile = find_customer_gcash_profile_for_customer($customerId);
+$gcashNameValue = (string) ($customerGcashProfile['gcash_name'] ?? '');
+$gcashNumberValue = (string) ($customerGcashProfile['gcash_number'] ?? '');
 $addressOneValue = '';
 $addressTwoValue = '';
 $cityValue = '';
@@ -50,6 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $lastNameValue = trim($_POST['last_name'] ?? '');
     $emailValue = trim($_POST['email'] ?? '');
     $phoneValue = trim($_POST['phone'] ?? '');
+    $gcashNameValue = trim($_POST['gcash_name'] ?? $gcashNameValue);
+    $gcashNumberValue = trim($_POST['gcash_number'] ?? $gcashNumberValue);
     $addressOneValue = trim($_POST['address_line_one'] ?? '');
     $addressTwoValue = trim($_POST['address_line_two'] ?? '');
     $cityValue = trim($_POST['city'] ?? '');
@@ -58,6 +66,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($formAction === 'profile_info') {
         $infoMessage = 'Personal information updated for preview only. Profile saving will be added in a future update.';
+    } elseif ($formAction === 'gcash_info') {
+        $savedGcashProfile = upsert_customer_gcash_profile_for_customer($customerId, $gcashNameValue, $gcashNumberValue);
+
+        if (is_array($savedGcashProfile)) {
+            $gcashNameValue = (string) ($savedGcashProfile['gcash_name'] ?? '');
+            $gcashNumberValue = (string) ($savedGcashProfile['gcash_number'] ?? '');
+            $infoMessage = 'GCash information updated successfully.';
+        } else {
+            $infoMessage = 'Unable to save GCash information right now.';
+        }
     } elseif ($formAction === 'address_info') {
         $infoMessage = 'Address updated for preview only. Profile saving will be added in a future update.';
     } else {
@@ -69,6 +87,8 @@ $displayName = trim($firstNameValue . ' ' . $lastNameValue);
 $displayName = $displayName !== '' ? $displayName : 'None';
 $displayEmail = $emailValue !== '' ? $emailValue : 'None';
 $displayPhone = $phoneValue !== '' ? $phoneValue : 'None';
+$displayGcashName = $gcashNameValue !== '' ? $gcashNameValue : 'None';
+$displayGcashNumber = $gcashNumberValue !== '' ? $gcashNumberValue : 'None';
 
 $addressParts = array_filter([
     $addressOneValue,
@@ -144,7 +164,7 @@ $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No addr
         <section class="account-settings-card reveal">
             <div class="account-settings-head">
                 <h1>Profile</h1>
-                <p>Manage your personal information and address.</p>
+                <p>Manage your personal information, GCash info, and address.</p>
             </div>
 
             <?php if ($infoMessage !== ''): ?>
@@ -177,6 +197,8 @@ $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No addr
 
                 <form id="profile-info-editor" class="profile-editor-panel" action="" method="post" hidden novalidate>
                     <input type="hidden" name="form_action" value="profile_info">
+                    <input type="hidden" name="gcash_name" value="<?php echo htmlspecialchars($gcashNameValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="gcash_number" value="<?php echo htmlspecialchars($gcashNumberValue, ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="address_line_one" value="<?php echo htmlspecialchars($addressOneValue, ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="address_line_two" value="<?php echo htmlspecialchars($addressTwoValue, ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="city" value="<?php echo htmlspecialchars($cityValue, ENT_QUOTES, 'UTF-8'); ?>">
@@ -212,6 +234,57 @@ $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No addr
                 </form>
             </section>
 
+            <section class="profile-section-card" aria-labelledby="profile-gcash-heading">
+                <div class="profile-section-head">
+                    <h2 id="profile-gcash-heading">GCash Info</h2>
+                </div>
+
+                <div class="profile-info-grid" aria-label="GCash information details">
+                    <div class="profile-info-item">
+                        <span>GCash Name</span>
+                        <strong><?php echo htmlspecialchars($displayGcashName, ENT_QUOTES, 'UTF-8'); ?></strong>
+                    </div>
+                    <div class="profile-info-item">
+                        <span>GCash Number</span>
+                        <strong><?php echo htmlspecialchars($displayGcashNumber, ENT_QUOTES, 'UTF-8'); ?></strong>
+                    </div>
+                </div>
+
+                <div class="profile-section-actions">
+                    <button type="button" class="profile-action-button" data-profile-toggle="profile-gcash-editor">Edit GCash Info</button>
+                </div>
+
+                <form id="profile-gcash-editor" class="profile-editor-panel" action="" method="post" hidden novalidate>
+                    <input type="hidden" name="form_action" value="gcash_info">
+                    <input type="hidden" name="first_name" value="<?php echo htmlspecialchars($firstNameValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="last_name" value="<?php echo htmlspecialchars($lastNameValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="email" value="<?php echo htmlspecialchars($emailValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="phone" value="<?php echo htmlspecialchars($phoneValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="address_line_one" value="<?php echo htmlspecialchars($addressOneValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="address_line_two" value="<?php echo htmlspecialchars($addressTwoValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="city" value="<?php echo htmlspecialchars($cityValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="province" value="<?php echo htmlspecialchars($provinceValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="postal_code" value="<?php echo htmlspecialchars($postalValue, ENT_QUOTES, 'UTF-8'); ?>">
+
+                    <div class="account-settings-grid">
+                        <label>
+                            <span>GCash Name</span>
+                            <input type="text" name="gcash_name" value="<?php echo htmlspecialchars($gcashNameValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Enter GCash account name">
+                        </label>
+
+                        <label>
+                            <span>GCash Number</span>
+                            <input type="text" name="gcash_number" value="<?php echo htmlspecialchars($gcashNumberValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="09xx xxx xxxx">
+                        </label>
+                    </div>
+
+                    <div class="account-settings-actions">
+                        <button type="submit">Save GCash Info</button>
+                        <button type="button" class="profile-action-button is-ghost" data-profile-cancel="profile-gcash-editor">Cancel</button>
+                    </div>
+                </form>
+            </section>
+
             <section class="profile-section-card" aria-labelledby="profile-address-heading">
                 <div class="profile-section-head">
                     <h2 id="profile-address-heading">Address</h2>
@@ -232,6 +305,8 @@ $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No addr
                     <input type="hidden" name="last_name" value="<?php echo htmlspecialchars($lastNameValue, ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="email" value="<?php echo htmlspecialchars($emailValue, ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="phone" value="<?php echo htmlspecialchars($phoneValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="gcash_name" value="<?php echo htmlspecialchars($gcashNameValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="gcash_number" value="<?php echo htmlspecialchars($gcashNumberValue, ENT_QUOTES, 'UTF-8'); ?>">
 
                     <div class="account-settings-grid">
                         <label class="account-field-wide">
