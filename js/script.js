@@ -5126,11 +5126,12 @@ document.addEventListener("DOMContentLoaded", function () {
         return dateLabel || timeLabel || "-";
     }
 
-    function formatAdminBookingMethod(value) {
+    function formatAdminBookingMethod(value, context) {
         var token = String(value || "").toLowerCase().trim();
+        var normalizedContext = String(context || "").toLowerCase().trim();
 
         if (token === "pickup") {
-            return "Pick-up";
+            return normalizedContext === "returning" ? "Drop-off" : "Pick-up";
         }
 
         if (token === "meetup") {
@@ -5389,11 +5390,11 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (adminBookingDetailReceivingMethod) {
-            adminBookingDetailReceivingMethod.textContent = formatAdminBookingMethod(booking.receivingMethod);
+            adminBookingDetailReceivingMethod.textContent = formatAdminBookingMethod(booking.receivingMethod, "receiving");
         }
 
         if (adminBookingDetailReturningMethod) {
-            adminBookingDetailReturningMethod.textContent = formatAdminBookingMethod(booking.returningMethod);
+            adminBookingDetailReturningMethod.textContent = formatAdminBookingMethod(booking.returningMethod, "returning");
         }
 
         if (adminBookingDetailCourier) {
@@ -5535,20 +5536,25 @@ document.addEventListener("DOMContentLoaded", function () {
                 adminBookingDetailStatusNote.textContent = "Camera is currently with the customer. You can only use Returned Early to complete this booking before the scheduled return time.";
                 adminBookingDetailStatusNote.hidden = false;
             } else if (isForReturn) {
+                var adminReturningModeLabel = formatAdminBookingMethod(booking.returningMethod, "returning");
+                var adminForReturnReminder = "Please return the camera as soon as possible. Chosen return mode: "
+                    + adminReturningModeLabel
+                    + ".";
+
                 if (forReturnState.active && forReturnState.overdueSeconds <= 0) {
-                    adminBookingDetailStatusNote.textContent = "For Return grace time left: "
+                    adminBookingDetailStatusNote.textContent = adminForReturnReminder + " For Return grace time left: "
                         + formatAdminBookingCountdown(forReturnState.remainingSeconds)
                         + ". After this window, a penalty of \u20B1"
                         + Number(forReturnState.penaltyPerHour).toFixed(2)
                         + " per hour starts until manually completed.";
                 } else if (forReturnState.active) {
-                    adminBookingDetailStatusNote.textContent = "For Return overdue penalty: \u20B1"
+                    adminBookingDetailStatusNote.textContent = adminForReturnReminder + " For Return overdue penalty: \u20B1"
                         + Number(forReturnState.penaltyAmount).toFixed(2)
                         + " (\u20B1"
                         + Number(forReturnState.penaltyPerHour).toFixed(2)
                         + "/hour). Settle this in person, then mark Complete manually.";
                 } else {
-                    adminBookingDetailStatusNote.textContent = "Booking is For Return. After the one-hour grace period, a \u20B1"
+                    adminBookingDetailStatusNote.textContent = adminForReturnReminder + " Booking is For Return. After the one-hour grace period, a \u20B1"
                         + Number(booking.forReturnPenaltyPerHour || 50).toFixed(2)
                         + "/hour penalty applies until manually completed.";
                 }
@@ -6549,6 +6555,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var deliveryOnlyBlock = bookingCard ? bookingCard.querySelector("[data-delivery-only-block]") : null;
         var courierSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='courier']") : null;
         var placeSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='place']") : null;
+        var placeFieldRow = placeSelect ? placeSelect.closest("[data-booking-place-row]") : null;
         var receiveDateInput = bookingCard ? bookingCard.querySelector("[data-booking-field='receiveDate']") : null;
         var receiveDateDisplay = bookingCard ? bookingCard.querySelector("[data-receive-date-display]") : null;
         var receiveDateCalendar = bookingCard ? bookingCard.querySelector("[data-receive-date-calendar]") : null;
@@ -7005,6 +7012,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 item.setAttribute("role", "listitem");
                 item.setAttribute("data-customer-notification-item", "true");
                 item.setAttribute("data-customer-notification-id", String(notification.id || ""));
+                item.setAttribute("data-customer-notification-type", String(notification.type || "order-status"));
                 item.setAttribute("data-customer-notification-order-id", String(notification.orderId || ""));
                 item.setAttribute("data-customer-notification-target-view", String(notification.targetView || "order-status"));
 
@@ -7083,6 +7091,90 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }).catch(function () {
                 setCustomerNotificationReadState(targetId, true);
+            });
+        }
+
+        function markCustomerOrderNotificationsAsRead() {
+            var targetType = "order-status";
+            var unreadOrderNotificationIds = customerNotifications
+                .filter(function (notification) {
+                    if (!notification || typeof notification !== "object") {
+                        return false;
+                    }
+
+                    return String(notification.type || "").trim().toLowerCase() === targetType && !notification.isRead;
+                })
+                .map(function (notification) {
+                    return String(notification.id || "").trim();
+                })
+                .filter(function (notificationId) {
+                    return notificationId !== "";
+                });
+
+            if (!unreadOrderNotificationIds.length) {
+                return Promise.resolve();
+            }
+
+            // Apply immediate UX feedback so order badges clear as soon as one order notification is opened.
+            customerNotifications = customerNotifications.map(function (notification) {
+                if (!notification || typeof notification !== "object") {
+                    return notification;
+                }
+
+                if (String(notification.type || "").trim().toLowerCase() !== targetType) {
+                    return notification;
+                }
+
+                return Object.assign({}, notification, {
+                    isRead: true
+                });
+            });
+
+            var unreadCount = customerNotifications.reduce(function (total, notification) {
+                if (!notification || notification.isRead) {
+                    return total;
+                }
+
+                return total + 1;
+            }, 0);
+
+            setCustomerNotificationBadgeCount(unreadCount);
+            renderCustomerNotificationList();
+
+            if (!customerNotificationMarkReadEndpoint) {
+                return Promise.resolve();
+            }
+
+            return window.fetch(customerNotificationMarkReadEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                },
+                body: JSON.stringify({
+                    markAllOrderNotifications: true
+                })
+            }).then(function (response) {
+                return response.json().catch(function () {
+                    return {
+                        ok: false
+                    };
+                }).then(function (payload) {
+                    return {
+                        ok: response.ok,
+                        payload: payload
+                    };
+                });
+            }).then(function (result) {
+                if (!result.ok || !result.payload || !result.payload.ok) {
+                    return;
+                }
+
+                if (typeof result.payload.unreadCount !== "undefined") {
+                    setCustomerNotificationBadgeCount(result.payload.unreadCount);
+                }
+            }).catch(function () {
+                // Keep optimistic UI state; live polling will reconcile if needed.
             });
         }
 
@@ -7436,6 +7528,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 returnDate: String(order.returnDate || ""),
                 returnTime: String(order.returnTime || ""),
                 place: String(order.place || ""),
+                receivingMethod: String(order.receivingMethod || order.receiving_method || ""),
+                returningMethod: String(order.returningMethod || order.returning_method || ""),
+                courier: String(order.courier || ""),
                 cancelReason: String(order.cancelReason || order.cancel_reason || ""),
                 cancelBy: String(order.cancelBy || order.cancel_by || ""),
                 paymentMethod: String(order.paymentMethod || order.payment_method || ""),
@@ -7792,6 +7887,30 @@ document.addEventListener("DOMContentLoaded", function () {
                 + " ("
                 + formatPeso(penaltyPerHour)
                 + "/hour)";
+        }
+
+        function formatOrderReturningMethod(value) {
+            var token = String(value || "").toLowerCase().trim();
+
+            if (token === "pickup") {
+                return "Drop-off";
+            }
+
+            if (token === "meetup") {
+                return "Meet-up";
+            }
+
+            if (token === "delivery") {
+                return "Delivery";
+            }
+
+            return "-";
+        }
+
+        function buildOrderForReturnReminder(returningMethod) {
+            return "Please return the camera as soon as possible. Chosen return mode: "
+                + formatOrderReturningMethod(returningMethod)
+                + ".";
         }
 
         function applyLocalPaymentReceiptTimeouts() {
@@ -8328,6 +8447,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 if (forReturnState.active) {
+                    var forReturnReminderLine = document.createElement("p");
+                    forReturnReminderLine.className = "cart-order-status-for-return-note";
+                    forReturnReminderLine.textContent = buildOrderForReturnReminder(order.returningMethod);
+                    orderMeta.appendChild(forReturnReminderLine);
+
                     var forReturnLine = document.createElement("p");
                     forReturnLine.className = "cart-order-status-for-return";
                     forReturnLine.setAttribute("data-cart-for-return", "true");
@@ -8513,6 +8637,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 var notificationId = String(notificationItem.getAttribute("data-customer-notification-id") || "").trim();
+                var notificationType = String(notificationItem.getAttribute("data-customer-notification-type") || "order-status").trim().toLowerCase();
                 var targetView = String(notificationItem.getAttribute("data-customer-notification-target-view") || "order-status").trim().toLowerCase();
                 var orderId = String(notificationItem.getAttribute("data-customer-notification-order-id") || "").trim();
 
@@ -8524,6 +8649,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
 
                     setCartView("order-status");
+                }
+
+                if (notificationType === "order-status") {
+                    markCustomerOrderNotificationsAsRead();
+                    return;
                 }
 
                 markCustomerNotificationAsRead(notificationId);
@@ -9726,11 +9856,12 @@ document.addEventListener("DOMContentLoaded", function () {
             var receivingMethod = getMethodValue(receiveMethodInputs, "pickup");
             var returningMethod = getMethodValue(returnMethodInputs, "meetup");
             var hasDelivery = receivingMethod === "delivery" || returningMethod === "delivery";
+            var hasMeetup = receivingMethod === "meetup" || returningMethod === "meetup";
 
             return {
                 receiveDate: receiveDateInput ? receiveDateInput.value : "",
                 receiveTime: receiveTimeSelect ? receiveTimeSelect.value : "",
-                place: placeSelect ? placeSelect.value : "",
+                place: hasMeetup && placeSelect ? placeSelect.value : "",
                 returnDate: derivedSchedule.date || (returnDateInput ? returnDateInput.value : ""),
                 returnTime: derivedSchedule.time || (returnTimeSelect ? returnTimeSelect.value : ""),
                 courier: hasDelivery && courierSelect ? courierSelect.value : "",
@@ -9876,6 +10007,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var receivingMethod = getMethodValue(receiveMethodInputs, "pickup");
             var returningMethod = getMethodValue(returnMethodInputs, "meetup");
             var hasDelivery = receivingMethod === "delivery" || returningMethod === "delivery";
+            var hasMeetup = receivingMethod === "meetup" || returningMethod === "meetup";
 
             if (deliveryOnlyBlock) {
                 deliveryOnlyBlock.hidden = !hasDelivery;
@@ -9889,6 +10021,26 @@ document.addEventListener("DOMContentLoaded", function () {
                 } else if (!courierSelect.value && courierSelect.options.length) {
                     courierSelect.selectedIndex = 0;
                 }
+            }
+
+            if (placeSelect) {
+                placeSelect.disabled = !hasMeetup;
+
+                if (!hasMeetup) {
+                    placeSelect.value = "";
+                } else if (!placeSelect.value && placeSelect.options.length) {
+                    placeSelect.selectedIndex = 0;
+                }
+
+                if (placeSelect.disabled) {
+                    placeSelect.setAttribute("aria-disabled", "true");
+                } else {
+                    placeSelect.removeAttribute("aria-disabled");
+                }
+            }
+
+            if (placeFieldRow) {
+                placeFieldRow.classList.toggle("is-disabled", !hasMeetup);
             }
 
             updateMethodOptionStyles();

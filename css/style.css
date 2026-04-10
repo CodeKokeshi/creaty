@@ -3534,6 +3534,106 @@ button {
     color: #f2f2f2;
 }
 
+.cart-terms-editor-layout {
+    display: grid;
+    gap: 0.62rem;
+}
+
+.cart-terms-editor-container {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 0.78rem 0.82rem;
+    display: grid;
+    gap: 0.54rem;
+}
+
+.cart-terms-editor-container h2,
+.cart-terms-editor-container h3,
+.cart-terms-editor-container h4,
+.cart-terms-editor-container h5,
+.cart-terms-editor-container h6,
+.cart-terms-editor-container p,
+.cart-terms-editor-container ul,
+.cart-terms-editor-container ol {
+    margin: 0;
+}
+
+.cart-terms-editor-container h2,
+.cart-terms-editor-container h3,
+.cart-terms-editor-container h4,
+.cart-terms-editor-container h5,
+.cart-terms-editor-container h6 {
+    color: #f2f4f7;
+    letter-spacing: 0.02em;
+}
+
+.cart-terms-editor-container h3 {
+    font-size: 0.92rem;
+}
+
+.cart-terms-editor-container h4,
+.cart-terms-editor-container h5,
+.cart-terms-editor-container h6 {
+    font-size: 0.84rem;
+    text-transform: uppercase;
+}
+
+.cart-terms-editor-container p,
+.cart-terms-editor-container li {
+    color: var(--cart-soft-text);
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
+.cart-terms-editor-container strong {
+    color: #f1f1f1;
+}
+
+.cart-terms-editor-container a {
+    color: #a6ccff;
+    text-decoration: underline;
+    text-underline-offset: 0.11em;
+    word-break: break-word;
+}
+
+.cart-terms-editor-mini-list {
+    display: grid;
+    gap: 0.44rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cart-terms-editor-mini-item {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 0.5rem 0.55rem 0.5rem 2rem;
+    position: relative;
+}
+
+.cart-terms-editor-mini-item::before {
+    position: absolute;
+    top: 0.47rem;
+    left: 0.68rem;
+    color: #f1f1f1;
+    font-weight: 700;
+}
+
+ul.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
+    content: '\2022';
+}
+
+ol.cart-terms-editor-mini-list {
+    counter-reset: cartTermsMiniIndex;
+}
+
+ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
+    counter-increment: cartTermsMiniIndex;
+    content: counter(cartTermsMiniIndex) '.';
+}
+
 .cart-booking-card {
     display: grid;
     gap: 1rem;

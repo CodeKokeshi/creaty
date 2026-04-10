@@ -40,6 +40,51 @@ if ($customerId === '') {
 $rawBody = file_get_contents('php://input');
 $decodedBody = json_decode((string) $rawBody, true);
 
+$markAllOrderNotificationsRaw = is_array($decodedBody)
+    ? ($decodedBody['markAllOrderNotifications'] ?? '')
+    : ($_POST['markAllOrderNotifications'] ?? '');
+$markAllOrderNotifications = false;
+
+if (is_bool($markAllOrderNotificationsRaw)) {
+    $markAllOrderNotifications = $markAllOrderNotificationsRaw;
+} else {
+    $markAllOrderNotifications = in_array(
+        strtolower(trim((string) $markAllOrderNotificationsRaw)),
+        ['1', 'true', 'yes', 'on'],
+        true
+    );
+}
+
+if ($markAllOrderNotifications) {
+    $markResult = mark_customer_notifications_as_read_by_type_for_customer($customerId, 'order-status');
+    $notifications = $markResult['notifications'] ?? null;
+
+    if (!is_array($notifications)) {
+        customer_notifications_mark_read_respond(500, [
+            'ok' => false,
+            'message' => 'Unable to process notifications.',
+        ]);
+    }
+
+    if (!empty($markResult['changed'])) {
+        if (!save_customer_notifications_repository($notifications)) {
+            customer_notifications_mark_read_respond(500, [
+                'ok' => false,
+                'message' => 'Unable to save read state.',
+            ]);
+        }
+    }
+
+    customer_notifications_mark_read_respond(200, [
+        'ok' => true,
+        'changed' => (bool) ($markResult['changed'] ?? false),
+        'markMode' => 'order-status-bulk',
+        'updatedCount' => (int) ($markResult['updatedCount'] ?? 0),
+        'updatedNotificationIds' => array_values($markResult['updatedNotificationIds'] ?? []),
+        'unreadCount' => count_unread_customer_notifications_for_customer($customerId, $notifications),
+    ]);
+}
+
 $notificationId = trim((string) (
     (is_array($decodedBody) ? ($decodedBody['notificationId'] ?? '') : '')
     ?: ($_POST['notificationId'] ?? '')

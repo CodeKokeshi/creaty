@@ -1368,6 +1368,7 @@ function normalize_customer_order_record($record)
 
     $receivingMethod = normalize_customer_order_receiving_method($record['receiving_method'] ?? '');
     $returningMethod = normalize_customer_order_returning_method($record['returning_method'] ?? '');
+    $place = trim((string) ($record['place'] ?? ''));
     $courier = normalize_customer_order_courier($record['courier'] ?? '');
     $cancelReason = normalize_customer_order_cancel_reason($record['cancel_reason'] ?? '');
     $canceledBy = normalize_customer_order_canceled_by($record['canceled_by'] ?? '');
@@ -1379,6 +1380,10 @@ function normalize_customer_order_record($record)
 
     if ($receivingMethod !== 'delivery' && $returningMethod !== 'delivery') {
         $courier = '';
+    }
+
+    if ($receivingMethod !== 'meetup' && $returningMethod !== 'meetup') {
+        $place = '';
     }
 
     if (!customer_order_status_requires_reason($statusToken)) {
@@ -1417,7 +1422,7 @@ function normalize_customer_order_record($record)
         'receive_time' => normalize_customer_order_time($record['receive_time'] ?? ''),
         'return_date' => normalize_customer_order_date($record['return_date'] ?? ''),
         'return_time' => normalize_customer_order_time($record['return_time'] ?? ''),
-        'place' => trim((string) ($record['place'] ?? '')),
+        'place' => $place,
         'receiving_method' => $receivingMethod,
         'returning_method' => $returningMethod,
         'courier' => $courier,

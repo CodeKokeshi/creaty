@@ -289,6 +289,54 @@ function count_unread_customer_notifications_for_customer($customerId, $notifica
     return $count;
 }
 
+function mark_customer_notifications_as_read_by_type_for_customer($customerId, $notificationType, $notifications = null)
+{
+    $targetCustomerId = trim((string) $customerId);
+    $targetType = normalize_customer_notification_type($notificationType);
+    $source = is_array($notifications) ? $notifications : load_customer_notifications_repository();
+
+    if ($targetCustomerId === '') {
+        return [
+            'notifications' => $source,
+            'changed' => false,
+            'updatedCount' => 0,
+            'updatedNotificationIds' => [],
+        ];
+    }
+
+    $changed = false;
+    $updatedCount = 0;
+    $updatedNotificationIds = [];
+    $readAt = gmdate('c');
+
+    foreach ($source as $index => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        $normalized = normalize_customer_notification_record($record);
+
+        if ($normalized['customer_id'] === $targetCustomerId && $normalized['type'] === $targetType) {
+            if (!$normalized['is_read']) {
+                $normalized['is_read'] = true;
+                $normalized['read_at'] = $readAt;
+                $changed = true;
+                $updatedCount += 1;
+                $updatedNotificationIds[] = (string) ($normalized['id'] ?? '');
+            }
+        }
+
+        $source[$index] = $normalized;
+    }
+
+    return [
+        'notifications' => array_values($source),
+        'changed' => $changed,
+        'updatedCount' => $updatedCount,
+        'updatedNotificationIds' => $updatedNotificationIds,
+    ];
+}
+
 function mark_customer_notification_as_read_for_customer($customerId, $notificationId, $notifications = null)
 {
     $targetCustomerId = trim((string) $customerId);

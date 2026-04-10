@@ -27,6 +27,7 @@ require_once __DIR__ . '/config/customer_orders_repository.php';
 require_once __DIR__ . '/config/gcash_qr_repository.php';
 require_once __DIR__ . '/config/customer_notifications_repository.php';
 require_once __DIR__ . '/config/customer_gcash_profiles_repository.php';
+require_once __DIR__ . '/config/customer_terms_repository.php';
 
 $productsRepository = load_products_repository();
 $eventPackagesRepository = load_event_packages_repository();
@@ -79,6 +80,8 @@ $gcashPaymentInfo = [
     'accountName' => (string) ($gcashQrSettings['accountName'] ?? ''),
     'accountNumber' => (string) ($gcashQrSettings['accountNumber'] ?? '')
 ];
+$customerTermsSettings = load_customer_terms_repository();
+$customerTermsDisplayHtml = customer_terms_prepare_display_html((string) ($customerTermsSettings['contentHtml'] ?? ''));
 $customerGcashInfo = map_customer_gcash_profile_for_frontend([]);
 
 if ($isCustomerLoggedIn) {
@@ -113,7 +116,7 @@ if ($isCustomerLoggedIn) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260408-6">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260409-1">
 </head>
 <body class="cart-page">
     <header class="site-header">
@@ -224,209 +227,7 @@ if ($isCustomerLoggedIn) {
 
                     <div class="cart-terms-content" id="cart-terms-content" hidden>
                         <article class="cart-terms-markdown" aria-label="Full Terms and Conditions">
-                            <section class="cart-terms-highlights" aria-label="Key rental rules">
-                                <article class="cart-terms-highlight-card">
-                                    <p class="cart-terms-highlight-label">Rental Window</p>
-                                    <strong>22 Hours</strong>
-                                </article>
-                                <article class="cart-terms-highlight-card">
-                                    <p class="cart-terms-highlight-label">Grace Period</p>
-                                    <strong>2 Hours</strong>
-                                </article>
-                                <article class="cart-terms-highlight-card is-warning">
-                                    <p class="cart-terms-highlight-label">Late Fee</p>
-                                    <strong>&#8369;50 / Hour</strong>
-                                </article>
-                            </section>
-
-                            <section class="cart-terms-section">
-                                <header class="cart-terms-section-head">
-                                    <span class="cart-terms-number">1</span>
-                                    <h3>Acceptance of Terms</h3>
-                                </header>
-                                <p>By creating a reservation through the CREATY system, you (&ldquo;Customer&rdquo;) enter into a legally binding contract with <strong>Nifty Fifty Camera Rentals</strong> and agree to all terms below.</p>
-                            </section>
-
-                            <section class="cart-terms-section">
-                                <header class="cart-terms-section-head">
-                                    <span class="cart-terms-number">2</span>
-                                    <h3>Definitions</h3>
-                                </header>
-                                <div class="cart-terms-bullet-cards" role="list" aria-label="Definitions list">
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p class="cart-terms-point-title"><strong>Equipment</strong></p>
-                                        <p>Camera gear listed for rental.</p>
-                                    </article>
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p class="cart-terms-point-title"><strong>Reservation</strong></p>
-                                        <p>A confirmed booking.</p>
-                                    </article>
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p class="cart-terms-point-title"><strong>Rental Period</strong></p>
-                                        <p>22 hours of usage time begins when equipment is received.</p>
-                                    </article>
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p class="cart-terms-point-title"><strong>Grace Period</strong></p>
-                                        <p>2-hour window to initiate the return process.</p>
-                                    </article>
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p class="cart-terms-point-title"><strong>Late Period</strong></p>
-                                        <p>Time after the Grace Period until equipment is returned.</p>
-                                    </article>
-                                </div>
-                            </section>
-
-                            <section class="cart-terms-section">
-                                <header class="cart-terms-section-head">
-                                    <span class="cart-terms-number">3</span>
-                                    <h3>Reservation and Equipment Assignment</h3>
-                                </header>
-                                <div class="cart-terms-list-cards" role="list" aria-label="Reservation and assignment rules">
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p>Reservations are requests until confirmed by Nifty Fifty staff via the system.</p>
-                                    </article>
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p><strong>Equipment assignment is fully automated</strong> by the CREATY system based on availability, event suitability, and fair usage rotation. Staff validate but do not manually assign gear.</p>
-                                    </article>
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p>Cancellations must be made via official channels; late cancellations may incur a fee.</p>
-                                    </article>
-                                </div>
-                            </section>
-
-                            <section class="cart-terms-section">
-                                <header class="cart-terms-section-head">
-                                    <span class="cart-terms-number">4</span>
-                                    <h3>Claiming Equipment: Methods and Requirements</h3>
-                                </header>
-                                <p>You must choose one claiming method:</p>
-                                <div class="cart-terms-method-grid" role="list" aria-label="Claiming methods">
-                                    <article class="cart-terms-method-card" role="listitem">
-                                        <h4>Pick-up</h4>
-                                        <div class="cart-terms-list-cards compact" role="list" aria-label="Pick-up requirements">
-                                            <article class="cart-terms-point-card" role="listitem">
-                                                <p>Collect at Nifty Fifty&#39;s location during business hours with valid ID.</p>
-                                            </article>
-                                        </div>
-                                    </article>
-                                    <article class="cart-terms-method-card" role="listitem">
-                                        <h4>Meet-up</h4>
-                                        <div class="cart-terms-list-cards compact" role="list" aria-label="Meet-up requirements">
-                                            <article class="cart-terms-point-card" role="listitem">
-                                                <p>Time and location require prior staff confirmation. Being late may forfeit the reservation.</p>
-                                            </article>
-                                        </div>
-                                    </article>
-                                    <article class="cart-terms-method-card" role="listitem">
-                                        <h4>Delivery</h4>
-                                        <div class="cart-terms-list-cards compact" role="list" aria-label="Delivery requirements">
-                                            <article class="cart-terms-point-card" role="listitem">
-                                                <p><strong>Mandatory Verification:</strong> You must upload (a) a clear photo of a valid government ID and (b) a clear photo of yourself holding that ID.</p>
-                                            </article>
-                                            <article class="cart-terms-point-card" role="listitem">
-                                                <p><strong>Delivery Fees:</strong> All delivery costs are borne by the Customer.</p>
-                                            </article>
-                                            <article class="cart-terms-point-card" role="listitem">
-                                                <p><strong>Liability:</strong> Nifty Fifty is not liable for delays caused by traffic, courier issues, or incorrect address details. Equipment responsibility transfers to you upon handover.</p>
-                                            </article>
-                                        </div>
-                                    </article>
-                                </div>
-                            </section>
-
-                            <section class="cart-terms-section">
-                                <header class="cart-terms-section-head">
-                                    <span class="cart-terms-number">5</span>
-                                    <h3>Returning Equipment: Methods, Grace Period and Penalties</h3>
-                                </header>
-                                <p>You must choose one return method:</p>
-                                <div class="cart-terms-method-grid" role="list" aria-label="Returning methods">
-                                    <article class="cart-terms-method-card" role="listitem">
-                                        <h4>Return to Store</h4>
-                                        <div class="cart-terms-list-cards compact" role="list" aria-label="Return to store requirements">
-                                            <article class="cart-terms-point-card" role="listitem">
-                                                <p>Return anytime within the agreed return window.</p>
-                                            </article>
-                                        </div>
-                                    </article>
-                                    <article class="cart-terms-method-card" role="listitem">
-                                        <h4>Meet-up Return</h4>
-                                        <div class="cart-terms-list-cards compact" role="list" aria-label="Meet-up return requirements">
-                                            <article class="cart-terms-point-card" role="listitem">
-                                                <p>Time and location must be pre-arranged with staff.</p>
-                                            </article>
-                                        </div>
-                                    </article>
-                                    <article class="cart-terms-method-card" role="listitem">
-                                        <h4>Delivery Return</h4>
-                                        <div class="cart-terms-list-cards compact" role="list" aria-label="Delivery return requirements">
-                                            <article class="cart-terms-point-card" role="listitem">
-                                                <p>You must book and pay for the courier. Return shipment must be initiated within the 2-hour Grace Period.</p>
-                                            </article>
-                                        </div>
-                                    </article>
-                                    <article class="cart-terms-method-card is-warning" role="listitem">
-                                        <h4>Late Returns and Penalties</h4>
-                                        <div class="cart-terms-list-cards compact" role="list" aria-label="Late return penalties">
-                                            <article class="cart-terms-point-card" role="listitem">
-                                                <p>The 2-hour Grace Period is for initiating the return process, not for extended usage.</p>
-                                            </article>
-                                            <article class="cart-terms-point-card" role="listitem">
-                                                <p>Returns completed after the Grace Period incur a late penalty of &#8369;50 for every hour (or partial hour) of delay.</p>
-                                            </article>
-                                            <article class="cart-terms-point-card" role="listitem">
-                                                <p>Failure to return equipment within 24 hours after the Grace Period ends may be treated as theft or conversion, and legal action will be pursued. All accrued late fees will still apply.</p>
-                                            </article>
-                                        </div>
-                                    </article>
-                                </div>
-                            </section>
-
-                            <section class="cart-terms-section">
-                                <header class="cart-terms-section-head">
-                                    <span class="cart-terms-number">6</span>
-                                    <h3>Care, Liability, and Fees</h3>
-                                </header>
-                                <div class="cart-terms-list-cards" role="list" aria-label="Care and liability rules">
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p>You are responsible for the equipment from receipt until its verified return.</p>
-                                    </article>
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p>You are fully liable for all damage, loss, or theft and will be charged appropriate repair or replacement fees.</p>
-                                    </article>
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p>All rental fees, delivery charges, and late penalties are your responsibility.</p>
-                                    </article>
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p>Nifty Fifty is not liable for any indirect damages (e.g., missed shooting opportunities, data loss).</p>
-                                    </article>
-                                </div>
-                            </section>
-
-                            <section class="cart-terms-section">
-                                <header class="cart-terms-section-head">
-                                    <span class="cart-terms-number">7</span>
-                                    <h3>General Provisions</h3>
-                                </header>
-                                <div class="cart-terms-bullet-cards" role="list" aria-label="General provisions list">
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p class="cart-terms-point-title"><strong>Account Integrity</strong></p>
-                                        <p>You must provide accurate information. Misuse of the CREATY system may result in account suspension.</p>
-                                    </article>
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p class="cart-terms-point-title"><strong>Privacy</strong></p>
-                                        <p>ID photos are collected solely for verification and dealt with per our Privacy Policy.</p>
-                                    </article>
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p class="cart-terms-point-title"><strong>Limitation of Liability</strong></p>
-                                        <p>Nifty Fifty&#39;s maximum liability is limited to the total rental fees paid for the reservation.</p>
-                                    </article>
-                                    <article class="cart-terms-point-card" role="listitem">
-                                        <p class="cart-terms-point-title"><strong>Changes to Terms</strong></p>
-                                        <p>We may update these Terms. Your continued use of CREATY constitutes acceptance.</p>
-                                    </article>
-                                </div>
-                            </section>
+                            <?php echo $customerTermsDisplayHtml; ?>
                         </article>
                     </div>
                 </section>
@@ -475,7 +276,7 @@ if ($isCustomerLoggedIn) {
                             <p class="cart-receive-calendar-note" data-receive-calendar-note hidden>No available receiving dates in the current window for your selected items.</p>
                         </div>
 
-                        <label class="cart-form-line">
+                        <label class="cart-form-line" data-booking-place-row>
                             <span>Meeting Place:</span>
                             <select data-booking-field="place">
                                 <option value="Walter Mart Entrance, Carmona" selected>Walter Mart Entrance, Carmona</option>
@@ -540,7 +341,7 @@ if ($isCustomerLoggedIn) {
                             <div class="cart-method-options" data-booking-method-group="returningMethod">
                                 <label class="cart-method-option">
                                     <input type="radio" name="returningMethod" value="pickup">
-                                    <span>PICK-UP</span>
+                                    <span>DROP-OFF</span>
                                 </label>
                                 <label class="cart-method-option">
                                     <input type="radio" name="returningMethod" value="meetup" checked>

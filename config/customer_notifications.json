@@ -1,5 +1,57 @@
 [
     {
+        "id": "cust-notif-20260410085822-ddf64e8f",
+        "customer_id": "4",
+        "type": "order-status",
+        "order_id": "ORD-20260410164821-B0ED47E6",
+        "status_token": "canceled",
+        "title": "Order canceled: ORD-20260410164821-B0ED47E6",
+        "summary": "Reason: Failure to upload payment receipt.",
+        "target_view": "order-status",
+        "is_read": false,
+        "created_at": "2026-04-10T08:58:22+00:00",
+        "read_at": ""
+    },
+    {
+        "id": "cust-notif-20260410083658-3a637ec0",
+        "customer_id": "4",
+        "type": "order-status",
+        "order_id": "ORD-20260408121913-220CF65C",
+        "status_token": "return",
+        "title": "Order status updated: ORD-20260408121913-220CF65C",
+        "summary": "Your order status is now For Return.",
+        "target_view": "order-status",
+        "is_read": false,
+        "created_at": "2026-04-10T08:36:58+00:00",
+        "read_at": ""
+    },
+    {
+        "id": "cust-notif-20260409001010-f7685bbf",
+        "customer_id": "4",
+        "type": "order-status",
+        "order_id": "ORD-20260408115927-45A41A9F",
+        "status_token": "ongoing",
+        "title": "Order status updated: ORD-20260408115927-45A41A9F",
+        "summary": "Your order status is now Ongoing.",
+        "target_view": "order-status",
+        "is_read": false,
+        "created_at": "2026-04-09T00:10:10+00:00",
+        "read_at": ""
+    },
+    {
+        "id": "cust-notif-20260409001010-29bbf7e2",
+        "customer_id": "4",
+        "type": "order-status",
+        "order_id": "ORD-20260408121913-220CF65C",
+        "status_token": "ongoing",
+        "title": "Order status updated: ORD-20260408121913-220CF65C",
+        "summary": "Your order status is now Ongoing.",
+        "target_view": "order-status",
+        "is_read": false,
+        "created_at": "2026-04-09T00:10:10+00:00",
+        "read_at": ""
+    },
+    {
         "id": "cust-notif-20260408134214-5cdf0265",
         "customer_id": "4",
         "type": "order-status",

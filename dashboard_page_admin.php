@@ -31,6 +31,7 @@ $liveUpdatesEndpoint = $routeBase . 'notifications/live_updates.php';
 $manageBrandsPath = $routeBase . 'brands/';
 $manageCategoriesPath = $routeBase . 'categories/';
 $setGcashQrPath = $routeBase . 'gcash-qr/';
+$editTocPath = $routeBase . 'toc/';
 
 $initialAdminPanel = strtolower(trim((string) ($_GET['admin_view'] ?? '')));
 if (!in_array($initialAdminPanel, ['equipments', 'bookings', 'reports', 'users'], true)) {
@@ -1075,6 +1076,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageCategoriesPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Categories</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($setGcashQrPath, ENT_QUOTES, 'UTF-8'); ?>">Set GCash QR</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($editTocPath, ENT_QUOTES, 'UTF-8'); ?>">Edit TOC</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
                     </ul>

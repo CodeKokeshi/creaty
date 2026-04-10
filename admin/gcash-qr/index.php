@@ -21,6 +21,7 @@ $manageBrandsPath = '../brands/';
 $manageCategoriesPath = '../categories/';
 $archivedPath = '../../archive/';
 $setGcashQrPath = './';
+$editTocPath = '../toc/';
 $logoutPath = '../logout.php';
 $updateEndpoint = '../dashboard/update_gcash_qr.php';
 
@@ -283,6 +284,7 @@ $accountNumber = (string) ($gcashSettings['accountNumber'] ?? '');
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageCategoriesPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Categories</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($archivedPath, ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($setGcashQrPath, ENT_QUOTES, 'UTF-8'); ?>">Set GCash QR</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($editTocPath, ENT_QUOTES, 'UTF-8'); ?>">Edit TOC</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
                     </ul>
