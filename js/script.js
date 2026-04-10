@@ -10026,7 +10026,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     orderMeta.appendChild(forReturnLine);
                 }
 
-                if (requiresReceiveDelivery && receiveDeliveryStatus === "in-transit") {
+                if (requiresReceiveDelivery && receiveDeliveryStatus === "in-transit" && hasReceiveDeliveryReceipt) {
                     var receiveDeliveryLine = document.createElement("p");
                     receiveDeliveryLine.className = "cart-order-status-delivery";
                     receiveDeliveryLine.textContent = "Receive delivery: In Transit.";
@@ -10056,7 +10056,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 }
 
-                if (requiresReturnDelivery && returnDeliveryStatus === "in-transit") {
+                if (requiresReturnDelivery && returnDeliveryStatus === "in-transit" && hasReturnDeliveryReceipt) {
                     var returnDeliveryLine = document.createElement("p");
                     returnDeliveryLine.className = "cart-order-status-delivery";
                     returnDeliveryLine.textContent = "Return delivery: In Transit.";
