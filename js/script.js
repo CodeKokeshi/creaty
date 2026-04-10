@@ -10079,6 +10079,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 var quantityMax = Number.isFinite(capacityParsed)
                     ? Math.max(1, capacityParsed)
                     : 20;
+                var stockCount = itemIsUnavailable
+                    ? 0
+                    : (Number.isFinite(capacityParsed)
+                        ? Math.max(0, capacityParsed)
+                        : quantityMax);
 
                 if (!itemIsUnavailable && item.qty > quantityMax) {
                     item.qty = quantityMax;
@@ -10093,11 +10098,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 card.innerHTML = '' +
                     '<div class="cart-item-copy">' +
                         '<h2 class="cart-item-name' + (itemIsUnavailable ? ' is-unavailable' : '') + '">' + escapeHtml(nameLabel) + (itemIsUnavailable ? ' <span class="cart-item-stock-note">(OUT OF STOCK)</span>' : '') + '</h2>' +
-                        '<p>' + escapeHtml(item.copy) + '</p>' +
-                        '<label class="cart-mini-field">' +
-                            '<span>Qty</span>' +
-                            '<input type="number" min="1" max="' + quantityMax + '" value="' + item.qty + '" data-cart-edit="qty"' + (itemIsUnavailable ? ' disabled' : '') + '>' +
-                        '</label>' +
+                        '<p class="cart-item-copy-text">' + escapeHtml(item.copy) + '</p>' +
+                        '<p class="cart-item-available-stock">(Stock: ' + escapeHtml(String(stockCount)) + ')</p>' +
                     '</div>' +
                     '<div class="cart-item-thumb' + (itemIsUnavailable ? ' cart-item-thumb-missing' : '') + '">' +
                         (itemIsUnavailable
@@ -10108,6 +10110,10 @@ document.addEventListener("DOMContentLoaded", function () {
                         '<label class="cart-mini-field">' +
                             '<span>Days</span>' +
                             '<input type="number" min="1" max="14" value="' + item.days + '" data-cart-edit="days"' + (itemIsUnavailable ? ' disabled' : '') + '>' +
+                        '</label>' +
+                        '<label class="cart-mini-field">' +
+                            '<span>Qty</span>' +
+                            '<input type="number" min="1" max="' + quantityMax + '" value="' + item.qty + '" data-cart-edit="qty"' + (itemIsUnavailable ? ' disabled' : '') + '>' +
                         '</label>' +
                         '<p class="cart-item-price-label">' + (itemIsUnavailable ? 'Status:' : 'Price:') + '</p>' +
                         '<strong>' + (itemIsUnavailable ? 'Unavailable' : formatMoney(lineTotal)) + '</strong>' +

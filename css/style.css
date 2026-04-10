@@ -1024,13 +1024,62 @@ button {
     padding: 1.15rem;
 }
 
-.admin-edit-modal::-webkit-scrollbar {
-    width: 8px;
+.admin-booking-detail-modal,
+.admin-edit-modal,
+.cart-customer-notification-list,
+.customer-message-modal-dialog,
+.admin-notification-modal-scroll,
+.admin-equipments-archive-modal,
+.admin-equipments-status-modal,
+.admin-event-thumbs-grid {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
 }
 
-.admin-edit-modal::-webkit-scrollbar-thumb {
+.admin-booking-detail-modal::-webkit-scrollbar,
+.admin-edit-modal::-webkit-scrollbar,
+.cart-customer-notification-list::-webkit-scrollbar,
+.customer-message-modal-dialog::-webkit-scrollbar,
+.admin-notification-modal-scroll::-webkit-scrollbar,
+.admin-equipments-archive-modal::-webkit-scrollbar,
+.admin-equipments-status-modal::-webkit-scrollbar,
+.admin-event-thumbs-grid::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.admin-booking-detail-modal::-webkit-scrollbar-track,
+.admin-edit-modal::-webkit-scrollbar-track,
+.cart-customer-notification-list::-webkit-scrollbar-track,
+.customer-message-modal-dialog::-webkit-scrollbar-track,
+.admin-notification-modal-scroll::-webkit-scrollbar-track,
+.admin-equipments-archive-modal::-webkit-scrollbar-track,
+.admin-equipments-status-modal::-webkit-scrollbar-track,
+.admin-event-thumbs-grid::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.admin-booking-detail-modal::-webkit-scrollbar-thumb,
+.admin-edit-modal::-webkit-scrollbar-thumb,
+.cart-customer-notification-list::-webkit-scrollbar-thumb,
+.customer-message-modal-dialog::-webkit-scrollbar-thumb,
+.admin-notification-modal-scroll::-webkit-scrollbar-thumb,
+.admin-equipments-archive-modal::-webkit-scrollbar-thumb,
+.admin-equipments-status-modal::-webkit-scrollbar-thumb,
+.admin-event-thumbs-grid::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.28);
     border-radius: 999px;
+}
+
+.admin-booking-detail-modal::-webkit-scrollbar-thumb:hover,
+.admin-edit-modal::-webkit-scrollbar-thumb:hover,
+.cart-customer-notification-list::-webkit-scrollbar-thumb:hover,
+.customer-message-modal-dialog::-webkit-scrollbar-thumb:hover,
+.admin-notification-modal-scroll::-webkit-scrollbar-thumb:hover,
+.admin-equipments-archive-modal::-webkit-scrollbar-thumb:hover,
+.admin-equipments-status-modal::-webkit-scrollbar-thumb:hover,
+.admin-event-thumbs-grid::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
 }
 
 .admin-edit-modal-head {
@@ -2881,11 +2930,19 @@ button {
     text-decoration: none;
 }
 
-.cart-item-copy p {
+.cart-item-copy .cart-item-copy-text {
     margin: 0.55rem 0 1.2rem;
     color: var(--cart-soft-text);
     font-size: 0.92rem;
     line-height: 1.6;
+}
+
+.cart-item-available-stock {
+    margin: -0.72rem 0 0.9rem;
+    color: #c6ccd6;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
 }
 
 .cart-item-thumb {
