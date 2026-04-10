@@ -29,6 +29,12 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminNotificationLiveEndpoint = typeof window.__creatyAdminNotificationLiveEndpoint === "string"
         ? String(window.__creatyAdminNotificationLiveEndpoint || "")
         : "";
+    var adminUploadDeliveryReceiptEndpoint = typeof window.__creatyAdminUploadDeliveryReceiptEndpoint === "string"
+        ? String(window.__creatyAdminUploadDeliveryReceiptEndpoint || "")
+        : "";
+    var adminCloseDeliveryLegEndpoint = typeof window.__creatyAdminCloseDeliveryLegEndpoint === "string"
+        ? String(window.__creatyAdminCloseDeliveryLegEndpoint || "")
+        : "";
     var adminLivePollIntervalMs = 4000;
     var adminLivePollTimerId = null;
     var adminLivePollInFlight = false;
@@ -118,6 +124,18 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminBookingDetailRefundImage = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-refund-image]") : null;
     var adminBookingDetailRefundEmpty = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-refund-empty]") : null;
     var adminBookingDetailRefundMeta = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-refund-meta]") : null;
+    var adminBookingDetailReceiveDeliveryWrap = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receive-delivery-wrap]") : null;
+    var adminBookingDetailReceiveDeliveryState = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receive-delivery-state]") : null;
+    var adminBookingDetailReceiveDeliveryLink = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receive-delivery-link]") : null;
+    var adminBookingDetailReceiveDeliveryImage = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receive-delivery-image]") : null;
+    var adminBookingDetailReceiveDeliveryEmpty = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receive-delivery-empty]") : null;
+    var adminBookingDetailReceiveDeliveryMeta = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receive-delivery-meta]") : null;
+    var adminBookingDetailReturnDeliveryWrap = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-return-delivery-wrap]") : null;
+    var adminBookingDetailReturnDeliveryState = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-return-delivery-state]") : null;
+    var adminBookingDetailReturnDeliveryLink = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-return-delivery-link]") : null;
+    var adminBookingDetailReturnDeliveryImage = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-return-delivery-image]") : null;
+    var adminBookingDetailReturnDeliveryEmpty = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-return-delivery-empty]") : null;
+    var adminBookingDetailReturnDeliveryMeta = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-return-delivery-meta]") : null;
     var adminBookingDetailValidIdWrap = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-valid-id-wrap]") : null;
     var adminBookingDetailValidIdLink = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-valid-id-link]") : null;
     var adminBookingDetailValidIdImage = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-valid-id-image]") : null;
@@ -136,6 +154,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminBookingRefundProofHiddenInput = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-refund-proof-input]") : null;
     var adminBookingStatusSubmitButtons = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelectorAll("[data-admin-booking-status-submit]") : [];
     var adminBookingReviewOpenButtons = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelectorAll("[data-admin-booking-review-open]") : [];
+    var adminBookingDeliveryActionButtons = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelectorAll("[data-admin-booking-delivery-open]") : [];
     var adminBookingCancelOpenButton = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-cancel-open]") : null;
     var adminBookingDetailItemsTotal = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-items-total]") : null;
     var adminBookingCancelBackdrop = document.querySelector("[data-admin-booking-cancel-backdrop]");
@@ -157,6 +176,18 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminBookingReviewProofFileInput = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-proof-file]") : null;
     var adminBookingReviewProofSelectButton = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-proof-select]") : null;
     var adminBookingReviewProofFilename = adminBookingReviewBackdrop ? adminBookingReviewBackdrop.querySelector("[data-admin-booking-review-proof-filename]") : null;
+    var adminBookingDeliveryBackdrop = document.querySelector("[data-admin-booking-delivery-backdrop]");
+    var adminBookingDeliveryCloseButtons = adminBookingDeliveryBackdrop ? adminBookingDeliveryBackdrop.querySelectorAll("[data-admin-booking-delivery-close]") : [];
+    var adminBookingDeliveryTitle = adminBookingDeliveryBackdrop ? adminBookingDeliveryBackdrop.querySelector("[data-admin-booking-delivery-title]") : null;
+    var adminBookingDeliveryCopy = adminBookingDeliveryBackdrop ? adminBookingDeliveryBackdrop.querySelector("[data-admin-booking-delivery-copy]") : null;
+    var adminBookingDeliveryProofWrap = adminBookingDeliveryBackdrop ? adminBookingDeliveryBackdrop.querySelector("[data-admin-booking-delivery-proof-wrap]") : null;
+    var adminBookingDeliveryProofFileInput = adminBookingDeliveryBackdrop ? adminBookingDeliveryBackdrop.querySelector("[data-admin-booking-delivery-proof-file]") : null;
+    var adminBookingDeliveryProofSelectButton = adminBookingDeliveryBackdrop ? adminBookingDeliveryBackdrop.querySelector("[data-admin-booking-delivery-proof-select]") : null;
+    var adminBookingDeliveryProofFilename = adminBookingDeliveryBackdrop ? adminBookingDeliveryBackdrop.querySelector("[data-admin-booking-delivery-proof-filename]") : null;
+    var adminBookingDeliveryReferenceInput = adminBookingDeliveryBackdrop ? adminBookingDeliveryBackdrop.querySelector("[data-admin-booking-delivery-reference]") : null;
+    var adminBookingDeliveryNotesInput = adminBookingDeliveryBackdrop ? adminBookingDeliveryBackdrop.querySelector("[data-admin-booking-delivery-notes]") : null;
+    var adminBookingDeliveryError = adminBookingDeliveryBackdrop ? adminBookingDeliveryBackdrop.querySelector("[data-admin-booking-delivery-error]") : null;
+    var adminBookingDeliveryConfirmButton = adminBookingDeliveryBackdrop ? adminBookingDeliveryBackdrop.querySelector("[data-admin-booking-delivery-confirm]") : null;
     var adminBookingsSource = Array.isArray(window.__creatyAdminBookings) ? window.__creatyAdminBookings : [];
     var initialAdminBookingRecord = adminBookingsSource.length ? adminBookingsSource[0] : null;
     var initialAdminBookingId = initialAdminBookingRecord && initialAdminBookingRecord.id
@@ -324,6 +355,9 @@ document.addEventListener("DOMContentLoaded", function () {
     };
     var activeAdminBookingCancelReason = "";
     var activeAdminBookingReviewMode = "";
+    var activeAdminBookingDeliveryMode = "";
+    var activeAdminBookingDeliveryOrderId = "";
+    var isSubmittingAdminBookingDelivery = false;
     var activeAdminBookingDetailPage = "items";
     var detailGalleries = document.querySelectorAll("[data-gallery]");
     var packageSlideshows = document.querySelectorAll("[data-package-slideshow]");
@@ -4732,7 +4766,8 @@ document.addEventListener("DOMContentLoaded", function () {
         var hasVisibleBookingDetailModal = Boolean(adminBookingDetailBackdrop && !adminBookingDetailBackdrop.hidden);
         var hasVisibleBookingCancelModal = Boolean(adminBookingCancelBackdrop && !adminBookingCancelBackdrop.hidden);
         var hasVisibleBookingReviewModal = Boolean(adminBookingReviewBackdrop && !adminBookingReviewBackdrop.hidden);
-        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal || hasVisibleEventEditModal || hasVisibleEventThumbsModal || hasVisibleBookingDetailModal || hasVisibleBookingCancelModal || hasVisibleBookingReviewModal);
+        var hasVisibleBookingDeliveryModal = Boolean(adminBookingDeliveryBackdrop && !adminBookingDeliveryBackdrop.hidden);
+        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal || hasVisibleEventEditModal || hasVisibleEventThumbsModal || hasVisibleBookingDetailModal || hasVisibleBookingCancelModal || hasVisibleBookingReviewModal || hasVisibleBookingDeliveryModal);
     }
 
     function setAdminBookingCancelError(message) {
@@ -4929,6 +4964,358 @@ document.addEventListener("DOMContentLoaded", function () {
                 adminBookingReviewReasonInput.focus();
                 adminBookingReviewReasonInput.select();
             }
+        });
+    }
+
+    function normalizeAdminDeliveryStatusToken(value, leg) {
+        var normalizedLeg = String(leg || "").toLowerCase().trim() === "return"
+            ? "return"
+            : "receive";
+        var token = String(value || "").toLowerCase().trim().replace(/[^a-z-]+/g, "");
+
+        if (!token) {
+            return normalizedLeg === "return" ? "waiting-customer-proof" : "waiting-proof";
+        }
+
+        if (token === "not-required") {
+            return "not-required";
+        }
+
+        return token;
+    }
+
+    function formatAdminDeliveryStatusLabel(statusToken, leg) {
+        var normalizedToken = normalizeAdminDeliveryStatusToken(statusToken, leg);
+
+        if (normalizedToken === "not-required") {
+            return "Not Required";
+        }
+
+        if (normalizedToken === "waiting-proof") {
+            return "Waiting for Admin Upload";
+        }
+
+        if (normalizedToken === "waiting-customer-proof") {
+            return "Waiting for Customer Upload";
+        }
+
+        if (normalizedToken === "in-transit") {
+            return "In Transit";
+        }
+
+        if (normalizedToken === "closed") {
+            return "Closed";
+        }
+
+        return normalizedToken
+            ? normalizedToken.replace(/-/g, " ").replace(/\b\w/g, function (character) {
+                return character.toUpperCase();
+            })
+            : "Waiting";
+    }
+
+    function formatAdminDeliveryActorLabel(actorToken) {
+        var normalizedToken = String(actorToken || "").toLowerCase().trim();
+
+        if (normalizedToken === "admin") {
+            return "Admin";
+        }
+
+        if (normalizedToken === "customer") {
+            return "Customer";
+        }
+
+        return "-";
+    }
+
+    function buildAdminDeliveryMetaText(config) {
+        var source = config && typeof config === "object" ? config : {};
+        var segments = [];
+        var uploadedAtLabel = formatAdminBookingReceiptTimestamp(source.uploadedAt);
+        var closedAtLabel = formatAdminBookingReceiptTimestamp(source.closedAt);
+        var uploadedByLabel = formatAdminDeliveryActorLabel(source.uploadedBy);
+        var closedByLabel = formatAdminDeliveryActorLabel(source.closedBy);
+        var referenceText = String(source.reference || "").trim();
+        var notesText = String(source.notes || "").trim();
+
+        if (uploadedAtLabel) {
+            if (uploadedByLabel !== "-") {
+                segments.push("Uploaded by " + uploadedByLabel + " at " + uploadedAtLabel + ".");
+            } else {
+                segments.push("Uploaded at: " + uploadedAtLabel + ".");
+            }
+        } else if (uploadedByLabel !== "-") {
+            segments.push("Uploaded by " + uploadedByLabel + ".");
+        }
+
+        if (referenceText) {
+            segments.push("Reference: " + referenceText + ".");
+        }
+
+        if (notesText) {
+            segments.push("Notes: " + notesText);
+        }
+
+        if (closedAtLabel) {
+            if (closedByLabel !== "-") {
+                segments.push("Closed by " + closedByLabel + " at " + closedAtLabel + ".");
+            } else {
+                segments.push("Closed at: " + closedAtLabel + ".");
+            }
+        }
+
+        return segments.join(" ").trim();
+    }
+
+    function setAdminBookingDeliveryError(message) {
+        if (!adminBookingDeliveryError) {
+            return;
+        }
+
+        var text = String(message || "").trim();
+        adminBookingDeliveryError.textContent = text;
+        adminBookingDeliveryError.hidden = text === "";
+    }
+
+    function resetAdminBookingDeliveryProofSelection() {
+        if (adminBookingDeliveryProofFileInput) {
+            adminBookingDeliveryProofFileInput.value = "";
+        }
+
+        if (adminBookingDeliveryProofFilename) {
+            adminBookingDeliveryProofFilename.textContent = "No file selected";
+        }
+    }
+
+    function closeAdminBookingDeliveryModal() {
+        if (!adminBookingDeliveryBackdrop) {
+            return;
+        }
+
+        adminBookingDeliveryBackdrop.hidden = true;
+        activeAdminBookingDeliveryMode = "";
+        activeAdminBookingDeliveryOrderId = "";
+        isSubmittingAdminBookingDelivery = false;
+
+        setAdminBookingDeliverySubmittingState(false, "Confirm");
+
+        if (adminBookingDeliveryProofWrap) {
+            adminBookingDeliveryProofWrap.hidden = true;
+        }
+
+        if (adminBookingDeliveryReferenceInput) {
+            adminBookingDeliveryReferenceInput.value = "";
+        }
+
+        if (adminBookingDeliveryNotesInput) {
+            adminBookingDeliveryNotesInput.value = "";
+        }
+
+        resetAdminBookingDeliveryProofSelection();
+        setAdminBookingDeliveryError("");
+        syncAdminModalBodyLock();
+    }
+
+    function openAdminBookingDeliveryModal(mode) {
+        if (!adminBookingDeliveryBackdrop || !adminBookingStatusOrderIdInput) {
+            return;
+        }
+
+        var normalizedMode = String(mode || "").toLowerCase().trim();
+
+        if (normalizedMode !== "upload-receive" && normalizedMode !== "close-receive" && normalizedMode !== "close-return") {
+            return;
+        }
+
+        if (normalizedMode === "upload-receive" && !adminUploadDeliveryReceiptEndpoint) {
+            return;
+        }
+
+        if ((normalizedMode === "close-receive" || normalizedMode === "close-return") && !adminCloseDeliveryLegEndpoint) {
+            return;
+        }
+
+        var orderId = String(adminBookingStatusOrderIdInput.value || "").trim();
+        if (!orderId) {
+            return;
+        }
+
+        var bookingRecord = findAdminBookingById(orderId);
+        var referenceValue = "";
+        var notesValue = "";
+        var titleText = "Delivery Action";
+        var copyText = "Provide delivery details before confirming this action.";
+        var confirmText = "Confirm";
+        var shouldRequireProof = normalizedMode === "upload-receive";
+
+        if (bookingRecord && typeof bookingRecord === "object") {
+            if (normalizedMode === "close-return") {
+                referenceValue = String(bookingRecord.returnDeliveryReference || "").trim();
+                notesValue = String(bookingRecord.returnDeliveryNotes || "").trim();
+            } else {
+                referenceValue = String(bookingRecord.receiveDeliveryReference || "").trim();
+                notesValue = String(bookingRecord.receiveDeliveryNotes || "").trim();
+            }
+        }
+
+        if (normalizedMode === "upload-receive") {
+            titleText = "Upload Receive Delivery Receipt";
+            copyText = "Upload the courier proof to mark the receive-delivery leg as in transit.";
+            confirmText = "Upload Receipt";
+        } else if (normalizedMode === "close-receive") {
+            titleText = "Close Receive Delivery Leg";
+            copyText = "Confirm this leg only after the customer receives the equipment.";
+            confirmText = "Close Receive Leg";
+        } else {
+            titleText = "Close Return Delivery Leg";
+            copyText = "Confirm this leg only after returned equipment is back in-store.";
+            confirmText = "Close Return Leg";
+        }
+
+        activeAdminBookingDeliveryMode = normalizedMode;
+        activeAdminBookingDeliveryOrderId = orderId;
+        isSubmittingAdminBookingDelivery = false;
+
+        if (adminBookingDeliveryTitle) {
+            adminBookingDeliveryTitle.textContent = titleText;
+        }
+
+        if (adminBookingDeliveryCopy) {
+            adminBookingDeliveryCopy.textContent = copyText;
+        }
+
+        if (adminBookingDeliveryConfirmButton) {
+            adminBookingDeliveryConfirmButton.textContent = confirmText;
+            adminBookingDeliveryConfirmButton.disabled = false;
+        }
+
+        if (adminBookingDeliveryProofWrap) {
+            adminBookingDeliveryProofWrap.hidden = !shouldRequireProof;
+        }
+
+        if (adminBookingDeliveryProofSelectButton) {
+            adminBookingDeliveryProofSelectButton.disabled = false;
+        }
+
+        if (adminBookingDeliveryReferenceInput) {
+            adminBookingDeliveryReferenceInput.value = referenceValue;
+        }
+
+        if (adminBookingDeliveryNotesInput) {
+            adminBookingDeliveryNotesInput.value = notesValue;
+        }
+
+        resetAdminBookingDeliveryProofSelection();
+        setAdminBookingDeliveryError("");
+        adminBookingDeliveryBackdrop.hidden = false;
+        syncAdminModalBodyLock();
+
+        window.requestAnimationFrame(function () {
+            if (shouldRequireProof && adminBookingDeliveryProofSelectButton) {
+                adminBookingDeliveryProofSelectButton.focus();
+                return;
+            }
+
+            if (adminBookingDeliveryReferenceInput) {
+                adminBookingDeliveryReferenceInput.focus();
+                adminBookingDeliveryReferenceInput.select();
+            }
+        });
+    }
+
+    function submitAdminDeliveryReceiptUpload(orderId, imageDataUrl, deliveryReference, deliveryNotes) {
+        if (!adminUploadDeliveryReceiptEndpoint) {
+            return Promise.reject(new Error("Receive-delivery upload endpoint is unavailable."));
+        }
+
+        return window.fetch(adminUploadDeliveryReceiptEndpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json"
+            },
+            body: JSON.stringify({
+                orderId: String(orderId || ""),
+                imageDataUrl: String(imageDataUrl || ""),
+                deliveryReference: String(deliveryReference || ""),
+                deliveryNotes: String(deliveryNotes || "")
+            })
+        }).then(function (response) {
+            return response.text().then(function (rawBody) {
+                var payload = {};
+
+                try {
+                    payload = JSON.parse(rawBody);
+                } catch (error) {
+                    payload = {};
+                }
+
+                if (!response.ok || !payload || payload.ok !== true) {
+                    var errorMessage = payload && payload.message
+                        ? String(payload.message)
+                        : "Unable to upload receive-delivery receipt right now.";
+                    throw new Error(errorMessage);
+                }
+
+                return payload;
+            });
+        });
+    }
+
+    function submitAdminCloseDeliveryLeg(orderId, leg, deliveryReference, deliveryNotes) {
+        if (!adminCloseDeliveryLegEndpoint) {
+            return Promise.reject(new Error("Close-delivery endpoint is unavailable."));
+        }
+
+        return window.fetch(adminCloseDeliveryLegEndpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json"
+            },
+            body: JSON.stringify({
+                orderId: String(orderId || ""),
+                leg: String(leg || ""),
+                deliveryReference: String(deliveryReference || ""),
+                deliveryNotes: String(deliveryNotes || "")
+            })
+        }).then(function (response) {
+            return response.text().then(function (rawBody) {
+                var payload = {};
+
+                try {
+                    payload = JSON.parse(rawBody);
+                } catch (error) {
+                    payload = {};
+                }
+
+                if (!response.ok || !payload || payload.ok !== true) {
+                    var errorMessage = payload && payload.message
+                        ? String(payload.message)
+                        : "Unable to close delivery leg right now.";
+                    throw new Error(errorMessage);
+                }
+
+                return payload;
+            });
+        });
+    }
+
+    function setAdminBookingDeliverySubmittingState(isSubmitting, label) {
+        var disabled = Boolean(isSubmitting);
+        var buttonLabel = String(label || "Confirm");
+
+        if (adminBookingDeliveryConfirmButton) {
+            adminBookingDeliveryConfirmButton.disabled = disabled;
+            adminBookingDeliveryConfirmButton.textContent = buttonLabel;
+        }
+
+        if (adminBookingDeliveryProofSelectButton) {
+            adminBookingDeliveryProofSelectButton.disabled = disabled;
+        }
+
+        adminBookingDeliveryCloseButtons.forEach(function (button) {
+            button.disabled = disabled;
         });
     }
 
@@ -5428,6 +5815,28 @@ document.addEventListener("DOMContentLoaded", function () {
         var selfieWithIdPath = String(booking.selfieWithIdPath || "").trim();
         var selfieWithIdUrl = String(booking.selfieWithIdUrl || "").trim();
         var selfieWithIdUploadedAt = String(booking.selfieWithIdUploadedAt || "").trim();
+        var requiresReceiveDelivery = Boolean(booking.requiresReceiveDelivery)
+            || String(booking.receivingMethod || "").toLowerCase().trim() === "delivery";
+        var requiresReturnDelivery = Boolean(booking.requiresReturnDelivery)
+            || String(booking.returningMethod || "").toLowerCase().trim() === "delivery";
+        var receiveDeliveryStatus = normalizeAdminDeliveryStatusToken(booking.receiveDeliveryStatus, "receive");
+        var returnDeliveryStatus = normalizeAdminDeliveryStatusToken(booking.returnDeliveryStatus, "return");
+        var receiveDeliveryReceiptPath = String(booking.receiveDeliveryReceiptPath || "").trim();
+        var receiveDeliveryReceiptUrl = String(booking.receiveDeliveryReceiptUrl || "").trim();
+        var receiveDeliveryReceiptUploadedAt = String(booking.receiveDeliveryReceiptUploadedAt || "").trim();
+        var receiveDeliveryReceiptUploadedBy = String(booking.receiveDeliveryReceiptUploadedBy || "").trim();
+        var receiveDeliveryReference = String(booking.receiveDeliveryReference || "").trim();
+        var receiveDeliveryNotes = String(booking.receiveDeliveryNotes || "").trim();
+        var receiveDeliveryClosedAt = String(booking.receiveDeliveryClosedAt || "").trim();
+        var receiveDeliveryClosedBy = String(booking.receiveDeliveryClosedBy || "").trim();
+        var returnDeliveryReceiptPath = String(booking.returnDeliveryReceiptPath || "").trim();
+        var returnDeliveryReceiptUrl = String(booking.returnDeliveryReceiptUrl || "").trim();
+        var returnDeliveryReceiptUploadedAt = String(booking.returnDeliveryReceiptUploadedAt || "").trim();
+        var returnDeliveryReceiptUploadedBy = String(booking.returnDeliveryReceiptUploadedBy || "").trim();
+        var returnDeliveryReference = String(booking.returnDeliveryReference || "").trim();
+        var returnDeliveryNotes = String(booking.returnDeliveryNotes || "").trim();
+        var returnDeliveryClosedAt = String(booking.returnDeliveryClosedAt || "").trim();
+        var returnDeliveryClosedBy = String(booking.returnDeliveryClosedBy || "").trim();
         var requiresIdentityDocuments = Boolean(booking.requiresIdentityDocuments)
             || String(booking.receivingMethod || "").toLowerCase().trim() === "delivery"
             || String(booking.returningMethod || "").toLowerCase().trim() === "delivery";
@@ -5459,8 +5868,18 @@ document.addEventListener("DOMContentLoaded", function () {
             selfieWithIdUrl = selfieWithIdPath;
         }
 
+        if (!receiveDeliveryReceiptUrl && receiveDeliveryReceiptPath) {
+            receiveDeliveryReceiptUrl = receiveDeliveryReceiptPath;
+        }
+
+        if (!returnDeliveryReceiptUrl && returnDeliveryReceiptPath) {
+            returnDeliveryReceiptUrl = returnDeliveryReceiptPath;
+        }
+
         var hasValidIdImage = validIdUrl !== "" || validIdPath !== "";
         var hasSelfieWithIdImage = selfieWithIdUrl !== "" || selfieWithIdPath !== "";
+        var hasReceiveDeliveryReceipt = receiveDeliveryReceiptUrl !== "" || receiveDeliveryReceiptPath !== "";
+        var hasReturnDeliveryReceipt = returnDeliveryReceiptUrl !== "" || returnDeliveryReceiptPath !== "";
 
         if (adminBookingDetailName) {
             adminBookingDetailName.textContent = String(booking.name || "-");
@@ -5656,6 +6075,108 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
+        if (adminBookingDetailReceiveDeliveryState) {
+            adminBookingDetailReceiveDeliveryState.textContent = formatAdminDeliveryStatusLabel(receiveDeliveryStatus, "receive");
+        }
+
+        if (adminBookingDetailReturnDeliveryState) {
+            adminBookingDetailReturnDeliveryState.textContent = formatAdminDeliveryStatusLabel(returnDeliveryStatus, "return");
+        }
+
+        if (adminBookingDetailReceiveDeliveryWrap) {
+            adminBookingDetailReceiveDeliveryWrap.hidden = !requiresReceiveDelivery && !hasReceiveDeliveryReceipt;
+        }
+
+        if (adminBookingDetailReturnDeliveryWrap) {
+            adminBookingDetailReturnDeliveryWrap.hidden = !requiresReturnDelivery && !hasReturnDeliveryReceipt;
+        }
+
+        if (adminBookingDetailReceiveDeliveryLink) {
+            adminBookingDetailReceiveDeliveryLink.hidden = !hasReceiveDeliveryReceipt;
+
+            if (hasReceiveDeliveryReceipt) {
+                adminBookingDetailReceiveDeliveryLink.href = receiveDeliveryReceiptUrl;
+            } else {
+                adminBookingDetailReceiveDeliveryLink.removeAttribute("href");
+            }
+        }
+
+        if (adminBookingDetailReturnDeliveryLink) {
+            adminBookingDetailReturnDeliveryLink.hidden = !hasReturnDeliveryReceipt;
+
+            if (hasReturnDeliveryReceipt) {
+                adminBookingDetailReturnDeliveryLink.href = returnDeliveryReceiptUrl;
+            } else {
+                adminBookingDetailReturnDeliveryLink.removeAttribute("href");
+            }
+        }
+
+        if (adminBookingDetailReceiveDeliveryImage) {
+            if (hasReceiveDeliveryReceipt) {
+                adminBookingDetailReceiveDeliveryImage.src = receiveDeliveryReceiptUrl;
+                adminBookingDetailReceiveDeliveryImage.hidden = false;
+            } else {
+                adminBookingDetailReceiveDeliveryImage.hidden = true;
+                adminBookingDetailReceiveDeliveryImage.removeAttribute("src");
+            }
+        }
+
+        if (adminBookingDetailReturnDeliveryImage) {
+            if (hasReturnDeliveryReceipt) {
+                adminBookingDetailReturnDeliveryImage.src = returnDeliveryReceiptUrl;
+                adminBookingDetailReturnDeliveryImage.hidden = false;
+            } else {
+                adminBookingDetailReturnDeliveryImage.hidden = true;
+                adminBookingDetailReturnDeliveryImage.removeAttribute("src");
+            }
+        }
+
+        if (adminBookingDetailReceiveDeliveryEmpty) {
+            adminBookingDetailReceiveDeliveryEmpty.hidden = hasReceiveDeliveryReceipt || !requiresReceiveDelivery;
+        }
+
+        if (adminBookingDetailReturnDeliveryEmpty) {
+            adminBookingDetailReturnDeliveryEmpty.hidden = hasReturnDeliveryReceipt || !requiresReturnDelivery;
+        }
+
+        if (adminBookingDetailReceiveDeliveryMeta) {
+            var receiveDeliveryMetaText = buildAdminDeliveryMetaText({
+                uploadedAt: receiveDeliveryReceiptUploadedAt,
+                uploadedBy: receiveDeliveryReceiptUploadedBy,
+                reference: receiveDeliveryReference,
+                notes: receiveDeliveryNotes,
+                closedAt: receiveDeliveryClosedAt,
+                closedBy: receiveDeliveryClosedBy
+            });
+
+            if (receiveDeliveryMetaText) {
+                adminBookingDetailReceiveDeliveryMeta.textContent = receiveDeliveryMetaText;
+                adminBookingDetailReceiveDeliveryMeta.hidden = false;
+            } else {
+                adminBookingDetailReceiveDeliveryMeta.textContent = "";
+                adminBookingDetailReceiveDeliveryMeta.hidden = true;
+            }
+        }
+
+        if (adminBookingDetailReturnDeliveryMeta) {
+            var returnDeliveryMetaText = buildAdminDeliveryMetaText({
+                uploadedAt: returnDeliveryReceiptUploadedAt,
+                uploadedBy: returnDeliveryReceiptUploadedBy,
+                reference: returnDeliveryReference,
+                notes: returnDeliveryNotes,
+                closedAt: returnDeliveryClosedAt,
+                closedBy: returnDeliveryClosedBy
+            });
+
+            if (returnDeliveryMetaText) {
+                adminBookingDetailReturnDeliveryMeta.textContent = returnDeliveryMetaText;
+                adminBookingDetailReturnDeliveryMeta.hidden = false;
+            } else {
+                adminBookingDetailReturnDeliveryMeta.textContent = "";
+                adminBookingDetailReturnDeliveryMeta.hidden = true;
+            }
+        }
+
         if (adminBookingDetailValidIdWrap) {
             adminBookingDetailValidIdWrap.hidden = !requiresIdentityDocuments && !hasValidIdImage;
         }
@@ -5767,7 +6288,15 @@ document.addEventListener("DOMContentLoaded", function () {
                         adminBookingDetailStatusNote.textContent = "Payment is approved. Handover is already confirmed for this booking.";
                     }
                 } else {
-                    adminBookingDetailStatusNote.textContent = "Payment is approved. Only cancellation is allowed manually. Status will switch to Ongoing automatically at the receiving date/time.";
+                    if (receiveDeliveryStatus === "waiting-proof") {
+                        adminBookingDetailStatusNote.textContent = "Payment is approved. Upload the receive-delivery receipt once courier handoff starts, then close the receive leg when the customer confirms delivery.";
+                    } else if (receiveDeliveryStatus === "in-transit") {
+                        adminBookingDetailStatusNote.textContent = "Receive delivery is in transit. Close the receive-delivery leg after successful customer handoff.";
+                    } else if (receiveDeliveryStatus === "closed") {
+                        adminBookingDetailStatusNote.textContent = "Receive delivery leg is closed. Status will switch to Ongoing automatically at the receiving schedule.";
+                    } else {
+                        adminBookingDetailStatusNote.textContent = "Payment is approved. Status will switch to Ongoing automatically at the receiving date/time.";
+                    }
                 }
 
                 adminBookingDetailStatusNote.hidden = false;
@@ -5791,7 +6320,17 @@ document.addEventListener("DOMContentLoaded", function () {
                     + adminReturningModeLabel
                     + ".";
 
-                if (forReturnState.active && forReturnState.overdueSeconds <= 0) {
+                if (requiresReturnDelivery) {
+                    if (returnDeliveryStatus === "waiting-customer-proof") {
+                        adminBookingDetailStatusNote.textContent = adminForReturnReminder + " Waiting for customer return-delivery receipt upload before courier transit can be tracked.";
+                    } else if (returnDeliveryStatus === "in-transit") {
+                        adminBookingDetailStatusNote.textContent = adminForReturnReminder + " Customer has uploaded the return-delivery receipt. Close the return-delivery leg once items are back in-store, then mark Complete.";
+                    } else if (returnDeliveryStatus === "closed") {
+                        adminBookingDetailStatusNote.textContent = adminForReturnReminder + " Return-delivery leg is closed. Mark Complete once final checks are done.";
+                    } else {
+                        adminBookingDetailStatusNote.textContent = adminForReturnReminder;
+                    }
+                } else if (forReturnState.active && forReturnState.overdueSeconds <= 0) {
                     adminBookingDetailStatusNote.textContent = adminForReturnReminder + " For Return grace time left: "
                         + formatAdminBookingCountdown(forReturnState.remainingSeconds)
                         + ". After this window, a penalty of \u20B1"
@@ -5894,6 +6433,43 @@ document.addEventListener("DOMContentLoaded", function () {
             adminBookingCancelOpenButton.disabled = !canCancelBooking;
             adminBookingCancelOpenButton.hidden = !canCancelBooking;
         }
+
+        var canUploadReceiveDelivery = Boolean(adminUploadDeliveryReceiptEndpoint)
+            && requiresReceiveDelivery
+            && !isTerminalStatus
+            && !isAwaitingRefund
+            && (statusToken === "approved" || isOngoing)
+            && (receiveDeliveryStatus === "waiting-proof" || receiveDeliveryStatus === "in-transit");
+        var canCloseReceiveDelivery = Boolean(adminCloseDeliveryLegEndpoint)
+            && requiresReceiveDelivery
+            && !isTerminalStatus
+            && !isAwaitingRefund
+            && (statusToken === "approved" || isOngoing)
+            && receiveDeliveryStatus === "in-transit"
+            && hasReceiveDeliveryReceipt;
+        var canCloseReturnDelivery = Boolean(adminCloseDeliveryLegEndpoint)
+            && requiresReturnDelivery
+            && !isTerminalStatus
+            && !isAwaitingRefund
+            && isForReturn
+            && returnDeliveryStatus === "in-transit"
+            && hasReturnDeliveryReceipt;
+
+        adminBookingDeliveryActionButtons.forEach(function (button) {
+            var mode = String(button.getAttribute("data-admin-booking-delivery-mode") || "").toLowerCase().trim();
+            var isVisible = false;
+
+            if (mode === "upload-receive") {
+                isVisible = canUploadReceiveDelivery;
+            } else if (mode === "close-receive") {
+                isVisible = canCloseReceiveDelivery;
+            } else if (mode === "close-return") {
+                isVisible = canCloseReturnDelivery;
+            }
+
+            button.disabled = !isVisible;
+            button.hidden = !isVisible;
+        });
 
         if (adminBookingStatusForm) {
             var visibleActionCount = 0;
@@ -6107,6 +6683,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        closeAdminBookingDeliveryModal();
         closeAdminBookingReviewModal();
         closeAdminBookingCancelModal();
 
@@ -6243,6 +6820,150 @@ document.addEventListener("DOMContentLoaded", function () {
     if (adminBookingCancelOpenButton) {
         adminBookingCancelOpenButton.addEventListener("click", function () {
             openAdminBookingCancelModal();
+        });
+    }
+
+    adminBookingDeliveryActionButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            if (!button || button.disabled || button.hidden) {
+                return;
+            }
+
+            var mode = String(button.getAttribute("data-admin-booking-delivery-mode") || "").toLowerCase().trim();
+            openAdminBookingDeliveryModal(mode);
+        });
+    });
+
+    adminBookingDeliveryCloseButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            if (isSubmittingAdminBookingDelivery) {
+                return;
+            }
+
+            closeAdminBookingDeliveryModal();
+        });
+    });
+
+    if (adminBookingDeliveryBackdrop) {
+        adminBookingDeliveryBackdrop.addEventListener("click", function (event) {
+            if (event.target !== adminBookingDeliveryBackdrop || isSubmittingAdminBookingDelivery) {
+                return;
+            }
+
+            closeAdminBookingDeliveryModal();
+        });
+    }
+
+    if (adminBookingDeliveryProofSelectButton) {
+        adminBookingDeliveryProofSelectButton.addEventListener("click", function () {
+            if (isSubmittingAdminBookingDelivery || !adminBookingDeliveryProofFileInput) {
+                return;
+            }
+
+            if (activeAdminBookingDeliveryMode !== "upload-receive") {
+                return;
+            }
+
+            adminBookingDeliveryProofFileInput.click();
+        });
+    }
+
+    if (adminBookingDeliveryProofFileInput) {
+        adminBookingDeliveryProofFileInput.addEventListener("change", function () {
+            if (adminBookingDeliveryProofFilename) {
+                if (adminBookingDeliveryProofFileInput.files && adminBookingDeliveryProofFileInput.files.length > 0) {
+                    adminBookingDeliveryProofFilename.textContent = adminBookingDeliveryProofFileInput.files[0].name;
+                } else {
+                    adminBookingDeliveryProofFilename.textContent = "No file selected";
+                }
+            }
+
+            setAdminBookingDeliveryError("");
+        });
+    }
+
+    if (adminBookingDeliveryConfirmButton) {
+        adminBookingDeliveryConfirmButton.addEventListener("click", function () {
+            if (isSubmittingAdminBookingDelivery) {
+                return;
+            }
+
+            var orderId = String(activeAdminBookingDeliveryOrderId || (adminBookingStatusOrderIdInput ? adminBookingStatusOrderIdInput.value : "") || "").trim();
+            var mode = String(activeAdminBookingDeliveryMode || "").toLowerCase().trim();
+            var deliveryReference = adminBookingDeliveryReferenceInput
+                ? String(adminBookingDeliveryReferenceInput.value || "").trim()
+                : "";
+            var deliveryNotes = adminBookingDeliveryNotesInput
+                ? String(adminBookingDeliveryNotesInput.value || "").trim()
+                : "";
+
+            if (!orderId || (mode !== "upload-receive" && mode !== "close-receive" && mode !== "close-return")) {
+                closeAdminBookingDeliveryModal();
+                return;
+            }
+
+            var resetSubmitState = function (label) {
+                isSubmittingAdminBookingDelivery = false;
+                setAdminBookingDeliverySubmittingState(false, label || "Confirm");
+            };
+            var confirmLabel = mode === "upload-receive"
+                ? "Upload Receipt"
+                : (mode === "close-return" ? "Close Return Leg" : "Close Receive Leg");
+
+            setAdminBookingDeliveryError("");
+            isSubmittingAdminBookingDelivery = true;
+            setAdminBookingDeliverySubmittingState(true, "Submitting...");
+
+            var onSuccess = function () {
+                closeAdminBookingDeliveryModal();
+                window.location.reload();
+            };
+
+            var onFailure = function (error) {
+                setAdminBookingDeliveryError(error && error.message
+                    ? String(error.message)
+                    : "Unable to process delivery action right now.");
+                resetSubmitState(confirmLabel);
+            };
+
+            if (mode !== "upload-receive") {
+                var leg = mode === "close-return" ? "return" : "receive";
+
+                submitAdminCloseDeliveryLeg(orderId, leg, deliveryReference, deliveryNotes)
+                    .then(onSuccess)
+                    .catch(onFailure);
+                return;
+            }
+
+            if (!adminBookingDeliveryProofFileInput || !adminBookingDeliveryProofFileInput.files || !adminBookingDeliveryProofFileInput.files.length) {
+                setAdminBookingDeliveryError("Please upload a receipt image before submitting.");
+                resetSubmitState(confirmLabel);
+                return;
+            }
+
+            var selectedFile = adminBookingDeliveryProofFileInput.files[0];
+            var reader = new FileReader();
+
+            reader.onload = function (loadEvent) {
+                var imageDataUrl = String(loadEvent && loadEvent.target && loadEvent.target.result ? loadEvent.target.result : "");
+
+                if (imageDataUrl.indexOf("data:image/") !== 0) {
+                    setAdminBookingDeliveryError("Please upload a valid image file.");
+                    resetSubmitState(confirmLabel);
+                    return;
+                }
+
+                submitAdminDeliveryReceiptUpload(orderId, imageDataUrl, deliveryReference, deliveryNotes)
+                    .then(onSuccess)
+                    .catch(onFailure);
+            };
+
+            reader.onerror = function () {
+                setAdminBookingDeliveryError("Unable to read the selected receipt image.");
+                resetSubmitState(confirmLabel);
+            };
+
+            reader.readAsDataURL(selectedFile);
         });
     }
 
@@ -6617,6 +7338,13 @@ document.addEventListener("DOMContentLoaded", function () {
             closeAdminActionModal(true);
         }
 
+        if (adminBookingDeliveryBackdrop && !adminBookingDeliveryBackdrop.hidden) {
+            if (!isSubmittingAdminBookingDelivery) {
+                closeAdminBookingDeliveryModal();
+            }
+            return;
+        }
+
         if (adminBookingCancelBackdrop && !adminBookingCancelBackdrop.hidden) {
             closeAdminBookingCancelModal();
             return;
@@ -6982,6 +7710,9 @@ document.addEventListener("DOMContentLoaded", function () {
         var orderReceiptUploadEndpoint = typeof window.__creatyCustomerOrderReceiptUploadEndpoint === "string"
             ? String(window.__creatyCustomerOrderReceiptUploadEndpoint || "")
             : "";
+        var orderDeliveryReceiptUploadEndpoint = typeof window.__creatyCustomerOrderDeliveryReceiptUploadEndpoint === "string"
+            ? String(window.__creatyCustomerOrderDeliveryReceiptUploadEndpoint || "")
+            : "";
         var assetBase = typeof window.__creatyAssetBase === "string"
             ? String(window.__creatyAssetBase || "")
             : "";
@@ -7014,6 +7745,21 @@ document.addEventListener("DOMContentLoaded", function () {
         var refundProofModalImage = refundProofModal ? refundProofModal.querySelector("[data-cart-refund-proof-image]") : null;
         var refundProofModalEmpty = refundProofModal ? refundProofModal.querySelector("[data-cart-refund-proof-empty]") : null;
         var refundProofModalCloseButtons = refundProofModal ? refundProofModal.querySelectorAll("[data-cart-refund-proof-close]") : [];
+        var deliveryProofModal = document.querySelector("[data-cart-delivery-proof-modal]");
+        var deliveryProofModalTitle = deliveryProofModal ? deliveryProofModal.querySelector("[data-cart-delivery-proof-title]") : null;
+        var deliveryProofModalImage = deliveryProofModal ? deliveryProofModal.querySelector("[data-cart-delivery-proof-image]") : null;
+        var deliveryProofModalEmpty = deliveryProofModal ? deliveryProofModal.querySelector("[data-cart-delivery-proof-empty]") : null;
+        var deliveryProofModalCloseButtons = deliveryProofModal ? deliveryProofModal.querySelectorAll("[data-cart-delivery-proof-close]") : [];
+        var deliveryUploadModal = document.querySelector("[data-cart-delivery-upload-modal]");
+        var deliveryUploadModalCopy = deliveryUploadModal ? deliveryUploadModal.querySelector("[data-cart-delivery-upload-copy]") : null;
+        var deliveryUploadFileInput = deliveryUploadModal ? deliveryUploadModal.querySelector("[data-cart-delivery-upload-file]") : null;
+        var deliveryUploadFilename = deliveryUploadModal ? deliveryUploadModal.querySelector("[data-cart-delivery-upload-filename]") : null;
+        var deliveryUploadSelectButton = deliveryUploadModal ? deliveryUploadModal.querySelector("[data-cart-delivery-upload-select]") : null;
+        var deliveryUploadReferenceInput = deliveryUploadModal ? deliveryUploadModal.querySelector("[data-cart-delivery-upload-reference]") : null;
+        var deliveryUploadNotesInput = deliveryUploadModal ? deliveryUploadModal.querySelector("[data-cart-delivery-upload-notes]") : null;
+        var deliveryUploadMessage = deliveryUploadModal ? deliveryUploadModal.querySelector("[data-cart-delivery-upload-message]") : null;
+        var deliveryUploadSubmitButton = deliveryUploadModal ? deliveryUploadModal.querySelector("[data-cart-delivery-upload-submit]") : null;
+        var deliveryUploadCloseButtons = deliveryUploadModal ? deliveryUploadModal.querySelectorAll("[data-cart-delivery-upload-close]") : [];
         var gcashModal = document.querySelector("[data-cart-gcash-modal]");
         var gcashModalCloseButtons = gcashModal ? gcashModal.querySelectorAll("[data-cart-gcash-close]") : [];
         var gcashModalContinueButton = gcashModal ? gcashModal.querySelector("[data-cart-gcash-continue]") : null;
@@ -7054,6 +7800,8 @@ document.addEventListener("DOMContentLoaded", function () {
         var activeGcashModalMode = "";
         var isSubmittingPendingOrder = false;
         var isUploadingGcashReceipt = false;
+        var activeDeliveryUploadOrderId = "";
+        var isUploadingDeliveryReceipt = false;
         var receiptCountdownIntervalId = null;
         var isAutoCancelReloadQueued = false;
         var availableCartItemIdsSource = Array.isArray(window.__creatyCartAvailableItemIds) ? window.__creatyCartAvailableItemIds : [];
@@ -7662,6 +8410,175 @@ document.addEventListener("DOMContentLoaded", function () {
             refundProofModal.hidden = false;
         }
 
+        function normalizeCustomerDeliveryStatusToken(value, leg) {
+            var normalizedLeg = String(leg || "").toLowerCase().trim() === "return"
+                ? "return"
+                : "receive";
+            var token = String(value || "").toLowerCase().trim().replace(/[^a-z-]+/g, "");
+
+            if (!token) {
+                return normalizedLeg === "return" ? "waiting-customer-proof" : "waiting-proof";
+            }
+
+            return token;
+        }
+
+        function closeDeliveryProofModal() {
+            if (!deliveryProofModal) {
+                return;
+            }
+
+            deliveryProofModal.hidden = true;
+
+            if (deliveryProofModalTitle) {
+                deliveryProofModalTitle.textContent = "Delivery Receipt";
+            }
+
+            if (deliveryProofModalImage) {
+                deliveryProofModalImage.hidden = true;
+                deliveryProofModalImage.removeAttribute("src");
+            }
+
+            if (deliveryProofModalEmpty) {
+                deliveryProofModalEmpty.hidden = true;
+                deliveryProofModalEmpty.textContent = "Unable to load delivery receipt.";
+            }
+        }
+
+        function openDeliveryProofModal(imageUrl, titleText) {
+            if (!deliveryProofModal || !deliveryProofModalImage) {
+                return;
+            }
+
+            var normalizedImageUrl = String(imageUrl || "").trim();
+            if (!normalizedImageUrl) {
+                return;
+            }
+
+            if (deliveryProofModalTitle) {
+                deliveryProofModalTitle.textContent = String(titleText || "Delivery Receipt").trim() || "Delivery Receipt";
+            }
+
+            if (deliveryProofModalEmpty) {
+                deliveryProofModalEmpty.hidden = true;
+            }
+
+            deliveryProofModalImage.hidden = false;
+            deliveryProofModalImage.src = normalizedImageUrl;
+            deliveryProofModal.hidden = false;
+        }
+
+        function setDeliveryUploadMessage(message, isError) {
+            if (!deliveryUploadMessage) {
+                return;
+            }
+
+            var text = String(message || "").trim();
+            deliveryUploadMessage.textContent = text;
+            deliveryUploadMessage.hidden = text === "";
+            deliveryUploadMessage.classList.toggle("is-error", Boolean(isError) && text !== "");
+            deliveryUploadMessage.classList.toggle("is-success", !Boolean(isError) && text !== "");
+        }
+
+        function resetDeliveryUploadSelection() {
+            if (deliveryUploadFileInput) {
+                deliveryUploadFileInput.value = "";
+            }
+
+            if (deliveryUploadFilename) {
+                deliveryUploadFilename.textContent = "No file selected";
+            }
+
+            setDeliveryUploadMessage("", false);
+        }
+
+        function closeDeliveryUploadModal() {
+            if (!deliveryUploadModal) {
+                return;
+            }
+
+            deliveryUploadModal.hidden = true;
+            activeDeliveryUploadOrderId = "";
+            isUploadingDeliveryReceipt = false;
+
+            if (deliveryUploadSubmitButton) {
+                deliveryUploadSubmitButton.disabled = false;
+            }
+
+            if (deliveryUploadSelectButton) {
+                deliveryUploadSelectButton.disabled = false;
+            }
+
+            if (deliveryUploadReferenceInput) {
+                deliveryUploadReferenceInput.value = "";
+            }
+
+            if (deliveryUploadNotesInput) {
+                deliveryUploadNotesInput.value = "";
+            }
+
+            if (deliveryUploadModalCopy) {
+                deliveryUploadModalCopy.textContent = "Upload the courier handoff receipt to mark your return delivery as in transit.";
+            }
+
+            resetDeliveryUploadSelection();
+        }
+
+        function openDeliveryUploadModal(order) {
+            if (!deliveryUploadModal) {
+                return;
+            }
+
+            var orderRecord = order && typeof order === "object" ? order : null;
+            if (!orderRecord) {
+                return;
+            }
+
+            var orderId = String(orderRecord.id || "").trim();
+            if (!orderId) {
+                return;
+            }
+
+            activeDeliveryUploadOrderId = orderId;
+            isUploadingDeliveryReceipt = false;
+
+            if (deliveryUploadSubmitButton) {
+                deliveryUploadSubmitButton.disabled = false;
+            }
+
+            if (deliveryUploadSelectButton) {
+                deliveryUploadSelectButton.disabled = false;
+            }
+
+            if (deliveryUploadReferenceInput) {
+                deliveryUploadReferenceInput.value = String(orderRecord.returnDeliveryReference || "").trim();
+            }
+
+            if (deliveryUploadNotesInput) {
+                deliveryUploadNotesInput.value = String(orderRecord.returnDeliveryNotes || "").trim();
+            }
+
+            if (deliveryUploadModalCopy) {
+                var uploadLabel = "Upload the courier handoff receipt to mark your return delivery as in transit.";
+                var orderLabel = String(orderRecord.id || "").trim();
+
+                if (orderLabel) {
+                    uploadLabel = "Upload the courier handoff receipt for " + orderLabel + " to mark your return delivery as in transit.";
+                }
+
+                deliveryUploadModalCopy.textContent = uploadLabel;
+            }
+
+            resetDeliveryUploadSelection();
+            deliveryUploadModal.hidden = false;
+
+            window.requestAnimationFrame(function () {
+                if (deliveryUploadSelectButton) {
+                    deliveryUploadSelectButton.focus();
+                }
+            });
+        }
+
         function setGcashModalDetails() {
             if (gcashModalName) {
                 gcashModalName.textContent = gcashPaymentInfo.accountName || "Not set";
@@ -7932,6 +8849,26 @@ document.addEventListener("DOMContentLoaded", function () {
                 receivingMethod: String(order.receivingMethod || order.receiving_method || ""),
                 returningMethod: String(order.returningMethod || order.returning_method || ""),
                 courier: String(order.courier || ""),
+                requiresReceiveDelivery: Boolean(order.requiresReceiveDelivery)
+                    || String(order.requires_receive_delivery || "") === "1",
+                requiresReturnDelivery: Boolean(order.requiresReturnDelivery)
+                    || String(order.requires_return_delivery || "") === "1",
+                receiveDeliveryStatus: String(order.receiveDeliveryStatus || order.receive_delivery_status || ""),
+                receiveDeliveryReceiptPath: String(order.receiveDeliveryReceiptPath || order.receive_delivery_receipt_path || ""),
+                receiveDeliveryReceiptUploadedAt: String(order.receiveDeliveryReceiptUploadedAt || order.receive_delivery_receipt_uploaded_at || ""),
+                receiveDeliveryReceiptUploadedBy: String(order.receiveDeliveryReceiptUploadedBy || order.receive_delivery_receipt_uploaded_by || ""),
+                receiveDeliveryReference: String(order.receiveDeliveryReference || order.receive_delivery_reference || ""),
+                receiveDeliveryNotes: String(order.receiveDeliveryNotes || order.receive_delivery_notes || ""),
+                receiveDeliveryClosedAt: String(order.receiveDeliveryClosedAt || order.receive_delivery_closed_at || ""),
+                receiveDeliveryClosedBy: String(order.receiveDeliveryClosedBy || order.receive_delivery_closed_by || ""),
+                returnDeliveryStatus: String(order.returnDeliveryStatus || order.return_delivery_status || ""),
+                returnDeliveryReceiptPath: String(order.returnDeliveryReceiptPath || order.return_delivery_receipt_path || ""),
+                returnDeliveryReceiptUploadedAt: String(order.returnDeliveryReceiptUploadedAt || order.return_delivery_receipt_uploaded_at || ""),
+                returnDeliveryReceiptUploadedBy: String(order.returnDeliveryReceiptUploadedBy || order.return_delivery_receipt_uploaded_by || ""),
+                returnDeliveryReference: String(order.returnDeliveryReference || order.return_delivery_reference || ""),
+                returnDeliveryNotes: String(order.returnDeliveryNotes || order.return_delivery_notes || ""),
+                returnDeliveryClosedAt: String(order.returnDeliveryClosedAt || order.return_delivery_closed_at || ""),
+                returnDeliveryClosedBy: String(order.returnDeliveryClosedBy || order.return_delivery_closed_by || ""),
                 validIdPath: String(order.validIdPath || order.valid_id_path || ""),
                 validIdUploadedAt: String(order.validIdUploadedAt || order.valid_id_uploaded_at || ""),
                 selfieWithIdPath: String(order.selfieWithIdPath || order.selfie_with_id_path || ""),
@@ -8672,6 +9609,45 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
+        function submitOrderDeliveryReceiptUpload(orderId, imageDataUrl, deliveryReference, deliveryNotes) {
+            if (!orderDeliveryReceiptUploadEndpoint) {
+                return Promise.reject(new Error("Delivery receipt upload endpoint is unavailable."));
+            }
+
+            return window.fetch(orderDeliveryReceiptUploadEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                },
+                body: JSON.stringify({
+                    orderId: String(orderId || ""),
+                    imageDataUrl: String(imageDataUrl || ""),
+                    deliveryReference: String(deliveryReference || ""),
+                    deliveryNotes: String(deliveryNotes || "")
+                })
+            }).then(function (response) {
+                return response.text().then(function (rawBody) {
+                    var payload = {};
+
+                    try {
+                        payload = JSON.parse(rawBody);
+                    } catch (error) {
+                        payload = {};
+                    }
+
+                    if (!response.ok || !payload || payload.ok !== true) {
+                        var errorMessage = payload && payload.message
+                            ? String(payload.message)
+                            : "Unable to upload return-delivery receipt right now.";
+                        throw new Error(errorMessage);
+                    }
+
+                    return payload;
+                });
+            });
+        }
+
         function handlePendingOrderSubmission(pendingOrder) {
             if (!pendingOrder || isSubmittingPendingOrder) {
                 return;
@@ -8973,6 +9949,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 var refundProofUrl = resolveCartAssetUrl(refundProofPath);
                 var hasRefundProof = refundProofUrl !== "";
                 var cancelReason = String(order.cancelReason || "").trim();
+                var requiresReceiveDelivery = Boolean(order.requiresReceiveDelivery)
+                    || String(order.receivingMethod || "").toLowerCase().trim() === "delivery";
+                var requiresReturnDelivery = Boolean(order.requiresReturnDelivery)
+                    || String(order.returningMethod || "").toLowerCase().trim() === "delivery";
+                var receiveDeliveryStatus = normalizeCustomerDeliveryStatusToken(order.receiveDeliveryStatus, "receive");
+                var returnDeliveryStatus = normalizeCustomerDeliveryStatusToken(order.returnDeliveryStatus, "return");
+                var receiveDeliveryReceiptUrl = resolveCartAssetUrl(order.receiveDeliveryReceiptPath);
+                var returnDeliveryReceiptUrl = resolveCartAssetUrl(order.returnDeliveryReceiptPath);
+                var hasReceiveDeliveryReceipt = receiveDeliveryReceiptUrl !== "";
+                var hasReturnDeliveryReceipt = returnDeliveryReceiptUrl !== "";
+                var receiveDeliveryReference = String(order.receiveDeliveryReference || "").trim();
+                var returnDeliveryReference = String(order.returnDeliveryReference || "").trim();
                 var countdownState = getOrderPaymentReceiptCountdownState(order);
                 var forReturnState = getOrderForReturnState(order);
                 var orderedText = "Ordered: " + buildOrderItemsSummary(order.items);
@@ -9036,6 +10024,66 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
 
                     orderMeta.appendChild(forReturnLine);
+                }
+
+                if (requiresReceiveDelivery && receiveDeliveryStatus === "in-transit") {
+                    var receiveDeliveryLine = document.createElement("p");
+                    receiveDeliveryLine.className = "cart-order-status-delivery";
+                    receiveDeliveryLine.textContent = "Receive delivery: In Transit.";
+                    orderMeta.appendChild(receiveDeliveryLine);
+
+                    if (receiveDeliveryReference) {
+                        var receiveDeliveryReferenceLine = document.createElement("p");
+                        receiveDeliveryReferenceLine.className = "cart-order-status-delivery-meta";
+                        receiveDeliveryReferenceLine.textContent = "Receive delivery reference: " + receiveDeliveryReference;
+                        orderMeta.appendChild(receiveDeliveryReferenceLine);
+                    }
+
+                    if (hasReceiveDeliveryReceipt) {
+                        var receiveDeliveryProofLine = document.createElement("p");
+                        receiveDeliveryProofLine.className = "cart-order-status-delivery-proof";
+
+                        var receiveDeliveryProofButton = document.createElement("button");
+                        receiveDeliveryProofButton.type = "button";
+                        receiveDeliveryProofButton.className = "cart-order-status-refund-proof-link cart-order-status-delivery-proof-open";
+                        receiveDeliveryProofButton.textContent = "View receive delivery receipt";
+                        receiveDeliveryProofButton.setAttribute("data-cart-order-delivery-proof-open", "true");
+                        receiveDeliveryProofButton.setAttribute("data-cart-delivery-proof-url", receiveDeliveryReceiptUrl);
+                        receiveDeliveryProofButton.setAttribute("data-cart-delivery-proof-title", "Receive Delivery Receipt");
+                        receiveDeliveryProofLine.appendChild(receiveDeliveryProofButton);
+
+                        orderMeta.appendChild(receiveDeliveryProofLine);
+                    }
+                }
+
+                if (requiresReturnDelivery && returnDeliveryStatus === "in-transit") {
+                    var returnDeliveryLine = document.createElement("p");
+                    returnDeliveryLine.className = "cart-order-status-delivery";
+                    returnDeliveryLine.textContent = "Return delivery: In Transit.";
+                    orderMeta.appendChild(returnDeliveryLine);
+
+                    if (returnDeliveryReference) {
+                        var returnDeliveryReferenceLine = document.createElement("p");
+                        returnDeliveryReferenceLine.className = "cart-order-status-delivery-meta";
+                        returnDeliveryReferenceLine.textContent = "Return delivery reference: " + returnDeliveryReference;
+                        orderMeta.appendChild(returnDeliveryReferenceLine);
+                    }
+
+                    if (hasReturnDeliveryReceipt) {
+                        var returnDeliveryProofLine = document.createElement("p");
+                        returnDeliveryProofLine.className = "cart-order-status-delivery-proof";
+
+                        var returnDeliveryProofButton = document.createElement("button");
+                        returnDeliveryProofButton.type = "button";
+                        returnDeliveryProofButton.className = "cart-order-status-refund-proof-link cart-order-status-delivery-proof-open";
+                        returnDeliveryProofButton.textContent = "View return delivery receipt";
+                        returnDeliveryProofButton.setAttribute("data-cart-order-delivery-proof-open", "true");
+                        returnDeliveryProofButton.setAttribute("data-cart-delivery-proof-url", returnDeliveryReceiptUrl);
+                        returnDeliveryProofButton.setAttribute("data-cart-delivery-proof-title", "Return Delivery Receipt");
+                        returnDeliveryProofLine.appendChild(returnDeliveryProofButton);
+
+                        orderMeta.appendChild(returnDeliveryProofLine);
+                    }
                 }
 
                 if (statusToken === "completed") {
@@ -9113,6 +10161,24 @@ document.addEventListener("DOMContentLoaded", function () {
                     actionWrap.appendChild(pendingAction);
                 }
 
+                var canUploadReturnDeliveryReceipt = orderDeliveryReceiptUploadEndpoint !== ""
+                    && statusToken === "return"
+                    && requiresReturnDelivery
+                    && (returnDeliveryStatus === "waiting-customer-proof" || returnDeliveryStatus === "in-transit");
+
+                if (canUploadReturnDeliveryReceipt) {
+                    var deliveryUploadAction = document.createElement("button");
+                    deliveryUploadAction.type = "button";
+                    deliveryUploadAction.className = "profile-order-action secondary";
+                    deliveryUploadAction.textContent = hasReturnDeliveryReceipt
+                        ? "Update Return Delivery Receipt"
+                        : "Upload Return Delivery Receipt";
+                    deliveryUploadAction.setAttribute("data-cart-order-delivery-upload", "true");
+                    deliveryUploadAction.setAttribute("data-cart-order-id", String(order.id || ""));
+                    actionWrap.classList.add("is-stacked");
+                    actionWrap.appendChild(deliveryUploadAction);
+                }
+
                 var canCancelOrder = orderCancelEndpoint !== "" && (statusToken === "pending" || statusToken === "approved");
 
                 if (canCancelOrder) {
@@ -9177,6 +10243,36 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
 
                     openRefundProofModal(proofImageUrl);
+                    return;
+                }
+
+                var deliveryProofButton = event.target.closest("[data-cart-order-delivery-proof-open]");
+                if (deliveryProofButton) {
+                    var deliveryProofImageUrl = String(deliveryProofButton.getAttribute("data-cart-delivery-proof-url") || "").trim();
+                    var deliveryProofTitle = String(deliveryProofButton.getAttribute("data-cart-delivery-proof-title") || "Delivery Receipt").trim();
+
+                    if (!deliveryProofImageUrl) {
+                        return;
+                    }
+
+                    openDeliveryProofModal(deliveryProofImageUrl, deliveryProofTitle);
+                    return;
+                }
+
+                var deliveryUploadButton = event.target.closest("[data-cart-order-delivery-upload]");
+                if (deliveryUploadButton) {
+                    var deliveryUploadOrderId = String(deliveryUploadButton.getAttribute("data-cart-order-id") || "").trim();
+
+                    if (!deliveryUploadOrderId) {
+                        return;
+                    }
+
+                    var deliveryUploadOrder = findStoredOrderById(deliveryUploadOrderId);
+                    if (!deliveryUploadOrder) {
+                        return;
+                    }
+
+                    openDeliveryUploadModal(deliveryUploadOrder);
                     return;
                 }
 
@@ -9247,6 +10343,160 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
+        deliveryProofModalCloseButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                closeDeliveryProofModal();
+            });
+        });
+
+        deliveryUploadCloseButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                if (isUploadingDeliveryReceipt) {
+                    return;
+                }
+
+                closeDeliveryUploadModal();
+            });
+        });
+
+        if (deliveryUploadSelectButton && deliveryUploadFileInput) {
+            deliveryUploadSelectButton.addEventListener("click", function () {
+                if (isUploadingDeliveryReceipt) {
+                    return;
+                }
+
+                deliveryUploadFileInput.click();
+            });
+        }
+
+        if (deliveryUploadFileInput) {
+            deliveryUploadFileInput.addEventListener("change", function () {
+                if (deliveryUploadFilename) {
+                    if (deliveryUploadFileInput.files && deliveryUploadFileInput.files.length > 0) {
+                        deliveryUploadFilename.textContent = deliveryUploadFileInput.files[0].name;
+                    } else {
+                        deliveryUploadFilename.textContent = "No file selected";
+                    }
+                }
+
+                setDeliveryUploadMessage("", false);
+            });
+        }
+
+        if (deliveryUploadSubmitButton) {
+            deliveryUploadSubmitButton.addEventListener("click", function () {
+                var orderId = String(activeDeliveryUploadOrderId || "").trim();
+                var deliveryReference = deliveryUploadReferenceInput
+                    ? String(deliveryUploadReferenceInput.value || "").trim()
+                    : "";
+                var deliveryNotes = deliveryUploadNotesInput
+                    ? String(deliveryUploadNotesInput.value || "").trim()
+                    : "";
+
+                if (!orderId) {
+                    closeDeliveryUploadModal();
+                    return;
+                }
+
+                if (!deliveryUploadFileInput || !deliveryUploadFileInput.files || !deliveryUploadFileInput.files.length) {
+                    setDeliveryUploadMessage("Please select a delivery receipt image first.", true);
+                    return;
+                }
+
+                if (isUploadingDeliveryReceipt) {
+                    return;
+                }
+
+                var selectedFile = deliveryUploadFileInput.files[0];
+                var reader = new FileReader();
+
+                isUploadingDeliveryReceipt = true;
+                deliveryUploadSubmitButton.disabled = true;
+
+                if (deliveryUploadSelectButton) {
+                    deliveryUploadSelectButton.disabled = true;
+                }
+
+                setDeliveryUploadMessage("Uploading return-delivery receipt...", false);
+
+                reader.onload = function (loadEvent) {
+                    var imageDataUrl = String(loadEvent && loadEvent.target && loadEvent.target.result ? loadEvent.target.result : "");
+
+                    if (imageDataUrl.indexOf("data:image/") !== 0) {
+                        setDeliveryUploadMessage("Please upload a valid image file.", true);
+                        isUploadingDeliveryReceipt = false;
+                        deliveryUploadSubmitButton.disabled = false;
+
+                        if (deliveryUploadSelectButton) {
+                            deliveryUploadSelectButton.disabled = false;
+                        }
+
+                        return;
+                    }
+
+                    submitOrderDeliveryReceiptUpload(orderId, imageDataUrl, deliveryReference, deliveryNotes)
+                        .then(function (responsePayload) {
+                            var savedOrder = normalizeStoredOrder(responsePayload.order || null);
+
+                            if (!savedOrder) {
+                                throw new Error("Unable to refresh return-delivery status.");
+                            }
+
+                            var existingOrders = getStoredOrders();
+                            var hasMatch = false;
+                            var nextOrders = existingOrders.map(function (order) {
+                                if (order.id === savedOrder.id) {
+                                    hasMatch = true;
+                                    return savedOrder;
+                                }
+
+                                return order;
+                            });
+
+                            if (!hasMatch) {
+                                nextOrders.unshift(savedOrder);
+                            }
+
+                            saveStoredOrders(nextOrders);
+                            renderOrderStatusList();
+                            closeDeliveryUploadModal();
+
+                            if (bookingNote) {
+                                bookingNote.textContent = "Return delivery receipt uploaded. Waiting for admin closure.";
+                            }
+
+                            showCartToast("Return delivery receipt uploaded");
+                            setCartView("order-status");
+                        })
+                        .catch(function (error) {
+                            setDeliveryUploadMessage(error && error.message
+                                ? String(error.message)
+                                : "Unable to upload return-delivery receipt right now.", true);
+                        })
+                        .finally(function () {
+                            isUploadingDeliveryReceipt = false;
+                            deliveryUploadSubmitButton.disabled = false;
+
+                            if (deliveryUploadSelectButton) {
+                                deliveryUploadSelectButton.disabled = false;
+                            }
+                        });
+                };
+
+                reader.onerror = function () {
+                    setDeliveryUploadMessage("Unable to read the selected image.", true);
+                    isUploadingDeliveryReceipt = false;
+                    deliveryUploadSubmitButton.disabled = false;
+
+                    if (deliveryUploadSelectButton) {
+                        deliveryUploadSelectButton.disabled = false;
+                    }
+                };
+
+                reader.readAsDataURL(selectedFile);
+            });
+        }
+
         if (refundProofModalImage) {
             refundProofModalImage.addEventListener("error", function () {
                 refundProofModalImage.hidden = true;
@@ -9255,6 +10505,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (refundProofModalEmpty) {
                     refundProofModalEmpty.textContent = "Unable to load refund proof screenshot.";
                     refundProofModalEmpty.hidden = false;
+                }
+            });
+        }
+
+        if (deliveryProofModalImage) {
+            deliveryProofModalImage.addEventListener("error", function () {
+                deliveryProofModalImage.hidden = true;
+                deliveryProofModalImage.removeAttribute("src");
+
+                if (deliveryProofModalEmpty) {
+                    deliveryProofModalEmpty.textContent = "Unable to load delivery receipt.";
+                    deliveryProofModalEmpty.hidden = false;
                 }
             });
         }
@@ -9536,6 +10798,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (event.key === "Escape" && refundProofModal && !refundProofModal.hidden) {
                 closeRefundProofModal();
+                return;
+            }
+
+            if (event.key === "Escape" && deliveryProofModal && !deliveryProofModal.hidden) {
+                closeDeliveryProofModal();
+                return;
+            }
+
+            if (event.key === "Escape" && deliveryUploadModal && !deliveryUploadModal.hidden) {
+                if (!isUploadingDeliveryReceipt) {
+                    closeDeliveryUploadModal();
+                }
                 return;
             }
 

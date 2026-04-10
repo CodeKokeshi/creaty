@@ -2679,6 +2679,36 @@ button {
     color: #ffb4b4;
 }
 
+.cart-order-status-for-return-note {
+    margin: 0;
+    color: #d8d8db;
+    font-size: 0.79rem;
+    line-height: 1.45;
+}
+
+.cart-order-status-delivery {
+    margin: 0;
+    color: #d4e9ff;
+    font-size: 0.79rem;
+    line-height: 1.45;
+}
+
+.cart-order-status-delivery-meta,
+.cart-order-status-delivery-proof {
+    margin: 0;
+    color: #ced3dd;
+    font-size: 0.79rem;
+    line-height: 1.45;
+}
+
+.cart-order-status-delivery-proof-open {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+}
+
 .cart-order-status-reason {
     margin: 0;
     color: #ffbebe;
@@ -3093,6 +3123,14 @@ button {
     z-index: 66;
 }
 
+.cart-delivery-proof-modal {
+    z-index: 66;
+}
+
+.cart-delivery-upload-modal {
+    z-index: 66;
+}
+
 .cart-gcash-dialog {
     width: min(100%, 500px);
     padding: 0.9rem;
@@ -3132,6 +3170,11 @@ button {
 
 .cart-refund-proof-dialog {
     width: min(100% - 2rem, 720px);
+    gap: 0.8rem;
+}
+
+.cart-delivery-upload-dialog {
+    width: min(100% - 2rem, 620px);
     gap: 0.8rem;
 }
 
@@ -3308,6 +3351,53 @@ button {
 }
 
 .cart-gcash-upload-message.is-success {
+    color: #bff0cd;
+}
+
+.cart-delivery-upload-field {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.cart-delivery-upload-field span {
+    color: #ece5b0;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.cart-delivery-upload-field input,
+.cart-delivery-upload-field textarea {
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    color: #f4f4f4;
+    padding: 0.62rem 0.7rem;
+}
+
+.cart-delivery-upload-field textarea {
+    resize: vertical;
+    min-height: 96px;
+}
+
+.cart-delivery-upload-field input:focus,
+.cart-delivery-upload-field textarea:focus {
+    outline: 2px solid rgba(236, 227, 169, 0.52);
+    outline-offset: 1px;
+}
+
+.cart-delivery-upload-message {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.cart-delivery-upload-message.is-error {
+    color: #ffbebe;
+}
+
+.cart-delivery-upload-message.is-success {
     color: #bff0cd;
 }
 
@@ -8254,6 +8344,8 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 
 .admin-booking-detail-receipt-wrap,
 .admin-booking-detail-refund-wrap,
+.admin-booking-detail-receive-delivery-wrap,
+.admin-booking-detail-return-delivery-wrap,
 .admin-booking-detail-valid-id-wrap,
 .admin-booking-detail-selfie-with-id-wrap {
     margin-top: 0;
@@ -8267,6 +8359,8 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 
 .admin-booking-detail-receipt-wrap h3,
 .admin-booking-detail-refund-wrap h3,
+.admin-booking-detail-receive-delivery-wrap h3,
+.admin-booking-detail-return-delivery-wrap h3,
 .admin-booking-detail-valid-id-wrap h3,
 .admin-booking-detail-selfie-with-id-wrap h3 {
     margin: 0;
@@ -8287,6 +8381,8 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 
 .admin-booking-detail-receipt-link,
 .admin-booking-detail-refund-link,
+.admin-booking-detail-receive-delivery-link,
+.admin-booking-detail-return-delivery-link,
 .admin-booking-detail-valid-id-link,
 .admin-booking-detail-selfie-with-id-link {
     width: 100%;
@@ -8299,6 +8395,8 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 
 .admin-booking-detail-receipt-link img,
 .admin-booking-detail-refund-link img,
+.admin-booking-detail-receive-delivery-link img,
+.admin-booking-detail-return-delivery-link img,
 .admin-booking-detail-valid-id-link img,
 .admin-booking-detail-selfie-with-id-link img {
     width: 100%;
@@ -8311,10 +8409,14 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 
 .admin-booking-detail-receipt-empty,
 .admin-booking-detail-refund-empty,
+.admin-booking-detail-receive-delivery-empty,
+.admin-booking-detail-return-delivery-empty,
 .admin-booking-detail-valid-id-empty,
 .admin-booking-detail-selfie-with-id-empty,
 .admin-booking-detail-receipt-meta,
 .admin-booking-detail-refund-meta,
+.admin-booking-detail-receive-delivery-meta,
+.admin-booking-detail-return-delivery-meta,
 .admin-booking-detail-valid-id-meta,
 .admin-booking-detail-selfie-with-id-meta,
 .admin-booking-detail-status-note {
@@ -8331,6 +8433,11 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     color: #d8d8db;
 }
 
+.admin-booking-detail-receive-delivery-empty,
+.admin-booking-detail-return-delivery-empty {
+    color: #d8d8db;
+}
+
 .admin-booking-detail-valid-id-empty,
 .admin-booking-detail-selfie-with-id-empty {
     color: #d8d8db;
@@ -8341,6 +8448,11 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 }
 
 .admin-booking-detail-refund-meta {
+    color: #ced3dd;
+}
+
+.admin-booking-detail-receive-delivery-meta,
+.admin-booking-detail-return-delivery-meta {
     color: #ced3dd;
 }
 
@@ -8439,6 +8551,183 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     border-color: rgba(143, 179, 245, 0.62);
     background: rgba(63, 96, 162, 0.28);
     color: #e6f0ff;
+}
+
+.admin-booking-action.is-delivery-upload {
+    border-color: rgba(149, 214, 252, 0.62);
+    background: rgba(57, 108, 150, 0.28);
+    color: #dff4ff;
+}
+
+.admin-booking-action.is-delivery-close {
+    border-color: rgba(151, 226, 170, 0.62);
+    background: rgba(56, 122, 73, 0.28);
+    color: #dfffe4;
+}
+
+.admin-booking-delivery-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 128;
+    background: rgba(0, 0, 0, 0.62);
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+}
+
+.admin-booking-delivery-modal {
+    width: min(100%, 600px);
+    border: 1px solid rgba(217, 217, 217, 0.28);
+    background: #111214;
+    color: #f4f4f4;
+    padding: 1rem;
+    display: grid;
+    gap: 0.7rem;
+}
+
+.admin-booking-delivery-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+}
+
+.admin-booking-delivery-head h3 {
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.admin-booking-delivery-close {
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #f4f4f4;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.admin-booking-delivery-copy {
+    margin: 0;
+    color: #d8d8db;
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
+.admin-booking-delivery-proof-wrap {
+    display: grid;
+    gap: 0.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.65rem;
+}
+
+.admin-booking-delivery-proof-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+}
+
+.admin-booking-delivery-proof-filename {
+    min-width: 0;
+    flex: 1;
+    color: #d8d8db;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.admin-booking-delivery-proof-select {
+    min-height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #f4f4f4;
+    font-size: 0.73rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0 0.8rem;
+    cursor: pointer;
+}
+
+.admin-booking-delivery-proof-note {
+    margin: 0;
+    color: #ced3dd;
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.admin-booking-delivery-field {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.admin-booking-delivery-field span {
+    color: #ece5b0;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.admin-booking-delivery-input,
+.admin-booking-delivery-textarea {
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    color: #f4f4f4;
+    padding: 0.68rem;
+}
+
+.admin-booking-delivery-textarea {
+    min-height: 108px;
+    resize: vertical;
+}
+
+.admin-booking-delivery-input:focus,
+.admin-booking-delivery-textarea:focus {
+    outline: 2px solid rgba(236, 227, 169, 0.52);
+    outline-offset: 1px;
+}
+
+.admin-booking-delivery-error {
+    margin: 0;
+    color: #ffbebe;
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.admin-booking-delivery-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.admin-booking-delivery-action {
+    min-height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #f4f4f4;
+    font-size: 0.77rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0 1rem;
+    cursor: pointer;
+}
+
+.admin-booking-delivery-action.is-confirm {
+    border-color: rgba(149, 214, 252, 0.62);
+    background: rgba(57, 108, 150, 0.28);
+    color: #dff4ff;
 }
 
 .admin-booking-cancel-backdrop {
@@ -8755,6 +9044,11 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     }
 
     .admin-booking-review-proof-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-booking-delivery-proof-row {
         flex-direction: column;
         align-items: stretch;
     }

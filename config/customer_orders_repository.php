@@ -227,6 +227,147 @@ function customer_order_is_receive_handover_confirmed($record)
     return $confirmedAt !== '';
 }
 
+function customer_order_delivery_legs()
+{
+    return ['receive', 'return'];
+}
+
+function normalize_customer_order_delivery_leg($value)
+{
+    $token = strtolower(trim((string) $value));
+    $token = preg_replace('/[^a-z0-9-]+/', '-', $token) ?? $token;
+    $token = trim((string) $token, '-');
+
+    if ($token === 'returning') {
+        $token = 'return';
+    }
+
+    if (!in_array($token, customer_order_delivery_legs(), true)) {
+        return '';
+    }
+
+    return $token;
+}
+
+function customer_order_delivery_status_tokens_for_leg($leg)
+{
+    $normalizedLeg = normalize_customer_order_delivery_leg($leg);
+
+    if ($normalizedLeg === 'receive') {
+        return ['not-required', 'waiting-proof', 'in-transit', 'closed'];
+    }
+
+    if ($normalizedLeg === 'return') {
+        return ['not-required', 'waiting-customer-proof', 'in-transit', 'closed'];
+    }
+
+    return ['not-required'];
+}
+
+function customer_order_delivery_default_status_token_for_leg($leg)
+{
+    $normalizedLeg = normalize_customer_order_delivery_leg($leg);
+
+    if ($normalizedLeg === 'receive') {
+        return 'waiting-proof';
+    }
+
+    if ($normalizedLeg === 'return') {
+        return 'waiting-customer-proof';
+    }
+
+    return 'not-required';
+}
+
+function normalize_customer_order_delivery_status_token($value, $leg)
+{
+    $normalizedLeg = normalize_customer_order_delivery_leg($leg);
+    if ($normalizedLeg === '') {
+        return '';
+    }
+
+    $token = strtolower(trim((string) $value));
+    $token = preg_replace('/[^a-z0-9-]+/', '-', $token) ?? $token;
+    $token = trim((string) $token, '-');
+
+    if ($token === '') {
+        return '';
+    }
+
+    if (in_array($token, ['notrequired', 'not-required', 'not-required-needed'], true)) {
+        $token = 'not-required';
+    }
+
+    if ($normalizedLeg === 'receive' && in_array($token, ['awaiting-dispatch', 'waiting-dispatch', 'pending-proof'], true)) {
+        $token = 'waiting-proof';
+    }
+
+    if ($normalizedLeg === 'return' && in_array($token, ['awaiting-customer-shipment', 'waiting-customer-shipment'], true)) {
+        $token = 'waiting-customer-proof';
+    }
+
+    if (in_array($token, ['transit', 'shipped'], true)) {
+        $token = 'in-transit';
+    }
+
+    if (in_array($token, ['delivered', 'received-back', 'received', 'done'], true)) {
+        $token = 'closed';
+    }
+
+    if (!in_array($token, customer_order_delivery_status_tokens_for_leg($normalizedLeg), true)) {
+        return '';
+    }
+
+    return $token;
+}
+
+function normalize_customer_order_delivery_actor($value)
+{
+    return normalize_customer_order_method($value, ['admin', 'customer', 'system']);
+}
+
+function normalize_customer_order_delivery_reference($value)
+{
+    $reference = trim((string) $value);
+    $reference = preg_replace('/\s+/', ' ', $reference) ?? $reference;
+
+    if ($reference === '') {
+        return '';
+    }
+
+    if (function_exists('mb_substr')) {
+        return trim((string) mb_substr($reference, 0, 120));
+    }
+
+    return trim((string) substr($reference, 0, 120));
+}
+
+function normalize_customer_order_delivery_notes($value)
+{
+    $notes = trim((string) $value);
+    $notes = preg_replace('/\s+/', ' ', $notes) ?? $notes;
+
+    if ($notes === '') {
+        return '';
+    }
+
+    if (function_exists('mb_substr')) {
+        return trim((string) mb_substr($notes, 0, 500));
+    }
+
+    return trim((string) substr($notes, 0, 500));
+}
+
+function normalize_customer_order_delivery_receipt_uploaded_at($value)
+{
+    return customer_order_normalize_timestamp_value($value);
+}
+
+function normalize_customer_order_delivery_closed_at($value)
+{
+    return customer_order_normalize_timestamp_value($value);
+}
+
 function customer_order_open_reservation_end_timestamp()
 {
     return 2147483647;
@@ -676,6 +817,28 @@ function customer_order_requires_identity_documents($record)
     $returningMethod = normalize_customer_order_returning_method($record['returning_method'] ?? $record['returningMethod'] ?? '');
 
     return $receivingMethod === 'delivery' || $returningMethod === 'delivery';
+}
+
+function customer_order_requires_receive_delivery($record)
+{
+    if (!is_array($record)) {
+        return false;
+    }
+
+    $receivingMethod = normalize_customer_order_receiving_method($record['receiving_method'] ?? $record['receivingMethod'] ?? '');
+
+    return $receivingMethod === 'delivery';
+}
+
+function customer_order_requires_return_delivery($record)
+{
+    if (!is_array($record)) {
+        return false;
+    }
+
+    $returningMethod = normalize_customer_order_returning_method($record['returning_method'] ?? $record['returningMethod'] ?? '');
+
+    return $returningMethod === 'delivery';
 }
 
 function customer_order_requires_payment_review($record)
@@ -1761,6 +1924,58 @@ function normalize_customer_order_record($record)
     $paymentMethod = normalize_customer_order_payment_method($record['payment_method'] ?? '');
     $paymentReceiptPath = normalize_customer_order_asset_path($record['payment_receipt_path'] ?? $record['paymentReceiptPath'] ?? '');
     $paymentReceiptUploadedAt = normalize_customer_order_receipt_uploaded_at($record['payment_receipt_uploaded_at'] ?? $record['paymentReceiptUploadedAt'] ?? '');
+    $receiveDeliveryStatus = normalize_customer_order_delivery_status_token(
+        $record['receive_delivery_status'] ?? $record['receiveDeliveryStatus'] ?? '',
+        'receive'
+    );
+    $receiveDeliveryReceiptPath = normalize_customer_order_asset_path(
+        $record['receive_delivery_receipt_path'] ?? $record['receiveDeliveryReceiptPath'] ?? ''
+    );
+    $receiveDeliveryReceiptUploadedAt = normalize_customer_order_delivery_receipt_uploaded_at(
+        $record['receive_delivery_receipt_uploaded_at'] ?? $record['receiveDeliveryReceiptUploadedAt'] ?? ''
+    );
+    $receiveDeliveryReceiptUploadedBy = normalize_customer_order_delivery_actor(
+        $record['receive_delivery_receipt_uploaded_by'] ?? $record['receiveDeliveryReceiptUploadedBy'] ?? ''
+    );
+    $receiveDeliveryReference = normalize_customer_order_delivery_reference(
+        $record['receive_delivery_reference'] ?? $record['receiveDeliveryReference'] ?? $record['receive_delivery_tracking_number'] ?? ''
+    );
+    $receiveDeliveryNotes = normalize_customer_order_delivery_notes(
+        $record['receive_delivery_notes'] ?? $record['receiveDeliveryNotes'] ?? ''
+    );
+    $receiveDeliveryClosedAt = normalize_customer_order_delivery_closed_at(
+        $record['receive_delivery_closed_at'] ?? $record['receiveDeliveryClosedAt'] ?? ''
+    );
+    $receiveDeliveryClosedBy = normalize_customer_order_delivery_actor(
+        $record['receive_delivery_closed_by'] ?? $record['receiveDeliveryClosedBy'] ?? ''
+    );
+
+    $returnDeliveryStatus = normalize_customer_order_delivery_status_token(
+        $record['return_delivery_status'] ?? $record['returnDeliveryStatus'] ?? '',
+        'return'
+    );
+    $returnDeliveryReceiptPath = normalize_customer_order_asset_path(
+        $record['return_delivery_receipt_path'] ?? $record['returnDeliveryReceiptPath'] ?? ''
+    );
+    $returnDeliveryReceiptUploadedAt = normalize_customer_order_delivery_receipt_uploaded_at(
+        $record['return_delivery_receipt_uploaded_at'] ?? $record['returnDeliveryReceiptUploadedAt'] ?? ''
+    );
+    $returnDeliveryReceiptUploadedBy = normalize_customer_order_delivery_actor(
+        $record['return_delivery_receipt_uploaded_by'] ?? $record['returnDeliveryReceiptUploadedBy'] ?? ''
+    );
+    $returnDeliveryReference = normalize_customer_order_delivery_reference(
+        $record['return_delivery_reference'] ?? $record['returnDeliveryReference'] ?? $record['return_delivery_tracking_number'] ?? ''
+    );
+    $returnDeliveryNotes = normalize_customer_order_delivery_notes(
+        $record['return_delivery_notes'] ?? $record['returnDeliveryNotes'] ?? ''
+    );
+    $returnDeliveryClosedAt = normalize_customer_order_delivery_closed_at(
+        $record['return_delivery_closed_at'] ?? $record['returnDeliveryClosedAt'] ?? ''
+    );
+    $returnDeliveryClosedBy = normalize_customer_order_delivery_actor(
+        $record['return_delivery_closed_by'] ?? $record['returnDeliveryClosedBy'] ?? ''
+    );
+
     $receiveHandoverConfirmedAt = normalize_customer_order_handover_confirmed_at(
         $record['receive_handover_confirmed_at'] ?? $record['receiveHandoverConfirmedAt'] ?? ''
     );
@@ -1781,6 +1996,96 @@ function normalize_customer_order_record($record)
 
     if ($receivingMethod !== 'meetup' && $returningMethod !== 'meetup') {
         $place = '';
+    }
+
+    if (!customer_order_requires_receive_delivery(['receiving_method' => $receivingMethod])) {
+        $receiveDeliveryStatus = 'not-required';
+        $receiveDeliveryReceiptPath = '';
+        $receiveDeliveryReceiptUploadedAt = '';
+        $receiveDeliveryReceiptUploadedBy = '';
+        $receiveDeliveryReference = '';
+        $receiveDeliveryNotes = '';
+        $receiveDeliveryClosedAt = '';
+        $receiveDeliveryClosedBy = '';
+    } else {
+        if ($receiveDeliveryStatus === '' || $receiveDeliveryStatus === 'not-required') {
+            $receiveDeliveryStatus = customer_order_delivery_default_status_token_for_leg('receive');
+        }
+
+        if ($receiveDeliveryReceiptPath === '') {
+            $receiveDeliveryReceiptUploadedAt = '';
+            $receiveDeliveryReceiptUploadedBy = '';
+
+            if (in_array($receiveDeliveryStatus, ['in-transit', 'closed'], true)) {
+                $receiveDeliveryStatus = customer_order_delivery_default_status_token_for_leg('receive');
+            }
+        } else {
+            if ($receiveDeliveryReceiptUploadedAt === '') {
+                $receiveDeliveryReceiptUploadedAt = customer_order_now_iso8601();
+            }
+
+            if ($receiveDeliveryReceiptUploadedBy === '') {
+                $receiveDeliveryReceiptUploadedBy = 'admin';
+            }
+        }
+
+        if ($receiveDeliveryStatus === 'closed') {
+            if ($receiveDeliveryClosedAt === '') {
+                $receiveDeliveryClosedAt = customer_order_now_iso8601();
+            }
+
+            if ($receiveDeliveryClosedBy === '') {
+                $receiveDeliveryClosedBy = 'admin';
+            }
+        } else {
+            $receiveDeliveryClosedAt = '';
+            $receiveDeliveryClosedBy = '';
+        }
+    }
+
+    if (!customer_order_requires_return_delivery(['returning_method' => $returningMethod])) {
+        $returnDeliveryStatus = 'not-required';
+        $returnDeliveryReceiptPath = '';
+        $returnDeliveryReceiptUploadedAt = '';
+        $returnDeliveryReceiptUploadedBy = '';
+        $returnDeliveryReference = '';
+        $returnDeliveryNotes = '';
+        $returnDeliveryClosedAt = '';
+        $returnDeliveryClosedBy = '';
+    } else {
+        if ($returnDeliveryStatus === '' || $returnDeliveryStatus === 'not-required') {
+            $returnDeliveryStatus = customer_order_delivery_default_status_token_for_leg('return');
+        }
+
+        if ($returnDeliveryReceiptPath === '') {
+            $returnDeliveryReceiptUploadedAt = '';
+            $returnDeliveryReceiptUploadedBy = '';
+
+            if (in_array($returnDeliveryStatus, ['in-transit', 'closed'], true)) {
+                $returnDeliveryStatus = customer_order_delivery_default_status_token_for_leg('return');
+            }
+        } else {
+            if ($returnDeliveryReceiptUploadedAt === '') {
+                $returnDeliveryReceiptUploadedAt = customer_order_now_iso8601();
+            }
+
+            if ($returnDeliveryReceiptUploadedBy === '') {
+                $returnDeliveryReceiptUploadedBy = 'customer';
+            }
+        }
+
+        if ($returnDeliveryStatus === 'closed') {
+            if ($returnDeliveryClosedAt === '') {
+                $returnDeliveryClosedAt = customer_order_now_iso8601();
+            }
+
+            if ($returnDeliveryClosedBy === '') {
+                $returnDeliveryClosedBy = 'admin';
+            }
+        } else {
+            $returnDeliveryClosedAt = '';
+            $returnDeliveryClosedBy = '';
+        }
     }
 
     if (
@@ -1863,6 +2168,22 @@ function normalize_customer_order_record($record)
         'payment_method' => $paymentMethod,
         'payment_receipt_path' => $paymentReceiptPath,
         'payment_receipt_uploaded_at' => $paymentReceiptUploadedAt,
+        'receive_delivery_status' => $receiveDeliveryStatus,
+        'receive_delivery_receipt_path' => $receiveDeliveryReceiptPath,
+        'receive_delivery_receipt_uploaded_at' => $receiveDeliveryReceiptUploadedAt,
+        'receive_delivery_receipt_uploaded_by' => $receiveDeliveryReceiptUploadedBy,
+        'receive_delivery_reference' => $receiveDeliveryReference,
+        'receive_delivery_notes' => $receiveDeliveryNotes,
+        'receive_delivery_closed_at' => $receiveDeliveryClosedAt,
+        'receive_delivery_closed_by' => $receiveDeliveryClosedBy,
+        'return_delivery_status' => $returnDeliveryStatus,
+        'return_delivery_receipt_path' => $returnDeliveryReceiptPath,
+        'return_delivery_receipt_uploaded_at' => $returnDeliveryReceiptUploadedAt,
+        'return_delivery_receipt_uploaded_by' => $returnDeliveryReceiptUploadedBy,
+        'return_delivery_reference' => $returnDeliveryReference,
+        'return_delivery_notes' => $returnDeliveryNotes,
+        'return_delivery_closed_at' => $returnDeliveryClosedAt,
+        'return_delivery_closed_by' => $returnDeliveryClosedBy,
         'receive_handover_confirmed_at' => $receiveHandoverConfirmedAt,
         'receive_handover_confirmed_by' => $receiveHandoverConfirmedBy,
         'refund_proof_path' => $refundProofPath,
@@ -2139,6 +2460,22 @@ function customer_orders_live_state_signature($orders)
             'canceled_by' => normalize_customer_order_canceled_by($record['canceled_by'] ?? ''),
             'payment_receipt_path' => normalize_customer_order_asset_path($record['payment_receipt_path'] ?? ''),
             'payment_receipt_uploaded_at' => normalize_customer_order_receipt_uploaded_at($record['payment_receipt_uploaded_at'] ?? ''),
+            'receive_delivery_status' => normalize_customer_order_delivery_status_token($record['receive_delivery_status'] ?? '', 'receive'),
+            'receive_delivery_receipt_path' => normalize_customer_order_asset_path($record['receive_delivery_receipt_path'] ?? ''),
+            'receive_delivery_receipt_uploaded_at' => normalize_customer_order_delivery_receipt_uploaded_at($record['receive_delivery_receipt_uploaded_at'] ?? ''),
+            'receive_delivery_receipt_uploaded_by' => normalize_customer_order_delivery_actor($record['receive_delivery_receipt_uploaded_by'] ?? ''),
+            'receive_delivery_reference' => normalize_customer_order_delivery_reference($record['receive_delivery_reference'] ?? ''),
+            'receive_delivery_notes' => normalize_customer_order_delivery_notes($record['receive_delivery_notes'] ?? ''),
+            'receive_delivery_closed_at' => normalize_customer_order_delivery_closed_at($record['receive_delivery_closed_at'] ?? ''),
+            'receive_delivery_closed_by' => normalize_customer_order_delivery_actor($record['receive_delivery_closed_by'] ?? ''),
+            'return_delivery_status' => normalize_customer_order_delivery_status_token($record['return_delivery_status'] ?? '', 'return'),
+            'return_delivery_receipt_path' => normalize_customer_order_asset_path($record['return_delivery_receipt_path'] ?? ''),
+            'return_delivery_receipt_uploaded_at' => normalize_customer_order_delivery_receipt_uploaded_at($record['return_delivery_receipt_uploaded_at'] ?? ''),
+            'return_delivery_receipt_uploaded_by' => normalize_customer_order_delivery_actor($record['return_delivery_receipt_uploaded_by'] ?? ''),
+            'return_delivery_reference' => normalize_customer_order_delivery_reference($record['return_delivery_reference'] ?? ''),
+            'return_delivery_notes' => normalize_customer_order_delivery_notes($record['return_delivery_notes'] ?? ''),
+            'return_delivery_closed_at' => normalize_customer_order_delivery_closed_at($record['return_delivery_closed_at'] ?? ''),
+            'return_delivery_closed_by' => normalize_customer_order_delivery_actor($record['return_delivery_closed_by'] ?? ''),
             'receive_handover_confirmed_at' => normalize_customer_order_handover_confirmed_at($record['receive_handover_confirmed_at'] ?? ''),
             'receive_handover_confirmed_by' => normalize_customer_order_handover_confirmed_by($record['receive_handover_confirmed_by'] ?? ''),
             'refund_proof_path' => normalize_customer_order_asset_path($record['refund_proof_path'] ?? ''),
@@ -2197,6 +2534,10 @@ function map_customer_order_for_frontend($record)
     $isWaitingForPaymentReceipt = customer_order_requires_payment_receipt($record);
     $isWaitingForPaymentReview = customer_order_requires_payment_review($record);
     $isForPickupReady = customer_order_is_for_pickup_state($record);
+    $receiveDeliveryStatus = normalize_customer_order_delivery_status_token($record['receive_delivery_status'] ?? '', 'receive');
+    $returnDeliveryStatus = normalize_customer_order_delivery_status_token($record['return_delivery_status'] ?? '', 'return');
+    $receiveDeliveryReceiptPath = normalize_customer_order_asset_path($record['receive_delivery_receipt_path'] ?? '');
+    $returnDeliveryReceiptPath = normalize_customer_order_asset_path($record['return_delivery_receipt_path'] ?? '');
     $receiveHandoverConfirmedAt = normalize_customer_order_handover_confirmed_at(
         $record['receive_handover_confirmed_at'] ?? ''
     );
@@ -2225,6 +2566,24 @@ function map_customer_order_for_frontend($record)
         'waitingForPaymentReceipt' => $isWaitingForPaymentReceipt,
         'waitingForPaymentReview' => $isWaitingForPaymentReview,
         'forPickupReady' => $isForPickupReady,
+        'requiresReceiveDelivery' => customer_order_requires_receive_delivery($record),
+        'requiresReturnDelivery' => customer_order_requires_return_delivery($record),
+        'receiveDeliveryStatus' => $receiveDeliveryStatus,
+        'receiveDeliveryReceiptPath' => $receiveDeliveryReceiptPath,
+        'receiveDeliveryReceiptUploadedAt' => normalize_customer_order_delivery_receipt_uploaded_at($record['receive_delivery_receipt_uploaded_at'] ?? ''),
+        'receiveDeliveryReceiptUploadedBy' => normalize_customer_order_delivery_actor($record['receive_delivery_receipt_uploaded_by'] ?? ''),
+        'receiveDeliveryReference' => normalize_customer_order_delivery_reference($record['receive_delivery_reference'] ?? ''),
+        'receiveDeliveryNotes' => normalize_customer_order_delivery_notes($record['receive_delivery_notes'] ?? ''),
+        'receiveDeliveryClosedAt' => normalize_customer_order_delivery_closed_at($record['receive_delivery_closed_at'] ?? ''),
+        'receiveDeliveryClosedBy' => normalize_customer_order_delivery_actor($record['receive_delivery_closed_by'] ?? ''),
+        'returnDeliveryStatus' => $returnDeliveryStatus,
+        'returnDeliveryReceiptPath' => $returnDeliveryReceiptPath,
+        'returnDeliveryReceiptUploadedAt' => normalize_customer_order_delivery_receipt_uploaded_at($record['return_delivery_receipt_uploaded_at'] ?? ''),
+        'returnDeliveryReceiptUploadedBy' => normalize_customer_order_delivery_actor($record['return_delivery_receipt_uploaded_by'] ?? ''),
+        'returnDeliveryReference' => normalize_customer_order_delivery_reference($record['return_delivery_reference'] ?? ''),
+        'returnDeliveryNotes' => normalize_customer_order_delivery_notes($record['return_delivery_notes'] ?? ''),
+        'returnDeliveryClosedAt' => normalize_customer_order_delivery_closed_at($record['return_delivery_closed_at'] ?? ''),
+        'returnDeliveryClosedBy' => normalize_customer_order_delivery_actor($record['return_delivery_closed_by'] ?? ''),
         'receiveHandoverConfirmed' => $receiveHandoverConfirmedAt !== '',
         'receiveHandoverConfirmedAt' => $receiveHandoverConfirmedAt,
         'receiveHandoverConfirmedBy' => $receiveHandoverConfirmedBy,
@@ -2373,6 +2732,26 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
         'payment_method' => $payload['paymentMethod'] ?? '',
         'payment_receipt_path' => '',
         'payment_receipt_uploaded_at' => '',
+        'receive_delivery_status' => $receivingMethod === 'delivery'
+            ? customer_order_delivery_default_status_token_for_leg('receive')
+            : 'not-required',
+        'receive_delivery_receipt_path' => '',
+        'receive_delivery_receipt_uploaded_at' => '',
+        'receive_delivery_receipt_uploaded_by' => '',
+        'receive_delivery_reference' => '',
+        'receive_delivery_notes' => '',
+        'receive_delivery_closed_at' => '',
+        'receive_delivery_closed_by' => '',
+        'return_delivery_status' => $returningMethod === 'delivery'
+            ? customer_order_delivery_default_status_token_for_leg('return')
+            : 'not-required',
+        'return_delivery_receipt_path' => '',
+        'return_delivery_receipt_uploaded_at' => '',
+        'return_delivery_receipt_uploaded_by' => '',
+        'return_delivery_reference' => '',
+        'return_delivery_notes' => '',
+        'return_delivery_closed_at' => '',
+        'return_delivery_closed_by' => '',
         'created_at' => customer_order_now_iso8601(),
     ]);
 
@@ -2688,6 +3067,50 @@ function save_customer_order_payment_receipt_from_data_url($imageDataUrl, $proje
     return $targetDirRelative . '/' . $filename;
 }
 
+function save_customer_order_delivery_receipt_from_data_url($imageDataUrl, $projectRoot, $orderId, $leg)
+{
+    $normalizedLeg = normalize_customer_order_delivery_leg($leg);
+    if ($normalizedLeg === '') {
+        throw new RuntimeException('Invalid delivery leg.');
+    }
+
+    $dataUrl = trim((string) $imageDataUrl);
+
+    if (!preg_match('/^data:image\/(png|jpe?g|webp);base64,(.+)$/i', $dataUrl, $matches)) {
+        throw new RuntimeException('Invalid delivery receipt image payload.');
+    }
+
+    $binary = base64_decode((string) ($matches[2] ?? ''), true);
+    if ($binary === false) {
+        throw new RuntimeException('Invalid delivery receipt image data.');
+    }
+
+    $extensionRaw = strtolower((string) ($matches[1] ?? 'png'));
+    $extension = $extensionRaw === 'jpeg' ? 'jpg' : $extensionRaw;
+
+    $targetDirRelative = 'assets/delivery_receipts/' . $normalizedLeg;
+    $targetDir = rtrim((string) $projectRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR
+        . str_replace('/', DIRECTORY_SEPARATOR, $targetDirRelative);
+
+    if (!is_dir($targetDir) && !mkdir($targetDir, 0777, true) && !is_dir($targetDir)) {
+        throw new RuntimeException('Unable to access delivery receipt directory.');
+    }
+
+    $safeOrderId = strtolower(trim((string) preg_replace('/[^a-z0-9-]+/i', '-', (string) $orderId), '-'));
+    if ($safeOrderId === '') {
+        $safeOrderId = 'order';
+    }
+
+    $filename = $safeOrderId . '-' . $normalizedLeg . '-delivery.' . $extension;
+    $absolutePath = $targetDir . DIRECTORY_SEPARATOR . $filename;
+
+    if (file_put_contents($absolutePath, $binary, LOCK_EX) === false) {
+        throw new RuntimeException('Unable to save delivery receipt image.');
+    }
+
+    return $targetDirRelative . '/' . $filename;
+}
+
 function save_customer_order_valid_id_image_from_data_url($imageDataUrl, $projectRoot, $orderId)
 {
     $dataUrl = trim((string) $imageDataUrl);
@@ -2854,6 +3277,338 @@ function upload_customer_order_receipt_for_customer($customerId, $orderId, $imag
 
     if (!save_customer_orders_repository($orders)) {
         return null;
+    }
+
+    return map_customer_order_for_frontend($updatedOrder);
+}
+
+function upload_customer_order_delivery_receipt_for_customer($customerId, $orderId, $imageDataUrl, $projectRoot, $options = [])
+{
+    $targetCustomerId = trim((string) $customerId);
+    $targetOrderId = trim((string) $orderId);
+    $settings = is_array($options) ? $options : [];
+    $hasDeliveryReference = array_key_exists('delivery_reference', $settings) || array_key_exists('reference', $settings);
+    $hasDeliveryNotes = array_key_exists('delivery_notes', $settings) || array_key_exists('notes', $settings);
+    $deliveryReference = normalize_customer_order_delivery_reference($settings['delivery_reference'] ?? ($settings['reference'] ?? ''));
+    $deliveryNotes = normalize_customer_order_delivery_notes($settings['delivery_notes'] ?? ($settings['notes'] ?? ''));
+
+    if ($targetCustomerId === '' || $targetOrderId === '') {
+        return null;
+    }
+
+    $orders = load_customer_orders_repository();
+    $updatedOrder = null;
+
+    foreach ($orders as $index => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        if ((string) ($record['id'] ?? '') !== $targetOrderId) {
+            continue;
+        }
+
+        if ((string) ($record['customer_id'] ?? '') !== $targetCustomerId) {
+            return null;
+        }
+
+        $currentStatusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+        if ($currentStatusToken !== 'return' || customer_order_is_terminal_status($currentStatusToken)) {
+            return null;
+        }
+
+        if (!customer_order_requires_return_delivery($record)) {
+            return null;
+        }
+
+        $returnDeliveryStatus = normalize_customer_order_delivery_status_token($record['return_delivery_status'] ?? '', 'return');
+        if (!in_array($returnDeliveryStatus, ['waiting-customer-proof', 'in-transit'], true)) {
+            return null;
+        }
+
+        $receiptPath = save_customer_order_delivery_receipt_from_data_url($imageDataUrl, $projectRoot, $targetOrderId, 'return');
+
+        $record['return_delivery_receipt_path'] = $receiptPath;
+        $record['return_delivery_receipt_uploaded_at'] = customer_order_now_iso8601();
+        $record['return_delivery_receipt_uploaded_by'] = 'customer';
+        $record['return_delivery_status'] = 'in-transit';
+
+        if ($hasDeliveryReference) {
+            $record['return_delivery_reference'] = $deliveryReference;
+        }
+
+        if ($hasDeliveryNotes) {
+            $record['return_delivery_notes'] = $deliveryNotes;
+        }
+
+        $orders[$index] = normalize_customer_order_record($record);
+        $updatedOrder = $orders[$index];
+        break;
+    }
+
+    if ($updatedOrder === null) {
+        return null;
+    }
+
+    if (!save_customer_orders_repository($orders)) {
+        return null;
+    }
+
+    if (!function_exists('append_order_delivery_notification')) {
+        require_once __DIR__ . '/message_notifications_repository.php';
+    }
+
+    if (function_exists('append_order_delivery_notification')) {
+        $orderLabel = strtoupper((string) ($updatedOrder['id'] ?? $targetOrderId));
+        $deliverySummarySegments = [
+            'Customer uploaded the return-delivery receipt.',
+        ];
+
+        $returnDeliveryReference = normalize_customer_order_delivery_reference($updatedOrder['return_delivery_reference'] ?? '');
+        $returnDeliveryNotes = normalize_customer_order_delivery_notes($updatedOrder['return_delivery_notes'] ?? '');
+
+        if ($returnDeliveryReference !== '') {
+            $deliverySummarySegments[] = 'Reference: ' . $returnDeliveryReference . '.';
+        }
+
+        if ($returnDeliveryNotes !== '') {
+            $deliverySummarySegments[] = 'Notes: ' . $returnDeliveryNotes;
+        }
+
+        append_order_delivery_notification(
+            (string) ($updatedOrder['id'] ?? $targetOrderId),
+            'Return delivery receipt uploaded: ' . $orderLabel,
+            trim(implode(' ', $deliverySummarySegments))
+        );
+    }
+
+    return map_customer_order_for_frontend($updatedOrder);
+}
+
+function upload_customer_order_delivery_receipt_for_admin($orderId, $imageDataUrl, $projectRoot, $options = [])
+{
+    $targetOrderId = trim((string) $orderId);
+    $settings = is_array($options) ? $options : [];
+    $hasDeliveryReference = array_key_exists('delivery_reference', $settings) || array_key_exists('reference', $settings);
+    $hasDeliveryNotes = array_key_exists('delivery_notes', $settings) || array_key_exists('notes', $settings);
+    $deliveryReference = normalize_customer_order_delivery_reference($settings['delivery_reference'] ?? ($settings['reference'] ?? ''));
+    $deliveryNotes = normalize_customer_order_delivery_notes($settings['delivery_notes'] ?? ($settings['notes'] ?? ''));
+
+    if ($targetOrderId === '') {
+        return null;
+    }
+
+    $orders = load_customer_orders_repository();
+    $updatedOrder = null;
+
+    foreach ($orders as $index => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        if ((string) ($record['id'] ?? '') !== $targetOrderId) {
+            continue;
+        }
+
+        $currentStatusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+        if (customer_order_is_terminal_status($currentStatusToken) || $currentStatusToken === 'awaiting-refund') {
+            return null;
+        }
+
+        if (!in_array($currentStatusToken, ['approved', 'ongoing'], true)) {
+            return null;
+        }
+
+        if (!customer_order_requires_receive_delivery($record)) {
+            return null;
+        }
+
+        $receiveDeliveryStatus = normalize_customer_order_delivery_status_token($record['receive_delivery_status'] ?? '', 'receive');
+        if (!in_array($receiveDeliveryStatus, ['waiting-proof', 'in-transit'], true)) {
+            return null;
+        }
+
+        $receiptPath = save_customer_order_delivery_receipt_from_data_url($imageDataUrl, $projectRoot, $targetOrderId, 'receive');
+
+        $record['receive_delivery_receipt_path'] = $receiptPath;
+        $record['receive_delivery_receipt_uploaded_at'] = customer_order_now_iso8601();
+        $record['receive_delivery_receipt_uploaded_by'] = 'admin';
+        $record['receive_delivery_status'] = 'in-transit';
+
+        if ($hasDeliveryReference) {
+            $record['receive_delivery_reference'] = $deliveryReference;
+        }
+
+        if ($hasDeliveryNotes) {
+            $record['receive_delivery_notes'] = $deliveryNotes;
+        }
+
+        $orders[$index] = normalize_customer_order_record($record);
+        $updatedOrder = $orders[$index];
+        break;
+    }
+
+    if ($updatedOrder === null) {
+        return null;
+    }
+
+    if (!save_customer_orders_repository($orders)) {
+        return null;
+    }
+
+    if (!function_exists('append_customer_order_delivery_notification')) {
+        require_once __DIR__ . '/customer_notifications_repository.php';
+    }
+
+    if (function_exists('append_customer_order_delivery_notification')) {
+        $orderLabel = strtoupper((string) ($updatedOrder['id'] ?? $targetOrderId));
+        $deliverySummarySegments = [
+            'Admin uploaded your receive-delivery receipt. Delivery is now in transit.',
+        ];
+
+        $receiveDeliveryReference = normalize_customer_order_delivery_reference($updatedOrder['receive_delivery_reference'] ?? '');
+        $receiveDeliveryNotes = normalize_customer_order_delivery_notes($updatedOrder['receive_delivery_notes'] ?? '');
+
+        if ($receiveDeliveryReference !== '') {
+            $deliverySummarySegments[] = 'Reference: ' . $receiveDeliveryReference . '.';
+        }
+
+        if ($receiveDeliveryNotes !== '') {
+            $deliverySummarySegments[] = 'Notes: ' . $receiveDeliveryNotes;
+        }
+
+        append_customer_order_delivery_notification(
+            (string) ($updatedOrder['customer_id'] ?? ''),
+            (string) ($updatedOrder['id'] ?? $targetOrderId),
+            'Delivery in transit: ' . $orderLabel,
+            trim(implode(' ', $deliverySummarySegments)),
+            'receive-delivery-in-transit'
+        );
+    }
+
+    return map_customer_order_for_frontend($updatedOrder);
+}
+
+function close_customer_order_delivery_leg_by_admin($orderId, $leg, $options = [])
+{
+    $targetOrderId = trim((string) $orderId);
+    $targetLeg = normalize_customer_order_delivery_leg($leg);
+    $settings = is_array($options) ? $options : [];
+    $hasDeliveryReference = array_key_exists('delivery_reference', $settings) || array_key_exists('reference', $settings);
+    $hasDeliveryNotes = array_key_exists('delivery_notes', $settings) || array_key_exists('notes', $settings);
+    $deliveryReference = normalize_customer_order_delivery_reference($settings['delivery_reference'] ?? ($settings['reference'] ?? ''));
+    $deliveryNotes = normalize_customer_order_delivery_notes($settings['delivery_notes'] ?? ($settings['notes'] ?? ''));
+
+    if ($targetOrderId === '' || $targetLeg === '') {
+        return null;
+    }
+
+    $orders = load_customer_orders_repository();
+    $updatedOrder = null;
+
+    foreach ($orders as $index => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        if ((string) ($record['id'] ?? '') !== $targetOrderId) {
+            continue;
+        }
+
+        $currentStatusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+        if (customer_order_is_terminal_status($currentStatusToken) || $currentStatusToken === 'awaiting-refund') {
+            return null;
+        }
+
+        if ($targetLeg === 'receive') {
+            if (!customer_order_requires_receive_delivery($record)) {
+                return null;
+            }
+
+            $deliveryStatus = normalize_customer_order_delivery_status_token($record['receive_delivery_status'] ?? '', 'receive');
+            $deliveryReceiptPath = normalize_customer_order_asset_path($record['receive_delivery_receipt_path'] ?? '');
+
+            if ($deliveryStatus !== 'in-transit' || $deliveryReceiptPath === '') {
+                return null;
+            }
+
+            $record['receive_delivery_status'] = 'closed';
+            $record['receive_delivery_closed_at'] = customer_order_now_iso8601();
+            $record['receive_delivery_closed_by'] = 'admin';
+
+            if ($hasDeliveryReference) {
+                $record['receive_delivery_reference'] = $deliveryReference;
+            }
+
+            if ($hasDeliveryNotes) {
+                $record['receive_delivery_notes'] = $deliveryNotes;
+            }
+        } else {
+            if (!customer_order_requires_return_delivery($record)) {
+                return null;
+            }
+
+            if ($currentStatusToken !== 'return') {
+                return null;
+            }
+
+            $deliveryStatus = normalize_customer_order_delivery_status_token($record['return_delivery_status'] ?? '', 'return');
+            $deliveryReceiptPath = normalize_customer_order_asset_path($record['return_delivery_receipt_path'] ?? '');
+
+            if ($deliveryStatus !== 'in-transit' || $deliveryReceiptPath === '') {
+                return null;
+            }
+
+            $record['return_delivery_status'] = 'closed';
+            $record['return_delivery_closed_at'] = customer_order_now_iso8601();
+            $record['return_delivery_closed_by'] = 'admin';
+
+            if ($hasDeliveryReference) {
+                $record['return_delivery_reference'] = $deliveryReference;
+            }
+
+            if ($hasDeliveryNotes) {
+                $record['return_delivery_notes'] = $deliveryNotes;
+            }
+        }
+
+        $orders[$index] = normalize_customer_order_record($record);
+        $updatedOrder = $orders[$index];
+        break;
+    }
+
+    if ($updatedOrder === null) {
+        return null;
+    }
+
+    if (!save_customer_orders_repository($orders)) {
+        return null;
+    }
+
+    if (!function_exists('append_customer_order_delivery_notification')) {
+        require_once __DIR__ . '/customer_notifications_repository.php';
+    }
+
+    if (function_exists('append_customer_order_delivery_notification')) {
+        $orderLabel = strtoupper((string) ($updatedOrder['id'] ?? $targetOrderId));
+
+        if ($targetLeg === 'receive') {
+            append_customer_order_delivery_notification(
+                (string) ($updatedOrder['customer_id'] ?? ''),
+                (string) ($updatedOrder['id'] ?? $targetOrderId),
+                'Receive delivery closed: ' . $orderLabel,
+                'Admin confirmed that your receive-delivery leg has been completed.',
+                'receive-delivery-closed'
+            );
+        } else {
+            append_customer_order_delivery_notification(
+                (string) ($updatedOrder['customer_id'] ?? ''),
+                (string) ($updatedOrder['id'] ?? $targetOrderId),
+                'Return delivery closed: ' . $orderLabel,
+                'Admin confirmed that your return-delivery leg has been completed.',
+                'return-delivery-closed'
+            );
+        }
     }
 
     return map_customer_order_for_frontend($updatedOrder);

@@ -1,172 +1,161 @@
-# Delivery Flow Plan (Final Missing Flow)
+# Delivery Flow Plan (Manual-Only, Single Transit State)
 
-## Goal
-Build a complete Delivery flow that supports both directions:
-- Receive leg: customer is receiver (customer should see delivery receipt uploaded by sender side).
-- Return leg: customer is sender (customer should upload delivery receipt when sending back).
+## Reality Constraints (Locked)
+- No courier API and no automatic delivery webhooks.
+- Delivery progress must be manually updated by admin/customer actions.
+- Customer-facing delivery progression must only expose one transport state: In Transit.
+- No customer-facing Arriving, Out for Delivery, or ETA states.
 
-This plan is designed to fit the current architecture without breaking existing core booking statuses.
+## Design Goal
+Build delivery support for both directions while preserving current booking core states:
+- Receive leg: shop to customer.
+- Return leg: customer to shop.
 
-## Core Strategy (Low-Risk)
-Keep existing main booking statuses:
+Use delivery leg fields and manual events, without replacing current booking status flow.
+
+## Core Principle
+Main booking status remains unchanged and trusted:
 - pending
 - approved
 - ongoing
 - return
 - completed
 
-Add delivery leg state fields instead of adding many new global booking statuses.
-This avoids large regressions in current status checks and UI gates.
+Delivery is an attached proof and handling layer, not a replacement lifecycle.
 
-## Delivery Leg Model
-Use two parallel legs:
-- receive_delivery_* : for delivery to customer
-- return_delivery_* : for delivery back to shop
+## Delivery Model (Two Legs)
+Delivery is tracked separately per leg:
+- receive_delivery_* for outbound shipment to customer.
+- return_delivery_* for shipment back to shop.
 
-### Recommended Order Fields
-Add these in order records (normalized in repository):
+## Required Order Fields
 - receive_delivery_status
 - receive_delivery_receipt_path
 - receive_delivery_receipt_uploaded_at
 - receive_delivery_receipt_uploaded_by
-- receive_delivery_tracking_number
+- receive_delivery_reference
 - receive_delivery_notes
+- receive_delivery_closed_at
+- receive_delivery_closed_by
 
 - return_delivery_status
 - return_delivery_receipt_path
 - return_delivery_receipt_uploaded_at
 - return_delivery_receipt_uploaded_by
-- return_delivery_tracking_number
+- return_delivery_reference
 - return_delivery_notes
+- return_delivery_closed_at
+- return_delivery_closed_by
 
-### Suggested Allowed Tokens
-- receive_delivery_status:
-  - not-required
-  - awaiting-dispatch
-  - in-transit
-  - delivered
+## Internal Tokens (Admin/Backend)
+receive_delivery_status:
+- not-required
+- waiting-proof
+- in-transit
+- closed
 
-- return_delivery_status:
-  - not-required
-  - awaiting-customer-shipment
-  - in-transit
-  - received-back
+return_delivery_status:
+- not-required
+- waiting-customer-proof
+- in-transit
+- closed
 
-## Direction Rules
-### A) Receiving Method = delivery
-- After booking approved:
-  - receive_delivery_status = awaiting-dispatch
-- Sender side uploads outbound delivery receipt:
-  - receive_delivery_status = in-transit
-  - customer can view this receipt in Order Status
-- Admin confirms delivered (or handover confirmed):
-  - receive_delivery_status = delivered
-  - booking can continue with existing ongoing/return flow
+## Customer-Facing Rule (Non-Negotiable)
+Customer sees delivery state label only when a leg is moving and has proof:
+- Delivery In Transit
 
-### B) Returning Method = delivery
-- When booking enters return:
-  - return_delivery_status = awaiting-customer-shipment
-  - customer sees Upload Delivery Receipt action
-- Customer uploads return delivery receipt:
-  - return_delivery_status = in-transit
-  - admin sees receipt in booking detail
-- Admin confirms package received:
-  - return_delivery_status = received-back
-  - then admin uses Complete (keep current rule)
+Customer never sees:
+- waiting-proof
+- waiting-customer-proof
+- closed
+- arriving-like labels
 
-## Upload Delivery Receipt Behavior (Your Wireframe Requirement)
-Single UX concept, two contexts:
-- Customer receiving (receive leg):
-  - customer sees delivery receipt (read-only view).
-  - uploaded by sender side (admin/courier workflow).
-- Customer sending (return leg):
-  - customer uploads delivery receipt.
-  - this becomes proof of shipment for admin review.
+## Manual Event Rules
+1. Admin uploads outbound delivery receipt (receive leg):
+- Preconditions: receiving_method=delivery, booking status in approved or ongoing, order not terminal.
+- Effects: save receipt, set receive_delivery_status=in-transit, set uploaded metadata.
+- Customer result: sees Delivery In Transit plus View Delivery Receipt.
 
-## API / Endpoint Plan
-### 1) Customer return upload endpoint
-Create:
+2. Customer uploads return delivery receipt (return leg):
+- Preconditions: returning_method=delivery, booking status=return, order ownership valid.
+- Effects: save receipt, set return_delivery_status=in-transit, set uploaded metadata.
+- Admin result: sees return proof in booking details.
+
+3. Admin closes receive leg:
+- Preconditions: receive_delivery_status=in-transit.
+- Effects: set receive_delivery_status=closed, set close metadata.
+- Customer result: no extra delivery progression shown; core booking lifecycle continues.
+
+4. Admin closes return leg:
+- Preconditions: return_delivery_status=in-transit.
+- Effects: set return_delivery_status=closed, set close metadata.
+- Completion rule: Complete stays manual as-is.
+
+## Endpoint Plan
+1. Customer return upload endpoint:
 - customer_order_upload_delivery_receipt.php
+- direction fixed to return
 
-Payload:
-- orderId
-- direction = return
-- imageDataUrl
-- optional trackingNumber
-- optional notes
-
-Validation:
-- customer owns order
-- returning_method = delivery
-- statusToken = return
-- return_delivery_status in [awaiting-customer-shipment, in-transit]
-
-### 2) Admin receive upload endpoint
-Create:
+2. Admin receive upload endpoint:
 - admin/dashboard/upload_delivery_receipt.php
+- direction fixed to receive
 
-Payload:
-- order_id
-- direction = receive
-- image_data_url
-- optional tracking_number
-- optional notes
+3. Admin close leg endpoint:
+- admin/dashboard/close_delivery_leg.php
+- leg values: receive or return
 
-Validation:
-- receiving_method = delivery
-- statusToken in [approved, ongoing]
-- receive_delivery_status in [awaiting-dispatch, in-transit]
-
-### 3) Repository helpers
-Add functions in config/customer_orders_repository.php:
-- normalize_customer_order_delivery_status_token($value, $direction)
+4. Repository helpers in config/customer_orders_repository.php:
+- normalize_customer_order_delivery_status_token($value, $leg)
 - customer_order_requires_receive_delivery($record)
 - customer_order_requires_return_delivery($record)
-- save_customer_order_delivery_receipt_from_data_url(...)
+- save_customer_order_delivery_receipt_from_data_url($imageDataUrl, $projectRoot, $orderId, $leg)
 - upload_customer_order_delivery_receipt_for_customer(...)
 - upload_customer_order_delivery_receipt_for_admin(...)
+- close_customer_order_delivery_leg_by_admin($orderId, $leg)
 
-## UI Plan
-## Customer Order Status (js/script.js)
-Add delivery-state rendering:
-- If receive leg delivery:
-  - awaiting-dispatch: "Preparing Delivery"
-  - in-transit: "Delivery In Transit" + View Delivery Receipt
-  - delivered: keep normal lifecycle labels
+## Guardrails (Foolproof Controls)
+- Reject illegal transitions with 409 response.
+- Never trust client-side status fields; always derive from repository record.
+- Restrict direction by endpoint role:
+- customer endpoint accepts return only.
+- admin endpoint accepts receive only.
+- Prevent terminal-order mutation.
+- Keep uploads idempotent by overwriting same order-leg file in v1.
+- Do not clear existing receipt if new upload save fails.
+- Always normalize and sanitize file paths.
+- Enforce image-only payload validation.
 
-- If return leg delivery and status return:
-  - awaiting-customer-shipment: show button "Upload Delivery Receipt"
-  - in-transit: "Return Delivery In Transit" + View Uploaded Receipt
-  - received-back: show "Return Package Received"
+## Customer UI Plan
+Order Status behavior:
+- Receive leg:
+- If receipt exists and receive leg is in-transit, show Delivery In Transit + View Delivery Receipt.
+- Otherwise do not show speculative arrival state.
 
-Modal pattern:
-- Reuse existing native webpage modal pattern (same style as GCash upload modal).
-- No browser-native alert/confirm/modal.
+- Return leg:
+- If status=return and returning_method=delivery and no return receipt, show Upload Delivery Receipt action.
+- If return receipt exists and return leg is in-transit, show Delivery In Transit + View Uploaded Receipt.
 
-## Admin Booking Detail (dashboard_page_admin.php + js/script.js)
-Add two media blocks under booking images page:
-- Receive Delivery Receipt
-- Return Delivery Receipt
+Modal behavior:
+- Reuse existing custom webpage modal style (same pattern as GCash modal).
+- No browser-native modal APIs.
 
-Add admin actions (only when valid):
-- Upload Delivery Receipt (receive leg)
-- Confirm Delivered (receive leg)
-- Confirm Return Package Received (return leg)
+## Admin UI Plan
+In booking detail image tab:
+- Receive Delivery Receipt block.
+- Return Delivery Receipt block.
 
-Keep existing:
-- Complete remains final manual completion step.
+Action visibility:
+- Upload Receive Delivery Receipt: visible only when receive leg requires proof and not closed.
+- Close Receive Delivery Leg: visible only when receive leg is in-transit.
+- Close Return Delivery Leg: visible only when return leg is in-transit.
 
 ## Notification Plan
-Use existing customer notification repository pattern:
-- On admin upload of receive delivery receipt:
-  - notify customer that delivery is in transit with receipt available.
-- On admin confirms delivered:
-  - notify customer delivery received.
-- On customer uploads return delivery receipt:
-  - create admin-side signal (existing admin notification mechanism) for review.
+- Admin uploaded receive receipt: notify customer that delivery is in transit and receipt is available.
+- Customer uploaded return receipt: notify admin review queue.
+- Admin closed return leg: optional customer notice that return shipment was received.
 
-## Storage and Assets
-Create folders:
+## Storage Plan
+Folders:
 - assets/delivery_receipts/receive
 - assets/delivery_receipts/return
 
@@ -174,44 +163,48 @@ Filename pattern:
 - <order-id>-receive-delivery.<ext>
 - <order-id>-return-delivery.<ext>
 
-Allow overwrite policy:
-- v1: overwrite latest file path for simplicity.
-- Optional v2: keep history with timestamp suffixes.
-
 ## Backward Compatibility
-For existing orders:
-- normalize missing delivery fields to empty status and paths.
-- default status:
-  - receive_delivery_status = not-required unless receiving_method=delivery
-  - return_delivery_status = not-required unless returning_method=delivery
+For existing records with no delivery fields:
+- receiving_method=delivery => receive_delivery_status defaults to waiting-proof.
+- returning_method=delivery => return_delivery_status defaults to waiting-customer-proof.
+- non-delivery methods => not-required.
 
-## Recommended Implementation Phases
-## Phase 1 (Data + backend contract)
-- Add delivery fields and normalizers in repository.
+## Implementation Phases (Safe Order)
+Phase 1:
+- Add fields, normalizers, and repository helpers.
 - Add asset save helper for delivery receipts.
-- Add customer return upload endpoint.
-- Add admin receive upload endpoint.
 
-## Phase 2 (Customer flow)
-- Add Upload Delivery Receipt modal/action for return leg.
-- Add view delivery receipt support in Order Status for both legs.
-- Add customer-facing delivery labels.
+Phase 2:
+- Build customer return upload endpoint.
+- Build admin receive upload endpoint.
+- Build admin close leg endpoint.
 
-## Phase 3 (Admin flow)
-- Add delivery receipt panels in booking details.
-- Add admin actions and button visibility rules.
-- Add admin handling for delivered/received-back confirmations.
+Phase 3:
+- Add customer upload/view UI for delivery receipts.
+- Add admin image blocks and action buttons.
 
-## Phase 4 (notifications + polish)
-- Wire notifications for both legs.
-- Add status-note copy for delivery branches.
-- Ensure color/status readability in CSS.
+Phase 4:
+- Add notifications and status-note copy.
+- Final guardrail pass for illegal transitions and edge cases.
 
-## Acceptance Checklist
-- Customer can upload return delivery receipt only when returning_method=delivery and status=return.
-- Customer can view receive delivery receipt when receiving_method=delivery and sender side uploaded it.
-- Admin can upload receive delivery receipt and review return delivery receipt.
-- Delivery leg states are visible without breaking existing main booking statuses.
-- Complete action still works as final close step.
-- No browser-native modals are used.
-- No unreadable UI states are introduced.
+## No-API Verification Plan
+Run manual scenario checks only, in this order:
+1. Receive delivery booking approved, no receipt yet.
+2. Admin uploads receive receipt, customer sees In Transit and image.
+3. Admin closes receive leg, customer no longer sees speculative transit progression.
+4. Return leg enters return, customer sees Upload Delivery Receipt action.
+5. Customer uploads return receipt, admin sees proof.
+6. Admin closes return leg.
+7. Admin completes booking.
+8. Reject customer upload when returning_method is not delivery.
+9. Reject admin upload when receiving_method is not delivery.
+10. Reject all delivery actions on terminal orders.
+
+## Acceptance Criteria
+- Customer-facing delivery progression exposes only Delivery In Transit.
+- No ETA or arrival-like claims are shown to customer.
+- Upload Delivery Receipt works for the correct actor and direction only.
+- Illegal delivery actions are blocked with safe server responses.
+- Existing core booking statuses remain stable.
+- Complete remains manual finalization.
+- UI remains readable and uses custom webpage modals only.

@@ -529,6 +529,93 @@ function append_customer_order_status_notification($customerId, $orderId, $statu
     return $newRecord;
 }
 
+function append_customer_order_delivery_notification($customerId, $orderId, $title, $summary = '', $eventToken = 'delivery-update')
+{
+    $targetCustomerId = trim((string) $customerId);
+    $normalizedOrderId = strtoupper(trim((string) $orderId));
+    $normalizedTitle = trim((string) $title);
+    $normalizedSummary = normalize_customer_notification_summary($summary);
+    $normalizedEventToken = normalize_customer_notification_status_token($eventToken);
+
+    if ($targetCustomerId === '' || $normalizedOrderId === '') {
+        return null;
+    }
+
+    if ($normalizedTitle === '') {
+        $normalizedTitle = 'Delivery update for ' . $normalizedOrderId;
+    }
+
+    if ($normalizedSummary === '') {
+        $normalizedSummary = $normalizedTitle;
+    }
+
+    if ($normalizedEventToken === '') {
+        $normalizedEventToken = 'delivery-update';
+    }
+
+    $notifications = load_customer_notifications_repository();
+    $nowTimestamp = time();
+
+    foreach ($notifications as $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        $existing = normalize_customer_notification_record($record);
+
+        if ($existing['customer_id'] !== $targetCustomerId) {
+            continue;
+        }
+
+        if ($existing['type'] !== 'order-status') {
+            continue;
+        }
+
+        if ($existing['order_id'] !== $normalizedOrderId) {
+            continue;
+        }
+
+        if ($existing['status_token'] !== $normalizedEventToken) {
+            continue;
+        }
+
+        if ($existing['title'] !== $normalizedTitle || $existing['summary'] !== $normalizedSummary) {
+            continue;
+        }
+
+        $existingTimestamp = strtotime((string) ($existing['created_at'] ?? ''));
+        if ($existingTimestamp === false) {
+            continue;
+        }
+
+        if (($nowTimestamp - (int) $existingTimestamp) <= 90) {
+            return $existing;
+        }
+    }
+
+    $newRecord = normalize_customer_notification_record([
+        'id' => customer_notification_generate_id(),
+        'customer_id' => $targetCustomerId,
+        'type' => 'order-status',
+        'order_id' => $normalizedOrderId,
+        'status_token' => $normalizedEventToken,
+        'title' => $normalizedTitle,
+        'summary' => $normalizedSummary,
+        'target_view' => 'order-status',
+        'is_read' => false,
+        'created_at' => gmdate('c'),
+        'read_at' => '',
+    ]);
+
+    array_unshift($notifications, $newRecord);
+
+    if (!save_customer_notifications_repository($notifications)) {
+        return null;
+    }
+
+    return $newRecord;
+}
+
 function format_customer_notification_datetime($value)
 {
     $timestamp = strtotime((string) $value);

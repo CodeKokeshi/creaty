@@ -296,6 +296,84 @@ function append_order_placed_notification($orderId)
     return $newRecord;
 }
 
+function append_order_delivery_notification($orderId, $title, $summary = '')
+{
+    $normalizedOrderId = strtoupper(trim((string) $orderId));
+    $normalizedTitle = trim((string) $title);
+    $normalizedSummary = normalize_message_notification_summary($summary);
+
+    if ($normalizedOrderId === '') {
+        return null;
+    }
+
+    if ($normalizedTitle === '') {
+        $normalizedTitle = 'Delivery update for order ' . $normalizedOrderId;
+    }
+
+    if ($normalizedSummary === '') {
+        $normalizedSummary = $normalizedTitle;
+    }
+
+    $notifications = load_message_notifications_repository();
+    $nowTimestamp = time();
+
+    foreach ($notifications as $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        $existing = normalize_message_notification_record($record);
+
+        if ($existing['type'] !== 'order') {
+            continue;
+        }
+
+        $payload = is_array($existing['payload'] ?? null) ? $existing['payload'] : [];
+        if (strtoupper(trim((string) ($payload['order_id'] ?? ''))) !== $normalizedOrderId) {
+            continue;
+        }
+
+        if ((string) ($existing['title'] ?? '') !== $normalizedTitle) {
+            continue;
+        }
+
+        if ((string) ($existing['summary'] ?? '') !== $normalizedSummary) {
+            continue;
+        }
+
+        $existingTimestamp = strtotime((string) ($existing['created_at'] ?? ''));
+        if ($existingTimestamp === false) {
+            continue;
+        }
+
+        if (($nowTimestamp - (int) $existingTimestamp) <= 90) {
+            return $existing;
+        }
+    }
+
+    $newRecord = normalize_message_notification_record([
+        'id' => message_notification_generate_id(),
+        'type' => 'order',
+        'title' => $normalizedTitle,
+        'summary' => $normalizedSummary,
+        'payload' => [
+            'order_id' => $normalizedOrderId,
+            'event' => 'delivery',
+        ],
+        'is_read' => false,
+        'created_at' => gmdate('c'),
+        'read_at' => '',
+    ]);
+
+    array_unshift($notifications, $newRecord);
+
+    if (!save_message_notifications_repository($notifications)) {
+        return null;
+    }
+
+    return $newRecord;
+}
+
 function count_unread_message_notifications($notifications = null)
 {
     $source = is_array($notifications) ? $notifications : load_message_notifications_repository();

@@ -64,6 +64,7 @@ $equipmentAvailability = customer_order_build_equipment_availability_payload([
 $orderSubmitEndpoint = $assetBase . 'customer_order_submit.php';
 $orderCancelEndpoint = $assetBase . 'customer_order_cancel.php';
 $orderReceiptUploadEndpoint = $assetBase . 'customer_order_upload_receipt.php';
+$orderDeliveryReceiptUploadEndpoint = $assetBase . 'customer_order_upload_delivery_receipt.php';
 $customerOrders = [];
 $customerOrdersSignature = '';
 $customerNotifications = [];
@@ -116,7 +117,7 @@ if ($isCustomerLoggedIn) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260409-1">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260410-1">
 </head>
 <body class="cart-page">
     <header class="site-header">
@@ -489,6 +490,54 @@ if ($isCustomerLoggedIn) {
         </div>
     </section>
 
+    <section class="profile-modal cart-delivery-proof-modal" data-cart-delivery-proof-modal hidden>
+        <div class="profile-modal-backdrop" data-cart-delivery-proof-close></div>
+        <div class="profile-modal-dialog cart-refund-proof-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-delivery-proof-title">
+            <h3 id="cart-delivery-proof-title" data-cart-delivery-proof-title>Delivery Receipt</h3>
+
+            <div class="cart-refund-proof-image-wrap">
+                <img src="" alt="Delivery receipt" data-cart-delivery-proof-image hidden>
+                <p class="cart-refund-proof-empty" data-cart-delivery-proof-empty hidden>Unable to load delivery receipt.</p>
+            </div>
+
+            <div class="profile-modal-actions">
+                <button type="button" class="profile-order-action" data-cart-delivery-proof-close>Close</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="profile-modal cart-delivery-upload-modal" data-cart-delivery-upload-modal hidden>
+        <div class="profile-modal-backdrop" data-cart-delivery-upload-close></div>
+        <div class="profile-modal-dialog cart-delivery-upload-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-delivery-upload-title">
+            <h3 id="cart-delivery-upload-title">Upload Return Delivery Receipt</h3>
+            <p data-cart-delivery-upload-copy>Upload the courier handoff receipt to mark your return delivery as in transit.</p>
+
+            <input type="file" accept="image/*" data-cart-delivery-upload-file hidden>
+
+            <div class="cart-gcash-upload-row">
+                <span class="cart-gcash-upload-filename" data-cart-delivery-upload-filename>No file selected</span>
+                <button type="button" class="profile-order-action secondary" data-cart-delivery-upload-select>Select Receipt</button>
+            </div>
+
+            <label class="cart-delivery-upload-field" for="cart-delivery-upload-reference">
+                <span>Delivery Reference (optional)</span>
+                <input id="cart-delivery-upload-reference" type="text" maxlength="120" data-cart-delivery-upload-reference placeholder="Tracking number or booking reference">
+            </label>
+
+            <label class="cart-delivery-upload-field" for="cart-delivery-upload-notes">
+                <span>Delivery Notes (optional)</span>
+                <textarea id="cart-delivery-upload-notes" maxlength="240" data-cart-delivery-upload-notes placeholder="Courier name, rider contact, or handoff notes"></textarea>
+            </label>
+
+            <p class="cart-delivery-upload-message" data-cart-delivery-upload-message hidden></p>
+
+            <div class="profile-modal-actions">
+                <button type="button" class="profile-order-action" data-cart-delivery-upload-close>Back</button>
+                <button type="button" class="profile-order-action primary" data-cart-delivery-upload-submit>Upload Receipt</button>
+            </div>
+        </div>
+    </section>
+
     <section class="cart-unavailable-modal" data-cart-unavailable-modal hidden>
         <div class="cart-unavailable-modal-backdrop" data-cart-unavailable-close></div>
         <div class="cart-unavailable-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-unavailable-title">
@@ -508,6 +557,7 @@ if ($isCustomerLoggedIn) {
         window.__creatyCustomerOrderSubmitEndpoint = <?php echo json_encode($orderSubmitEndpoint, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerOrderCancelEndpoint = <?php echo json_encode($orderCancelEndpoint, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerOrderReceiptUploadEndpoint = <?php echo json_encode($orderReceiptUploadEndpoint, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerOrderDeliveryReceiptUploadEndpoint = <?php echo json_encode($orderDeliveryReceiptUploadEndpoint, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerOrdersSignature = <?php echo json_encode($customerOrdersSignature, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerNotifications = <?php echo json_encode($customerNotificationsForFrontend, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerNotificationUnreadCount = <?php echo json_encode($customerNotificationUnreadCount, JSON_UNESCAPED_SLASHES); ?>;
@@ -520,6 +570,6 @@ if ($isCustomerLoggedIn) {
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260408-6"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260410-1"></script>
 </body>
 </html>

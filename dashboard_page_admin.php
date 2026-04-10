@@ -28,6 +28,8 @@ $adminHomePath = $routeBase . 'dashboard/';
 $logoutPath = $routeBase . 'logout.php';
 $notificationsPath = $routeBase . 'notifications/';
 $liveUpdatesEndpoint = $routeBase . 'notifications/live_updates.php';
+$uploadDeliveryReceiptEndpoint = $routeBase . 'dashboard/upload_delivery_receipt.php';
+$closeDeliveryLegEndpoint = $routeBase . 'dashboard/close_delivery_leg.php';
 $manageBrandsPath = $routeBase . 'brands/';
 $manageCategoriesPath = $routeBase . 'categories/';
 $setGcashQrPath = $routeBase . 'gcash-qr/';
@@ -656,6 +658,24 @@ foreach ($customerBookingsRecords as $bookingRecord) {
     $validIdUploadedAt = trim((string) ($bookingRecord['valid_id_uploaded_at'] ?? ''));
     $selfieWithIdPath = normalize_customer_order_asset_path($bookingRecord['selfie_with_id_path'] ?? '');
     $selfieWithIdUploadedAt = trim((string) ($bookingRecord['selfie_with_id_uploaded_at'] ?? ''));
+    $requiresReceiveDelivery = customer_order_requires_receive_delivery($bookingRecord);
+    $requiresReturnDelivery = customer_order_requires_return_delivery($bookingRecord);
+    $receiveDeliveryStatus = normalize_customer_order_delivery_status_token($bookingRecord['receive_delivery_status'] ?? '', 'receive');
+    $receiveDeliveryReceiptPath = normalize_customer_order_asset_path($bookingRecord['receive_delivery_receipt_path'] ?? '');
+    $receiveDeliveryReceiptUploadedAt = trim((string) ($bookingRecord['receive_delivery_receipt_uploaded_at'] ?? ''));
+    $receiveDeliveryReceiptUploadedBy = normalize_customer_order_delivery_actor($bookingRecord['receive_delivery_receipt_uploaded_by'] ?? '');
+    $receiveDeliveryReference = normalize_customer_order_delivery_reference($bookingRecord['receive_delivery_reference'] ?? '');
+    $receiveDeliveryNotes = normalize_customer_order_delivery_notes($bookingRecord['receive_delivery_notes'] ?? '');
+    $receiveDeliveryClosedAt = normalize_customer_order_delivery_closed_at($bookingRecord['receive_delivery_closed_at'] ?? '');
+    $receiveDeliveryClosedBy = normalize_customer_order_delivery_actor($bookingRecord['receive_delivery_closed_by'] ?? '');
+    $returnDeliveryStatus = normalize_customer_order_delivery_status_token($bookingRecord['return_delivery_status'] ?? '', 'return');
+    $returnDeliveryReceiptPath = normalize_customer_order_asset_path($bookingRecord['return_delivery_receipt_path'] ?? '');
+    $returnDeliveryReceiptUploadedAt = trim((string) ($bookingRecord['return_delivery_receipt_uploaded_at'] ?? ''));
+    $returnDeliveryReceiptUploadedBy = normalize_customer_order_delivery_actor($bookingRecord['return_delivery_receipt_uploaded_by'] ?? '');
+    $returnDeliveryReference = normalize_customer_order_delivery_reference($bookingRecord['return_delivery_reference'] ?? '');
+    $returnDeliveryNotes = normalize_customer_order_delivery_notes($bookingRecord['return_delivery_notes'] ?? '');
+    $returnDeliveryClosedAt = normalize_customer_order_delivery_closed_at($bookingRecord['return_delivery_closed_at'] ?? '');
+    $returnDeliveryClosedBy = normalize_customer_order_delivery_actor($bookingRecord['return_delivery_closed_by'] ?? '');
     $requiresIdentityDocuments = customer_order_requires_identity_documents($bookingRecord);
     $customerGcashProfile = find_customer_gcash_profile_for_customer(
         (string) ($bookingRecord['customer_id'] ?? ''),
@@ -715,6 +735,12 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         : '';
     $selfieWithIdUrl = $selfieWithIdPath !== ''
         ? $assetBase . ltrim($selfieWithIdPath, '/')
+        : '';
+    $receiveDeliveryReceiptUrl = $receiveDeliveryReceiptPath !== ''
+        ? $assetBase . ltrim($receiveDeliveryReceiptPath, '/')
+        : '';
+    $returnDeliveryReceiptUrl = $returnDeliveryReceiptPath !== ''
+        ? $assetBase . ltrim($returnDeliveryReceiptPath, '/')
         : '';
     $bookingTimestampRaw = trim((string) ($bookingRecord['created_at'] ?? ''));
     $bookingTimestampLabel = format_admin_local_datetime_label($bookingTimestampRaw, true);
@@ -843,6 +869,26 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         'selfieWithIdPath' => $selfieWithIdPath,
         'selfieWithIdUrl' => $selfieWithIdUrl,
         'selfieWithIdUploadedAt' => $selfieWithIdUploadedAt,
+        'requiresReceiveDelivery' => $requiresReceiveDelivery,
+        'requiresReturnDelivery' => $requiresReturnDelivery,
+        'receiveDeliveryStatus' => $receiveDeliveryStatus,
+        'receiveDeliveryReceiptPath' => $receiveDeliveryReceiptPath,
+        'receiveDeliveryReceiptUrl' => $receiveDeliveryReceiptUrl,
+        'receiveDeliveryReceiptUploadedAt' => $receiveDeliveryReceiptUploadedAt,
+        'receiveDeliveryReceiptUploadedBy' => $receiveDeliveryReceiptUploadedBy,
+        'receiveDeliveryReference' => $receiveDeliveryReference,
+        'receiveDeliveryNotes' => $receiveDeliveryNotes,
+        'receiveDeliveryClosedAt' => $receiveDeliveryClosedAt,
+        'receiveDeliveryClosedBy' => $receiveDeliveryClosedBy,
+        'returnDeliveryStatus' => $returnDeliveryStatus,
+        'returnDeliveryReceiptPath' => $returnDeliveryReceiptPath,
+        'returnDeliveryReceiptUrl' => $returnDeliveryReceiptUrl,
+        'returnDeliveryReceiptUploadedAt' => $returnDeliveryReceiptUploadedAt,
+        'returnDeliveryReceiptUploadedBy' => $returnDeliveryReceiptUploadedBy,
+        'returnDeliveryReference' => $returnDeliveryReference,
+        'returnDeliveryNotes' => $returnDeliveryNotes,
+        'returnDeliveryClosedAt' => $returnDeliveryClosedAt,
+        'returnDeliveryClosedBy' => $returnDeliveryClosedBy,
         'requiresIdentityDocuments' => $requiresIdentityDocuments,
         'waitingForPaymentReceipt' => $isWaitingForPaymentReceipt,
         'waitingForPaymentReview' => $isWaitingForPaymentReview,
@@ -1520,7 +1566,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260408-2">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260410-1">
 </head>
 <body
     class="home-page-customer"
@@ -1830,6 +1876,26 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                             <p class="admin-booking-detail-refund-meta" data-admin-booking-detail-refund-meta hidden></p>
                         </div>
 
+                        <div class="admin-booking-detail-receive-delivery-wrap" data-admin-booking-detail-receive-delivery-wrap hidden>
+                            <h3>Receive Delivery Receipt</h3>
+                            <p class="admin-booking-detail-media-state"><strong>Status:</strong> <span data-admin-booking-detail-receive-delivery-state>-</span></p>
+                            <a class="admin-booking-detail-receive-delivery-link" href="#" target="_blank" rel="noopener" data-admin-booking-detail-receive-delivery-link hidden>
+                                <img src="" alt="Receive delivery receipt" data-admin-booking-detail-receive-delivery-image>
+                            </a>
+                            <p class="admin-booking-detail-receive-delivery-empty" data-admin-booking-detail-receive-delivery-empty hidden>No receive-delivery receipt uploaded yet.</p>
+                            <p class="admin-booking-detail-receive-delivery-meta" data-admin-booking-detail-receive-delivery-meta hidden></p>
+                        </div>
+
+                        <div class="admin-booking-detail-return-delivery-wrap" data-admin-booking-detail-return-delivery-wrap hidden>
+                            <h3>Return Delivery Receipt</h3>
+                            <p class="admin-booking-detail-media-state"><strong>Status:</strong> <span data-admin-booking-detail-return-delivery-state>-</span></p>
+                            <a class="admin-booking-detail-return-delivery-link" href="#" target="_blank" rel="noopener" data-admin-booking-detail-return-delivery-link hidden>
+                                <img src="" alt="Return delivery receipt" data-admin-booking-detail-return-delivery-image>
+                            </a>
+                            <p class="admin-booking-detail-return-delivery-empty" data-admin-booking-detail-return-delivery-empty hidden>No return-delivery receipt uploaded yet.</p>
+                            <p class="admin-booking-detail-return-delivery-meta" data-admin-booking-detail-return-delivery-meta hidden></p>
+                        </div>
+
                         <div class="admin-booking-detail-valid-id-wrap" data-admin-booking-detail-valid-id-wrap hidden>
                             <h3>Valid ID</h3>
                             <p class="admin-booking-detail-media-state"><strong>Status:</strong> <span data-admin-booking-detail-valid-id-state>-</span></p>
@@ -1889,6 +1955,9 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <button type="button" class="admin-booking-action is-refund" data-admin-booking-review-open data-admin-booking-review-mode="refunded">Refund</button>
                     <button type="submit" name="next_status" value="confirm-pickup-handover" class="admin-booking-action is-ongoing" data-admin-booking-status-submit>Confirm Pickup Handover</button>
                     <button type="submit" name="next_status" value="confirm-meetup-handover" class="admin-booking-action is-ongoing" data-admin-booking-status-submit>Confirm Meet-up Handover</button>
+                    <button type="button" class="admin-booking-action is-delivery-upload" data-admin-booking-delivery-open data-admin-booking-delivery-mode="upload-receive">Upload Receive Delivery Receipt</button>
+                    <button type="button" class="admin-booking-action is-delivery-close" data-admin-booking-delivery-open data-admin-booking-delivery-mode="close-receive">Close Receive Delivery Leg</button>
+                    <button type="button" class="admin-booking-action is-delivery-close" data-admin-booking-delivery-open data-admin-booking-delivery-mode="close-return">Close Return Delivery Leg</button>
                     <button type="submit" name="next_status" value="returned-early" class="admin-booking-action is-early-return" data-admin-booking-status-submit>Returned Early</button>
                     <button type="submit" name="next_status" value="completed" class="admin-booking-action is-complete" data-admin-booking-status-submit>Complete</button>
                     <button type="button" class="admin-booking-action is-cancel" data-admin-booking-cancel-open>Cancel Order</button>
@@ -1944,6 +2013,43 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                 <div class="admin-booking-cancel-actions">
                     <button type="button" class="admin-booking-cancel-action" data-admin-booking-cancel-close>Back</button>
                     <button type="button" class="admin-booking-cancel-action is-confirm" data-admin-booking-cancel-confirm>Confirm Cancel</button>
+                </div>
+            </section>
+        </div>
+
+        <div class="admin-booking-delivery-backdrop" data-admin-booking-delivery-backdrop hidden>
+            <section class="admin-booking-delivery-modal" role="dialog" aria-modal="true" aria-labelledby="admin-booking-delivery-title">
+                <div class="admin-booking-delivery-head">
+                    <h3 id="admin-booking-delivery-title" data-admin-booking-delivery-title>Delivery Action</h3>
+                    <button class="admin-booking-delivery-close" type="button" data-admin-booking-delivery-close aria-label="Close delivery dialog">&times;</button>
+                </div>
+
+                <p class="admin-booking-delivery-copy" data-admin-booking-delivery-copy>Provide delivery details before confirming this action.</p>
+
+                <div class="admin-booking-delivery-proof-wrap" data-admin-booking-delivery-proof-wrap hidden>
+                    <input type="file" accept="image/*" data-admin-booking-delivery-proof-file hidden>
+                    <div class="admin-booking-delivery-proof-row">
+                        <span class="admin-booking-delivery-proof-filename" data-admin-booking-delivery-proof-filename>No file selected</span>
+                        <button type="button" class="admin-booking-delivery-proof-select" data-admin-booking-delivery-proof-select>Select Receipt Image</button>
+                    </div>
+                    <p class="admin-booking-delivery-proof-note">Upload the courier proof screenshot to mark this delivery leg as in transit.</p>
+                </div>
+
+                <label class="admin-booking-delivery-field" for="admin-booking-delivery-reference">
+                    <span>Delivery Reference (optional)</span>
+                    <input id="admin-booking-delivery-reference" class="admin-booking-delivery-input" type="text" maxlength="120" data-admin-booking-delivery-reference placeholder="Tracking number or courier booking reference">
+                </label>
+
+                <label class="admin-booking-delivery-field" for="admin-booking-delivery-notes">
+                    <span>Delivery Notes (optional)</span>
+                    <textarea id="admin-booking-delivery-notes" class="admin-booking-delivery-textarea" data-admin-booking-delivery-notes maxlength="500" placeholder="Courier details, rider contact, or completion notes"></textarea>
+                </label>
+
+                <p class="admin-booking-delivery-error" data-admin-booking-delivery-error hidden></p>
+
+                <div class="admin-booking-delivery-actions">
+                    <button type="button" class="admin-booking-delivery-action" data-admin-booking-delivery-close>Back</button>
+                    <button type="button" class="admin-booking-delivery-action is-confirm" data-admin-booking-delivery-confirm>Confirm</button>
                 </div>
             </section>
         </div>
@@ -2593,6 +2699,8 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         window.__creatyAdminBookings = <?php echo json_encode($adminBookingDetails, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyAdminBookingsSignature = <?php echo json_encode($adminBookingsSignature, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyAdminNotificationLiveEndpoint = <?php echo json_encode($liveUpdatesEndpoint, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyAdminUploadDeliveryReceiptEndpoint = <?php echo json_encode($uploadDeliveryReceiptEndpoint, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyAdminCloseDeliveryLegEndpoint = <?php echo json_encode($closeDeliveryLegEndpoint, JSON_UNESCAPED_SLASHES); ?>;
     </script>
     <script>
         function updateFieldLabels() {
@@ -2621,7 +2729,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         }
         document.addEventListener('DOMContentLoaded', updateFieldLabels);
     </script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260408-2"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260410-1"></script>
 </body>
 </html>
 
