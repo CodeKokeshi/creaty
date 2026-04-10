@@ -5900,6 +5900,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (!bookingItems.length) {
                 var emptyItem = document.createElement("li");
+                emptyItem.className = "admin-booking-detail-item is-empty";
                 emptyItem.textContent = "No item details found.";
                 adminBookingDetailItems.appendChild(emptyItem);
             } else {
@@ -5942,13 +5943,59 @@ document.addEventListener("DOMContentLoaded", function () {
                         estimatedAmount += lineAmount;
                     }
 
-                    var dayLabel = days === 1 ? "day" : "days";
+                    var imageUrl = String(item.imageUrl || item.image_url || "").trim();
+
                     var entry = document.createElement("li");
-                    entry.textContent = name + " - Quantity " + qty + ", " + days + " " + dayLabel;
+                    entry.className = "admin-booking-detail-item";
+
+                    var nameElement = document.createElement("p");
+                    nameElement.className = "admin-booking-detail-item-name";
+                    nameElement.textContent = name;
+
+                    var bodyElement = document.createElement("div");
+                    bodyElement.className = "admin-booking-detail-item-body";
+
+                    var mediaElement = document.createElement("div");
+                    mediaElement.className = "admin-booking-detail-item-media";
+
+                    if (imageUrl) {
+                        var imageElement = document.createElement("img");
+                        imageElement.className = "admin-booking-detail-item-thumb";
+                        imageElement.src = imageUrl;
+                        imageElement.alt = name;
+                        imageElement.loading = "lazy";
+                        mediaElement.appendChild(imageElement);
+                    } else {
+                        var placeholderElement = document.createElement("div");
+                        placeholderElement.className = "admin-booking-detail-item-thumb is-placeholder";
+                        placeholderElement.textContent = "No image";
+                        mediaElement.appendChild(placeholderElement);
+                    }
+
+                    var statsElement = document.createElement("div");
+                    statsElement.className = "admin-booking-detail-item-stats";
+
+                    var qtyElement = document.createElement("p");
+                    qtyElement.className = "admin-booking-detail-item-meta";
+                    qtyElement.textContent = "Qty: " + qty;
+                    statsElement.appendChild(qtyElement);
+
+                    var daysElement = document.createElement("p");
+                    daysElement.className = "admin-booking-detail-item-meta";
+                    daysElement.textContent = "Days: " + days;
+                    statsElement.appendChild(daysElement);
 
                     if (Number.isFinite(lineAmount)) {
-                        entry.textContent += " (Est. " + formatMoney(lineAmount) + ")";
+                        var estimateElement = document.createElement("p");
+                        estimateElement.className = "admin-booking-detail-item-meta is-estimate";
+                        estimateElement.textContent = "Est.: " + formatMoney(lineAmount);
+                        statsElement.appendChild(estimateElement);
                     }
+
+                    bodyElement.appendChild(mediaElement);
+                    bodyElement.appendChild(statsElement);
+                    entry.appendChild(nameElement);
+                    entry.appendChild(bodyElement);
 
                     adminBookingDetailItems.appendChild(entry);
                 });
@@ -5957,7 +6004,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (adminBookingDetailItemsTotal) {
                 var quantityLabel = totalQuantity === 1 ? "item" : "items";
                 var dayUnitLabel = totalDayUnits === 1 ? "day-unit" : "day-units";
-                var totalLabel = "Total quantity: " + totalQuantity + " " + quantityLabel
+                var totalLabel = "Total qty: " + totalQuantity + " " + quantityLabel
                     + " | Rental load: " + totalDayUnits + " " + dayUnitLabel;
 
                 if (hasEstimatedAmount) {

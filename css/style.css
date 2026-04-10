@@ -8137,13 +8137,81 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     padding: 0;
     list-style: none;
     display: grid;
-    gap: 0.35rem;
+    gap: 0.55rem;
 }
 
-.admin-booking-detail-items li {
-    border-bottom: 1px dashed rgba(255, 255, 255, 0.18);
-    padding: 0.48rem 0;
+.admin-booking-detail-item {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 0.6rem 0.7rem;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.admin-booking-detail-item.is-empty {
+    border-style: dashed;
+    text-align: center;
+    color: #ced3dd;
     font-size: 0.84rem;
+}
+
+.admin-booking-detail-item-name {
+    margin: 0;
+    color: #f4f4f4;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.admin-booking-detail-item-body {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 0.7rem;
+    align-items: center;
+}
+
+.admin-booking-detail-item-media {
+    width: 72px;
+    height: 72px;
+}
+
+.admin-booking-detail-item-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: #101116;
+}
+
+.admin-booking-detail-item-thumb.is-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(222, 226, 235, 0.78);
+}
+
+.admin-booking-detail-item-stats {
+    display: grid;
+    gap: 0.24rem;
+    align-content: center;
+}
+
+.admin-booking-detail-item-meta {
+    margin: 0;
+    color: #d6dae2;
+    font-size: 0.82rem;
+}
+
+.admin-booking-detail-item-meta.is-estimate {
+    color: #ece5ad;
+    font-weight: 700;
 }
 
 .admin-booking-detail-media-grid {
@@ -8638,6 +8706,20 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 
     .admin-booking-detail-actions {
         grid-template-columns: 1fr;
+    }
+
+    .admin-booking-detail-item-body {
+        grid-template-columns: 60px minmax(0, 1fr);
+        gap: 0.6rem;
+    }
+
+    .admin-booking-detail-item-media {
+        width: 60px;
+        height: 60px;
+    }
+
+    .admin-booking-detail-item-name {
+        font-size: 0.86rem;
     }
 
     .admin-booking-review-proof-row {

@@ -302,6 +302,37 @@ $customerBookingsRecords = load_customer_orders_repository();
 $customerGcashProfiles = load_customer_gcash_profiles_repository();
 $adminBookingsSignature = customer_orders_live_state_signature($customerBookingsRecords);
 
+if (!is_array($products)) {
+    $products = [];
+}
+
+$archivedProducts = load_archived_products_repository();
+$archivedProductsByOriginalKey = [];
+
+if (is_array($archivedProducts) && $archivedProducts) {
+    for ($archivedIndex = count($archivedProducts) - 1; $archivedIndex >= 0; $archivedIndex--) {
+        $archivedEntry = $archivedProducts[$archivedIndex] ?? null;
+
+        if (!is_array($archivedEntry)) {
+            continue;
+        }
+
+        $archivedOriginalKey = normalize_customer_order_product_key($archivedEntry['originalKey'] ?? '');
+
+        if ($archivedOriginalKey === '' || isset($archivedProductsByOriginalKey[$archivedOriginalKey])) {
+            continue;
+        }
+
+        $archivedProduct = $archivedEntry['product'] ?? null;
+
+        if (!is_array($archivedProduct)) {
+            continue;
+        }
+
+        $archivedProductsByOriginalKey[$archivedOriginalKey] = $archivedProduct;
+    }
+}
+
 foreach ($customerBookingsRecords as $bookingRecord) {
     if (!is_array($bookingRecord)) {
         continue;
@@ -380,6 +411,46 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         'statusClass' => $bookingStatusClass,
     ];
 
+    $bookingItemsWithImages = [];
+    $bookingItems = is_array($bookingRecord['items'] ?? null) ? array_values($bookingRecord['items']) : [];
+
+    foreach ($bookingItems as $bookingItem) {
+        if (!is_array($bookingItem)) {
+            continue;
+        }
+
+        $resolvedProductKey = normalize_customer_order_product_key($bookingItem['product_key'] ?? $bookingItem['productKey'] ?? '');
+
+        if ($resolvedProductKey === '') {
+            $resolvedProductKey = customer_order_extract_product_key_from_item_id($bookingItem['item_id'] ?? $bookingItem['itemId'] ?? '');
+        }
+
+        $itemImagePath = normalize_customer_order_asset_path($bookingItem['image_path'] ?? $bookingItem['imagePath'] ?? '');
+
+        if ($itemImagePath === '' && $resolvedProductKey !== '') {
+            if (isset($products[$resolvedProductKey]) && is_array($products[$resolvedProductKey])) {
+                $itemImagePath = normalize_customer_order_asset_path($products[$resolvedProductKey]['cameraImage'] ?? '');
+            }
+
+            if ($itemImagePath === '' && isset($archivedProductsByOriginalKey[$resolvedProductKey]) && is_array($archivedProductsByOriginalKey[$resolvedProductKey])) {
+                $itemImagePath = normalize_customer_order_asset_path($archivedProductsByOriginalKey[$resolvedProductKey]['cameraImage'] ?? '');
+            }
+        }
+
+        $normalizedBookingItem = $bookingItem;
+
+        if ($resolvedProductKey !== '') {
+            $normalizedBookingItem['product_key'] = $resolvedProductKey;
+        }
+
+        $normalizedBookingItem['imagePath'] = $itemImagePath;
+        $normalizedBookingItem['imageUrl'] = $itemImagePath !== ''
+            ? $assetBase . ltrim($itemImagePath, '/')
+            : '';
+
+        $bookingItemsWithImages[] = $normalizedBookingItem;
+    }
+
     $adminBookingDetails[] = [
         'id' => $bookingId,
         'name' => $customerName,
@@ -389,7 +460,7 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         'status' => $bookingStatusLabel,
         'statusClass' => $bookingStatusClass,
         'statusToken' => $bookingStatusToken,
-        'items' => is_array($bookingRecord['items'] ?? null) ? array_values($bookingRecord['items']) : [],
+        'items' => $bookingItemsWithImages,
         'receiveDate' => (string) ($bookingRecord['receive_date'] ?? ''),
         'receiveTime' => (string) ($bookingRecord['receive_time'] ?? ''),
         'returnDate' => (string) ($bookingRecord['return_date'] ?? ''),
