@@ -581,6 +581,23 @@ function normalize_customer_order_receipt_uploaded_at($value)
     return customer_order_normalize_timestamp_value($value);
 }
 
+function normalize_customer_order_identity_uploaded_at($value)
+{
+    return customer_order_normalize_timestamp_value($value);
+}
+
+function customer_order_requires_identity_documents($record)
+{
+    if (!is_array($record)) {
+        return false;
+    }
+
+    $receivingMethod = normalize_customer_order_receiving_method($record['receiving_method'] ?? $record['receivingMethod'] ?? '');
+    $returningMethod = normalize_customer_order_returning_method($record['returning_method'] ?? $record['returningMethod'] ?? '');
+
+    return $receivingMethod === 'delivery' || $returningMethod === 'delivery';
+}
+
 function customer_order_requires_payment_review($record)
 {
     if (!is_array($record)) {
@@ -1377,6 +1394,11 @@ function normalize_customer_order_record($record)
     $paymentReceiptUploadedAt = normalize_customer_order_receipt_uploaded_at($record['payment_receipt_uploaded_at'] ?? $record['paymentReceiptUploadedAt'] ?? '');
     $refundProofPath = normalize_customer_order_asset_path($record['refund_proof_path'] ?? $record['refundProofPath'] ?? '');
     $refundProofUploadedAt = normalize_customer_order_receipt_uploaded_at($record['refund_proof_uploaded_at'] ?? $record['refundProofUploadedAt'] ?? '');
+    $validIdPath = normalize_customer_order_asset_path($record['valid_id_path'] ?? $record['validIdPath'] ?? '');
+    $validIdUploadedAt = normalize_customer_order_identity_uploaded_at($record['valid_id_uploaded_at'] ?? $record['validIdUploadedAt'] ?? '');
+    $selfieWithIdPath = normalize_customer_order_asset_path($record['selfie_with_id_path'] ?? $record['selfieWithIdPath'] ?? '');
+    $selfieWithIdUploadedAt = normalize_customer_order_identity_uploaded_at($record['selfie_with_id_uploaded_at'] ?? $record['selfieWithIdUploadedAt'] ?? '');
+    $requiresIdentityDocuments = $receivingMethod === 'delivery' || $returningMethod === 'delivery';
 
     if ($receivingMethod !== 'delivery' && $returningMethod !== 'delivery') {
         $courier = '';
@@ -1411,6 +1433,25 @@ function normalize_customer_order_record($record)
         $refundProofUploadedAt = customer_order_now_iso8601();
     }
 
+    if (!$requiresIdentityDocuments) {
+        $validIdPath = '';
+        $validIdUploadedAt = '';
+        $selfieWithIdPath = '';
+        $selfieWithIdUploadedAt = '';
+    } else {
+        if ($validIdPath === '') {
+            $validIdUploadedAt = '';
+        } elseif ($validIdUploadedAt === '') {
+            $validIdUploadedAt = customer_order_now_iso8601();
+        }
+
+        if ($selfieWithIdPath === '') {
+            $selfieWithIdUploadedAt = '';
+        } elseif ($selfieWithIdUploadedAt === '') {
+            $selfieWithIdUploadedAt = customer_order_now_iso8601();
+        }
+    }
+
     return [
         'id' => $id,
         'customer_id' => $customerId,
@@ -1426,6 +1467,10 @@ function normalize_customer_order_record($record)
         'receiving_method' => $receivingMethod,
         'returning_method' => $returningMethod,
         'courier' => $courier,
+        'valid_id_path' => $validIdPath,
+        'valid_id_uploaded_at' => $validIdUploadedAt,
+        'selfie_with_id_path' => $selfieWithIdPath,
+        'selfie_with_id_uploaded_at' => $selfieWithIdUploadedAt,
         'cancel_reason' => $cancelReason,
         'canceled_by' => $canceledBy,
         'payment_method' => $paymentMethod,
@@ -1663,6 +1708,10 @@ function customer_orders_live_state_signature($orders)
             'payment_receipt_uploaded_at' => normalize_customer_order_receipt_uploaded_at($record['payment_receipt_uploaded_at'] ?? ''),
             'refund_proof_path' => normalize_customer_order_asset_path($record['refund_proof_path'] ?? ''),
             'refund_proof_uploaded_at' => normalize_customer_order_receipt_uploaded_at($record['refund_proof_uploaded_at'] ?? ''),
+            'valid_id_path' => normalize_customer_order_asset_path($record['valid_id_path'] ?? ''),
+            'valid_id_uploaded_at' => normalize_customer_order_identity_uploaded_at($record['valid_id_uploaded_at'] ?? ''),
+            'selfie_with_id_path' => normalize_customer_order_asset_path($record['selfie_with_id_path'] ?? ''),
+            'selfie_with_id_uploaded_at' => normalize_customer_order_identity_uploaded_at($record['selfie_with_id_uploaded_at'] ?? ''),
         ];
     }
 
@@ -1726,6 +1775,10 @@ function map_customer_order_for_frontend($record)
         'receivingMethod' => (string) ($record['receiving_method'] ?? ''),
         'returningMethod' => (string) ($record['returning_method'] ?? ''),
         'courier' => (string) ($record['courier'] ?? ''),
+        'validIdPath' => (string) ($record['valid_id_path'] ?? ''),
+        'validIdUploadedAt' => (string) ($record['valid_id_uploaded_at'] ?? ''),
+        'selfieWithIdPath' => (string) ($record['selfie_with_id_path'] ?? ''),
+        'selfieWithIdUploadedAt' => (string) ($record['selfie_with_id_uploaded_at'] ?? ''),
         'cancelReason' => (string) ($record['cancel_reason'] ?? ''),
         'cancelBy' => (string) ($record['canceled_by'] ?? ''),
         'paymentMethod' => (string) ($record['payment_method'] ?? ''),
@@ -1799,9 +1852,22 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
     $receiveTime = normalize_customer_order_time($payload['receiveTime'] ?? '');
     $returnDate = normalize_customer_order_date($payload['returnDate'] ?? '');
     $returnTime = normalize_customer_order_time($payload['returnTime'] ?? '');
+    $receivingMethod = normalize_customer_order_receiving_method($payload['receivingMethod'] ?? '');
+    $returningMethod = normalize_customer_order_returning_method($payload['returningMethod'] ?? '');
+    $requiresIdentityDocuments = $receivingMethod === 'delivery' || $returningMethod === 'delivery';
+    $validIdImageDataUrl = trim((string) ($payload['validIdImageDataUrl'] ?? ''));
+    $selfieWithIdImageDataUrl = trim((string) ($payload['selfieWithIdImageDataUrl'] ?? ''));
 
     if ($items === []) {
         $errorMessage = 'At least one item is required to create a booking.';
+        return null;
+    }
+
+    if (
+        $requiresIdentityDocuments
+        && (strpos($validIdImageDataUrl, 'data:image/') !== 0 || strpos($selfieWithIdImageDataUrl, 'data:image/') !== 0)
+    ) {
+        $errorMessage = 'Delivery bookings require a valid ID and a selfie holding the valid ID.';
         return null;
     }
 
@@ -1819,8 +1885,10 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
         return null;
     }
 
+    $newOrderId = customer_order_generate_id();
+
     $newOrder = normalize_customer_order_record([
-        'id' => customer_order_generate_id(),
+        'id' => $newOrderId,
         'customer_id' => $targetCustomerId,
         'customer_name' => trim((string) $customerName),
         'customer_email' => trim((string) $customerEmail),
@@ -1831,9 +1899,13 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
         'return_date' => $returnDate,
         'return_time' => $returnTime,
         'place' => $payload['place'] ?? '',
-        'receiving_method' => $payload['receivingMethod'] ?? '',
-        'returning_method' => $payload['returningMethod'] ?? '',
+        'receiving_method' => $receivingMethod,
+        'returning_method' => $returningMethod,
         'courier' => $payload['courier'] ?? '',
+        'valid_id_path' => '',
+        'valid_id_uploaded_at' => '',
+        'selfie_with_id_path' => '',
+        'selfie_with_id_uploaded_at' => '',
         'cancel_reason' => '',
         'canceled_by' => '',
         'payment_method' => $payload['paymentMethod'] ?? '',
@@ -1841,6 +1913,28 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
         'payment_receipt_uploaded_at' => '',
         'created_at' => customer_order_now_iso8601(),
     ]);
+
+    if ($requiresIdentityDocuments) {
+        try {
+            $projectRoot = dirname(__DIR__);
+            $newOrder['valid_id_path'] = save_customer_order_valid_id_image_from_data_url(
+                $validIdImageDataUrl,
+                $projectRoot,
+                $newOrderId
+            );
+            $newOrder['valid_id_uploaded_at'] = customer_order_now_iso8601();
+            $newOrder['selfie_with_id_path'] = save_customer_order_selfie_with_id_image_from_data_url(
+                $selfieWithIdImageDataUrl,
+                $projectRoot,
+                $newOrderId
+            );
+            $newOrder['selfie_with_id_uploaded_at'] = customer_order_now_iso8601();
+            $newOrder = normalize_customer_order_record($newOrder);
+        } catch (Throwable $error) {
+            $errorMessage = 'Unable to save your identity images right now.';
+            return null;
+        }
+    }
 
     array_unshift($allOrders, $newOrder);
 
@@ -2058,6 +2152,84 @@ function save_customer_order_payment_receipt_from_data_url($imageDataUrl, $proje
 
     if (file_put_contents($absolutePath, $binary, LOCK_EX) === false) {
         throw new RuntimeException('Unable to save payment receipt image.');
+    }
+
+    return $targetDirRelative . '/' . $filename;
+}
+
+function save_customer_order_valid_id_image_from_data_url($imageDataUrl, $projectRoot, $orderId)
+{
+    $dataUrl = trim((string) $imageDataUrl);
+
+    if (!preg_match('/^data:image\/(png|jpe?g|webp);base64,(.+)$/i', $dataUrl, $matches)) {
+        throw new RuntimeException('Invalid valid ID image payload.');
+    }
+
+    $binary = base64_decode((string) ($matches[2] ?? ''), true);
+    if ($binary === false) {
+        throw new RuntimeException('Invalid valid ID image data.');
+    }
+
+    $extensionRaw = strtolower((string) ($matches[1] ?? 'png'));
+    $extension = $extensionRaw === 'jpeg' ? 'jpg' : $extensionRaw;
+
+    $targetDirRelative = 'assets/valid_id';
+    $targetDir = rtrim((string) $projectRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR
+        . str_replace('/', DIRECTORY_SEPARATOR, $targetDirRelative);
+
+    if (!is_dir($targetDir) && !mkdir($targetDir, 0777, true) && !is_dir($targetDir)) {
+        throw new RuntimeException('Unable to access valid ID directory.');
+    }
+
+    $safeOrderId = strtolower(trim((string) preg_replace('/[^a-z0-9-]+/i', '-', (string) $orderId), '-'));
+    if ($safeOrderId === '') {
+        $safeOrderId = 'order';
+    }
+
+    $filename = $safeOrderId . '-valid-id.' . $extension;
+    $absolutePath = $targetDir . DIRECTORY_SEPARATOR . $filename;
+
+    if (file_put_contents($absolutePath, $binary, LOCK_EX) === false) {
+        throw new RuntimeException('Unable to save valid ID image.');
+    }
+
+    return $targetDirRelative . '/' . $filename;
+}
+
+function save_customer_order_selfie_with_id_image_from_data_url($imageDataUrl, $projectRoot, $orderId)
+{
+    $dataUrl = trim((string) $imageDataUrl);
+
+    if (!preg_match('/^data:image\/(png|jpe?g|webp);base64,(.+)$/i', $dataUrl, $matches)) {
+        throw new RuntimeException('Invalid selfie with ID image payload.');
+    }
+
+    $binary = base64_decode((string) ($matches[2] ?? ''), true);
+    if ($binary === false) {
+        throw new RuntimeException('Invalid selfie with ID image data.');
+    }
+
+    $extensionRaw = strtolower((string) ($matches[1] ?? 'png'));
+    $extension = $extensionRaw === 'jpeg' ? 'jpg' : $extensionRaw;
+
+    $targetDirRelative = 'assets/selfie_with_id';
+    $targetDir = rtrim((string) $projectRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR
+        . str_replace('/', DIRECTORY_SEPARATOR, $targetDirRelative);
+
+    if (!is_dir($targetDir) && !mkdir($targetDir, 0777, true) && !is_dir($targetDir)) {
+        throw new RuntimeException('Unable to access selfie with ID directory.');
+    }
+
+    $safeOrderId = strtolower(trim((string) preg_replace('/[^a-z0-9-]+/i', '-', (string) $orderId), '-'));
+    if ($safeOrderId === '') {
+        $safeOrderId = 'order';
+    }
+
+    $filename = $safeOrderId . '-selfie-with-id.' . $extension;
+    $absolutePath = $targetDir . DIRECTORY_SEPARATOR . $filename;
+
+    if (file_put_contents($absolutePath, $binary, LOCK_EX) === false) {
+        throw new RuntimeException('Unable to save selfie with ID image.');
     }
 
     return $targetDirRelative . '/' . $filename;

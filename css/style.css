@@ -8098,7 +8098,9 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 }
 
 .admin-booking-detail-receipt-wrap,
-.admin-booking-detail-refund-wrap {
+.admin-booking-detail-refund-wrap,
+.admin-booking-detail-valid-id-wrap,
+.admin-booking-detail-selfie-with-id-wrap {
     margin-top: 0.95rem;
     display: grid;
     justify-items: center;
@@ -8107,7 +8109,9 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 }
 
 .admin-booking-detail-receipt-wrap h3,
-.admin-booking-detail-refund-wrap h3 {
+.admin-booking-detail-refund-wrap h3,
+.admin-booking-detail-valid-id-wrap h3,
+.admin-booking-detail-selfie-with-id-wrap h3 {
     margin: 0;
     font-size: 0.88rem;
     letter-spacing: 0.06em;
@@ -8115,7 +8119,9 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 }
 
 .admin-booking-detail-receipt-link,
-.admin-booking-detail-refund-link {
+.admin-booking-detail-refund-link,
+.admin-booking-detail-valid-id-link,
+.admin-booking-detail-selfie-with-id-link {
     width: min(100%, 360px);
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 12px;
@@ -8125,7 +8131,9 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 }
 
 .admin-booking-detail-receipt-link img,
-.admin-booking-detail-refund-link img {
+.admin-booking-detail-refund-link img,
+.admin-booking-detail-valid-id-link img,
+.admin-booking-detail-selfie-with-id-link img {
     width: 100%;
     height: auto;
     max-height: 280px;
@@ -8136,8 +8144,12 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 
 .admin-booking-detail-receipt-empty,
 .admin-booking-detail-refund-empty,
+.admin-booking-detail-valid-id-empty,
+.admin-booking-detail-selfie-with-id-empty,
 .admin-booking-detail-receipt-meta,
 .admin-booking-detail-refund-meta,
+.admin-booking-detail-valid-id-meta,
+.admin-booking-detail-selfie-with-id-meta,
 .admin-booking-detail-status-note {
     margin: 0;
     font-size: 0.83rem;
@@ -8152,11 +8164,21 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     color: #d8d8db;
 }
 
+.admin-booking-detail-valid-id-empty,
+.admin-booking-detail-selfie-with-id-empty {
+    color: #d8d8db;
+}
+
 .admin-booking-detail-receipt-meta {
     color: #ced3dd;
 }
 
 .admin-booking-detail-refund-meta {
+    color: #ced3dd;
+}
+
+.admin-booking-detail-valid-id-meta,
+.admin-booking-detail-selfie-with-id-meta {
     color: #ced3dd;
 }
 

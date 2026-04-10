@@ -322,6 +322,11 @@ foreach ($customerBookingsRecords as $bookingRecord) {
     $paymentReceiptUploadedAt = trim((string) ($bookingRecord['payment_receipt_uploaded_at'] ?? ''));
     $refundProofPath = normalize_customer_order_asset_path($bookingRecord['refund_proof_path'] ?? '');
     $refundProofUploadedAt = trim((string) ($bookingRecord['refund_proof_uploaded_at'] ?? ''));
+    $validIdPath = normalize_customer_order_asset_path($bookingRecord['valid_id_path'] ?? '');
+    $validIdUploadedAt = trim((string) ($bookingRecord['valid_id_uploaded_at'] ?? ''));
+    $selfieWithIdPath = normalize_customer_order_asset_path($bookingRecord['selfie_with_id_path'] ?? '');
+    $selfieWithIdUploadedAt = trim((string) ($bookingRecord['selfie_with_id_uploaded_at'] ?? ''));
+    $requiresIdentityDocuments = customer_order_requires_identity_documents($bookingRecord);
     $customerGcashProfile = find_customer_gcash_profile_for_customer(
         (string) ($bookingRecord['customer_id'] ?? ''),
         $customerGcashProfiles
@@ -349,6 +354,12 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         : '';
     $refundProofUrl = $refundProofPath !== ''
         ? $assetBase . ltrim($refundProofPath, '/')
+        : '';
+    $validIdUrl = $validIdPath !== ''
+        ? $assetBase . ltrim($validIdPath, '/')
+        : '';
+    $selfieWithIdUrl = $selfieWithIdPath !== ''
+        ? $assetBase . ltrim($selfieWithIdPath, '/')
         : '';
     $bookingTimestampRaw = trim((string) ($bookingRecord['created_at'] ?? ''));
     $bookingTimestampLabel = format_admin_local_datetime_label($bookingTimestampRaw, true);
@@ -398,6 +409,13 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         'refundProofPath' => $refundProofPath,
         'refundProofUrl' => $refundProofUrl,
         'refundProofUploadedAt' => $refundProofUploadedAt,
+        'validIdPath' => $validIdPath,
+        'validIdUrl' => $validIdUrl,
+        'validIdUploadedAt' => $validIdUploadedAt,
+        'selfieWithIdPath' => $selfieWithIdPath,
+        'selfieWithIdUrl' => $selfieWithIdUrl,
+        'selfieWithIdUploadedAt' => $selfieWithIdUploadedAt,
+        'requiresIdentityDocuments' => $requiresIdentityDocuments,
         'waitingForPaymentReceipt' => $isWaitingForPaymentReceipt,
         'waitingForPaymentReview' => $isWaitingForPaymentReview,
         'forReturnGraceSeconds' => (int) ($forReturnState['grace_seconds'] ?? customer_order_for_return_grace_seconds()),
@@ -1318,6 +1336,8 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <p><strong>Customer GCash Number:</strong> <span data-admin-booking-detail-customer-gcash-number>-</span></p>
                     <p><strong>Payment Receipt:</strong> <span data-admin-booking-detail-receipt-state>-</span></p>
                     <p><strong>Refund Proof:</strong> <span data-admin-booking-detail-refund-proof-state>-</span></p>
+                    <p><strong>Valid ID:</strong> <span data-admin-booking-detail-valid-id-state>-</span></p>
+                    <p><strong>Selfie with ID:</strong> <span data-admin-booking-detail-selfie-with-id-state>-</span></p>
                     <p><strong>Reason:</strong> <span data-admin-booking-detail-cancel-reason>-</span></p>
                 </div>
 
@@ -1342,6 +1362,24 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     </a>
                     <p class="admin-booking-detail-refund-empty" data-admin-booking-detail-refund-empty hidden>No refund proof uploaded.</p>
                     <p class="admin-booking-detail-refund-meta" data-admin-booking-detail-refund-meta hidden></p>
+                </div>
+
+                <div class="admin-booking-detail-valid-id-wrap" data-admin-booking-detail-valid-id-wrap hidden>
+                    <h3>Uploaded Valid ID</h3>
+                    <a class="admin-booking-detail-valid-id-link" href="#" target="_blank" rel="noopener" data-admin-booking-detail-valid-id-link hidden>
+                        <img src="" alt="Uploaded valid ID" data-admin-booking-detail-valid-id-image>
+                    </a>
+                    <p class="admin-booking-detail-valid-id-empty" data-admin-booking-detail-valid-id-empty hidden>Valid ID is required for delivery bookings.</p>
+                    <p class="admin-booking-detail-valid-id-meta" data-admin-booking-detail-valid-id-meta hidden></p>
+                </div>
+
+                <div class="admin-booking-detail-selfie-with-id-wrap" data-admin-booking-detail-selfie-with-id-wrap hidden>
+                    <h3>Uploaded Selfie with ID</h3>
+                    <a class="admin-booking-detail-selfie-with-id-link" href="#" target="_blank" rel="noopener" data-admin-booking-detail-selfie-with-id-link hidden>
+                        <img src="" alt="Uploaded selfie with ID" data-admin-booking-detail-selfie-with-id-image>
+                    </a>
+                    <p class="admin-booking-detail-selfie-with-id-empty" data-admin-booking-detail-selfie-with-id-empty hidden>Selfie with ID is required for delivery bookings.</p>
+                    <p class="admin-booking-detail-selfie-with-id-meta" data-admin-booking-detail-selfie-with-id-meta hidden></p>
                 </div>
 
                 <p class="admin-booking-detail-status-note" data-admin-booking-detail-status-note hidden></p>
