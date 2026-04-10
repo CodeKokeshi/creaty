@@ -6115,6 +6115,12 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     padding: 0.42rem 0.62rem;
 }
 
+.admin-equipments-status-row-form input[readonly] {
+    border-color: rgba(217, 217, 217, 0.4);
+    background: rgba(255, 255, 255, 0.14);
+    color: rgba(244, 244, 244, 0.92);
+}
+
 .admin-equipments-status-row-form button,
 .admin-equipments-status-remove,
 .admin-equipments-status-add-row button {
@@ -6133,6 +6139,14 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     color: #fff;
 }
 
+.admin-equipments-status-row-form button:disabled,
+.admin-equipments-status-add-row button:disabled {
+    border-color: rgba(217, 217, 217, 0.4);
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(244, 244, 244, 0.8);
+    cursor: default;
+}
+
 .admin-equipments-status-remove {
     border: 1px solid rgba(215, 112, 112, 0.66);
     background: #c84d4d;
@@ -6142,6 +6156,11 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 .admin-equipments-status-remove:disabled {
     opacity: 0.55;
     cursor: default;
+}
+
+.admin-equipments-status:disabled {
+    opacity: 0.72;
+    cursor: not-allowed;
 }
 
 .admin-equipments-status-add-form {
@@ -8190,11 +8209,14 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.62rem;
+    text-align: center;
+    font-size: 0.58rem;
     font-weight: 700;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
+    line-height: 1.25;
     text-transform: uppercase;
     color: rgba(222, 226, 235, 0.78);
+    padding: 0 0.28rem;
 }
 
 .admin-booking-detail-item-stats {
@@ -8207,6 +8229,16 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     margin: 0;
     color: #d6dae2;
     font-size: 0.82rem;
+}
+
+.admin-booking-detail-item-meta-label {
+    font-weight: 700;
+    color: #f1f3f7;
+}
+
+.admin-booking-detail-item-meta-value {
+    font-weight: 600;
+    color: #d6dae2;
 }
 
 .admin-booking-detail-item-meta.is-estimate {

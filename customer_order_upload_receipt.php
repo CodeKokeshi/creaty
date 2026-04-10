@@ -70,24 +70,9 @@ try {
         __DIR__
     );
 } catch (Throwable $error) {
-    $autoCanceledOrder = cancel_pending_gcash_order_for_customer_due_to_receipt_failure(
-        $customerId,
-        $orderId,
-        customer_order_payment_receipt_timeout_reason()
-    );
-
-    if (is_array($autoCanceledOrder)) {
-        customer_order_upload_receipt_respond(409, [
-            'ok' => false,
-            'autoCanceled' => true,
-            'message' => 'Payment receipt upload failed. Booking has been canceled automatically.',
-            'order' => $autoCanceledOrder,
-        ]);
-    }
-
-    customer_order_upload_receipt_respond(422, [
+    customer_order_upload_receipt_respond(500, [
         'ok' => false,
-        'message' => $error->getMessage(),
+        'message' => 'Payment receipt upload failed due to a technical issue. Please try again.',
     ]);
 }
 

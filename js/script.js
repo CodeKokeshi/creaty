@@ -5437,6 +5437,11 @@ document.addEventListener("DOMContentLoaded", function () {
         var isWaitingForPaymentReview = Boolean(booking.waitingForPaymentReview)
             || (statusToken === "pending" && paymentMethodToken === "gcash" && hasPaymentReceipt);
         var hasRefundProof = refundProofUrl !== "" || refundProofPath !== "";
+        var receivingMethodToken = String(booking.receivingMethod || "").toLowerCase().trim();
+        var receiveHandoverConfirmedAt = String(booking.receiveHandoverConfirmedAt || booking.receive_handover_confirmed_at || "").trim();
+        var receiveHandoverConfirmed = Boolean(booking.receiveHandoverConfirmed)
+            || receiveHandoverConfirmedAt !== "";
+        var isForPickupReady = Boolean(booking.forPickupReady);
 
         if (!paymentReceiptUrl && paymentReceiptPath) {
             paymentReceiptUrl = paymentReceiptPath;
@@ -5748,10 +5753,37 @@ document.addEventListener("DOMContentLoaded", function () {
                 adminBookingDetailStatusNote.textContent = "This approved booking was canceled and is now awaiting refund. Upload refund proof to complete the process.";
                 adminBookingDetailStatusNote.hidden = false;
             } else if (isApproved) {
-                adminBookingDetailStatusNote.textContent = "Payment is approved. Only cancellation is allowed manually. Status will switch to Ongoing automatically at the receiving date/time.";
+                var approvedHandoverActionLabel = receivingMethodToken === "meetup"
+                    ? "Confirm Meet-up Handover"
+                    : "Confirm Pickup Handover";
+
+                if (receivingMethodToken === "pickup" || receivingMethodToken === "meetup") {
+                    if (!receiveHandoverConfirmed) {
+                        adminBookingDetailStatusNote.textContent = (isForPickupReady
+                            ? "Payment is approved and this booking is now For Pickup. "
+                            : "Payment is approved. ")
+                            + "Use " + approvedHandoverActionLabel + " once the camera is physically handed over to the customer.";
+                    } else {
+                        adminBookingDetailStatusNote.textContent = "Payment is approved. Handover is already confirmed for this booking.";
+                    }
+                } else {
+                    adminBookingDetailStatusNote.textContent = "Payment is approved. Only cancellation is allowed manually. Status will switch to Ongoing automatically at the receiving date/time.";
+                }
+
                 adminBookingDetailStatusNote.hidden = false;
             } else if (isOngoing) {
-                adminBookingDetailStatusNote.textContent = "Camera is currently with the customer. You can only use Returned Early to complete this booking before the scheduled return time.";
+                var ongoingHandoverActionLabel = receivingMethodToken === "meetup"
+                    ? "Confirm Meet-up Handover"
+                    : "Confirm Pickup Handover";
+
+                if ((receivingMethodToken === "pickup" || receivingMethodToken === "meetup") && !receiveHandoverConfirmed) {
+                    adminBookingDetailStatusNote.textContent = "Camera is currently with the customer. If handover happened after the schedule time, use "
+                        + ongoingHandoverActionLabel
+                        + " to log the actual handover, then use Returned Early if needed.";
+                } else {
+                    adminBookingDetailStatusNote.textContent = "Camera is currently with the customer. You can only use Returned Early to complete this booking before the scheduled return time.";
+                }
+
                 adminBookingDetailStatusNote.hidden = false;
             } else if (isForReturn) {
                 var adminReturningModeLabel = formatAdminBookingMethod(booking.returningMethod, "returning");
@@ -5798,6 +5830,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         var visibleSubmitStatusMap = {
             approved: false,
+            "confirm-pickup-handover": false,
+            "confirm-meetup-handover": false,
             "returned-early": false,
             completed: false
         };
@@ -5814,8 +5848,22 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         } else if (isAwaitingRefund) {
             visibleSubmitStatusMap.approved = false;
+            visibleSubmitStatusMap["confirm-pickup-handover"] = false;
+            visibleSubmitStatusMap["confirm-meetup-handover"] = false;
             visibleSubmitStatusMap["returned-early"] = false;
             visibleSubmitStatusMap.completed = false;
+        }
+
+        if (!isTerminalStatus && !isWaitingForPaymentReceipt && !isWaitingForPaymentReview && !isAwaitingRefund && !receiveHandoverConfirmed) {
+            var canConfirmReceiveHandover = statusToken === "approved" || isOngoing || isForReturn;
+
+            if (canConfirmReceiveHandover && receivingMethodToken === "pickup") {
+                visibleSubmitStatusMap["confirm-pickup-handover"] = true;
+            }
+
+            if (canConfirmReceiveHandover && receivingMethodToken === "meetup") {
+                visibleSubmitStatusMap["confirm-meetup-handover"] = true;
+            }
         }
 
         adminBookingStatusSubmitButtons.forEach(function (button) {
@@ -5968,7 +6016,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     } else {
                         var placeholderElement = document.createElement("div");
                         placeholderElement.className = "admin-booking-detail-item-thumb is-placeholder";
-                        placeholderElement.textContent = "No image";
+                        placeholderElement.textContent = "Preview unavailable";
                         mediaElement.appendChild(placeholderElement);
                     }
 
@@ -5977,12 +6025,34 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     var qtyElement = document.createElement("p");
                     qtyElement.className = "admin-booking-detail-item-meta";
-                    qtyElement.textContent = "Qty: " + qty;
+
+                    var qtyLabelElement = document.createElement("span");
+                    qtyLabelElement.className = "admin-booking-detail-item-meta-label";
+                    qtyLabelElement.textContent = "Quantity:";
+
+                    var qtyValueElement = document.createElement("span");
+                    qtyValueElement.className = "admin-booking-detail-item-meta-value";
+                    qtyValueElement.textContent = String(qty);
+
+                    qtyElement.appendChild(qtyLabelElement);
+                    qtyElement.appendChild(document.createTextNode(" "));
+                    qtyElement.appendChild(qtyValueElement);
                     statsElement.appendChild(qtyElement);
 
                     var daysElement = document.createElement("p");
                     daysElement.className = "admin-booking-detail-item-meta";
-                    daysElement.textContent = "Days: " + days;
+
+                    var daysLabelElement = document.createElement("span");
+                    daysLabelElement.className = "admin-booking-detail-item-meta-label";
+                    daysLabelElement.textContent = "Days:";
+
+                    var daysValueElement = document.createElement("span");
+                    daysValueElement.className = "admin-booking-detail-item-meta-value";
+                    daysValueElement.textContent = String(days);
+
+                    daysElement.appendChild(daysLabelElement);
+                    daysElement.appendChild(document.createTextNode(" "));
+                    daysElement.appendChild(daysValueElement);
                     statsElement.appendChild(daysElement);
 
                     if (Number.isFinite(lineAmount)) {
@@ -6004,7 +6074,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (adminBookingDetailItemsTotal) {
                 var quantityLabel = totalQuantity === 1 ? "item" : "items";
                 var dayUnitLabel = totalDayUnits === 1 ? "day-unit" : "day-units";
-                var totalLabel = "Total qty: " + totalQuantity + " " + quantityLabel
+                var totalLabel = "Total quantity: " + totalQuantity + " " + quantityLabel
                     + " | Rental load: " + totalDayUnits + " " + dayUnitLabel;
 
                 if (hasEstimatedAmount) {
@@ -7841,6 +7911,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 id: String(order.id || ""),
                 status: String(order.status || "Pending"),
                 statusToken: String(order.statusToken || order.status_token || "").toLowerCase().trim(),
+                paymentStage: String(order.paymentStage || order.payment_stage || "").toLowerCase().trim(),
+                paymentStageLabel: String(order.paymentStageLabel || order.payment_stage_label || ""),
+                waitingForPaymentReceipt: Boolean(order.waitingForPaymentReceipt)
+                    || String(order.waiting_for_payment_receipt || "") === "1",
+                waitingForPaymentReview: Boolean(order.waitingForPaymentReview)
+                    || String(order.waiting_for_payment_review || "") === "1",
+                forPickupReady: Boolean(order.forPickupReady)
+                    || String(order.for_pickup_ready || "") === "1",
+                receiveHandoverConfirmed: Boolean(order.receiveHandoverConfirmed)
+                    || String(order.receive_handover_confirmed || "") === "1",
+                receiveHandoverConfirmedAt: String(order.receiveHandoverConfirmedAt || order.receive_handover_confirmed_at || ""),
+                receiveHandoverConfirmedBy: String(order.receiveHandoverConfirmedBy || order.receive_handover_confirmed_by || ""),
                 items: items,
                 receiveDate: String(order.receiveDate || ""),
                 receiveTime: String(order.receiveTime || ""),
@@ -8080,7 +8162,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 return defaultState;
             }
 
-            var statusSlug = String(order.status || "").toLowerCase().trim();
+            var statusToken = String(order.statusToken || "").toLowerCase().trim();
+            var statusSlug = statusToken || String(order.status || "").toLowerCase().trim();
             var paymentMethodSlug = String(order.paymentMethod || "").toLowerCase().trim();
             var hasPaymentReceipt = String(order.paymentReceiptPath || "").trim() !== "";
             var timeoutSeconds = getOrderPaymentReceiptTimeoutSeconds(order);
@@ -8234,9 +8317,97 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function buildOrderForReturnReminder(returningMethod) {
-            return "Please return the camera as soon as possible. Chosen return mode: "
+            return "Return in progress. Please hand back the camera via "
                 + formatOrderReturningMethod(returningMethod)
-                + ".";
+                + ". Admin will mark Complete after handover.";
+        }
+
+        function isOrderReceiveHandoverConfirmed(order) {
+            if (!order || typeof order !== "object") {
+                return false;
+            }
+
+            return Boolean(order.receiveHandoverConfirmed)
+                || String(order.receiveHandoverConfirmedAt || "").trim() !== "";
+        }
+
+        function isOrderForPickupReady(order) {
+            if (!order || typeof order !== "object") {
+                return false;
+            }
+
+            if (Boolean(order.forPickupReady)) {
+                return true;
+            }
+
+            var statusToken = String(order.statusToken || "").toLowerCase().trim();
+            var receivingMethodToken = String(order.receivingMethod || "").toLowerCase().trim();
+
+            if (statusToken !== "approved" || receivingMethodToken !== "pickup" || isOrderReceiveHandoverConfirmed(order)) {
+                return false;
+            }
+
+            var receiveScheduleMs = parseCartLocalScheduleTimestamp(order.receiveDate, order.receiveTime);
+
+            if (!Number.isFinite(receiveScheduleMs)) {
+                return false;
+            }
+
+            var nowMs = Date.now();
+            var pickupReadyWindowStartMs = receiveScheduleMs - (60 * 60 * 1000);
+
+            return nowMs >= pickupReadyWindowStartMs && nowMs < receiveScheduleMs;
+        }
+
+        function resolveOrderStatusDisplay(order) {
+            var statusToken = String(order && order.statusToken ? order.statusToken : "").toLowerCase().trim();
+            var fallbackStatusText = String(order && order.status ? order.status : "Pending");
+            var fallbackStatusClass = statusToken || fallbackStatusText.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+            var paymentMethodSlug = String(order && order.paymentMethod ? order.paymentMethod : "").toLowerCase().trim();
+            var hasPaymentReceipt = String(order && order.paymentReceiptPath ? order.paymentReceiptPath : "").trim() !== "";
+            var waitingForPaymentReceipt = Boolean(order && order.waitingForPaymentReceipt)
+                || (statusToken === "pending" && paymentMethodSlug === "gcash" && !hasPaymentReceipt);
+            var waitingForPaymentReview = Boolean(order && order.waitingForPaymentReview)
+                || (statusToken === "pending" && paymentMethodSlug === "gcash" && hasPaymentReceipt);
+            var forPickupReady = isOrderForPickupReady(order);
+
+            if (waitingForPaymentReceipt) {
+                return {
+                    text: "Waiting for Receipt Upload",
+                    classToken: "pending",
+                    waitingForPaymentReceipt: true,
+                    waitingForPaymentReview: false,
+                    forPickupReady: false
+                };
+            }
+
+            if (waitingForPaymentReview) {
+                return {
+                    text: "Receipt Submitted - Awaiting Admin Review",
+                    classToken: "review",
+                    waitingForPaymentReceipt: false,
+                    waitingForPaymentReview: true,
+                    forPickupReady: false
+                };
+            }
+
+            if (forPickupReady) {
+                return {
+                    text: "For Pickup",
+                    classToken: "approved",
+                    waitingForPaymentReceipt: false,
+                    waitingForPaymentReview: false,
+                    forPickupReady: true
+                };
+            }
+
+            return {
+                text: fallbackStatusText,
+                classToken: fallbackStatusClass,
+                waitingForPaymentReceipt: false,
+                waitingForPaymentReview: false,
+                forPickupReady: false
+            };
         }
 
         function applyLocalPaymentReceiptTimeouts() {
@@ -8792,10 +8963,10 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             allOrders.forEach(function (order) {
-                var statusText = String(order.status || "Pending");
-                var statusSlug = statusText.toLowerCase().replace(/[^a-z0-9]+/g, "-");
                 var statusToken = String(order.statusToken || "").toLowerCase().trim();
-                var statusClassToken = statusToken || statusSlug;
+                var statusDisplay = resolveOrderStatusDisplay(order);
+                var statusText = statusDisplay.text;
+                var statusClassToken = statusDisplay.classToken;
                 var paymentMethodSlug = String(order.paymentMethod || "").toLowerCase().trim();
                 var hasPaymentReceipt = String(order.paymentReceiptPath || "").trim() !== "";
                 var refundProofPath = String(order.refundProofPath || "").trim();
@@ -8867,8 +9038,15 @@ document.addEventListener("DOMContentLoaded", function () {
                     orderMeta.appendChild(forReturnLine);
                 }
 
-                var shouldShowReason = (statusSlug === "canceled" || statusSlug === "rejected" || statusSlug === "refunded") && cancelReason;
-                var isAwaitingRefund = statusSlug === "awaiting-refund" || statusToken === "awaiting-refund";
+                if (statusToken === "completed") {
+                    var completedLine = document.createElement("p");
+                    completedLine.className = "cart-order-status-refund-proof";
+                    completedLine.textContent = "Booking completed. Admin has confirmed your return handover.";
+                    orderMeta.appendChild(completedLine);
+                }
+
+                var shouldShowReason = (statusToken === "canceled" || statusToken === "rejected" || statusToken === "refunded") && cancelReason;
+                var isAwaitingRefund = statusToken === "awaiting-refund";
 
                 shouldShowReason = shouldShowReason || (isAwaitingRefund && cancelReason);
 
@@ -8877,9 +9055,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     reasonLine.className = "cart-order-status-reason";
                     var defaultReasonPrefix = "Reason: ";
 
-                    if (statusSlug === "rejected") {
+                    if (statusToken === "rejected") {
                         defaultReasonPrefix = "Rejection reason: ";
-                    } else if (statusSlug === "refunded") {
+                    } else if (statusToken === "refunded") {
                         defaultReasonPrefix = "Refund reason: ";
                     } else if (isAwaitingRefund) {
                         defaultReasonPrefix = "Cancellation reason: ";
@@ -8898,7 +9076,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     orderMeta.appendChild(refundPendingLine);
                 }
 
-                if (statusSlug === "refunded" || statusToken === "refunded") {
+                if (statusToken === "refunded") {
                     var refundProofLine = document.createElement("p");
                     refundProofLine.className = "cart-order-status-refund-proof";
 
@@ -8922,7 +9100,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 var actionWrap = document.createElement("div");
                 actionWrap.className = "cart-order-status-actions";
 
-                if (statusSlug === "pending" && paymentMethodSlug === "gcash" && !countdownState.expired) {
+                if (statusToken === "pending" && paymentMethodSlug === "gcash" && !countdownState.expired) {
                     var pendingAction = document.createElement("button");
                     pendingAction.type = "button";
                     pendingAction.className = "profile-order-action primary";
@@ -9233,45 +9411,15 @@ document.addEventListener("DOMContentLoaded", function () {
                             setCartView("order-status");
                         })
                         .catch(function (error) {
-                            var errorPayload = error && error.payload && typeof error.payload === "object"
-                                ? error.payload
-                                : null;
-                            var autoCanceledOrder = normalizeStoredOrder(errorPayload && errorPayload.order ? errorPayload.order : null);
-
-                            if (autoCanceledOrder && String(autoCanceledOrder.status || "").toLowerCase().trim() === "canceled") {
-                                var existingOrders = getStoredOrders();
-                                var hasMatch = false;
-                                var nextOrders = existingOrders.map(function (order) {
-                                    if (order.id === autoCanceledOrder.id) {
-                                        hasMatch = true;
-                                        return autoCanceledOrder;
-                                    }
-
-                                    return order;
-                                });
-
-                                if (!hasMatch) {
-                                    nextOrders.unshift(autoCanceledOrder);
-                                }
-
-                                saveStoredOrders(nextOrders);
-                                renderOrderStatusList();
-                                closeGcashModal();
-
-                                if (bookingNote) {
-                                    bookingNote.textContent = error && error.message
-                                        ? String(error.message)
-                                        : "Booking canceled automatically because payment receipt upload failed.";
-                                }
-
-                                showCartToast("Booking canceled");
-                                setCartView("order-status");
-                                return;
-                            }
-
-                            setGcashUploadMessage(error && error.message
+                            var uploadErrorMessage = error && error.message
                                 ? String(error.message)
-                                : "Unable to upload payment receipt right now.", true);
+                                : "Unable to upload payment receipt right now.";
+
+                            setGcashUploadMessage(uploadErrorMessage, true);
+
+                            if (bookingNote) {
+                                bookingNote.textContent = uploadErrorMessage;
+                            }
                         })
                         .finally(function () {
                             isUploadingGcashReceipt = false;
@@ -9748,6 +9896,17 @@ document.addEventListener("DOMContentLoaded", function () {
             return hour;
         }
 
+        function getCartReceivingMinimumHour() {
+            var selectedReceivingMethod = getMethodValue(receiveMethodInputs, "pickup");
+            var minimumHour = cartBookingOpenHour;
+
+            if (selectedReceivingMethod === "pickup") {
+                minimumHour = Math.max(minimumHour, 9);
+            }
+
+            return minimumHour;
+        }
+
         function buildCartCameraRequirements(sourceItems) {
             var source = Array.isArray(sourceItems) ? sourceItems : getCartItems();
             var requirements = {};
@@ -9787,7 +9946,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return false;
             }
 
-            if (slotHour < cartBookingOpenHour || slotHour > cartBookingCloseHour) {
+            if (slotHour < getCartReceivingMinimumHour() || slotHour > cartBookingCloseHour) {
                 return false;
             }
 
@@ -10032,6 +10191,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var todayDate = getStartOfDay(now);
             var todayKey = dateKeyFromDate(todayDate);
             var currentHour = now.getHours();
+            var selectedMinimumHour = getCartReceivingMinimumHour();
             var minimumDate = new Date(
                 todayDate.getFullYear(),
                 todayDate.getMonth(),
@@ -10042,7 +10202,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 todayKey: todayKey,
                 currentHour: currentHour,
                 minimumDateKey: dateKeyFromDate(minimumDate),
-                sameDayMinimumHour: Math.max(cartBookingOpenHour, currentHour + cartBookingLeadHours)
+                sameDayMinimumHour: Math.max(selectedMinimumHour, currentHour + cartBookingLeadHours)
             };
         }
 

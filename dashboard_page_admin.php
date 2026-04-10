@@ -79,6 +79,253 @@ function format_admin_local_datetime_label($value, $uppercase = false)
     return $uppercase ? strtoupper($label) : $label;
 }
 
+function admin_normalize_media_relative_path($value)
+{
+    $path = trim((string) $value);
+    $path = str_replace('\\', '/', $path);
+
+    if ($path === '' || strpos($path, '..') !== false) {
+        return '';
+    }
+
+    $path = ltrim($path, '/');
+
+    if (!preg_match('/^[a-zA-Z0-9_%\-\/.() ]+$/', $path)) {
+        return '';
+    }
+
+    return $path;
+}
+
+function admin_resolve_media_absolute_path($relativePath)
+{
+    $normalizedRelativePath = admin_normalize_media_relative_path($relativePath);
+
+    if ($normalizedRelativePath === '') {
+        return '';
+    }
+
+    $projectRoot = realpath(__DIR__);
+    if ($projectRoot === false) {
+        $projectRoot = __DIR__;
+    }
+
+    $decodedRelativePath = rawurldecode($normalizedRelativePath);
+    $absolutePath = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $decodedRelativePath);
+    $absoluteDirectory = realpath(dirname($absolutePath));
+
+    if ($absoluteDirectory === false || strpos($absoluteDirectory, $projectRoot) !== 0) {
+        return '';
+    }
+
+    return $absolutePath;
+}
+
+function admin_order_thumbnail_cache_key($value)
+{
+    return normalize_customer_order_product_key($value);
+}
+
+function admin_order_thumbnail_absolute_path($relativePath)
+{
+    $normalizedRelativePath = admin_normalize_media_relative_path($relativePath);
+
+    if ($normalizedRelativePath === '') {
+        return '';
+    }
+
+    return __DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, rawurldecode($normalizedRelativePath));
+}
+
+function admin_find_cached_order_thumbnail_relative_path($thumbnailCacheKey)
+{
+    $cacheKey = admin_order_thumbnail_cache_key($thumbnailCacheKey);
+
+    if ($cacheKey === '') {
+        return '';
+    }
+
+    $cacheDir = 'assets/order_item_thumbnails';
+    $extensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+
+    foreach ($extensions as $extension) {
+        $candidateRelativePath = $cacheDir . '/' . $cacheKey . '.' . $extension;
+        $candidateAbsolutePath = admin_order_thumbnail_absolute_path($candidateRelativePath);
+
+        if ($candidateAbsolutePath !== '' && is_file($candidateAbsolutePath)) {
+            return $candidateRelativePath;
+        }
+    }
+
+    return '';
+}
+
+function admin_render_order_thumbnail_from_source($sourceAbsolutePath, $targetAbsolutePath, $targetExtension)
+{
+    $sourcePath = trim((string) $sourceAbsolutePath);
+    $targetPath = trim((string) $targetAbsolutePath);
+    $extension = strtolower(trim((string) $targetExtension));
+
+    if ($sourcePath === '' || $targetPath === '' || !is_file($sourcePath)) {
+        return false;
+    }
+
+    if (!function_exists('getimagesize') || !function_exists('imagecreatetruecolor')) {
+        return @copy($sourcePath, $targetPath);
+    }
+
+    $imageInfo = @getimagesize($sourcePath);
+    $mimeType = is_array($imageInfo) ? strtolower((string) ($imageInfo['mime'] ?? '')) : '';
+
+    $sourceImage = null;
+
+    if ($mimeType === 'image/jpeg' && function_exists('imagecreatefromjpeg')) {
+        $sourceImage = @imagecreatefromjpeg($sourcePath);
+    } elseif ($mimeType === 'image/png' && function_exists('imagecreatefrompng')) {
+        $sourceImage = @imagecreatefrompng($sourcePath);
+    } elseif ($mimeType === 'image/gif' && function_exists('imagecreatefromgif')) {
+        $sourceImage = @imagecreatefromgif($sourcePath);
+    } elseif ($mimeType === 'image/webp' && function_exists('imagecreatefromwebp')) {
+        $sourceImage = @imagecreatefromwebp($sourcePath);
+    }
+
+    if (!$sourceImage) {
+        return @copy($sourcePath, $targetPath);
+    }
+
+    $sourceWidth = imagesx($sourceImage);
+    $sourceHeight = imagesy($sourceImage);
+
+    if ($sourceWidth < 1 || $sourceHeight < 1) {
+        imagedestroy($sourceImage);
+        return @copy($sourcePath, $targetPath);
+    }
+
+    $thumbnailSize = 180;
+    $sourceSquareSize = min($sourceWidth, $sourceHeight);
+    $sourceOffsetX = (int) floor(($sourceWidth - $sourceSquareSize) / 2);
+    $sourceOffsetY = (int) floor(($sourceHeight - $sourceSquareSize) / 2);
+
+    $thumbnailImage = imagecreatetruecolor($thumbnailSize, $thumbnailSize);
+
+    if (in_array($extension, ['png', 'webp', 'gif'], true)) {
+        imagealphablending($thumbnailImage, false);
+        imagesavealpha($thumbnailImage, true);
+        $transparent = imagecolorallocatealpha($thumbnailImage, 0, 0, 0, 127);
+        imagefilledrectangle($thumbnailImage, 0, 0, $thumbnailSize, $thumbnailSize, $transparent);
+    } else {
+        $background = imagecolorallocate($thumbnailImage, 17, 17, 22);
+        imagefilledrectangle($thumbnailImage, 0, 0, $thumbnailSize, $thumbnailSize, $background);
+    }
+
+    imagecopyresampled(
+        $thumbnailImage,
+        $sourceImage,
+        0,
+        0,
+        $sourceOffsetX,
+        $sourceOffsetY,
+        $thumbnailSize,
+        $thumbnailSize,
+        $sourceSquareSize,
+        $sourceSquareSize
+    );
+
+    $didSave = false;
+
+    if ($extension === 'png' && function_exists('imagepng')) {
+        $didSave = @imagepng($thumbnailImage, $targetPath, 6);
+    } elseif ($extension === 'webp' && function_exists('imagewebp')) {
+        $didSave = @imagewebp($thumbnailImage, $targetPath, 82);
+    } elseif ($extension === 'gif' && function_exists('imagegif')) {
+        $didSave = @imagegif($thumbnailImage, $targetPath);
+    } elseif (function_exists('imagejpeg')) {
+        $didSave = @imagejpeg($thumbnailImage, $targetPath, 85);
+    }
+
+    imagedestroy($thumbnailImage);
+    imagedestroy($sourceImage);
+
+    if (!$didSave) {
+        return @copy($sourcePath, $targetPath);
+    }
+
+    return true;
+}
+
+function admin_resolve_order_thumbnail_relative_path($productKey, $sourceRelativePath)
+{
+    $thumbnailCacheKey = admin_order_thumbnail_cache_key($productKey);
+    $normalizedSourceRelativePath = admin_normalize_media_relative_path($sourceRelativePath);
+
+    if ($thumbnailCacheKey === '') {
+        return $normalizedSourceRelativePath;
+    }
+
+    $existingThumbnailRelativePath = admin_find_cached_order_thumbnail_relative_path($thumbnailCacheKey);
+
+    if ($normalizedSourceRelativePath === '') {
+        return $existingThumbnailRelativePath;
+    }
+
+    $sourceAbsolutePath = admin_resolve_media_absolute_path($normalizedSourceRelativePath);
+
+    if ($sourceAbsolutePath === '' || !is_file($sourceAbsolutePath)) {
+        return $existingThumbnailRelativePath !== '' ? $existingThumbnailRelativePath : $normalizedSourceRelativePath;
+    }
+
+    $sourceExtension = strtolower((string) pathinfo(rawurldecode($normalizedSourceRelativePath), PATHINFO_EXTENSION));
+
+    if ($sourceExtension === 'jpeg') {
+        $sourceExtension = 'jpg';
+    }
+
+    if (!in_array($sourceExtension, ['jpg', 'png', 'webp', 'gif'], true)) {
+        $sourceExtension = 'jpg';
+    }
+
+    $thumbnailDirRelativePath = 'assets/order_item_thumbnails';
+    $thumbnailRelativePath = $thumbnailDirRelativePath . '/' . $thumbnailCacheKey . '.' . $sourceExtension;
+    $thumbnailAbsolutePath = admin_order_thumbnail_absolute_path($thumbnailRelativePath);
+
+    if ($thumbnailAbsolutePath === '') {
+        return $existingThumbnailRelativePath !== '' ? $existingThumbnailRelativePath : $normalizedSourceRelativePath;
+    }
+
+    $thumbnailDirectory = dirname($thumbnailAbsolutePath);
+
+    if (!is_dir($thumbnailDirectory) && !mkdir($thumbnailDirectory, 0777, true) && !is_dir($thumbnailDirectory)) {
+        return $existingThumbnailRelativePath !== '' ? $existingThumbnailRelativePath : $normalizedSourceRelativePath;
+    }
+
+    if ($existingThumbnailRelativePath !== '' && $existingThumbnailRelativePath !== $thumbnailRelativePath) {
+        $existingThumbnailAbsolutePath = admin_order_thumbnail_absolute_path($existingThumbnailRelativePath);
+
+        if ($existingThumbnailAbsolutePath !== '' && is_file($existingThumbnailAbsolutePath)) {
+            @unlink($existingThumbnailAbsolutePath);
+        }
+    }
+
+    $sourceModifiedAt = @filemtime($sourceAbsolutePath);
+    $thumbnailModifiedAt = is_file($thumbnailAbsolutePath) ? @filemtime($thumbnailAbsolutePath) : false;
+
+    if (is_file($thumbnailAbsolutePath) && is_int($thumbnailModifiedAt) && (!is_int($sourceModifiedAt) || $thumbnailModifiedAt >= $sourceModifiedAt)) {
+        return $thumbnailRelativePath;
+    }
+
+    $didRender = admin_render_order_thumbnail_from_source($sourceAbsolutePath, $thumbnailAbsolutePath, $sourceExtension);
+
+    if ($didRender && is_file($thumbnailAbsolutePath)) {
+        return $thumbnailRelativePath;
+    }
+
+    if (is_file($thumbnailAbsolutePath)) {
+        return $thumbnailRelativePath;
+    }
+
+    return $existingThumbnailRelativePath !== '' ? $existingThumbnailRelativePath : $normalizedSourceRelativePath;
+}
+
 $adminUsersFlashMessage = (isset($_GET['created']) && (string) $_GET['created'] === '1')
     ? 'User account created successfully.'
     : '';
@@ -245,7 +492,24 @@ $products = load_products_repository();
 $productBrandOptions = load_product_brands_repository();
 $productBrandValueMap = product_brand_value_map($productBrandOptions);
 
-$equipmentStatuses = load_equipment_statuses_repository();
+$equipmentStatuses = normalize_equipment_statuses_collection(load_equipment_statuses_repository());
+$equipmentProtectedStatuses = ['available', 'in-use'];
+$didEnsureProtectedEquipmentStatuses = false;
+
+foreach ($equipmentProtectedStatuses as $protectedEquipmentStatus) {
+    if (in_array($protectedEquipmentStatus, $equipmentStatuses, true)) {
+        continue;
+    }
+
+    $equipmentStatuses[] = $protectedEquipmentStatus;
+    $didEnsureProtectedEquipmentStatuses = true;
+}
+
+if ($didEnsureProtectedEquipmentStatuses) {
+    $equipmentStatuses = normalize_equipment_statuses_collection($equipmentStatuses);
+    save_equipment_statuses_repository($equipmentStatuses);
+}
+
 $equipmentStatusLabels = [];
 
 foreach ($equipmentStatuses as $equipmentStatusValue) {
@@ -306,8 +570,15 @@ if (!is_array($products)) {
     $products = [];
 }
 
+$productNameLookup = customer_order_product_name_lookup_map($products);
+$equipmentInUseRequirementsByProduct = customer_order_collect_in_use_requirements_by_product(
+    $customerBookingsRecords,
+    $products,
+    $productNameLookup
+);
 $archivedProducts = load_archived_products_repository();
 $archivedProductsByOriginalKey = [];
+$archivedProductsByLookupLabel = [];
 
 if (is_array($archivedProducts) && $archivedProducts) {
     for ($archivedIndex = count($archivedProducts) - 1; $archivedIndex >= 0; $archivedIndex--) {
@@ -329,7 +600,30 @@ if (is_array($archivedProducts) && $archivedProducts) {
             continue;
         }
 
-        $archivedProductsByOriginalKey[$archivedOriginalKey] = $archivedProduct;
+        $archivedProductsByOriginalKey[$archivedOriginalKey] = [
+            'product' => $archivedProduct,
+            'originalKey' => $archivedOriginalKey,
+        ];
+
+        $archivedBrand = trim((string) ($archivedProduct['brand'] ?? ''));
+        $archivedName = trim((string) ($archivedProduct['name'] ?? ''));
+        $archivedLabel = customer_order_normalize_lookup_label($archivedBrand . ' ' . $archivedName);
+
+        if ($archivedLabel !== '' && !isset($archivedProductsByLookupLabel[$archivedLabel])) {
+            $archivedProductsByLookupLabel[$archivedLabel] = [
+                'product' => $archivedProduct,
+                'originalKey' => $archivedOriginalKey,
+            ];
+        }
+
+        $archivedNameOnlyLabel = customer_order_normalize_lookup_label($archivedName);
+
+        if ($archivedNameOnlyLabel !== '' && !isset($archivedProductsByLookupLabel[$archivedNameOnlyLabel])) {
+            $archivedProductsByLookupLabel[$archivedNameOnlyLabel] = [
+                'product' => $archivedProduct,
+                'originalKey' => $archivedOriginalKey,
+            ];
+        }
     }
 }
 
@@ -349,8 +643,13 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         ? (int) $forReturnState['deadline_ts']
         : null;
     $paymentMethodToken = normalize_customer_order_payment_method($bookingRecord['payment_method'] ?? '');
+    $receivingMethodToken = normalize_customer_order_receiving_method($bookingRecord['receiving_method'] ?? '');
     $paymentReceiptPath = normalize_customer_order_asset_path($bookingRecord['payment_receipt_path'] ?? '');
     $paymentReceiptUploadedAt = trim((string) ($bookingRecord['payment_receipt_uploaded_at'] ?? ''));
+    $receiveHandoverConfirmedAt = normalize_customer_order_handover_confirmed_at($bookingRecord['receive_handover_confirmed_at'] ?? '');
+    $receiveHandoverConfirmedBy = normalize_customer_order_handover_confirmed_by($bookingRecord['receive_handover_confirmed_by'] ?? '');
+    $isReceiveHandoverConfirmed = $receiveHandoverConfirmedAt !== '';
+    $isForPickupReady = customer_order_is_for_pickup_state($bookingRecord);
     $refundProofPath = normalize_customer_order_asset_path($bookingRecord['refund_proof_path'] ?? '');
     $refundProofUploadedAt = trim((string) ($bookingRecord['refund_proof_uploaded_at'] ?? ''));
     $validIdPath = normalize_customer_order_asset_path($bookingRecord['valid_id_path'] ?? '');
@@ -370,16 +669,41 @@ foreach ($customerBookingsRecords as $bookingRecord) {
     $isWaitingForPaymentReview = $bookingStatusToken === 'pending'
         && $paymentMethodToken === 'gcash'
         && $paymentReceiptPath !== '';
-    $bookingStatusLabel = $isWaitingForPaymentReceipt
-        ? 'WAITING FOR PAYMENT RECEIPT'
-        : ($isWaitingForPaymentReview
-            ? 'PAYMENT REVIEW'
-            : ($bookingStatusToken === 'return'
-                ? 'FOR RETURN'
-                : strtoupper(str_replace('-', ' ', $bookingStatusToken))));
-    $bookingStatusClass = $isWaitingForPaymentReceipt
-        ? 'status-waiting-receipt'
-        : ($isWaitingForPaymentReview ? 'status-review' : 'status-' . $bookingStatusToken);
+    $adminPaymentStageLabel = customer_order_admin_payment_stage_label($bookingRecord);
+    $bookingStatusLabel = strtoupper(str_replace('-', ' ', $bookingStatusToken));
+
+    if ($bookingStatusToken === 'return') {
+        $bookingStatusLabel = 'FOR RETURN';
+    }
+
+    if ($isForPickupReady) {
+        $bookingStatusLabel = 'FOR PICKUP';
+    }
+
+    if ($isWaitingForPaymentReview) {
+        $bookingStatusLabel = 'PAYMENT REVIEW';
+    }
+
+    if ($isWaitingForPaymentReceipt) {
+        $bookingStatusLabel = 'PENDING RECEIPT';
+    }
+
+    if ($adminPaymentStageLabel !== '') {
+        $bookingStatusLabel = $adminPaymentStageLabel;
+    }
+    $bookingStatusClass = 'status-' . $bookingStatusToken;
+
+    if ($isForPickupReady) {
+        $bookingStatusClass = 'status-approved';
+    }
+
+    if ($isWaitingForPaymentReview) {
+        $bookingStatusClass = 'status-review';
+    }
+
+    if ($isWaitingForPaymentReceipt) {
+        $bookingStatusClass = 'status-waiting-receipt';
+    }
     $paymentReceiptUrl = $paymentReceiptPath !== ''
         ? $assetBase . ltrim($paymentReceiptPath, '/')
         : '';
@@ -420,22 +744,49 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         }
 
         $resolvedProductKey = normalize_customer_order_product_key($bookingItem['product_key'] ?? $bookingItem['productKey'] ?? '');
+        $itemLookupLabel = customer_order_normalize_lookup_label($bookingItem['name'] ?? '');
 
         if ($resolvedProductKey === '') {
             $resolvedProductKey = customer_order_extract_product_key_from_item_id($bookingItem['item_id'] ?? $bookingItem['itemId'] ?? '');
         }
 
-        $itemImagePath = normalize_customer_order_asset_path($bookingItem['image_path'] ?? $bookingItem['imagePath'] ?? '');
+        if ($resolvedProductKey === '' && $itemLookupLabel !== '' && isset($productNameLookup[$itemLookupLabel])) {
+            $resolvedProductKey = normalize_customer_order_product_key($productNameLookup[$itemLookupLabel]);
+        }
+
+        $itemImagePath = admin_normalize_media_relative_path($bookingItem['image_path'] ?? $bookingItem['imagePath'] ?? '');
 
         if ($itemImagePath === '' && $resolvedProductKey !== '') {
             if (isset($products[$resolvedProductKey]) && is_array($products[$resolvedProductKey])) {
-                $itemImagePath = normalize_customer_order_asset_path($products[$resolvedProductKey]['cameraImage'] ?? '');
+                $itemImagePath = admin_normalize_media_relative_path($products[$resolvedProductKey]['cameraImage'] ?? '');
             }
 
             if ($itemImagePath === '' && isset($archivedProductsByOriginalKey[$resolvedProductKey]) && is_array($archivedProductsByOriginalKey[$resolvedProductKey])) {
-                $itemImagePath = normalize_customer_order_asset_path($archivedProductsByOriginalKey[$resolvedProductKey]['cameraImage'] ?? '');
+                $archivedProductPayload = $archivedProductsByOriginalKey[$resolvedProductKey]['product'] ?? null;
+
+                if (is_array($archivedProductPayload)) {
+                    $itemImagePath = admin_normalize_media_relative_path($archivedProductPayload['cameraImage'] ?? '');
+                }
             }
         }
+
+        if ($itemImagePath === '' && $itemLookupLabel !== '' && isset($archivedProductsByLookupLabel[$itemLookupLabel])) {
+            $archivedProductPayload = $archivedProductsByLookupLabel[$itemLookupLabel]['product'] ?? null;
+
+            if (is_array($archivedProductPayload)) {
+                $itemImagePath = admin_normalize_media_relative_path($archivedProductPayload['cameraImage'] ?? '');
+            }
+
+            if ($resolvedProductKey === '') {
+                $resolvedProductKey = normalize_customer_order_product_key($archivedProductsByLookupLabel[$itemLookupLabel]['originalKey'] ?? '');
+            }
+        }
+
+        $thumbnailCacheKey = $resolvedProductKey !== ''
+            ? $resolvedProductKey
+            : normalize_customer_order_product_key($bookingItem['name'] ?? '');
+        $itemThumbnailPath = admin_resolve_order_thumbnail_relative_path($thumbnailCacheKey, $itemImagePath);
+        $itemDisplayImagePath = $itemThumbnailPath !== '' ? $itemThumbnailPath : $itemImagePath;
 
         $normalizedBookingItem = $bookingItem;
 
@@ -443,9 +794,11 @@ foreach ($customerBookingsRecords as $bookingRecord) {
             $normalizedBookingItem['product_key'] = $resolvedProductKey;
         }
 
-        $normalizedBookingItem['imagePath'] = $itemImagePath;
-        $normalizedBookingItem['imageUrl'] = $itemImagePath !== ''
-            ? $assetBase . ltrim($itemImagePath, '/')
+        $normalizedBookingItem['imageSourcePath'] = $itemImagePath;
+        $normalizedBookingItem['thumbnailPath'] = $itemThumbnailPath;
+        $normalizedBookingItem['imagePath'] = $itemDisplayImagePath;
+        $normalizedBookingItem['imageUrl'] = $itemDisplayImagePath !== ''
+            ? $assetBase . ltrim($itemDisplayImagePath, '/')
             : '';
 
         $bookingItemsWithImages[] = $normalizedBookingItem;
@@ -466,12 +819,16 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         'returnDate' => (string) ($bookingRecord['return_date'] ?? ''),
         'returnTime' => (string) ($bookingRecord['return_time'] ?? ''),
         'place' => (string) ($bookingRecord['place'] ?? ''),
-        'receivingMethod' => (string) ($bookingRecord['receiving_method'] ?? ''),
+        'receivingMethod' => $receivingMethodToken,
         'returningMethod' => (string) ($bookingRecord['returning_method'] ?? ''),
         'courier' => (string) ($bookingRecord['courier'] ?? ''),
         'cancelReason' => (string) ($bookingRecord['cancel_reason'] ?? ''),
         'cancelBy' => (string) ($bookingRecord['canceled_by'] ?? ''),
         'paymentMethod' => $paymentMethodToken,
+        'forPickupReady' => $isForPickupReady,
+        'receiveHandoverConfirmed' => $isReceiveHandoverConfirmed,
+        'receiveHandoverConfirmedAt' => $receiveHandoverConfirmedAt,
+        'receiveHandoverConfirmedBy' => $receiveHandoverConfirmedBy,
         'customerGcashName' => $customerGcashName,
         'customerGcashNumber' => $customerGcashNumber,
         'paymentReceiptPath' => $paymentReceiptPath,
@@ -558,6 +915,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new RuntimeException('Original status was not found.');
                 }
 
+                if (in_array($oldStatus, $equipmentProtectedStatuses, true)) {
+                    throw new RuntimeException('AVAILABLE and IN USE are protected statuses and cannot be renamed.');
+                }
+
                 if ($newStatus !== $oldStatus && in_array($newStatus, $equipmentStatuses, true)) {
                     throw new RuntimeException('A status with that name already exists.');
                 }
@@ -592,6 +953,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (!in_array($statusToDelete, $equipmentStatuses, true)) {
                     throw new RuntimeException('Status was not found.');
+                }
+
+                if (in_array($statusToDelete, $equipmentProtectedStatuses, true)) {
+                    throw new RuntimeException('AVAILABLE and IN USE are protected statuses and cannot be removed.');
                 }
 
                 if (count($equipmentStatuses) <= 1) {
@@ -916,11 +1281,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     : 'Equipment unit restored successfully.';
             } elseif ($adminAction === 'equipment_update_status') {
                 $productKey = trim((string) ($_POST['product_key'] ?? ''));
+                $normalizedProductKey = normalize_customer_order_product_key($productKey);
                 $serial = (int) ($_POST['serial'] ?? -1);
                 $status = normalize_equipment_status_token($_POST['status'] ?? 'available');
+                $currentUnitStatus = '';
+
+                if (isset($equipmentInventory[$productKey]) && is_array($equipmentInventory[$productKey])) {
+                    $productUnits = isset($equipmentInventory[$productKey]['units']) && is_array($equipmentInventory[$productKey]['units'])
+                        ? $equipmentInventory[$productKey]['units']
+                        : [];
+
+                    foreach ($productUnits as $productUnit) {
+                        if (!is_array($productUnit)) {
+                            continue;
+                        }
+
+                        if ((int) ($productUnit['serial'] ?? -1) !== $serial) {
+                            continue;
+                        }
+
+                        $currentUnitStatus = normalize_equipment_status_token($productUnit['status'] ?? 'available');
+                        break;
+                    }
+                }
 
                 if (!in_array($status, $equipmentStatuses, true)) {
                     throw new RuntimeException('Selected status is no longer available.');
+                }
+
+                if ($status === 'in-use' && $currentUnitStatus !== 'in-use') {
+                    throw new RuntimeException('IN USE is adaptive and cannot be set manually.');
+                }
+
+                $requiredInUseForProduct = max(0, (int) ($equipmentInUseRequirementsByProduct[$normalizedProductKey] ?? 0));
+
+                if ($requiredInUseForProduct > 0 && $currentUnitStatus === 'in-use' && $status !== 'in-use') {
+                    throw new RuntimeException('This unit is currently locked to IN USE by an ongoing booking.');
                 }
 
                 $equipmentInventory = update_equipment_unit_status(
@@ -973,6 +1369,8 @@ foreach ($products as $productKey => $product) {
         continue;
     }
 
+    $normalizedProductKey = normalize_customer_order_product_key($productKey);
+
     $modelLabel = equipment_model_label_from_product($product);
     $inventoryEntry = normalize_equipment_inventory_entry($equipmentInventory[$productKey], 12, false);
     $equipmentInventory[$productKey] = $inventoryEntry;
@@ -983,6 +1381,7 @@ foreach ($products as $productKey => $product) {
     foreach ($units as $unit) {
         $serial = max(0, (int) ($unit['serial'] ?? 0));
         $statusValue = normalize_equipment_status($unit['status'] ?? 'available');
+        $inUseRequired = max(0, (int) ($equipmentInUseRequirementsByProduct[$normalizedProductKey] ?? 0));
 
         $equipmentRows[] = [
             'productKey' => (string) $productKey,
@@ -990,6 +1389,7 @@ foreach ($products as $productKey => $product) {
             'serial' => $serial,
             'unitId' => equipment_unit_identifier($modelLabel, $serial),
             'status' => $statusValue,
+            'lockedInUse' => $statusValue === 'in-use' && $inUseRequired > 0,
             'timesUsed' => (int) ($inventoryEntry['timesUsed'] ?? 0)
         ];
     }
@@ -1281,6 +1681,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                                     $equipmentProductKey = (string) ($equipmentRow['productKey'] ?? '');
                                     $equipmentSerial = (int) ($equipmentRow['serial'] ?? 0);
                                     $equipmentUnitCount = (int) ($equipmentUnitCountsByProduct[$equipmentProductKey] ?? 0);
+                                    $equipmentStatusLocked = !empty($equipmentRow['lockedInUse']);
                                 ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars((string) ($equipmentRow['unitId'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
@@ -1293,9 +1694,13 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                                             <input type="hidden" name="serial" value="<?php echo htmlspecialchars((string) $equipmentSerial, ENT_QUOTES, 'UTF-8'); ?>">
 
                                             <label class="sr-only" for="equipment-status-<?php echo htmlspecialchars($equipmentProductKey, ENT_QUOTES, 'UTF-8'); ?>-<?php echo htmlspecialchars((string) $equipmentSerial, ENT_QUOTES, 'UTF-8'); ?>">Status</label>
-                                            <select class="admin-equipments-status" id="equipment-status-<?php echo htmlspecialchars($equipmentProductKey, ENT_QUOTES, 'UTF-8'); ?>-<?php echo htmlspecialchars((string) $equipmentSerial, ENT_QUOTES, 'UTF-8'); ?>" name="status" onchange="this.form.submit()">
+                                            <select class="admin-equipments-status" id="equipment-status-<?php echo htmlspecialchars($equipmentProductKey, ENT_QUOTES, 'UTF-8'); ?>-<?php echo htmlspecialchars((string) $equipmentSerial, ENT_QUOTES, 'UTF-8'); ?>" name="status" onchange="this.form.submit()" <?php echo $equipmentStatusLocked ? 'disabled' : ''; ?> aria-label="<?php echo $equipmentStatusLocked ? 'Status locked to In Use while booking is ongoing' : 'Status'; ?>">
                                                 <?php foreach ($equipmentStatusLabels as $statusValue => $statusLabel): ?>
-                                                    <option value="<?php echo htmlspecialchars((string) $statusValue, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ((string) ($equipmentRow['status'] ?? '') === (string) $statusValue) ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) $statusLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                                    <?php
+                                                        $isInUseStatusOption = (string) $statusValue === 'in-use';
+                                                        $isCurrentEquipmentStatus = (string) ($equipmentRow['status'] ?? '') === (string) $statusValue;
+                                                    ?>
+                                                    <option value="<?php echo htmlspecialchars((string) $statusValue, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $isCurrentEquipmentStatus ? 'selected' : ''; ?> <?php echo $isInUseStatusOption ? 'disabled' : ''; ?>><?php echo htmlspecialchars((string) $statusLabel, ENT_QUOTES, 'UTF-8'); ?><?php echo $isInUseStatusOption ? ' (AUTO)' : ''; ?></option>
                                                 <?php endforeach; ?>
                                             </select>
                                         </form>
@@ -1482,9 +1887,11 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <button type="submit" name="next_status" value="approved" class="admin-booking-action is-approve" data-admin-booking-status-submit>Approve</button>
                     <button type="button" class="admin-booking-action is-reject" data-admin-booking-review-open data-admin-booking-review-mode="rejected">Reject</button>
                     <button type="button" class="admin-booking-action is-refund" data-admin-booking-review-open data-admin-booking-review-mode="refunded">Refund</button>
+                    <button type="submit" name="next_status" value="confirm-pickup-handover" class="admin-booking-action is-ongoing" data-admin-booking-status-submit>Confirm Pickup Handover</button>
+                    <button type="submit" name="next_status" value="confirm-meetup-handover" class="admin-booking-action is-ongoing" data-admin-booking-status-submit>Confirm Meet-up Handover</button>
                     <button type="submit" name="next_status" value="returned-early" class="admin-booking-action is-early-return" data-admin-booking-status-submit>Returned Early</button>
                     <button type="submit" name="next_status" value="completed" class="admin-booking-action is-complete" data-admin-booking-status-submit>Complete</button>
-                    <button type="button" class="admin-booking-action is-cancel" data-admin-booking-cancel-open>Cancel</button>
+                    <button type="button" class="admin-booking-action is-cancel" data-admin-booking-cancel-open>Cancel Order</button>
                 </form>
             </section>
         </div>
@@ -1805,7 +2212,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                 <button class="admin-equipments-status-close" type="button" data-admin-equipment-status-close aria-label="Close status management">&times;</button>
             </div>
 
-            <p class="admin-equipments-status-meta">Edit, remove, or add statuses used by equipment dropdowns.</p>
+            <p class="admin-equipments-status-meta">Edit, remove, or add statuses used by equipment dropdowns. AVAILABLE and IN USE are protected.</p>
 
             <div class="admin-equipments-status-table-wrap" role="region" aria-label="Status list">
                 <table class="admin-equipments-status-table">
@@ -1817,14 +2224,17 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     </thead>
                     <tbody>
                         <?php foreach ($equipmentStatuses as $equipmentStatusValue): ?>
-                            <?php $statusDisplay = ucwords(str_replace('-', ' ', (string) $equipmentStatusValue)); ?>
+                            <?php
+                                $statusDisplay = ucwords(str_replace('-', ' ', (string) $equipmentStatusValue));
+                                $isProtectedEquipmentStatus = in_array((string) $equipmentStatusValue, $equipmentProtectedStatuses, true);
+                            ?>
                             <tr>
                                 <td>
                                     <form class="admin-equipments-status-row-form" method="post" action="">
                                         <input type="hidden" name="admin_action" value="equipment_rename_status">
                                         <input type="hidden" name="old_status" value="<?php echo htmlspecialchars((string) $equipmentStatusValue, ENT_QUOTES, 'UTF-8'); ?>">
-                                        <input type="text" name="status_label" value="<?php echo htmlspecialchars($statusDisplay, ENT_QUOTES, 'UTF-8'); ?>" maxlength="40" required>
-                                        <button type="submit">Save</button>
+                                        <input type="text" name="status_label" value="<?php echo htmlspecialchars($statusDisplay, ENT_QUOTES, 'UTF-8'); ?>" maxlength="40" required <?php echo $isProtectedEquipmentStatus ? 'readonly' : ''; ?> <?php echo $isProtectedEquipmentStatus ? 'aria-readonly="true"' : ''; ?>>
+                                        <button type="submit" <?php echo $isProtectedEquipmentStatus ? 'disabled' : ''; ?>>Save</button>
                                     </form>
                                 </td>
                                 <td>
@@ -1836,7 +2246,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                                             type="submit"
                                             data-admin-equipment-status-delete
                                             data-status-label="<?php echo htmlspecialchars($statusDisplay, ENT_QUOTES, 'UTF-8'); ?>"
-                                            <?php echo count($equipmentStatuses) <= 1 ? 'disabled' : ''; ?>
+                                            <?php echo (count($equipmentStatuses) <= 1 || $isProtectedEquipmentStatus) ? 'disabled' : ''; ?>
                                         >Remove</button>
                                     </form>
                                 </td>

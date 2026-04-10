@@ -156,6 +156,77 @@ function customer_order_for_return_penalty_per_hour()
     return 50;
 }
 
+function customer_order_pickup_ready_lead_seconds()
+{
+    return 60 * 60;
+}
+
+function customer_order_pickup_minimum_hour()
+{
+    return 9;
+}
+
+function customer_order_handover_action_tokens()
+{
+    return ['confirm-pickup-handover', 'confirm-meetup-handover'];
+}
+
+function customer_order_handover_mode_from_action($value)
+{
+    $token = strtolower(trim((string) $value));
+    $token = preg_replace('/[^a-z0-9-]+/', '-', $token) ?? $token;
+    $token = trim((string) $token, '-');
+
+    if ($token === 'confirm-pickup-handover') {
+        return 'pickup';
+    }
+
+    if ($token === 'confirm-meetup-handover') {
+        return 'meetup';
+    }
+
+    return '';
+}
+
+function customer_order_handover_supported_receiving_methods()
+{
+    return ['pickup', 'meetup'];
+}
+
+function normalize_customer_order_handover_confirmed_at($value)
+{
+    return customer_order_normalize_timestamp_value($value);
+}
+
+function normalize_customer_order_handover_confirmed_by($value)
+{
+    $token = strtolower(trim((string) $value));
+
+    if ($token === '' || !in_array($token, ['admin', 'system', 'customer'], true)) {
+        return '';
+    }
+
+    return $token;
+}
+
+function customer_order_is_receive_handover_confirmed($record)
+{
+    if (!is_array($record)) {
+        return false;
+    }
+
+    $receivingMethod = normalize_customer_order_receiving_method($record['receiving_method'] ?? $record['receivingMethod'] ?? '');
+    if (!in_array($receivingMethod, customer_order_handover_supported_receiving_methods(), true)) {
+        return false;
+    }
+
+    $confirmedAt = normalize_customer_order_handover_confirmed_at(
+        $record['receive_handover_confirmed_at'] ?? $record['receiveHandoverConfirmedAt'] ?? ''
+    );
+
+    return $confirmedAt !== '';
+}
+
 function customer_order_open_reservation_end_timestamp()
 {
     return 2147483647;
@@ -298,12 +369,22 @@ function customer_order_min_receiving_date_by_now($nowTimestamp = null)
     return $todayDate;
 }
 
-function customer_order_is_valid_receiving_schedule($receiveDateValue, $receiveTimeValue, $nowTimestamp = null)
+function customer_order_is_valid_receiving_schedule($receiveDateValue, $receiveTimeValue, $nowTimestamp = null, $receivingMethod = '')
 {
     $receiveDate = normalize_customer_order_date($receiveDateValue);
     $receiveTime = normalize_customer_order_time($receiveTimeValue);
+    $receivingMethodToken = normalize_customer_order_receiving_method($receivingMethod);
 
     if ($receiveDate === '' || $receiveTime === '' || !customer_order_is_valid_booking_time_slot($receiveTime)) {
+        return false;
+    }
+
+    $selectedHour = customer_order_booking_time_slot_hour($receiveTime);
+    if ($selectedHour === null) {
+        return false;
+    }
+
+    if ($receivingMethodToken === 'pickup' && $selectedHour < customer_order_pickup_minimum_hour()) {
         return false;
     }
 
@@ -325,15 +406,14 @@ function customer_order_is_valid_receiving_schedule($receiveDateValue, $receiveT
         return false;
     }
 
-    $selectedHour = customer_order_booking_time_slot_hour($receiveTime);
-    if ($selectedHour === null) {
-        return false;
-    }
-
     $minimumHour = max(
         customer_order_booking_shop_open_hour(),
         $currentHour + customer_order_booking_lead_hours()
     );
+
+    if ($receivingMethodToken === 'pickup') {
+        $minimumHour = max($minimumHour, customer_order_pickup_minimum_hour());
+    }
 
     return $selectedHour >= $minimumHour
         && $selectedHour <= customer_order_booking_shop_close_hour();
@@ -611,6 +691,100 @@ function customer_order_requires_payment_review($record)
     return $statusToken === 'pending' && $paymentMethod === 'gcash' && $receiptPath !== '';
 }
 
+function customer_order_payment_stage_token($record)
+{
+    if (!is_array($record)) {
+        return '';
+    }
+
+    $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+    $paymentMethod = normalize_customer_order_payment_method($record['payment_method'] ?? '');
+    $receiptPath = normalize_customer_order_asset_path($record['payment_receipt_path'] ?? '');
+
+    if ($paymentMethod !== 'gcash') {
+        return '';
+    }
+
+    if ($statusToken === 'pending' && $receiptPath === '') {
+        return 'waiting-receipt';
+    }
+
+    if ($statusToken === 'pending' && $receiptPath !== '') {
+        return 'payment-review';
+    }
+
+    if ($statusToken === 'awaiting-refund') {
+        return 'refund-processing';
+    }
+
+    if ($statusToken === 'refunded') {
+        return 'refunded';
+    }
+
+    return '';
+}
+
+function customer_order_customer_payment_stage_label($record)
+{
+    $stageToken = customer_order_payment_stage_token($record);
+
+    if ($stageToken === 'waiting-receipt') {
+        return 'Waiting for Receipt Upload';
+    }
+
+    if ($stageToken === 'payment-review') {
+        return 'Receipt Submitted - Awaiting Admin Review';
+    }
+
+    return '';
+}
+
+function customer_order_admin_payment_stage_label($record)
+{
+    $stageToken = customer_order_payment_stage_token($record);
+
+    if ($stageToken === 'waiting-receipt') {
+        return 'PENDING RECEIPT';
+    }
+
+    if ($stageToken === 'payment-review') {
+        return 'PAYMENT REVIEW';
+    }
+
+    return '';
+}
+
+function customer_order_is_for_pickup_state($record, $nowTimestamp = null)
+{
+    if (!is_array($record)) {
+        return false;
+    }
+
+    $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+    if ($statusToken !== 'approved') {
+        return false;
+    }
+
+    $receivingMethod = normalize_customer_order_receiving_method($record['receiving_method'] ?? $record['receivingMethod'] ?? '');
+    if ($receivingMethod !== 'pickup') {
+        return false;
+    }
+
+    if (customer_order_is_receive_handover_confirmed($record)) {
+        return false;
+    }
+
+    $receivingTimestamp = customer_order_receiving_timestamp($record);
+    if (!is_int($receivingTimestamp)) {
+        return false;
+    }
+
+    $currentTimestamp = is_int($nowTimestamp) ? $nowTimestamp : time();
+    $windowStartTimestamp = $receivingTimestamp - customer_order_pickup_ready_lead_seconds();
+
+    return $currentTimestamp >= $windowStartTimestamp && $currentTimestamp < $receivingTimestamp;
+}
+
 function customer_order_requires_refund_after_cancellation($record)
 {
     if (!is_array($record)) {
@@ -621,7 +795,9 @@ function customer_order_requires_refund_after_cancellation($record)
     $paymentMethod = normalize_customer_order_payment_method($record['payment_method'] ?? '');
     $receiptPath = normalize_customer_order_asset_path($record['payment_receipt_path'] ?? '');
 
-    return $statusToken === 'approved' && $paymentMethod === 'gcash' && $receiptPath !== '';
+    return in_array($statusToken, ['pending', 'approved'], true)
+        && $paymentMethod === 'gcash'
+        && $receiptPath !== '';
 }
 
 function customer_order_resolve_cancellation_status_token($record)
@@ -980,7 +1156,200 @@ function customer_order_unit_counts_for_capacity($unit)
 
     $statusToken = customer_order_normalize_equipment_status_token($unit['status'] ?? 'available');
 
-    return $statusToken !== 'retired';
+    return in_array($statusToken, ['available', 'in-use'], true);
+}
+
+function customer_order_in_use_lock_status_tokens()
+{
+    return ['ongoing', 'return'];
+}
+
+function customer_order_record_requires_in_use_lock($record)
+{
+    if (!is_array($record)) {
+        return false;
+    }
+
+    $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+
+    return in_array($statusToken, customer_order_in_use_lock_status_tokens(), true);
+}
+
+function customer_order_collect_in_use_requirements_by_product($orders, $products, $nameLookup = null)
+{
+    if (!is_array($orders) || !is_array($products) || !$products) {
+        return [];
+    }
+
+    $lookup = is_array($nameLookup)
+        ? $nameLookup
+        : customer_order_product_name_lookup_map($products);
+    $requirements = [];
+
+    foreach ($orders as $record) {
+        if (!is_array($record) || !customer_order_record_requires_in_use_lock($record)) {
+            continue;
+        }
+
+        $itemRequirements = customer_order_extract_camera_item_requirements($record['items'] ?? [], $products, $lookup);
+
+        foreach ($itemRequirements as $productKey => $entry) {
+            $normalizedKey = normalize_customer_order_product_key($productKey);
+
+            if ($normalizedKey === '') {
+                continue;
+            }
+
+            $qty = max(1, (int) ($entry['qty'] ?? 1));
+
+            if (!isset($requirements[$normalizedKey])) {
+                $requirements[$normalizedKey] = 0;
+            }
+
+            $requirements[$normalizedKey] += $qty;
+        }
+    }
+
+    return $requirements;
+}
+
+function customer_order_align_inventory_with_in_use_requirements($inventory, $requirementsByProduct, &$didMutate = false)
+{
+    $didMutate = false;
+
+    if (!is_array($inventory)) {
+        return [];
+    }
+
+    $requirements = is_array($requirementsByProduct) ? $requirementsByProduct : [];
+
+    foreach ($inventory as $productKey => $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+
+        $didMutateProduct = false;
+
+        $normalizedProductKey = normalize_customer_order_product_key($productKey);
+        $requiredInUse = max(0, (int) ($requirements[$normalizedProductKey] ?? 0));
+        $units = is_array($entry['units'] ?? null)
+            ? array_values($entry['units'])
+            : [];
+
+        if (!$units) {
+            continue;
+        }
+
+        $inUseIndexes = [];
+        $availableIndexes = [];
+
+        foreach ($units as $index => $unit) {
+            if (!is_array($unit)) {
+                continue;
+            }
+
+            $statusToken = customer_order_normalize_equipment_status_token($unit['status'] ?? 'available');
+
+            if ($statusToken === 'in-use') {
+                $inUseIndexes[] = $index;
+                continue;
+            }
+
+            if ($statusToken === 'available') {
+                $availableIndexes[] = $index;
+            }
+        }
+
+        $currentInUseCount = count($inUseIndexes);
+
+        if ($currentInUseCount > $requiredInUse) {
+            $releaseCount = $currentInUseCount - $requiredInUse;
+
+            for ($offset = 0; $offset < $releaseCount; $offset++) {
+                $indexToRelease = $inUseIndexes[$currentInUseCount - 1 - $offset] ?? null;
+
+                if ($indexToRelease === null || !isset($units[$indexToRelease]) || !is_array($units[$indexToRelease])) {
+                    continue;
+                }
+
+                $units[$indexToRelease]['status'] = 'available';
+                $didMutateProduct = true;
+                $didMutate = true;
+            }
+
+            $currentInUseCount = $requiredInUse;
+        }
+
+        if ($currentInUseCount < $requiredInUse) {
+            $promoteCount = min($requiredInUse - $currentInUseCount, count($availableIndexes));
+
+            for ($offset = 0; $offset < $promoteCount; $offset++) {
+                $indexToPromote = $availableIndexes[$offset] ?? null;
+
+                if ($indexToPromote === null || !isset($units[$indexToPromote]) || !is_array($units[$indexToPromote])) {
+                    continue;
+                }
+
+                $units[$indexToPromote]['status'] = 'in-use';
+                $didMutateProduct = true;
+                $didMutate = true;
+            }
+        }
+
+        if ($didMutateProduct) {
+            $entry['units'] = array_values($units);
+            $inventory[$productKey] = $entry;
+        }
+    }
+
+    return $inventory;
+}
+
+function customer_order_synchronize_equipment_inventory_in_use_statuses($orders, $products = null, $inventory = null, &$didMutate = false)
+{
+    $didMutate = false;
+    $productCollection = is_array($products) ? $products : customer_order_load_products_for_availability();
+    $inventoryCollection = is_array($inventory) ? $inventory : customer_order_load_inventory_for_availability();
+
+    if (!is_array($productCollection)) {
+        $productCollection = [];
+    }
+
+    if (!is_array($inventoryCollection)) {
+        $inventoryCollection = [];
+    }
+
+    if (!function_exists('sync_equipment_inventory_with_products')) {
+        require_once __DIR__ . '/equipment_inventory_repository.php';
+    }
+
+    $beforeSyncInventory = $inventoryCollection;
+    $syncedInventory = sync_equipment_inventory_with_products($productCollection, $inventoryCollection, 12);
+    $didMutate = $syncedInventory != $beforeSyncInventory;
+
+    $lookup = customer_order_product_name_lookup_map($productCollection);
+    $requirementsByProduct = customer_order_collect_in_use_requirements_by_product(
+        is_array($orders) ? $orders : [],
+        $productCollection,
+        $lookup
+    );
+
+    $didMutateByAlignment = false;
+    $alignedInventory = customer_order_align_inventory_with_in_use_requirements(
+        $syncedInventory,
+        $requirementsByProduct,
+        $didMutateByAlignment
+    );
+
+    if ($didMutateByAlignment) {
+        $didMutate = true;
+    }
+
+    return [
+        'inventory' => $alignedInventory,
+        'requirementsByProduct' => $requirementsByProduct,
+        'didMutate' => $didMutate,
+    ];
 }
 
 function customer_order_product_capacity_map($products, $inventory)
@@ -1392,6 +1761,12 @@ function normalize_customer_order_record($record)
     $paymentMethod = normalize_customer_order_payment_method($record['payment_method'] ?? '');
     $paymentReceiptPath = normalize_customer_order_asset_path($record['payment_receipt_path'] ?? $record['paymentReceiptPath'] ?? '');
     $paymentReceiptUploadedAt = normalize_customer_order_receipt_uploaded_at($record['payment_receipt_uploaded_at'] ?? $record['paymentReceiptUploadedAt'] ?? '');
+    $receiveHandoverConfirmedAt = normalize_customer_order_handover_confirmed_at(
+        $record['receive_handover_confirmed_at'] ?? $record['receiveHandoverConfirmedAt'] ?? ''
+    );
+    $receiveHandoverConfirmedBy = normalize_customer_order_handover_confirmed_by(
+        $record['receive_handover_confirmed_by'] ?? $record['receiveHandoverConfirmedBy'] ?? ''
+    );
     $refundProofPath = normalize_customer_order_asset_path($record['refund_proof_path'] ?? $record['refundProofPath'] ?? '');
     $refundProofUploadedAt = normalize_customer_order_receipt_uploaded_at($record['refund_proof_uploaded_at'] ?? $record['refundProofUploadedAt'] ?? '');
     $validIdPath = normalize_customer_order_asset_path($record['valid_id_path'] ?? $record['validIdPath'] ?? '');
@@ -1406,6 +1781,18 @@ function normalize_customer_order_record($record)
 
     if ($receivingMethod !== 'meetup' && $returningMethod !== 'meetup') {
         $place = '';
+    }
+
+    if (
+        !in_array($receivingMethod, customer_order_handover_supported_receiving_methods(), true)
+        || in_array($statusToken, ['pending', 'canceled', 'awaiting-refund', 'rejected', 'refunded'], true)
+    ) {
+        $receiveHandoverConfirmedAt = '';
+        $receiveHandoverConfirmedBy = '';
+    } elseif ($receiveHandoverConfirmedAt === '') {
+        $receiveHandoverConfirmedBy = '';
+    } elseif ($receiveHandoverConfirmedBy === '') {
+        $receiveHandoverConfirmedBy = 'admin';
     }
 
     if (!customer_order_status_requires_reason($statusToken)) {
@@ -1476,6 +1863,8 @@ function normalize_customer_order_record($record)
         'payment_method' => $paymentMethod,
         'payment_receipt_path' => $paymentReceiptPath,
         'payment_receipt_uploaded_at' => $paymentReceiptUploadedAt,
+        'receive_handover_confirmed_at' => $receiveHandoverConfirmedAt,
+        'receive_handover_confirmed_by' => $receiveHandoverConfirmedBy,
         'refund_proof_path' => $refundProofPath,
         'refund_proof_uploaded_at' => $refundProofUploadedAt,
         'created_at' => $createdAt,
@@ -1616,6 +2005,26 @@ function load_customer_orders_repository()
         save_customer_orders_repository($orders);
     }
 
+    $didSyncInventoryStatuses = false;
+    $syncInventoryResult = customer_order_synchronize_equipment_inventory_in_use_statuses(
+        $orders,
+        null,
+        null,
+        $didSyncInventoryStatuses
+    );
+
+    if ($didSyncInventoryStatuses) {
+        if (!function_exists('save_equipment_inventory_repository')) {
+            require_once __DIR__ . '/equipment_inventory_repository.php';
+        }
+
+        $inventoryPayload = is_array($syncInventoryResult['inventory'] ?? null)
+            ? $syncInventoryResult['inventory']
+            : [];
+
+        save_equipment_inventory_repository($inventoryPayload);
+    }
+
     return $orders;
 }
 
@@ -1642,7 +2051,31 @@ function save_customer_orders_repository($orders)
         return false;
     }
 
-    return file_put_contents(customer_orders_repository_path(), $encoded . PHP_EOL, LOCK_EX) !== false;
+    if (file_put_contents(customer_orders_repository_path(), $encoded . PHP_EOL, LOCK_EX) === false) {
+        return false;
+    }
+
+    $didSyncInventoryStatuses = false;
+    $syncInventoryResult = customer_order_synchronize_equipment_inventory_in_use_statuses(
+        $normalized,
+        null,
+        null,
+        $didSyncInventoryStatuses
+    );
+
+    if (!$didSyncInventoryStatuses) {
+        return true;
+    }
+
+    if (!function_exists('save_equipment_inventory_repository')) {
+        require_once __DIR__ . '/equipment_inventory_repository.php';
+    }
+
+    $inventoryPayload = is_array($syncInventoryResult['inventory'] ?? null)
+        ? $syncInventoryResult['inventory']
+        : [];
+
+    return save_equipment_inventory_repository($inventoryPayload);
 }
 
 function find_customer_order_record_by_id($orderId)
@@ -1706,6 +2139,8 @@ function customer_orders_live_state_signature($orders)
             'canceled_by' => normalize_customer_order_canceled_by($record['canceled_by'] ?? ''),
             'payment_receipt_path' => normalize_customer_order_asset_path($record['payment_receipt_path'] ?? ''),
             'payment_receipt_uploaded_at' => normalize_customer_order_receipt_uploaded_at($record['payment_receipt_uploaded_at'] ?? ''),
+            'receive_handover_confirmed_at' => normalize_customer_order_handover_confirmed_at($record['receive_handover_confirmed_at'] ?? ''),
+            'receive_handover_confirmed_by' => normalize_customer_order_handover_confirmed_by($record['receive_handover_confirmed_by'] ?? ''),
             'refund_proof_path' => normalize_customer_order_asset_path($record['refund_proof_path'] ?? ''),
             'refund_proof_uploaded_at' => normalize_customer_order_receipt_uploaded_at($record['refund_proof_uploaded_at'] ?? ''),
             'valid_id_path' => normalize_customer_order_asset_path($record['valid_id_path'] ?? ''),
@@ -1757,6 +2192,25 @@ function map_customer_order_for_frontend($record)
 
     $paymentReceiptDeadlineTimestamp = customer_order_payment_receipt_deadline_timestamp($record);
     $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+    $customerPaymentStageLabel = customer_order_customer_payment_stage_label($record);
+    $paymentStageToken = customer_order_payment_stage_token($record);
+    $isWaitingForPaymentReceipt = customer_order_requires_payment_receipt($record);
+    $isWaitingForPaymentReview = customer_order_requires_payment_review($record);
+    $isForPickupReady = customer_order_is_for_pickup_state($record);
+    $receiveHandoverConfirmedAt = normalize_customer_order_handover_confirmed_at(
+        $record['receive_handover_confirmed_at'] ?? ''
+    );
+    $receiveHandoverConfirmedBy = normalize_customer_order_handover_confirmed_by(
+        $record['receive_handover_confirmed_by'] ?? ''
+    );
+    $statusLabel = (string) ($record['status'] ?? 'Pending');
+
+    if ($customerPaymentStageLabel !== '') {
+        $statusLabel = $customerPaymentStageLabel;
+    } elseif ($isForPickupReady) {
+        $statusLabel = 'For Pickup';
+    }
+
     $forReturnState = customer_order_for_return_state($record);
     $forReturnDeadlineTimestamp = is_int($forReturnState['deadline_ts'] ?? null)
         ? (int) $forReturnState['deadline_ts']
@@ -1764,8 +2218,16 @@ function map_customer_order_for_frontend($record)
 
     return [
         'id' => (string) ($record['id'] ?? ''),
-        'status' => (string) ($record['status'] ?? 'Pending'),
+        'status' => $statusLabel,
         'statusToken' => $statusToken,
+        'paymentStage' => $paymentStageToken,
+        'paymentStageLabel' => $customerPaymentStageLabel,
+        'waitingForPaymentReceipt' => $isWaitingForPaymentReceipt,
+        'waitingForPaymentReview' => $isWaitingForPaymentReview,
+        'forPickupReady' => $isForPickupReady,
+        'receiveHandoverConfirmed' => $receiveHandoverConfirmedAt !== '',
+        'receiveHandoverConfirmedAt' => $receiveHandoverConfirmedAt,
+        'receiveHandoverConfirmedBy' => $receiveHandoverConfirmedBy,
         'items' => is_array($record['items'] ?? null) ? $record['items'] : [],
         'receiveDate' => (string) ($record['receive_date'] ?? ''),
         'receiveTime' => (string) ($record['receive_time'] ?? ''),
@@ -1871,7 +2333,7 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
         return null;
     }
 
-    if (!customer_order_is_valid_receiving_schedule($receiveDate, $receiveTime)) {
+    if (!customer_order_is_valid_receiving_schedule($receiveDate, $receiveTime, null, $receivingMethod)) {
         $errorMessage = 'Selected receiving date/time is invalid.';
         return null;
     }
@@ -1951,6 +2413,11 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
 
     if ($targetOrderId === '') {
         return null;
+    }
+
+    $handoverMode = customer_order_handover_mode_from_action($nextStatus);
+    if ($handoverMode !== '') {
+        return confirm_customer_order_receive_handover_by_id($targetOrderId, $handoverMode, 'admin');
     }
 
     $settings = is_array($options) ? $options : [];
@@ -2113,6 +2580,70 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
                 (string) ($updatedOrder['cancel_reason'] ?? '')
             );
         }
+    }
+
+    return map_customer_order_for_frontend($updatedOrder);
+}
+
+function confirm_customer_order_receive_handover_by_id($orderId, $mode, $confirmedBy = 'admin')
+{
+    $targetOrderId = trim((string) $orderId);
+    $targetMode = normalize_customer_order_receiving_method($mode);
+    $normalizedConfirmedBy = normalize_customer_order_handover_confirmed_by($confirmedBy);
+
+    if ($targetOrderId === '' || !in_array($targetMode, customer_order_handover_supported_receiving_methods(), true)) {
+        return null;
+    }
+
+    if ($normalizedConfirmedBy === '') {
+        $normalizedConfirmedBy = 'admin';
+    }
+
+    $orders = load_customer_orders_repository();
+    $updatedOrder = null;
+
+    foreach ($orders as $index => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        if ((string) ($record['id'] ?? '') !== $targetOrderId) {
+            continue;
+        }
+
+        $currentStatusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+        if (customer_order_is_terminal_status($currentStatusToken) || $currentStatusToken === 'awaiting-refund') {
+            return null;
+        }
+
+        $receivingMethod = normalize_customer_order_receiving_method($record['receiving_method'] ?? '');
+        if ($receivingMethod !== $targetMode) {
+            return null;
+        }
+
+        if (!in_array($currentStatusToken, ['approved', 'ongoing', 'return'], true)) {
+            return null;
+        }
+
+        $existingConfirmedAt = normalize_customer_order_handover_confirmed_at($record['receive_handover_confirmed_at'] ?? '');
+        if ($existingConfirmedAt !== '') {
+            return map_customer_order_for_frontend($record);
+        }
+
+        $record['receive_handover_confirmed_at'] = customer_order_now_iso8601();
+        $record['receive_handover_confirmed_by'] = $normalizedConfirmedBy;
+
+        $orders[$index] = normalize_customer_order_record($record);
+        $updatedOrder = $orders[$index];
+        break;
+    }
+
+    if ($updatedOrder === null) {
+        return null;
+    }
+
+    if (!save_customer_orders_repository($orders)) {
+        return null;
     }
 
     return map_customer_order_for_frontend($updatedOrder);

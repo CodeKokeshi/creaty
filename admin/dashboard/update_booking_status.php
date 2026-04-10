@@ -36,20 +36,23 @@ if ($orderId === '') {
     exit;
 }
 
-$nextStatusToken = normalize_customer_order_status_token($nextStatus);
-$isReturnedEarlyAction = customer_order_is_returned_early_request($nextStatus);
+$handoverMode = customer_order_handover_mode_from_action($nextStatus);
+$nextStatusToken = $handoverMode === ''
+    ? normalize_customer_order_status_token($nextStatus)
+    : '';
+$isReturnedEarlyAction = $handoverMode === '' && customer_order_is_returned_early_request($nextStatus);
 
-if ($nextStatusToken === 'awaiting-refund') {
+if ($handoverMode === '' && $nextStatusToken === 'awaiting-refund') {
     header('Location: ' . $redirectTarget);
     exit;
 }
 
-if (customer_order_status_requires_reason($nextStatusToken) && $cancelReason === '') {
+if ($handoverMode === '' && customer_order_status_requires_reason($nextStatusToken) && $cancelReason === '') {
     header('Location: ' . $redirectTarget);
     exit;
 }
 
-if ($nextStatusToken === 'refunded' && strpos($refundProofDataUrl, 'data:image/') !== 0) {
+if ($handoverMode === '' && $nextStatusToken === 'refunded' && strpos($refundProofDataUrl, 'data:image/') !== 0) {
     header('Location: ' . $redirectTarget);
     exit;
 }
@@ -63,6 +66,18 @@ if (!is_array($currentOrder)) {
 
 $currentStatusToken = normalize_customer_order_status_token($currentOrder['status'] ?? 'pending');
 if (customer_order_is_terminal_status($currentStatusToken)) {
+    header('Location: ' . $redirectTarget);
+    exit;
+}
+
+if ($handoverMode !== '') {
+    $updatedOrder = confirm_customer_order_receive_handover_by_id($orderId, $handoverMode, 'admin');
+
+    if ($updatedOrder === null) {
+        header('Location: ' . $redirectTarget);
+        exit;
+    }
+
     header('Location: ' . $redirectTarget);
     exit;
 }
