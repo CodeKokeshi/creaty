@@ -79,7 +79,7 @@ if ($isWaitingForPaymentReceipt && $nextStatusToken !== 'canceled') {
 }
 
 $isWaitingForPaymentReview = customer_order_requires_payment_review($currentOrder);
-if ($isWaitingForPaymentReview && !in_array($nextStatusToken, ['approved', 'rejected', 'refunded'], true)) {
+if ($isWaitingForPaymentReview && !in_array($nextStatusToken, ['approved', 'rejected', 'refunded', 'canceled'], true)) {
     header('Location: ' . $redirectTarget);
     exit;
 }

@@ -1316,73 +1316,91 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <button class="admin-booking-detail-close" type="button" data-admin-booking-detail-close aria-label="Close booking details">&times;</button>
                 </div>
 
-                <div class="admin-booking-detail-grid">
-                    <p><strong>Name:</strong> <span data-admin-booking-detail-name>-</span></p>
-                    <p><strong>Email:</strong> <span data-admin-booking-detail-email>-</span></p>
-                    <p><strong>Order Number:</strong> <span data-admin-booking-detail-order-number>-</span></p>
-                    <p><strong>Timestamp:</strong> <span data-admin-booking-detail-timestamp>-</span></p>
-                    <p>
-                        <strong>Status:</strong>
-                        <span class="admin-bookings-status status-pending" data-admin-booking-detail-status>-</span>
-                    </p>
-                    <p><strong>Meeting Place:</strong> <span data-admin-booking-detail-place>-</span></p>
-                    <p><strong>Receiving:</strong> <span data-admin-booking-detail-receive>-</span></p>
-                    <p><strong>Returning:</strong> <span data-admin-booking-detail-return>-</span></p>
-                    <p><strong>Receiving Method:</strong> <span data-admin-booking-detail-receiving-method>-</span></p>
-                    <p><strong>Returning Method:</strong> <span data-admin-booking-detail-returning-method>-</span></p>
-                    <p><strong>Courier:</strong> <span data-admin-booking-detail-courier>-</span></p>
-                    <p><strong>Payment Method:</strong> <span data-admin-booking-detail-payment-method>-</span></p>
-                    <p><strong>Customer GCash Name:</strong> <span data-admin-booking-detail-customer-gcash-name>-</span></p>
-                    <p><strong>Customer GCash Number:</strong> <span data-admin-booking-detail-customer-gcash-number>-</span></p>
-                    <p><strong>Payment Receipt:</strong> <span data-admin-booking-detail-receipt-state>-</span></p>
-                    <p><strong>Refund Proof:</strong> <span data-admin-booking-detail-refund-proof-state>-</span></p>
-                    <p><strong>Valid ID:</strong> <span data-admin-booking-detail-valid-id-state>-</span></p>
-                    <p><strong>Selfie with ID:</strong> <span data-admin-booking-detail-selfie-with-id-state>-</span></p>
-                    <p><strong>Reason:</strong> <span data-admin-booking-detail-cancel-reason>-</span></p>
+                <div class="admin-booking-detail-pages-nav" role="tablist" aria-label="Booking detail sections">
+                    <button type="button" class="admin-booking-detail-page-tab is-active" data-admin-booking-page-tab="items" role="tab" aria-selected="true">Items &amp; Total</button>
+                    <button type="button" class="admin-booking-detail-page-tab" data-admin-booking-page-tab="images" role="tab" aria-selected="false" tabindex="-1">Images</button>
+                    <button type="button" class="admin-booking-detail-page-tab" data-admin-booking-page-tab="details" role="tab" aria-selected="false" tabindex="-1">Order Details</button>
                 </div>
 
-                <div class="admin-booking-detail-items-wrap">
-                    <h3>Ordered Items</h3>
-                    <ul class="admin-booking-detail-items" data-admin-booking-detail-items></ul>
-                </div>
+                <section class="admin-booking-detail-page is-active" data-admin-booking-page="items">
+                    <div class="admin-booking-detail-items-wrap">
+                        <div class="admin-booking-detail-section-head">
+                            <h3>Ordered Items</h3>
+                            <p class="admin-booking-detail-items-total" data-admin-booking-detail-items-total>Total quantity: 0 items</p>
+                        </div>
+                        <ul class="admin-booking-detail-items" data-admin-booking-detail-items></ul>
+                    </div>
+                </section>
 
-                <div class="admin-booking-detail-receipt-wrap" data-admin-booking-detail-receipt-wrap hidden>
-                    <h3>Uploaded Payment Receipt</h3>
-                    <a class="admin-booking-detail-receipt-link" href="#" target="_blank" rel="noopener" data-admin-booking-detail-receipt-link hidden>
-                        <img src="" alt="Payment receipt" data-admin-booking-detail-receipt-image>
-                    </a>
-                    <p class="admin-booking-detail-receipt-empty" data-admin-booking-detail-receipt-empty hidden>No payment receipt uploaded yet.</p>
-                    <p class="admin-booking-detail-receipt-meta" data-admin-booking-detail-receipt-meta hidden></p>
-                </div>
+                <section class="admin-booking-detail-page" data-admin-booking-page="images" hidden>
+                    <div class="admin-booking-detail-media-grid">
+                        <div class="admin-booking-detail-receipt-wrap" data-admin-booking-detail-receipt-wrap hidden>
+                            <h3>Payment Receipt</h3>
+                            <p class="admin-booking-detail-media-state"><strong>Status:</strong> <span data-admin-booking-detail-receipt-state>-</span></p>
+                            <a class="admin-booking-detail-receipt-link" href="#" target="_blank" rel="noopener" data-admin-booking-detail-receipt-link hidden>
+                                <img src="" alt="Payment receipt" data-admin-booking-detail-receipt-image>
+                            </a>
+                            <p class="admin-booking-detail-receipt-empty" data-admin-booking-detail-receipt-empty hidden>No payment receipt uploaded yet.</p>
+                            <p class="admin-booking-detail-receipt-meta" data-admin-booking-detail-receipt-meta hidden></p>
+                        </div>
 
-                <div class="admin-booking-detail-refund-wrap" data-admin-booking-detail-refund-wrap hidden>
-                    <h3>Refund Proof</h3>
-                    <a class="admin-booking-detail-refund-link" href="#" target="_blank" rel="noopener" data-admin-booking-detail-refund-link hidden>
-                        <img src="" alt="Refund proof" data-admin-booking-detail-refund-image>
-                    </a>
-                    <p class="admin-booking-detail-refund-empty" data-admin-booking-detail-refund-empty hidden>No refund proof uploaded.</p>
-                    <p class="admin-booking-detail-refund-meta" data-admin-booking-detail-refund-meta hidden></p>
-                </div>
+                        <div class="admin-booking-detail-refund-wrap" data-admin-booking-detail-refund-wrap hidden>
+                            <h3>Refund Proof</h3>
+                            <p class="admin-booking-detail-media-state"><strong>Status:</strong> <span data-admin-booking-detail-refund-proof-state>-</span></p>
+                            <a class="admin-booking-detail-refund-link" href="#" target="_blank" rel="noopener" data-admin-booking-detail-refund-link hidden>
+                                <img src="" alt="Refund proof" data-admin-booking-detail-refund-image>
+                            </a>
+                            <p class="admin-booking-detail-refund-empty" data-admin-booking-detail-refund-empty hidden>No refund proof uploaded.</p>
+                            <p class="admin-booking-detail-refund-meta" data-admin-booking-detail-refund-meta hidden></p>
+                        </div>
 
-                <div class="admin-booking-detail-valid-id-wrap" data-admin-booking-detail-valid-id-wrap hidden>
-                    <h3>Uploaded Valid ID</h3>
-                    <a class="admin-booking-detail-valid-id-link" href="#" target="_blank" rel="noopener" data-admin-booking-detail-valid-id-link hidden>
-                        <img src="" alt="Uploaded valid ID" data-admin-booking-detail-valid-id-image>
-                    </a>
-                    <p class="admin-booking-detail-valid-id-empty" data-admin-booking-detail-valid-id-empty hidden>Valid ID is required for delivery bookings.</p>
-                    <p class="admin-booking-detail-valid-id-meta" data-admin-booking-detail-valid-id-meta hidden></p>
-                </div>
+                        <div class="admin-booking-detail-valid-id-wrap" data-admin-booking-detail-valid-id-wrap hidden>
+                            <h3>Valid ID</h3>
+                            <p class="admin-booking-detail-media-state"><strong>Status:</strong> <span data-admin-booking-detail-valid-id-state>-</span></p>
+                            <a class="admin-booking-detail-valid-id-link" href="#" target="_blank" rel="noopener" data-admin-booking-detail-valid-id-link hidden>
+                                <img src="" alt="Uploaded valid ID" data-admin-booking-detail-valid-id-image>
+                            </a>
+                            <p class="admin-booking-detail-valid-id-empty" data-admin-booking-detail-valid-id-empty hidden>Valid ID is required for delivery bookings.</p>
+                            <p class="admin-booking-detail-valid-id-meta" data-admin-booking-detail-valid-id-meta hidden></p>
+                        </div>
 
-                <div class="admin-booking-detail-selfie-with-id-wrap" data-admin-booking-detail-selfie-with-id-wrap hidden>
-                    <h3>Uploaded Selfie with ID</h3>
-                    <a class="admin-booking-detail-selfie-with-id-link" href="#" target="_blank" rel="noopener" data-admin-booking-detail-selfie-with-id-link hidden>
-                        <img src="" alt="Uploaded selfie with ID" data-admin-booking-detail-selfie-with-id-image>
-                    </a>
-                    <p class="admin-booking-detail-selfie-with-id-empty" data-admin-booking-detail-selfie-with-id-empty hidden>Selfie with ID is required for delivery bookings.</p>
-                    <p class="admin-booking-detail-selfie-with-id-meta" data-admin-booking-detail-selfie-with-id-meta hidden></p>
-                </div>
+                        <div class="admin-booking-detail-selfie-with-id-wrap" data-admin-booking-detail-selfie-with-id-wrap hidden>
+                            <h3>Selfie with ID</h3>
+                            <p class="admin-booking-detail-media-state"><strong>Status:</strong> <span data-admin-booking-detail-selfie-with-id-state>-</span></p>
+                            <a class="admin-booking-detail-selfie-with-id-link" href="#" target="_blank" rel="noopener" data-admin-booking-detail-selfie-with-id-link hidden>
+                                <img src="" alt="Uploaded selfie with ID" data-admin-booking-detail-selfie-with-id-image>
+                            </a>
+                            <p class="admin-booking-detail-selfie-with-id-empty" data-admin-booking-detail-selfie-with-id-empty hidden>Selfie with ID is required for delivery bookings.</p>
+                            <p class="admin-booking-detail-selfie-with-id-meta" data-admin-booking-detail-selfie-with-id-meta hidden></p>
+                        </div>
+                    </div>
+                </section>
 
-                <p class="admin-booking-detail-status-note" data-admin-booking-detail-status-note hidden></p>
+                <section class="admin-booking-detail-page" data-admin-booking-page="details" hidden>
+                    <div class="admin-booking-detail-grid">
+                        <p><strong>Name:</strong> <span data-admin-booking-detail-name>-</span></p>
+                        <p><strong>Email:</strong> <span data-admin-booking-detail-email>-</span></p>
+                        <p><strong>Order Number:</strong> <span data-admin-booking-detail-order-number>-</span></p>
+                        <p><strong>Timestamp:</strong> <span data-admin-booking-detail-timestamp>-</span></p>
+                        <p>
+                            <strong>Status:</strong>
+                            <span class="admin-bookings-status status-pending" data-admin-booking-detail-status>-</span>
+                        </p>
+                        <p><strong>Booking Duration:</strong> <span data-admin-booking-detail-duration>-</span></p>
+                        <p><strong>Meeting Place:</strong> <span data-admin-booking-detail-place>-</span></p>
+                        <p><strong>Receiving:</strong> <span data-admin-booking-detail-receive>-</span></p>
+                        <p><strong>Returning:</strong> <span data-admin-booking-detail-return>-</span></p>
+                        <p><strong>Receiving Method:</strong> <span data-admin-booking-detail-receiving-method>-</span></p>
+                        <p><strong>Returning Method:</strong> <span data-admin-booking-detail-returning-method>-</span></p>
+                        <p><strong>Courier:</strong> <span data-admin-booking-detail-courier>-</span></p>
+                        <p><strong>Payment Method:</strong> <span data-admin-booking-detail-payment-method>-</span></p>
+                        <p><strong>Customer GCash Name:</strong> <span data-admin-booking-detail-customer-gcash-name>-</span></p>
+                        <p><strong>Customer GCash Number:</strong> <span data-admin-booking-detail-customer-gcash-number>-</span></p>
+                        <p><strong>Reason:</strong> <span data-admin-booking-detail-cancel-reason>-</span></p>
+                    </div>
+
+                    <p class="admin-booking-detail-status-note" data-admin-booking-detail-status-note hidden></p>
+                </section>
 
                 <form class="admin-booking-detail-actions" method="post" action="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_booking_status.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-booking-status-form>
                     <input type="hidden" name="order_id" value="" data-admin-booking-status-order-id>

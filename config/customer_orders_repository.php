@@ -2018,8 +2018,8 @@ function update_customer_order_status_by_id($orderId, $nextStatus, $cancelReason
             return null;
         }
 
-        // During receipt review, admin can only approve, reject, or refund.
-        if ($isWaitingForPaymentReview && !in_array($requestedStatusToken, ['approved', 'rejected', 'refunded'], true)) {
+        // During receipt review, admin can approve, reject, refund, or cancel.
+        if ($isWaitingForPaymentReview && !in_array($requestedStatusToken, ['approved', 'rejected', 'refunded', 'canceled'], true)) {
             return null;
         }
 

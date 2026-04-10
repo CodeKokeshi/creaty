@@ -85,11 +85,14 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminBookingRows = document.querySelectorAll("[data-admin-booking-row]");
     var adminBookingDetailBackdrop = document.querySelector("[data-admin-booking-detail-backdrop]");
     var adminBookingDetailCloseButtons = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelectorAll("[data-admin-booking-detail-close]") : [];
+    var adminBookingDetailPageTabs = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelectorAll("[data-admin-booking-page-tab]") : [];
+    var adminBookingDetailPages = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelectorAll("[data-admin-booking-page]") : [];
     var adminBookingDetailName = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-name]") : null;
     var adminBookingDetailEmail = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-email]") : null;
     var adminBookingDetailOrderNumber = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-order-number]") : null;
     var adminBookingDetailTimestamp = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-timestamp]") : null;
     var adminBookingDetailStatus = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-status]") : null;
+    var adminBookingDetailDuration = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-duration]") : null;
     var adminBookingDetailPlace = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-place]") : null;
     var adminBookingDetailReceive = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receive]") : null;
     var adminBookingDetailReturn = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-return]") : null;
@@ -101,6 +104,8 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminBookingDetailCustomerGcashNumber = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-customer-gcash-number]") : null;
     var adminBookingDetailReceiptState = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receipt-state]") : null;
     var adminBookingDetailRefundProofState = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-refund-proof-state]") : null;
+    var adminBookingDetailValidIdState = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-valid-id-state]") : null;
+    var adminBookingDetailSelfieWithIdState = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-selfie-with-id-state]") : null;
     var adminBookingDetailCancelReason = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-cancel-reason]") : null;
     var adminBookingDetailItems = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-items]") : null;
     var adminBookingDetailReceiptWrap = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-receipt-wrap]") : null;
@@ -113,6 +118,16 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminBookingDetailRefundImage = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-refund-image]") : null;
     var adminBookingDetailRefundEmpty = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-refund-empty]") : null;
     var adminBookingDetailRefundMeta = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-refund-meta]") : null;
+    var adminBookingDetailValidIdWrap = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-valid-id-wrap]") : null;
+    var adminBookingDetailValidIdLink = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-valid-id-link]") : null;
+    var adminBookingDetailValidIdImage = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-valid-id-image]") : null;
+    var adminBookingDetailValidIdEmpty = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-valid-id-empty]") : null;
+    var adminBookingDetailValidIdMeta = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-valid-id-meta]") : null;
+    var adminBookingDetailSelfieWithIdWrap = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-selfie-with-id-wrap]") : null;
+    var adminBookingDetailSelfieWithIdLink = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-selfie-with-id-link]") : null;
+    var adminBookingDetailSelfieWithIdImage = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-selfie-with-id-image]") : null;
+    var adminBookingDetailSelfieWithIdEmpty = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-selfie-with-id-empty]") : null;
+    var adminBookingDetailSelfieWithIdMeta = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-selfie-with-id-meta]") : null;
     var adminBookingDetailStatusNote = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-status-note]") : null;
     var adminBookingStatusForm = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-status-form]") : null;
     var adminBookingStatusOrderIdInput = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-status-order-id]") : null;
@@ -122,6 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminBookingStatusSubmitButtons = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelectorAll("[data-admin-booking-status-submit]") : [];
     var adminBookingReviewOpenButtons = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelectorAll("[data-admin-booking-review-open]") : [];
     var adminBookingCancelOpenButton = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-cancel-open]") : null;
+    var adminBookingDetailItemsTotal = adminBookingDetailBackdrop ? adminBookingDetailBackdrop.querySelector("[data-admin-booking-detail-items-total]") : null;
     var adminBookingCancelBackdrop = document.querySelector("[data-admin-booking-cancel-backdrop]");
     var adminBookingCancelCloseButtons = adminBookingCancelBackdrop ? adminBookingCancelBackdrop.querySelectorAll("[data-admin-booking-cancel-close]") : [];
     var adminBookingCancelReasonInput = adminBookingCancelBackdrop ? adminBookingCancelBackdrop.querySelector("[data-admin-booking-cancel-reason]") : null;
@@ -308,6 +324,7 @@ document.addEventListener("DOMContentLoaded", function () {
     };
     var activeAdminBookingCancelReason = "";
     var activeAdminBookingReviewMode = "";
+    var activeAdminBookingDetailPage = "items";
     var detailGalleries = document.querySelectorAll("[data-gallery]");
     var packageSlideshows = document.querySelectorAll("[data-package-slideshow]");
     var packageSlideshowControllers = [];
@@ -5126,6 +5143,45 @@ document.addEventListener("DOMContentLoaded", function () {
         return dateLabel || timeLabel || "-";
     }
 
+    function parseAdminBookingScheduleToMs(dateValue, timeValue) {
+        var dateToken = String(dateValue || "").trim();
+        var timeToken = String(timeValue || "").trim();
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateToken) || !/^\d{2}:\d{2}$/.test(timeToken)) {
+            return Number.NaN;
+        }
+
+        var parsedValue = Date.parse(dateToken + "T" + timeToken + ":00");
+
+        if (!Number.isFinite(parsedValue)) {
+            return Number.NaN;
+        }
+
+        return parsedValue;
+    }
+
+    function formatAdminBookingDuration(receiveDateValue, receiveTimeValue, returnDateValue, returnTimeValue) {
+        var startMs = parseAdminBookingScheduleToMs(receiveDateValue, receiveTimeValue);
+        var endMs = parseAdminBookingScheduleToMs(returnDateValue, returnTimeValue);
+
+        if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+            return "-";
+        }
+
+        var durationHours = Math.ceil((endMs - startMs) / (60 * 60 * 1000));
+
+        if (durationHours < 24) {
+            return durationHours + " hour" + (durationHours === 1 ? "" : "s");
+        }
+
+        var durationDays = durationHours / 24;
+        var roundedDays = Math.abs(durationDays - Math.round(durationDays)) < 0.0001
+            ? String(Math.round(durationDays))
+            : String(durationDays.toFixed(1));
+
+        return roundedDays + " day" + (roundedDays === "1" ? "" : "s");
+    }
+
     function formatAdminBookingMethod(value, context) {
         var token = String(value || "").toLowerCase().trim();
         var normalizedContext = String(context || "").toLowerCase().trim();
@@ -5312,6 +5368,33 @@ document.addEventListener("DOMContentLoaded", function () {
         return found;
     }
 
+    function setAdminBookingDetailPage(pageName) {
+        var normalizedPage = String(pageName || "").toLowerCase().trim();
+
+        if (normalizedPage !== "images" && normalizedPage !== "details") {
+            normalizedPage = "items";
+        }
+
+        activeAdminBookingDetailPage = normalizedPage;
+
+        adminBookingDetailPageTabs.forEach(function (tabButton) {
+            var tabPage = String(tabButton.getAttribute("data-admin-booking-page-tab") || "").toLowerCase().trim();
+            var isActive = tabPage === normalizedPage;
+
+            tabButton.classList.toggle("is-active", isActive);
+            tabButton.setAttribute("aria-selected", isActive ? "true" : "false");
+            tabButton.tabIndex = isActive ? 0 : -1;
+        });
+
+        adminBookingDetailPages.forEach(function (pageNode) {
+            var pageToken = String(pageNode.getAttribute("data-admin-booking-page") || "").toLowerCase().trim();
+            var isActive = pageToken === normalizedPage;
+
+            pageNode.hidden = !isActive;
+            pageNode.classList.toggle("is-active", isActive);
+        });
+    }
+
     function populateAdminBookingDetails(booking) {
         if (!booking) {
             return;
@@ -5339,6 +5422,15 @@ document.addEventListener("DOMContentLoaded", function () {
         var refundProofPath = String(booking.refundProofPath || "").trim();
         var refundProofUrl = String(booking.refundProofUrl || "").trim();
         var refundProofUploadedAt = String(booking.refundProofUploadedAt || "").trim();
+        var validIdPath = String(booking.validIdPath || "").trim();
+        var validIdUrl = String(booking.validIdUrl || "").trim();
+        var validIdUploadedAt = String(booking.validIdUploadedAt || "").trim();
+        var selfieWithIdPath = String(booking.selfieWithIdPath || "").trim();
+        var selfieWithIdUrl = String(booking.selfieWithIdUrl || "").trim();
+        var selfieWithIdUploadedAt = String(booking.selfieWithIdUploadedAt || "").trim();
+        var requiresIdentityDocuments = Boolean(booking.requiresIdentityDocuments)
+            || String(booking.receivingMethod || "").toLowerCase().trim() === "delivery"
+            || String(booking.returningMethod || "").toLowerCase().trim() === "delivery";
         var hasPaymentReceipt = paymentReceiptUrl !== "" || paymentReceiptPath !== "";
         var isWaitingForPaymentReceipt = Boolean(booking.waitingForPaymentReceipt)
             || (statusToken === "pending" && paymentMethodToken === "gcash" && !hasPaymentReceipt);
@@ -5353,6 +5445,17 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!refundProofUrl && refundProofPath) {
             refundProofUrl = refundProofPath;
         }
+
+        if (!validIdUrl && validIdPath) {
+            validIdUrl = validIdPath;
+        }
+
+        if (!selfieWithIdUrl && selfieWithIdPath) {
+            selfieWithIdUrl = selfieWithIdPath;
+        }
+
+        var hasValidIdImage = validIdUrl !== "" || validIdPath !== "";
+        var hasSelfieWithIdImage = selfieWithIdUrl !== "" || selfieWithIdPath !== "";
 
         if (adminBookingDetailName) {
             adminBookingDetailName.textContent = String(booking.name || "-");
@@ -5387,6 +5490,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminBookingDetailReturn) {
             adminBookingDetailReturn.textContent = formatAdminBookingSchedule(booking.returnDate, booking.returnTime);
+        }
+
+        if (adminBookingDetailDuration) {
+            adminBookingDetailDuration.textContent = formatAdminBookingDuration(
+                booking.receiveDate,
+                booking.receiveTime,
+                booking.returnDate,
+                booking.returnTime
+            );
         }
 
         if (adminBookingDetailReceivingMethod) {
@@ -5434,6 +5546,26 @@ document.addEventListener("DOMContentLoaded", function () {
                 adminBookingDetailRefundProofState.textContent = "Uploaded";
             } else {
                 adminBookingDetailRefundProofState.textContent = "Required";
+            }
+        }
+
+        if (adminBookingDetailValidIdState) {
+            if (!requiresIdentityDocuments) {
+                adminBookingDetailValidIdState.textContent = "Not Required";
+            } else if (hasValidIdImage) {
+                adminBookingDetailValidIdState.textContent = "Uploaded";
+            } else {
+                adminBookingDetailValidIdState.textContent = "Missing";
+            }
+        }
+
+        if (adminBookingDetailSelfieWithIdState) {
+            if (!requiresIdentityDocuments) {
+                adminBookingDetailSelfieWithIdState.textContent = "Not Required";
+            } else if (hasSelfieWithIdImage) {
+                adminBookingDetailSelfieWithIdState.textContent = "Uploaded";
+            } else {
+                adminBookingDetailSelfieWithIdState.textContent = "Missing";
             }
         }
 
@@ -5519,12 +5651,98 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
+        if (adminBookingDetailValidIdWrap) {
+            adminBookingDetailValidIdWrap.hidden = !requiresIdentityDocuments && !hasValidIdImage;
+        }
+
+        if (adminBookingDetailValidIdLink) {
+            adminBookingDetailValidIdLink.hidden = !hasValidIdImage;
+
+            if (hasValidIdImage) {
+                adminBookingDetailValidIdLink.href = validIdUrl;
+            } else {
+                adminBookingDetailValidIdLink.removeAttribute("href");
+            }
+        }
+
+        if (adminBookingDetailValidIdImage) {
+            if (hasValidIdImage) {
+                adminBookingDetailValidIdImage.src = validIdUrl;
+                adminBookingDetailValidIdImage.hidden = false;
+            } else {
+                adminBookingDetailValidIdImage.hidden = true;
+                adminBookingDetailValidIdImage.removeAttribute("src");
+            }
+        }
+
+        if (adminBookingDetailValidIdEmpty) {
+            adminBookingDetailValidIdEmpty.hidden = hasValidIdImage || !requiresIdentityDocuments;
+        }
+
+        if (adminBookingDetailValidIdMeta) {
+            if (hasValidIdImage) {
+                var validIdUploadedAtLabel = formatAdminBookingReceiptTimestamp(validIdUploadedAt);
+                adminBookingDetailValidIdMeta.textContent = validIdUploadedAtLabel
+                    ? "Uploaded at: " + validIdUploadedAtLabel
+                    : "Valid ID uploaded.";
+                adminBookingDetailValidIdMeta.hidden = false;
+            } else {
+                adminBookingDetailValidIdMeta.hidden = true;
+                adminBookingDetailValidIdMeta.textContent = "";
+            }
+        }
+
+        if (adminBookingDetailSelfieWithIdWrap) {
+            adminBookingDetailSelfieWithIdWrap.hidden = !requiresIdentityDocuments && !hasSelfieWithIdImage;
+        }
+
+        if (adminBookingDetailSelfieWithIdLink) {
+            adminBookingDetailSelfieWithIdLink.hidden = !hasSelfieWithIdImage;
+
+            if (hasSelfieWithIdImage) {
+                adminBookingDetailSelfieWithIdLink.href = selfieWithIdUrl;
+            } else {
+                adminBookingDetailSelfieWithIdLink.removeAttribute("href");
+            }
+        }
+
+        if (adminBookingDetailSelfieWithIdImage) {
+            if (hasSelfieWithIdImage) {
+                adminBookingDetailSelfieWithIdImage.src = selfieWithIdUrl;
+                adminBookingDetailSelfieWithIdImage.hidden = false;
+            } else {
+                adminBookingDetailSelfieWithIdImage.hidden = true;
+                adminBookingDetailSelfieWithIdImage.removeAttribute("src");
+            }
+        }
+
+        if (adminBookingDetailSelfieWithIdEmpty) {
+            adminBookingDetailSelfieWithIdEmpty.hidden = hasSelfieWithIdImage || !requiresIdentityDocuments;
+        }
+
+        if (adminBookingDetailSelfieWithIdMeta) {
+            if (hasSelfieWithIdImage) {
+                var selfieWithIdUploadedAtLabel = formatAdminBookingReceiptTimestamp(selfieWithIdUploadedAt);
+                adminBookingDetailSelfieWithIdMeta.textContent = selfieWithIdUploadedAtLabel
+                    ? "Uploaded at: " + selfieWithIdUploadedAtLabel
+                    : "Selfie with ID uploaded.";
+                adminBookingDetailSelfieWithIdMeta.hidden = false;
+            } else {
+                adminBookingDetailSelfieWithIdMeta.hidden = true;
+                adminBookingDetailSelfieWithIdMeta.textContent = "";
+            }
+        }
+
         if (adminBookingDetailStatusNote) {
             if (isWaitingForPaymentReceipt) {
-                adminBookingDetailStatusNote.textContent = "Waiting for payment receipt upload. Only cancellation is allowed while waiting.";
+                adminBookingDetailStatusNote.textContent = requiresIdentityDocuments
+                    ? "Waiting for payment receipt upload. Review Valid ID and selfie with ID, then cancel the booking if verification is suspicious."
+                    : "Waiting for payment receipt upload. Only cancellation is allowed while waiting.";
                 adminBookingDetailStatusNote.hidden = false;
             } else if (isWaitingForPaymentReview) {
-                adminBookingDetailStatusNote.textContent = "Payment receipt uploaded. Choose Approve, Reject, or Refund to continue.";
+                adminBookingDetailStatusNote.textContent = requiresIdentityDocuments
+                    ? "Payment receipt uploaded. Review Valid ID and selfie with ID, then choose Approve, Reject, Refund, or Cancel."
+                    : "Payment receipt uploaded. Choose Approve, Reject, Refund, or Cancel to continue.";
                 adminBookingDetailStatusNote.hidden = false;
             } else if (isAwaitingRefund) {
                 adminBookingDetailStatusNote.textContent = "This approved booking was canceled and is now awaiting refund. Upload refund proof to complete the process.";
@@ -5623,7 +5841,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminBookingCancelOpenButton) {
             var canCancelBooking = !isTerminalStatus
-                && !isWaitingForPaymentReview
                 && !isAwaitingRefund
                 && (statusToken === "pending" || statusToken === "approved");
             adminBookingCancelOpenButton.disabled = !canCancelBooking;
@@ -5676,6 +5893,10 @@ document.addEventListener("DOMContentLoaded", function () {
             adminBookingDetailItems.innerHTML = "";
 
             var bookingItems = Array.isArray(booking.items) ? booking.items : [];
+            var totalQuantity = 0;
+            var totalDayUnits = 0;
+            var hasEstimatedAmount = false;
+            var estimatedAmount = 0;
 
             if (!bookingItems.length) {
                 var emptyItem = document.createElement("li");
@@ -5699,11 +5920,51 @@ document.addEventListener("DOMContentLoaded", function () {
                         days = 1;
                     }
 
+                    totalQuantity += qty;
+                    totalDayUnits += qty * days;
+
+                    var lineRate = Number.NaN;
+                    [item.price, item.unitPrice, item.dailyRate, item.rate].some(function (candidate) {
+                        var parsedCandidate = Number.parseFloat(candidate);
+
+                        if (!Number.isFinite(parsedCandidate) || parsedCandidate < 0) {
+                            return false;
+                        }
+
+                        lineRate = parsedCandidate;
+                        return true;
+                    });
+
+                    var lineAmount = Number.isFinite(lineRate) ? lineRate * qty * days : Number.NaN;
+
+                    if (Number.isFinite(lineAmount)) {
+                        hasEstimatedAmount = true;
+                        estimatedAmount += lineAmount;
+                    }
+
                     var dayLabel = days === 1 ? "day" : "days";
                     var entry = document.createElement("li");
                     entry.textContent = name + " - Quantity " + qty + ", " + days + " " + dayLabel;
+
+                    if (Number.isFinite(lineAmount)) {
+                        entry.textContent += " (Est. " + formatMoney(lineAmount) + ")";
+                    }
+
                     adminBookingDetailItems.appendChild(entry);
                 });
+            }
+
+            if (adminBookingDetailItemsTotal) {
+                var quantityLabel = totalQuantity === 1 ? "item" : "items";
+                var dayUnitLabel = totalDayUnits === 1 ? "day-unit" : "day-units";
+                var totalLabel = "Total quantity: " + totalQuantity + " " + quantityLabel
+                    + " | Rental load: " + totalDayUnits + " " + dayUnitLabel;
+
+                if (hasEstimatedAmount) {
+                    totalLabel += " | Estimated total: " + formatMoney(estimatedAmount);
+                }
+
+                adminBookingDetailItemsTotal.textContent = totalLabel;
             }
         }
     }
@@ -5719,6 +5980,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         populateAdminBookingDetails(booking);
+        setAdminBookingDetailPage("items");
         adminBookingDetailBackdrop.hidden = false;
         syncAdminModalBodyLock();
     }
@@ -5807,6 +6069,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
             event.preventDefault();
             openAdminBookingDetail(row.getAttribute("data-admin-booking-id") || "");
+        });
+    });
+
+    adminBookingDetailPageTabs.forEach(function (button) {
+        button.addEventListener("click", function () {
+            if (!button || button.disabled) {
+                return;
+            }
+
+            setAdminBookingDetailPage(button.getAttribute("data-admin-booking-page-tab") || "items");
         });
     });
 
@@ -7531,6 +7803,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 receivingMethod: String(order.receivingMethod || order.receiving_method || ""),
                 returningMethod: String(order.returningMethod || order.returning_method || ""),
                 courier: String(order.courier || ""),
+                validIdPath: String(order.validIdPath || order.valid_id_path || ""),
+                validIdUploadedAt: String(order.validIdUploadedAt || order.valid_id_uploaded_at || ""),
+                selfieWithIdPath: String(order.selfieWithIdPath || order.selfie_with_id_path || ""),
+                selfieWithIdUploadedAt: String(order.selfieWithIdUploadedAt || order.selfie_with_id_uploaded_at || ""),
+                requiresIdentityDocuments: Boolean(order.requiresIdentityDocuments)
+                    || String(order.receivingMethod || order.receiving_method || "").toLowerCase().trim() === "delivery"
+                    || String(order.returningMethod || order.returning_method || "").toLowerCase().trim() === "delivery",
                 cancelReason: String(order.cancelReason || order.cancel_reason || ""),
                 cancelBy: String(order.cancelBy || order.cancel_by || ""),
                 paymentMethod: String(order.paymentMethod || order.payment_method || ""),
@@ -8315,12 +8594,53 @@ document.addEventListener("DOMContentLoaded", function () {
             }).join(", ");
         }
 
+        function getBookingUploadInput(fieldName) {
+            if (!bookingCard) {
+                return null;
+            }
+
+            var targetField = String(fieldName || "").trim();
+            if (!targetField) {
+                return null;
+            }
+
+            return bookingCard.querySelector("input[type='file'][data-booking-field='" + targetField + "']");
+        }
+
+        function readBookingImageFileAsDataUrl(file) {
+            return new Promise(function (resolve, reject) {
+                if (!(file instanceof File)) {
+                    reject(new Error("Please upload both required identity images."));
+                    return;
+                }
+
+                var reader = new FileReader();
+
+                reader.onerror = function () {
+                    reject(new Error("Unable to read one of the identity images."));
+                };
+
+                reader.onload = function (loadEvent) {
+                    var imageDataUrl = String(loadEvent && loadEvent.target && loadEvent.target.result ? loadEvent.target.result : "");
+
+                    if (imageDataUrl.indexOf("data:image/") !== 0) {
+                        reject(new Error("Identity verification uploads must be image files."));
+                        return;
+                    }
+
+                    resolve(imageDataUrl);
+                };
+
+                reader.readAsDataURL(file);
+            });
+        }
+
         function createPendingOrderRecord(items) {
             var booking = getBookingSnapshot();
             var source = Array.isArray(items) ? items : getCartItems();
 
             if (!hasValidCurrentReceiveSchedule(source)) {
-                return null;
+                return Promise.reject(new Error("No available receiving slots for the selected quantities and rental days. Adjust your cart or choose a later schedule."));
             }
 
             var normalizedItems = source
@@ -8354,14 +8674,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
 
             if (!normalizedItems.length) {
-                return null;
+                return Promise.reject(new Error("Unable to create booking. Please check your cart items and try again."));
             }
 
             if (!booking.receiveDate || !booking.receiveTime || !booking.returnDate || !booking.returnTime) {
-                return null;
+                return Promise.reject(new Error("Please complete your booking schedule before confirming."));
             }
 
-            return {
+            var pendingOrder = {
                 id: "booking-" + Date.now() + "-" + Math.floor(Math.random() * 900 + 100),
                 status: "Pending",
                 items: normalizedItems,
@@ -8376,6 +8696,36 @@ document.addEventListener("DOMContentLoaded", function () {
                 paymentMethod: booking.paymentMethod || "",
                 createdAt: new Date().toISOString()
             };
+
+            var requiresIdentityDocuments = booking.receivingMethod === "delivery"
+                || booking.returningMethod === "delivery";
+
+            if (!requiresIdentityDocuments) {
+                return Promise.resolve(pendingOrder);
+            }
+
+            var validIdInput = getBookingUploadInput("validIdImage");
+            var selfieWithIdInput = getBookingUploadInput("selfieWithId");
+            var validIdFile = validIdInput && validIdInput.files && validIdInput.files.length
+                ? validIdInput.files[0]
+                : null;
+            var selfieWithIdFile = selfieWithIdInput && selfieWithIdInput.files && selfieWithIdInput.files.length
+                ? selfieWithIdInput.files[0]
+                : null;
+
+            if (!validIdFile || !selfieWithIdFile) {
+                return Promise.reject(new Error("Delivery bookings require a valid ID and a selfie holding the valid ID."));
+            }
+
+            return Promise.all([
+                readBookingImageFileAsDataUrl(validIdFile),
+                readBookingImageFileAsDataUrl(selfieWithIdFile)
+            ]).then(function (identityUploads) {
+                pendingOrder.validIdImageDataUrl = identityUploads[0];
+                pendingOrder.selfieWithIdImageDataUrl = identityUploads[1];
+
+                return pendingOrder;
+            });
         }
 
         function renderOrderStatusList() {
@@ -10419,27 +10769,41 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
-                var pendingOrder = createPendingOrderRecord(items);
-                if (!pendingOrder) {
-                    bookingNote.textContent = "Unable to create booking. Please check your cart items and try again.";
-                    return;
-                }
-
                 if (isSubmittingPendingOrder) {
                     return;
                 }
 
-                var paymentMethod = String(pendingOrder.paymentMethod || "").toLowerCase().trim();
-                if (paymentMethod === "gcash") {
-                    bookingNote.textContent = "Review the GCash payment details, then tap Continue Booking.";
-                    openGcashModal({
-                        mode: "confirm-booking",
-                        orderRecord: pendingOrder
-                    });
-                    return;
+                if (confirmButton) {
+                    confirmButton.disabled = true;
                 }
 
-                handlePendingOrderSubmission(pendingOrder);
+                createPendingOrderRecord(items)
+                    .then(function (pendingOrder) {
+                        var paymentMethod = String(pendingOrder.paymentMethod || "").toLowerCase().trim();
+
+                        if (paymentMethod === "gcash") {
+                            bookingNote.textContent = "Review the GCash payment details, then tap Continue Booking.";
+                            openGcashModal({
+                                mode: "confirm-booking",
+                                orderRecord: pendingOrder
+                            });
+                            return;
+                        }
+
+                        handlePendingOrderSubmission(pendingOrder);
+                    })
+                    .catch(function (error) {
+                        if (bookingNote) {
+                            bookingNote.textContent = error && error.message
+                                ? String(error.message)
+                                : "Unable to create booking. Please check your cart items and try again.";
+                        }
+                    })
+                    .finally(function () {
+                        if (!isSubmittingPendingOrder && confirmButton) {
+                            confirmButton.disabled = false;
+                        }
+                    });
             });
         }
 

@@ -1,5 +1,17 @@
 [
     {
+        "id": "notif-20260410100051-cab35c37",
+        "type": "order",
+        "title": "A new order has been placed: ORD-20260410180051-DA065F16",
+        "summary": "A new order has been placed: ORD-20260410180051-DA065F16",
+        "payload": {
+            "order_id": "ORD-20260410180051-DA065F16"
+        },
+        "is_read": true,
+        "created_at": "2026-04-10T10:00:51+00:00",
+        "read_at": "2026-04-10T10:00:55+00:00"
+    },
+    {
         "id": "notif-20260410084821-4fd93871",
         "type": "order",
         "title": "A new order has been placed: ORD-20260410164821-B0ED47E6",
