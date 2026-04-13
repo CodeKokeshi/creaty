@@ -14,6 +14,8 @@ $customerLoginPath = $customerLoginPath ?? 'customer-login/';
 $customerSignupPath = $customerSignupPath ?? 'customer-signup/';
 $customerPrivacyPolicyPath = $customerPrivacyPolicyPath ?? 'customer-privacy-policy/';
 $adminLoginPath = $adminLoginPath ?? $routeBase . 'admin/';
+$staffLoginPath = $staffLoginPath ?? $routeBase . 'staff/';
+$staffDashboardPath = $staffDashboardPath ?? $routeBase . 'admin/dashboard/?admin_view=bookings';
 
 require_once __DIR__ . '/config/db.php';
 
@@ -28,6 +30,11 @@ $defaultRedirect = $routeBase === '' ? '/' : $routeBase;
 
 if (isset($_SESSION['user_id'])) {
     header('Location: ' . $routeBase . 'admin/dashboard/');
+    exit;
+}
+
+if (isset($_SESSION['staff_id'])) {
+    header('Location: ' . $staffDashboardPath);
     exit;
 }
 
@@ -111,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body class="login-page">
     <main class="login-page-shell">
-        <a class="auth-switch-link" href="<?php echo htmlspecialchars($adminLoginPath, ENT_QUOTES, 'UTF-8'); ?>" data-auth-switch aria-label="Switch to administrator login">
+        <a class="auth-switch-link" href="<?php echo htmlspecialchars($staffLoginPath, ENT_QUOTES, 'UTF-8'); ?>" data-auth-switch aria-label="Switch to staff login">
             <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/admin-login-icon.svg" alt="">
         </a>
 

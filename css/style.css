@@ -6051,6 +6051,21 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     gap: 0.35rem;
 }
 
+.admin-equipments-actions-disabled {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 0.7rem;
+    border: 1px solid rgba(217, 217, 217, 0.25);
+    border-radius: 8px;
+    color: rgba(244, 244, 244, 0.78);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
 .admin-equipments-action-form {
     margin: 0;
 }

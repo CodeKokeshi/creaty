@@ -8,6 +8,11 @@ if (isset($_SESSION['user_id'])) {
 	exit;
 }
 
+if (isset($_SESSION['staff_id'])) {
+	header('Location: ../admin/dashboard/?admin_view=bookings');
+	exit;
+}
+
 if (isset($_SESSION['customer_id'])) {
 	header('Location: ../');
 	exit;

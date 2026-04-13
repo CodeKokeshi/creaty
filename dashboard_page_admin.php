@@ -11,7 +11,10 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 $routeBase = $routeBase ?? 'admin/';
 $assetBase = $assetBase ?? '';
 
-if (!isset($_SESSION['user_id'])) {
+$isAdminSession = isset($_SESSION['user_id']);
+$isStaffSession = !$isAdminSession && isset($_SESSION['staff_id']);
+
+if (!$isAdminSession && !$isStaffSession) {
     header('Location: ' . $routeBase);
     exit;
 }
@@ -21,12 +24,16 @@ if (isset($_SESSION['customer_id'])) {
     exit;
 }
 
-$username = $_SESSION['username'] ?? 'admin';
+$username = $isStaffSession
+    ? trim((string) ($_SESSION['staff_name'] ?? $_SESSION['staff_email'] ?? 'staff'))
+    : ((string) ($_SESSION['username'] ?? 'admin'));
 $cartCount = 0;
-$accountLabel = 'Admin';
+$accountLabel = $isStaffSession ? 'STAFF' : 'Admin';
 $adminHomePath = $routeBase . 'dashboard/';
 $logoutPath = $routeBase . 'logout.php';
-$notificationsPath = $routeBase . 'notifications/';
+$notificationsPath = $isStaffSession
+    ? ($adminHomePath . '?admin_view=bookings')
+    : ($routeBase . 'notifications/');
 $liveUpdatesEndpoint = $routeBase . 'notifications/live_updates.php';
 $uploadDeliveryReceiptEndpoint = $routeBase . 'dashboard/upload_delivery_receipt.php';
 $closeDeliveryLegEndpoint = $routeBase . 'dashboard/close_delivery_leg.php';
@@ -35,9 +42,13 @@ $manageCategoriesPath = $routeBase . 'categories/';
 $setGcashQrPath = $routeBase . 'gcash-qr/';
 $editTocPath = $routeBase . 'toc/';
 
+$allowedAdminPanels = $isStaffSession
+    ? ['equipments', 'bookings']
+    : ['equipments', 'bookings', 'reports', 'users'];
+
 $initialAdminPanel = strtolower(trim((string) ($_GET['admin_view'] ?? '')));
-if (!in_array($initialAdminPanel, ['equipments', 'bookings', 'reports', 'users'], true)) {
-    $initialAdminPanel = '';
+if (!in_array($initialAdminPanel, $allowedAdminPanels, true)) {
+    $initialAdminPanel = $isStaffSession ? 'bookings' : '';
 }
 
 require_once __DIR__ . '/config/message_notifications_repository.php';
@@ -61,6 +72,8 @@ $adminNotificationCount = count_unread_message_notifications($adminNotifications
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/customer_orders_repository.php';
 require_once __DIR__ . '/config/customer_gcash_profiles_repository.php';
+
+$staffAccountsTable = $staffAccountsTable ?? 'staff_accounts';
 
 function format_admin_local_datetime_label($value, $uppercase = false)
 {
@@ -599,6 +612,11 @@ $openAdminCreateUserModal = false;
 $openEquipmentArchiveModal = (string) ($_GET['equipment_archive'] ?? '') === 'open';
 $openEquipmentStatusModal = (string) ($_GET['equipment_statuses'] ?? '') === 'open';
 
+if ($isStaffSession) {
+    $openEquipmentArchiveModal = false;
+    $openEquipmentStatusModal = false;
+}
+
 $adminEquipmentFlash = isset($_SESSION['admin_equipment_flash']) && is_array($_SESSION['admin_equipment_flash'])
     ? $_SESSION['admin_equipment_flash']
     : [];
@@ -613,28 +631,31 @@ if (isset($_SESSION['admin_equipment_flash'])) {
     unset($_SESSION['admin_equipment_flash']);
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['admin_action'] ?? '') === 'admin_create_user') {
+if (!$isStaffSession && $_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['admin_action'] ?? '') === 'admin_create_user') {
     $roleValue = strtolower(trim((string) ($_POST['role'] ?? 'customer')));
     $fullNameValue = trim((string) ($_POST['full_name'] ?? ''));
     $emailValue = trim((string) ($_POST['email'] ?? ''));
     $accountStatusValue = strtolower(trim((string) ($_POST['account_status'] ?? 'active')));
     $passwordValue = (string) ($_POST['password'] ?? '');
     $confirmPasswordValue = (string) ($_POST['confirm_password'] ?? '');
+    $adminCreatableRoles = ['admin', 'customer', 'staff'];
 
     $adminCreateUserValues = [
-        'role' => in_array($roleValue, ['admin', 'customer'], true) ? $roleValue : 'customer',
+        'role' => in_array($roleValue, $adminCreatableRoles, true) ? $roleValue : 'customer',
         'full_name' => $fullNameValue,
         'email' => $emailValue,
         'account_status' => in_array($accountStatusValue, ['active', 'inactive'], true) ? $accountStatusValue : 'active'
     ];
 
-    if (!in_array($adminCreateUserValues['role'], ['admin', 'customer'], true)) {
+    if (!in_array($adminCreateUserValues['role'], $adminCreatableRoles, true)) {
         $adminCreateUserErrors[] = 'Please select a valid role.';
     }
 
     if ($fullNameValue === '') {
         if ($adminCreateUserValues['role'] === 'admin') {
             $adminCreateUserErrors[] = 'Employee number is required.';
+        } elseif ($adminCreateUserValues['role'] === 'staff') {
+            $adminCreateUserErrors[] = 'Name is required.';
         } else {
             $adminCreateUserErrors[] = 'Full name is required.';
         }
@@ -644,7 +665,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['admin_action'] ??
         $adminCreateUserErrors[] = 'Username/Email is required.';
     }
 
-    if ($adminCreateUserValues['role'] === 'customer' && !filter_var($emailValue, FILTER_VALIDATE_EMAIL)) {
+    if (in_array($adminCreateUserValues['role'], ['customer', 'staff'], true) && !filter_var($emailValue, FILTER_VALIDATE_EMAIL)) {
         $adminCreateUserErrors[] = 'Please provide a valid email address.';
     }
 
@@ -699,6 +720,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['admin_action'] ??
                     } else {
                         $adminCreateUserErrors[] = 'Unable to prepare customer account creation.';
                     }
+                }
+            }
+        } elseif ($adminCreateUserValues['role'] === 'staff') {
+            $checkStaffStmt = $conn->prepare("SELECT id FROM {$staffAccountsTable} WHERE email = ? LIMIT 1");
+            if (!$checkStaffStmt) {
+                $adminCreateUserErrors[] = 'Unable to validate staff email right now.';
+            } else {
+                $checkStaffStmt->bind_param('s', $emailValue);
+                $checkStaffStmt->execute();
+                $existingStaffResult = $checkStaffStmt->get_result();
+                $existingStaff = $existingStaffResult ? $existingStaffResult->fetch_assoc() : null;
+                $checkStaffStmt->close();
+
+                if ($existingStaff) {
+                    $adminCreateUserErrors[] = 'Staff email already exists.';
+                }
+            }
+
+            if (!$adminCreateUserErrors) {
+                $insertStaffStmt = $conn->prepare("INSERT INTO {$staffAccountsTable} (name, email, password) VALUES (?, ?, ?)");
+
+                if ($insertStaffStmt) {
+                    $insertStaffStmt->bind_param('sss', $fullNameValue, $emailValue, $hashedPassword);
+
+                    if (!$insertStaffStmt->execute()) {
+                        $adminCreateUserErrors[] = 'Unable to create staff account.';
+                    }
+
+                    $insertStaffStmt->close();
+                } else {
+                    $adminCreateUserErrors[] = 'Unable to prepare staff account creation.';
                 }
             }
         } else {
@@ -795,6 +847,23 @@ if ($adminUsersResult instanceof mysqli_result) {
             'name' => (string) ($adminRow['employee_number'] ?? ''),
             'email' => (string) ($adminRow['username'] ?? ''),
             'role' => 'ADMIN'
+        ];
+    }
+}
+
+$staffUsersResult = $conn->query("SELECT id, name, email FROM {$staffAccountsTable} ORDER BY id ASC");
+if ($staffUsersResult instanceof mysqli_result) {
+    while ($staffRow = $staffUsersResult->fetch_assoc()) {
+        $idValue = (int) ($staffRow['id'] ?? 0);
+        if ($idValue < 1) {
+            continue;
+        }
+
+        $dashboardUsers[] = [
+            'prefixedId' => 'STAFF_' . str_pad((string) $idValue, 3, '0', STR_PAD_LEFT),
+            'name' => trim((string) ($staffRow['name'] ?? '')) !== '' ? trim((string) ($staffRow['name'] ?? '')) : 'Staff',
+            'email' => (string) ($staffRow['email'] ?? '-'),
+            'role' => 'STAFF'
         ];
     }
 }
@@ -1460,7 +1529,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $openArchiveOnRedirect = false;
         $openStatusOnRedirect = false;
 
+        $staffRestrictedEquipmentActions = [
+            'equipment_add_status',
+            'equipment_rename_status',
+            'equipment_delete_status',
+            'equipment_add_quantity',
+            'equipment_remove_unit',
+            'equipment_restore_unit'
+        ];
+
         try {
+            if ($isStaffSession && in_array($adminAction, $staffRestrictedEquipmentActions, true)) {
+                throw new RuntimeException('Staff can modify equipment status only.');
+            }
+
             if ($adminAction === 'equipment_add_status') {
                 $openStatusOnRedirect = true;
                 $statusLabel = trim((string) ($_POST['status_label'] ?? ''));
@@ -2096,7 +2178,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Home | Creaty</title>
+    <title><?php echo htmlspecialchars($isStaffSession ? 'Staff Dashboard | Creaty' : 'Admin Home | Creaty', ENT_QUOTES, 'UTF-8'); ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -2141,13 +2223,15 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                         <?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageBrandsPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Brands</a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageCategoriesPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Categories</a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($setGcashQrPath, ENT_QUOTES, 'UTF-8'); ?>">Set GCash QR</a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($editTocPath, ENT_QUOTES, 'UTF-8'); ?>">Edit TOC</a></li>
-                        <li><hr class="dropdown-divider"></li>
+                        <?php if (!$isStaffSession): ?>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageBrandsPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Brands</a></li>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageCategoriesPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Categories</a></li>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($setGcashQrPath, ENT_QUOTES, 'UTF-8'); ?>">Set GCash QR</a></li>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($editTocPath, ENT_QUOTES, 'UTF-8'); ?>">Edit TOC</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                        <?php endif; ?>
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
                     </ul>
                 </div>
@@ -2155,70 +2239,74 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         </div>
 
         <nav class="section-nav section-nav-interactive section-nav-admin" aria-label="Catalog filters" data-admin-nav data-admin-dashboard-nav>
-            <div class="section-nav-item section-nav-item-filter admin-nav-primary" data-admin-nav-item="primary">
-                <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="brands-filter-panel">
-                    BRANDS
-                </button>
+            <?php if (!$isStaffSession): ?>
+                <div class="section-nav-item section-nav-item-filter admin-nav-primary" data-admin-nav-item="primary">
+                    <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="brands-filter-panel">
+                        BRANDS
+                    </button>
 
-                <div class="filter-panel filter-panel-brands" id="brands-filter-panel" hidden>
-                    <button class="filter-option is-selected" type="button" data-filter-group="brand" data-filter-value="all">ALL BRANDS</button>
-                    <?php foreach ($productBrandValueMap as $brandValue => $brandLabel): ?>
-                        <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="<?php echo htmlspecialchars($brandValue, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(strtoupper($brandLabel), ENT_QUOTES, 'UTF-8'); ?></button>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($routeBase . 'events/', ENT_QUOTES, 'UTF-8'); ?>">EVENTS</a>
-
-            <div class="section-nav-item section-nav-item-filter admin-nav-primary" data-admin-nav-item="primary">
-                <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="date-filter-panel">
-                    DATE
-                </button>
-
-                <div class="filter-panel filter-panel-date" id="date-filter-panel" hidden>
-                    <div class="date-picker-tabs" role="tablist" aria-label="Date filter groups">
-                        <button class="date-picker-tab is-active" type="button" data-date-tab="month" aria-selected="true">Month</button>
-                        <button class="date-picker-tab" type="button" data-date-tab="day" aria-selected="false">Day</button>
-                        <button class="date-picker-tab" type="button" data-date-tab="year" aria-selected="false">Year</button>
-                    </div>
-
-                    <div class="date-picker-content">
-                        <section class="date-picker-view is-active" data-date-view="month" aria-label="Choose month">
-                            <div class="filter-group-options date-filter-options-grid" data-date-month-options></div>
-                        </section>
-
-                        <section class="date-picker-view" data-date-view="day" aria-label="Choose day">
-                            <div class="date-calendar-panel">
-                                <div class="date-calendar-header">
-                                    <p class="date-calendar-title" data-calendar-title>Calendar</p>
-                                </div>
-                                <div class="date-calendar-weekdays" aria-hidden="true">
-                                    <span>Sun</span>
-                                    <span>Mon</span>
-                                    <span>Tue</span>
-                                    <span>Wed</span>
-                                    <span>Thu</span>
-                                    <span>Fri</span>
-                                    <span>Sat</span>
-                                </div>
-                                <div class="date-calendar-grid" data-date-calendar-grid></div>
-                                <button class="filter-option date-clear-option" type="button" data-filter-group="day" data-filter-value="all">All Days</button>
-                            </div>
-                        </section>
-
-                        <section class="date-picker-view" data-date-view="year" aria-label="Choose year">
-                            <div class="filter-group-options date-filter-options-grid" data-date-year-options></div>
-                        </section>
+                    <div class="filter-panel filter-panel-brands" id="brands-filter-panel" hidden>
+                        <button class="filter-option is-selected" type="button" data-filter-group="brand" data-filter-value="all">ALL BRANDS</button>
+                        <?php foreach ($productBrandValueMap as $brandValue => $brandLabel): ?>
+                            <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="<?php echo htmlspecialchars($brandValue, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(strtoupper($brandLabel), ENT_QUOTES, 'UTF-8'); ?></button>
+                        <?php endforeach; ?>
                     </div>
                 </div>
-            </div>
+
+                <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($routeBase . 'events/', ENT_QUOTES, 'UTF-8'); ?>">EVENTS</a>
+
+                <div class="section-nav-item section-nav-item-filter admin-nav-primary" data-admin-nav-item="primary">
+                    <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="date-filter-panel">
+                        DATE
+                    </button>
+
+                    <div class="filter-panel filter-panel-date" id="date-filter-panel" hidden>
+                        <div class="date-picker-tabs" role="tablist" aria-label="Date filter groups">
+                            <button class="date-picker-tab is-active" type="button" data-date-tab="month" aria-selected="true">Month</button>
+                            <button class="date-picker-tab" type="button" data-date-tab="day" aria-selected="false">Day</button>
+                            <button class="date-picker-tab" type="button" data-date-tab="year" aria-selected="false">Year</button>
+                        </div>
+
+                        <div class="date-picker-content">
+                            <section class="date-picker-view is-active" data-date-view="month" aria-label="Choose month">
+                                <div class="filter-group-options date-filter-options-grid" data-date-month-options></div>
+                            </section>
+
+                            <section class="date-picker-view" data-date-view="day" aria-label="Choose day">
+                                <div class="date-calendar-panel">
+                                    <div class="date-calendar-header">
+                                        <p class="date-calendar-title" data-calendar-title>Calendar</p>
+                                    </div>
+                                    <div class="date-calendar-weekdays" aria-hidden="true">
+                                        <span>Sun</span>
+                                        <span>Mon</span>
+                                        <span>Tue</span>
+                                        <span>Wed</span>
+                                        <span>Thu</span>
+                                        <span>Fri</span>
+                                        <span>Sat</span>
+                                    </div>
+                                    <div class="date-calendar-grid" data-date-calendar-grid></div>
+                                    <button class="filter-option date-clear-option" type="button" data-filter-group="day" data-filter-value="all">All Days</button>
+                                </div>
+                            </section>
+
+                            <section class="date-picker-view" data-date-view="year" aria-label="Choose year">
+                                <div class="filter-group-options date-filter-options-grid" data-date-year-options></div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
 
             <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="equipments" hidden>EQUIPMENTS</button>
             <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="bookings" hidden>BOOKINGS</button>
-            <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="reports" hidden>REPORTS</button>
-            <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="users" hidden>USERS</button>
+            <?php if (!$isStaffSession): ?>
+                <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="reports" hidden>REPORTS</button>
+                <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="users" hidden>USERS</button>
+            <?php endif; ?>
 
-            <button class="section-nav-swap" type="button" data-admin-nav-swap aria-pressed="false" aria-label="Swap admin navigation" title="Show management bar">
+            <button class="section-nav-swap" type="button" data-admin-nav-swap aria-pressed="false" aria-label="Swap admin navigation" title="Show management bar"<?php echo $isStaffSession ? ' hidden' : ''; ?>>
                 <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/swap_horizontal_arrows.svg" alt="" aria-hidden="true">
             </button>
         </nav>
@@ -2228,9 +2316,11 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         <section class="admin-equipments-shell" data-admin-dashboard-panel="equipments" hidden>
             <div class="admin-equipments-head">
                 <h2>Equipment Inventory</h2>
-                <button class="admin-equipments-archive-open" type="button" data-admin-equipment-archive-open>
-                    Removed Items (<?php echo htmlspecialchars((string) $archivedEquipmentCount, ENT_QUOTES, 'UTF-8'); ?>)
-                </button>
+                <?php if (!$isStaffSession): ?>
+                    <button class="admin-equipments-archive-open" type="button" data-admin-equipment-archive-open>
+                        Removed Items (<?php echo htmlspecialchars((string) $archivedEquipmentCount, ENT_QUOTES, 'UTF-8'); ?>)
+                    </button>
+                <?php endif; ?>
             </div>
 
             <?php if ($adminEquipmentFlashMessage !== ''): ?>
@@ -2249,7 +2339,9 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                             <th scope="col">
                                 <span class="admin-equipments-status-head">
                                     <span>STATUS</span>
-                                    <button class="admin-equipments-status-manage" type="button" data-admin-equipment-status-open aria-label="Manage equipment statuses" title="Manage statuses">&#9881;</button>
+                                    <?php if (!$isStaffSession): ?>
+                                        <button class="admin-equipments-status-manage" type="button" data-admin-equipment-status-open aria-label="Manage equipment statuses" title="Manage statuses">&#9881;</button>
+                                    <?php endif; ?>
                                 </span>
                             </th>
                             <th scope="col">ACTIONS</th>
@@ -2287,37 +2379,41 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                                         </form>
                                     </td>
                                     <td>
-                                        <div class="admin-equipments-actions">
-                                            <form method="post" action="" class="admin-equipments-action-form">
-                                                <input type="hidden" name="admin_action" value="equipment_add_quantity">
-                                                <input type="hidden" name="product_key" value="<?php echo htmlspecialchars($equipmentProductKey, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <input type="hidden" name="quantity" value="1">
-                                                <button
-                                                    class="admin-equipments-action admin-equipments-action-add"
-                                                    type="submit"
-                                                    data-admin-equipment-add
-                                                    data-model="<?php echo htmlspecialchars((string) ($equipmentRow['model'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                    title="Add quantity"
-                                                    aria-label="Add quantity to <?php echo htmlspecialchars((string) ($equipmentRow['model'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                >+</button>
-                                            </form>
+                                        <?php if ($isStaffSession): ?>
+                                            <span class="admin-equipments-actions-disabled">Status only</span>
+                                        <?php else: ?>
+                                            <div class="admin-equipments-actions">
+                                                <form method="post" action="" class="admin-equipments-action-form">
+                                                    <input type="hidden" name="admin_action" value="equipment_add_quantity">
+                                                    <input type="hidden" name="product_key" value="<?php echo htmlspecialchars($equipmentProductKey, ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <input type="hidden" name="quantity" value="1">
+                                                    <button
+                                                        class="admin-equipments-action admin-equipments-action-add"
+                                                        type="submit"
+                                                        data-admin-equipment-add
+                                                        data-model="<?php echo htmlspecialchars((string) ($equipmentRow['model'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                        title="Add quantity"
+                                                        aria-label="Add quantity to <?php echo htmlspecialchars((string) ($equipmentRow['model'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                    >+</button>
+                                                </form>
 
-                                            <form method="post" action="" class="admin-equipments-action-form">
-                                                <input type="hidden" name="admin_action" value="equipment_remove_unit">
-                                                <input type="hidden" name="product_key" value="<?php echo htmlspecialchars($equipmentProductKey, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <input type="hidden" name="serial" value="<?php echo htmlspecialchars((string) $equipmentSerial, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <button
-                                                    class="admin-equipments-action admin-equipments-action-remove"
-                                                    type="submit"
-                                                    data-admin-equipment-remove
-                                                    data-will-archive="<?php echo $equipmentUnitCount <= 1 ? 'true' : 'false'; ?>"
-                                                    data-model="<?php echo htmlspecialchars((string) ($equipmentRow['model'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                    data-unit-id="<?php echo htmlspecialchars((string) ($equipmentRow['unitId'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                    title="<?php echo $equipmentUnitCount <= 1 ? 'Remove last quantity and archive featured product' : 'Remove quantity'; ?>"
-                                                    aria-label="<?php echo $equipmentUnitCount <= 1 ? 'Remove last quantity and archive featured product' : 'Remove quantity'; ?>"
-                                                >&times;</button>
-                                            </form>
-                                        </div>
+                                                <form method="post" action="" class="admin-equipments-action-form">
+                                                    <input type="hidden" name="admin_action" value="equipment_remove_unit">
+                                                    <input type="hidden" name="product_key" value="<?php echo htmlspecialchars($equipmentProductKey, ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <input type="hidden" name="serial" value="<?php echo htmlspecialchars((string) $equipmentSerial, ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <button
+                                                        class="admin-equipments-action admin-equipments-action-remove"
+                                                        type="submit"
+                                                        data-admin-equipment-remove
+                                                        data-will-archive="<?php echo $equipmentUnitCount <= 1 ? 'true' : 'false'; ?>"
+                                                        data-model="<?php echo htmlspecialchars((string) ($equipmentRow['model'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                        data-unit-id="<?php echo htmlspecialchars((string) ($equipmentRow['unitId'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                        title="<?php echo $equipmentUnitCount <= 1 ? 'Remove last quantity and archive featured product' : 'Remove quantity'; ?>"
+                                                        aria-label="<?php echo $equipmentUnitCount <= 1 ? 'Remove last quantity and archive featured product' : 'Remove quantity'; ?>"
+                                                    >&times;</button>
+                                                </form>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -2596,6 +2692,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             </section>
         </div>
 
+        <?php if (!$isStaffSession): ?>
         <section class="admin-reports-shell" data-admin-dashboard-panel="reports" hidden>
             <div class="admin-reports-head" role="group" aria-label="Report breakdown">
                 <div class="admin-reports-breakdown-group">
@@ -2677,6 +2774,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                     <select id="admin-users-role-filter" class="admin-users-filter" data-admin-users-filter>
                         <option value="all" selected>All Roles</option>
                         <option value="admin">Admin</option>
+                        <option value="staff">Staff</option>
                         <option value="customer">Customer</option>
                     </select>
                 </label>
@@ -2709,6 +2807,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                 </table>
             </div>
         </section>
+        <?php endif; ?>
 
         <section class="promo-banner promo-banner-admin reveal" data-admin-dashboard-default aria-label="Promo carousel" data-admin-promo-banner data-admin-promo-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-image-base="<?php echo htmlspecialchars($assetBase . 'assets/promo_images/', ENT_QUOTES, 'UTF-8'); ?>">
             <button class="step-card-admin-remove promo-banner-admin-remove" type="button" data-admin-promo-remove aria-label="Archive active promo banner">&times;</button>
@@ -2834,6 +2933,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         </section>
     </main>
 
+    <?php if (!$isStaffSession): ?>
     <div class="admin-equipments-archive-backdrop" data-admin-equipment-archive-backdrop hidden>
         <section class="admin-equipments-archive-modal" role="dialog" aria-modal="true" aria-labelledby="admin-equipment-archive-title">
             <div class="admin-equipments-archive-head">
@@ -2950,6 +3050,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             </form>
         </section>
     </div>
+    <?php endif; ?>
 
     <div class="admin-action-modal-backdrop" data-admin-action-modal-backdrop hidden>
         <section class="admin-action-modal" role="dialog" aria-modal="true" aria-labelledby="admin-action-modal-title">
@@ -2972,6 +3073,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         </section>
     </div>
 
+    <?php if (!$isStaffSession): ?>
     <div class="admin-users-create-backdrop" data-admin-users-create-backdrop hidden>
         <section class="admin-users-create-modal" role="dialog" aria-modal="true" aria-labelledby="admin-users-create-title">
             <div class="admin-users-create-head">
@@ -2997,18 +3099,22 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                         <span>Customer</span>
                     </label>
                     <label>
+                        <input type="radio" name="role" value="staff" <?php echo $adminCreateUserValues['role'] === 'staff' ? 'checked' : ''; ?> onchange="updateFieldLabels()">
+                        <span>Staff</span>
+                    </label>
+                    <label>
                         <input type="radio" name="role" value="admin" <?php echo $adminCreateUserValues['role'] === 'admin' ? 'checked' : ''; ?> onchange="updateFieldLabels()">
                         <span>Admin</span>
                     </label>
                 </fieldset>
 
-                <label for="admin-create-user-full-name" id="full-name-label"><?php echo $adminCreateUserValues['role'] === 'admin' ? 'Employee Number' : 'Full Name'; ?></label>
+                <label for="admin-create-user-full-name" id="full-name-label"><?php echo $adminCreateUserValues['role'] === 'admin' ? 'Employee Number' : ($adminCreateUserValues['role'] === 'staff' ? 'Name' : 'Full Name'); ?></label>
                 <input id="admin-create-user-full-name" name="full_name" type="text" value="<?php echo htmlspecialchars($adminCreateUserValues['full_name'], ENT_QUOTES, 'UTF-8'); ?>" required>
 
                 <label for="admin-create-user-email" id="email-label"><?php echo $adminCreateUserValues['role'] === 'admin' ? 'Username' : 'Email'; ?></label>
-                <input id="admin-create-user-email" name="email" type="text" value="<?php echo htmlspecialchars($adminCreateUserValues['email'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                <input id="admin-create-user-email" name="email" type="<?php echo $adminCreateUserValues['role'] === 'admin' ? 'text' : 'email'; ?>" value="<?php echo htmlspecialchars($adminCreateUserValues['email'], ENT_QUOTES, 'UTF-8'); ?>" required>
 
-                <fieldset class="admin-users-create-status-fieldset" id="admin-create-user-status-fieldset">
+                <fieldset class="admin-users-create-status-fieldset" id="admin-create-user-status-fieldset"<?php echo $adminCreateUserValues['role'] === 'customer' ? '' : ' style="display:none;"'; ?>>
                     <legend>Account Status (Customer)</legend>
                     <label>
                         <input type="radio" name="account_status" value="active" <?php echo $adminCreateUserValues['account_status'] === 'active' ? 'checked' : ''; ?>>
@@ -3026,7 +3132,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                 <label for="admin-create-user-confirm-password">Confirm Password</label>
                 <input id="admin-create-user-confirm-password" name="confirm_password" type="password" required>
 
-                <p class="admin-users-create-note">Customer accounts created here omit the normal signup verification flow when marked Active.</p>
+                <p class="admin-users-create-note"<?php echo $adminCreateUserValues['role'] === 'customer' ? '' : ' style="display:none;"'; ?>>Customer accounts created here omit the normal signup verification flow when marked Active.</p>
 
                 <div class="admin-users-create-actions">
                     <button class="admin-users-create-cancel" type="button" data-admin-users-close-modal>Cancel</button>
@@ -3035,6 +3141,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             </form>
         </section>
     </div>
+    <?php endif; ?>
 
     <div class="admin-edit-modal-backdrop" data-admin-edit-backdrop data-admin-duplicate-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/duplicate_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-create-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/create_product.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-product-base-url="<?php echo htmlspecialchars($routeBase . 'products/?product=', ENT_QUOTES, 'UTF-8'); ?>" hidden>
         <section class="admin-edit-modal" role="dialog" aria-modal="true" aria-labelledby="admin-edit-title">
@@ -3283,6 +3390,10 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <script>
         function updateFieldLabels() {
             const roleRadios = document.querySelectorAll('input[name="role"]'); 
+            if (!roleRadios.length) {
+                return;
+            }
+
             const selectedRole = Array.from(roleRadios).find(r => r.checked)?.value || 'customer';
 
             const fullNameLabel = document.getElementById('full-name-label');   
@@ -3291,16 +3402,26 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             const statusFieldset = document.getElementById('admin-create-user-status-fieldset');
             const noteText = document.querySelector('.admin-users-create-note');
 
+            if (!fullNameLabel || !emailLabel || !emailInput) {
+                return;
+            }
+
             if (selectedRole === 'admin') {
                 fullNameLabel.textContent = 'Employee Number';
                 emailLabel.textContent = 'Username';
                 emailInput.type = 'text';
                 if (statusFieldset) statusFieldset.style.display = 'none';
                 if (noteText) noteText.style.display = 'none';
+            } else if (selectedRole === 'staff') {
+                fullNameLabel.textContent = 'Name';
+                emailLabel.textContent = 'Email';
+                emailInput.type = 'email';
+                if (statusFieldset) statusFieldset.style.display = 'none';
+                if (noteText) noteText.style.display = 'none';
             } else {
                 fullNameLabel.textContent = 'Full Name';
                 emailLabel.textContent = 'Email';
-                emailInput.type = 'text';
+                emailInput.type = 'email';
                 if (statusFieldset) statusFieldset.style.display = 'block';
                 if (noteText) noteText.style.display = 'block';
             }

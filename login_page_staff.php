@@ -8,60 +8,65 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-$routeBase = $routeBase ?? 'admin/';
+$routeBase = $routeBase ?? '';
 $assetBase = $assetBase ?? '';
-$customerLoginPath = $customerLoginPath ?? $assetBase . 'customer-login/';
+$customerLoginPath = $customerLoginPath ?? $routeBase . 'customer-login/';
+$adminLoginPath = $adminLoginPath ?? $routeBase . 'admin/';
+$staffDashboardPath = $staffDashboardPath ?? $routeBase . 'admin/dashboard/?admin_view=bookings';
 
 require_once __DIR__ . '/config/db.php';
 
-$adminAccountsTable = $adminAccountsTable ?? 'admin_accounts';
+$staffAccountsTable = $staffAccountsTable ?? 'staff_accounts';
+
+$defaultRedirect = $routeBase === '' ? '/' : $routeBase;
 
 if (isset($_SESSION['customer_id'])) {
-    header('Location: ' . $assetBase);
+    header('Location: ' . $defaultRedirect);
     exit;
 }
 
-if (isset($_SESSION['staff_id'])) {
-    header('Location: ' . $routeBase . 'dashboard/?admin_view=bookings');
-    exit;
-}
-
-if (isset($_SESSION['user_id'])) {
-    header('Location: ' . $routeBase . 'dashboard/');
+if (isset($_SESSION['user_id']) || isset($_SESSION['staff_id'])) {
+    header('Location: ' . $staffDashboardPath);
     exit;
 }
 
 $errorMessage = '';
-$successMessage = '';
-$usernameValue = '';
-
-if (isset($_GET['registered']) && $_GET['registered'] === '1') {
-    $successMessage = 'Account created. You can sign in now.';
-}
+$emailValue = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $usernameValue = trim($_POST['username'] ?? '');
-    $passwordValue = $_POST['password'] ?? '';
+    $emailValue = trim((string) ($_POST['email'] ?? ''));
+    $passwordValue = (string) ($_POST['password'] ?? '');
 
-    if ($usernameValue === '' || $passwordValue === '') {
-        $errorMessage = 'Please enter both username and password.';
+    if ($emailValue === '' || $passwordValue === '') {
+        $errorMessage = 'Please enter both email and password.';
+    } elseif (!filter_var($emailValue, FILTER_VALIDATE_EMAIL)) {
+        $errorMessage = 'Please enter a valid email address.';
     } else {
-        $loginStmt = $conn->prepare("SELECT id, username, password FROM {$adminAccountsTable} WHERE username = ? LIMIT 1");
-        $loginStmt->bind_param('s', $usernameValue);
-        $loginStmt->execute();
-        $userResult = $loginStmt->get_result();
-        $user = $userResult->fetch_assoc();
-        $loginStmt->close();
+        $loginStmt = $conn->prepare("SELECT id, name, email, password FROM {$staffAccountsTable} WHERE email = ? LIMIT 1");
 
-        if ($user && password_verify($passwordValue, $user['password'])) {
-            $_SESSION['user_id'] = (int) $user['id'];
-            $_SESSION['username'] = $user['username'];
+        if (!$loginStmt) {
+            $errorMessage = 'Unable to process login right now.';
+        } else {
+            $loginStmt->bind_param('s', $emailValue);
+            $loginStmt->execute();
+            $staffResult = $loginStmt->get_result();
+            $staffRecord = $staffResult ? $staffResult->fetch_assoc() : null;
+            $loginStmt->close();
 
-            header('Location: ' . $routeBase . 'dashboard/');
-            exit;
+            if ($staffRecord && password_verify($passwordValue, (string) ($staffRecord['password'] ?? ''))) {
+                unset($_SESSION['user_id'], $_SESSION['username']);
+
+                $_SESSION['staff_id'] = (int) ($staffRecord['id'] ?? 0);
+                $_SESSION['staff_name'] = trim((string) ($staffRecord['name'] ?? ''));
+                $_SESSION['staff_email'] = (string) ($staffRecord['email'] ?? '');
+                $_SESSION['staff_role'] = 'staff';
+
+                header('Location: ' . $staffDashboardPath);
+                exit;
+            }
+
+            $errorMessage = 'Invalid email or password.';
         }
-
-        $errorMessage = 'Invalid username or password.';
     }
 }
 ?>
@@ -71,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login | Creaty</title>
+    <title>Staff Login | Creaty</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -80,8 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body class="login-page">
     <main class="login-page-shell">
-        <a class="auth-switch-link" href="<?php echo htmlspecialchars($customerLoginPath, ENT_QUOTES, 'UTF-8'); ?>" data-auth-switch aria-label="Switch to customer login">
-            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/customer-login-icon.svg" alt="">
+        <a class="auth-switch-link" href="<?php echo htmlspecialchars($adminLoginPath, ENT_QUOTES, 'UTF-8'); ?>" data-auth-switch aria-label="Switch to administrator login">
+            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/admin-login-icon.svg" alt="">
         </a>
 
         <section class="login-card reveal">
@@ -89,34 +94,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <img class="brand-logo" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/images/main_logo.png" alt="The Nifty Fifty">
             </div>
 
-            <h1 class="login-title">ADMIN LOG IN</h1>
+            <h1 class="login-title">STAFF LOGIN</h1>
 
-            <form class="admin-login-form" action="" method="post" novalidate>
+            <form class="staff-login-form" action="" method="post" novalidate>
                 <?php if ($errorMessage !== ''): ?>
                     <p class="form-message form-message-error"><?php echo htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8'); ?></p>
-                <?php elseif ($successMessage !== ''): ?>
-                    <p class="form-message form-message-success"><?php echo htmlspecialchars($successMessage, ENT_QUOTES, 'UTF-8'); ?></p>
                 <?php endif; ?>
 
-                <label class="sr-only" for="username">Username</label>
+                <label class="sr-only" for="staff_email">Email address</label>
                 <div class="input-row">
                     <span class="field-icon" aria-hidden="true">
                         <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/email_icon.svg" alt="">
                     </span>
-                    <input id="username" name="username" type="text" placeholder="Enter your username" value="<?php echo htmlspecialchars($usernameValue, ENT_QUOTES, 'UTF-8'); ?>" autocomplete="username">
+                    <input id="staff_email" name="email" type="email" placeholder="Enter your email address" value="<?php echo htmlspecialchars($emailValue, ENT_QUOTES, 'UTF-8'); ?>" autocomplete="email">
+                    <span class="field-icon" aria-hidden="true"></span>
                 </div>
 
-                <label class="sr-only" for="password">Password</label>
+                <label class="sr-only" for="staff_password">Password</label>
                 <div class="input-row">
                     <span class="field-icon" aria-hidden="true">
                         <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/password_icon.svg" alt="">
                     </span>
-                    <input id="password" name="password" type="password" placeholder="Enter your password" autocomplete="current-password">
+                    <input id="staff_password" name="password" type="password" placeholder="Enter your password" autocomplete="current-password">
                     <button
                         class="toggle-visibility"
                         type="button"
                         aria-label="Show password"
-                        data-target="password"
+                        data-target="staff_password"
                         data-icon-on="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/visibility_on.svg"
                         data-icon-off="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/visibility_off.svg"
                     >
@@ -127,16 +131,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="login-options">
                     <a class="support-link" href="#">Forgot Password?</a>
 
-                    <label class="remember-wrap" for="remember">
+                    <label class="remember-wrap" for="staff_remember">
                         <span>Remember me</span>
-                        <input id="remember" name="remember" type="checkbox">
+                        <input id="staff_remember" name="remember" type="checkbox">
                     </label>
                 </div>
 
                 <button class="login-submit" type="submit">LOGIN</button>
 
-                <p class="login-hint">Demo credentials: admin / admin</p>
-                <p class="switch-auth">Need administrator access? <a href="<?php echo htmlspecialchars($routeBase, ENT_QUOTES, 'UTF-8'); ?>signup/">Create an account</a></p>
+                <p class="switch-auth">Need customer access? <a href="<?php echo htmlspecialchars($customerLoginPath, ENT_QUOTES, 'UTF-8'); ?>">Log in as customer</a></p>
             </form>
         </section>
     </main>

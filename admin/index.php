@@ -13,6 +13,11 @@ if (isset($_SESSION['user_id'])) {
 	exit;
 }
 
+if (isset($_SESSION['staff_id'])) {
+	header('Location: dashboard/?admin_view=bookings');
+	exit;
+}
+
 $routeBase = '';
 $assetBase = '../';
 require dirname(__DIR__) . '/login_page_admin.php';

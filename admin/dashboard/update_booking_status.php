@@ -3,10 +3,15 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-if (!isset($_SESSION['user_id']) || isset($_SESSION['customer_id'])) {
+$isAdminSession = isset($_SESSION['user_id']) && !isset($_SESSION['customer_id']);
+$isStaffSession = isset($_SESSION['staff_id']) && !isset($_SESSION['customer_id']);
+
+if (!$isAdminSession && !$isStaffSession) {
     header('Location: ../');
     exit;
 }
+
+$dashboardActor = $isStaffSession ? 'staff' : 'admin';
 
 if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     header('Location: ./?admin_view=bookings');
@@ -71,7 +76,7 @@ if (customer_order_is_terminal_status($currentStatusToken)) {
 }
 
 if ($handoverMode !== '') {
-    $updatedOrder = confirm_customer_order_receive_handover_by_id($orderId, $handoverMode, 'admin');
+    $updatedOrder = confirm_customer_order_receive_handover_by_id($orderId, $handoverMode, $dashboardActor);
 
     if ($updatedOrder === null) {
         header('Location: ' . $redirectTarget);
@@ -140,7 +145,7 @@ $updatedOrder = update_customer_order_status_by_id(
     $orderId,
     $nextStatus,
     customer_order_status_requires_reason($nextStatusToken) ? $cancelReason : '',
-    customer_order_status_requires_reason($nextStatusToken) ? 'admin' : '',
+    customer_order_status_requires_reason($nextStatusToken) ? $dashboardActor : '',
     [
         'refund_proof_data_url' => $nextStatusToken === 'refunded' ? $refundProofDataUrl : '',
         'project_root' => dirname(__DIR__, 2),

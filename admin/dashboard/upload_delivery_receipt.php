@@ -12,7 +12,10 @@ function upload_delivery_receipt_respond(int $statusCode, array $payload): void
     exit;
 }
 
-if (!isset($_SESSION['user_id']) || isset($_SESSION['customer_id'])) {
+$isAdminSession = isset($_SESSION['user_id']) && !isset($_SESSION['customer_id']);
+$isStaffSession = isset($_SESSION['staff_id']) && !isset($_SESSION['customer_id']);
+
+if (!$isAdminSession && !$isStaffSession) {
     upload_delivery_receipt_respond(403, [
         'ok' => false,
         'message' => 'Unauthorized',

@@ -7,6 +7,7 @@ $dbname = 'creaty_db';
 
 $adminAccountsTable = 'admin_accounts';
 $customerAccountsTable = 'customer_accounts';
+$staffAccountsTable = 'staff_accounts';
 
 $conn = new mysqli($host, $user, $pass, $dbname);
 
@@ -36,6 +37,16 @@ $conn->query(
 		password VARCHAR(255) NOT NULL,
 		email_verified_at TIMESTAMP NULL DEFAULT NULL,
 		privacy_policy_accepted_at TIMESTAMP NULL DEFAULT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	)"
+);
+
+$conn->query(
+	"CREATE TABLE IF NOT EXISTS {$staffAccountsTable} (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		name VARCHAR(190) NOT NULL,
+		email VARCHAR(190) NOT NULL UNIQUE,
+		password VARCHAR(255) NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	)"
 );

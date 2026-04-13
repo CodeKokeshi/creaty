@@ -9,6 +9,12 @@ if ($isAdminLoggedIn) {
     exit;
 }
 
+$isStaffLoggedIn = isset($_SESSION['staff_id']);
+if ($isStaffLoggedIn) {
+    header('Location: admin/dashboard/?admin_view=bookings');
+    exit;
+}
+
 $isCustomerLoggedIn = isset($_SESSION['customer_id']);
 $cartCount = $isCustomerLoggedIn ? (int) ($_SESSION['customer_cart_count'] ?? 0) : 0;
 $accountLabel = $isCustomerLoggedIn ? 'Account' : 'Sign In';
