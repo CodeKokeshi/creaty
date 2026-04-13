@@ -32,6 +32,7 @@ $conn->query(
 		first_name VARCHAR(100) NOT NULL,
 		last_name VARCHAR(100) NOT NULL,
 		email VARCHAR(190) NOT NULL UNIQUE,
+		skill_level VARCHAR(32) NOT NULL DEFAULT 'Beginner',
 		password VARCHAR(255) NOT NULL,
 		email_verified_at TIMESTAMP NULL DEFAULT NULL,
 		privacy_policy_accepted_at TIMESTAMP NULL DEFAULT NULL,
@@ -67,6 +68,20 @@ $emailVerifiedColumnResult = $conn->query("SHOW COLUMNS FROM {$customerAccountsT
 if ($emailVerifiedColumnResult && $emailVerifiedColumnResult->num_rows === 0) {
 	$conn->query("ALTER TABLE {$customerAccountsTable} ADD COLUMN email_verified_at TIMESTAMP NULL DEFAULT NULL AFTER password");
 }
+
+$customerSkillLevelColumnResult = $conn->query("SHOW COLUMNS FROM {$customerAccountsTable} LIKE 'skill_level'");
+
+if ($customerSkillLevelColumnResult && $customerSkillLevelColumnResult->num_rows === 0) {
+	$conn->query("ALTER TABLE {$customerAccountsTable} ADD COLUMN skill_level VARCHAR(32) NOT NULL DEFAULT 'Beginner' AFTER email");
+}
+
+$conn->query(
+	"UPDATE {$customerAccountsTable}
+	 SET skill_level = CASE
+		WHEN LOWER(TRIM(skill_level)) = 'professional' THEN 'Professional'
+		ELSE 'Beginner'
+	 END"
+);
 
 $employeeColumnResult = $conn->query("SHOW COLUMNS FROM {$adminAccountsTable} LIKE 'employee_number'");
 

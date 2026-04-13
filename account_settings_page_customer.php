@@ -16,6 +16,7 @@ $logoutPath = $logoutPath ?? $assetBase . 'customer-logout/';
 $cartPath = $cartPath ?? $assetBase . 'customer-cart/';
 $eventsPath = $eventsPath ?? $assetBase . 'customer-events/';
 
+require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/customer_gcash_profiles_repository.php';
 
 $isCustomerLoggedIn = isset($_SESSION['customer_id']);
@@ -23,6 +24,29 @@ if (!$isCustomerLoggedIn) {
     $currentPageUrl = $_SERVER['REQUEST_URI'] ?? ($assetBase . 'customer-account-settings/');
     header('Location: ' . $loginPath . '?redirect=' . rawurlencode($currentPageUrl));
     exit;
+}
+
+function customer_account_skill_level_options()
+{
+    return ['Beginner', 'Professional'];
+}
+
+function default_customer_account_skill_level()
+{
+    return customer_account_skill_level_options()[0];
+}
+
+function normalize_customer_account_skill_level($value)
+{
+    $candidate = trim((string) $value);
+
+    foreach (customer_account_skill_level_options() as $option) {
+        if (strcasecmp($candidate, (string) $option) === 0) {
+            return (string) $option;
+        }
+    }
+
+    return default_customer_account_skill_level();
 }
 
 $cartCount = (int) ($_SESSION['customer_cart_count'] ?? 0);
@@ -34,11 +58,48 @@ $firstNameDefault = $nameParts[0] ?? '';
 $lastNameDefault = count($nameParts) > 1 ? implode(' ', array_slice($nameParts, 1)) : '';
 $emailDefault = (string) ($_SESSION['customer_email'] ?? '');
 
+$customerAccountsTable = $customerAccountsTable ?? 'customer_accounts';
+$customerId = (string) ($_SESSION['customer_id'] ?? '');
+$customerSkillLevelOptions = customer_account_skill_level_options();
+$skillLevelValue = default_customer_account_skill_level();
+
+if ($customerId !== '') {
+    $customerProfileStmt = $conn->prepare("SELECT first_name, last_name, email, skill_level FROM {$customerAccountsTable} WHERE id = ? LIMIT 1");
+
+    if ($customerProfileStmt instanceof mysqli_stmt) {
+        $customerIdInt = (int) $customerId;
+        $customerProfileStmt->bind_param('i', $customerIdInt);
+        $customerProfileStmt->execute();
+        $customerProfileResult = $customerProfileStmt->get_result();
+        $customerProfile = $customerProfileResult ? $customerProfileResult->fetch_assoc() : null;
+        $customerProfileStmt->close();
+
+        if (is_array($customerProfile)) {
+            $resolvedFirstName = trim((string) ($customerProfile['first_name'] ?? ''));
+            $resolvedLastName = trim((string) ($customerProfile['last_name'] ?? ''));
+            $resolvedEmail = trim((string) ($customerProfile['email'] ?? ''));
+
+            if ($resolvedFirstName !== '') {
+                $firstNameDefault = $resolvedFirstName;
+            }
+
+            if ($resolvedLastName !== '') {
+                $lastNameDefault = $resolvedLastName;
+            }
+
+            if ($resolvedEmail !== '') {
+                $emailDefault = $resolvedEmail;
+            }
+
+            $skillLevelValue = normalize_customer_account_skill_level($customerProfile['skill_level'] ?? $skillLevelValue);
+        }
+    }
+}
+
 $firstNameValue = $firstNameDefault;
 $lastNameValue = $lastNameDefault;
 $emailValue = $emailDefault;
 $phoneValue = '';
-$customerId = (string) ($_SESSION['customer_id'] ?? '');
 $customerGcashProfile = find_customer_gcash_profile_for_customer($customerId);
 $gcashNameValue = (string) ($customerGcashProfile['gcash_name'] ?? '');
 $gcashNumberValue = (string) ($customerGcashProfile['gcash_number'] ?? '');
@@ -56,6 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $lastNameValue = trim($_POST['last_name'] ?? '');
     $emailValue = trim($_POST['email'] ?? '');
     $phoneValue = trim($_POST['phone'] ?? '');
+    $skillLevelValue = normalize_customer_account_skill_level($_POST['skill_level'] ?? $skillLevelValue);
     $gcashNameValue = trim($_POST['gcash_name'] ?? $gcashNameValue);
     $gcashNumberValue = trim($_POST['gcash_number'] ?? $gcashNumberValue);
     $addressOneValue = trim($_POST['address_line_one'] ?? '');
@@ -65,7 +127,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postalValue = trim($_POST['postal_code'] ?? '');
 
     if ($formAction === 'profile_info') {
-        $infoMessage = 'Personal information updated for preview only. Profile saving will be added in a future update.';
+        $updateSkillStmt = $conn->prepare("UPDATE {$customerAccountsTable} SET skill_level = ? WHERE id = ? LIMIT 1");
+
+        if ($updateSkillStmt instanceof mysqli_stmt) {
+            $customerIdInt = (int) $customerId;
+            $updateSkillStmt->bind_param('si', $skillLevelValue, $customerIdInt);
+
+            if ($updateSkillStmt->execute()) {
+                $_SESSION['customer_skill_level'] = $skillLevelValue;
+                $infoMessage = 'Skill level updated successfully. Other personal information fields are still preview only.';
+            } else {
+                $infoMessage = 'Unable to save skill level right now.';
+            }
+
+            $updateSkillStmt->close();
+        } else {
+            $infoMessage = 'Unable to save skill level right now.';
+        }
     } elseif ($formAction === 'gcash_info') {
         $savedGcashProfile = upsert_customer_gcash_profile_for_customer($customerId, $gcashNameValue, $gcashNumberValue);
 
@@ -87,6 +165,7 @@ $displayName = trim($firstNameValue . ' ' . $lastNameValue);
 $displayName = $displayName !== '' ? $displayName : 'None';
 $displayEmail = $emailValue !== '' ? $emailValue : 'None';
 $displayPhone = $phoneValue !== '' ? $phoneValue : 'None';
+$displaySkillLevel = $skillLevelValue !== '' ? $skillLevelValue : default_customer_account_skill_level();
 $displayGcashName = $gcashNameValue !== '' ? $gcashNameValue : 'None';
 $displayGcashNumber = $gcashNumberValue !== '' ? $gcashNumberValue : 'None';
 
@@ -189,6 +268,10 @@ $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No addr
                         <span>Contact Number</span>
                         <strong><?php echo htmlspecialchars($displayPhone, ENT_QUOTES, 'UTF-8'); ?></strong>
                     </div>
+                    <div class="profile-info-item">
+                        <span>Skill Level</span>
+                        <strong><?php echo htmlspecialchars($displaySkillLevel, ENT_QUOTES, 'UTF-8'); ?></strong>
+                    </div>
                 </div>
 
                 <div class="profile-section-actions">
@@ -224,6 +307,17 @@ $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No addr
                         <label>
                             <span>Contact Number</span>
                             <input type="text" name="phone" value="<?php echo htmlspecialchars($phoneValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="09xx xxx xxxx">
+                        </label>
+
+                        <label>
+                            <span>Skill Level</span>
+                            <select name="skill_level" required>
+                                <?php foreach ($customerSkillLevelOptions as $skillOption): ?>
+                                    <option value="<?php echo htmlspecialchars((string) $skillOption, ENT_QUOTES, 'UTF-8'); ?>"<?php echo strcasecmp($skillLevelValue, (string) $skillOption) === 0 ? ' selected' : ''; ?>>
+                                        <?php echo htmlspecialchars((string) $skillOption, ENT_QUOTES, 'UTF-8'); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </label>
                     </div>
 

@@ -233,7 +233,8 @@ button {
     padding: 0 1rem;
 }
 
-.input-row input {
+.input-row input,
+.input-row select {
     width: 100%;
     height: 100%;
     border: 0;
@@ -244,12 +245,34 @@ button {
     letter-spacing: 0.02em;
 }
 
-.input-row-plain input {
+.input-row-plain input,
+.input-row-plain select {
     padding: 0;
 }
 
 .input-row input::placeholder {
     color: rgba(255, 255, 255, 0.45);
+}
+
+.input-row select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 2rem;
+    background-image:
+        linear-gradient(45deg, transparent 50%, rgba(244, 244, 244, 0.9) 50%),
+        linear-gradient(135deg, rgba(244, 244, 244, 0.9) 50%, transparent 50%);
+    background-position:
+        calc(100% - 16px) calc(50% - 2px),
+        calc(100% - 11px) calc(50% - 2px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+
+.input-row select option {
+    background-color: #1a1b1f;
+    color: #f4f4f4;
 }
 
 .field-icon,
@@ -5253,7 +5276,8 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     color: var(--muted);
 }
 
-.account-settings-grid input {
+.account-settings-grid input,
+.account-settings-grid select {
     min-height: 44px;
     border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 10px;
@@ -5262,9 +5286,30 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     padding: 0 0.8rem;
 }
 
-.account-settings-grid input:focus {
+.account-settings-grid input:focus,
+.account-settings-grid select:focus {
     outline: 2px solid rgba(255, 255, 255, 0.2);
     outline-offset: 1px;
+}
+
+.account-settings-grid select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 2.1rem;
+    background-image:
+        linear-gradient(45deg, transparent 50%, rgba(244, 244, 244, 0.9) 50%),
+        linear-gradient(135deg, rgba(244, 244, 244, 0.9) 50%, transparent 50%);
+    background-position:
+        calc(100% - 16px) calc(50% - 2px),
+        calc(100% - 11px) calc(50% - 2px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+
+.account-settings-grid select option {
+    background-color: #111214;
+    color: #f4f4f4;
 }
 
 .account-settings-grid input[readonly] {

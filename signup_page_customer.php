@@ -18,22 +18,49 @@ require_once __DIR__ . '/config/db.php';
 
 $customerAccountsTable = $customerAccountsTable ?? 'customer_accounts';
 
+function customer_signup_skill_level_options()
+{
+    return ['Beginner', 'Professional'];
+}
+
+function normalize_customer_signup_skill_level($value, $allowEmpty = false)
+{
+    $candidate = trim((string) $value);
+
+    if ($candidate === '' && $allowEmpty) {
+        return '';
+    }
+
+    foreach (customer_signup_skill_level_options() as $option) {
+        if (strcasecmp($candidate, (string) $option) === 0) {
+            return (string) $option;
+        }
+    }
+
+    return $allowEmpty ? '' : customer_signup_skill_level_options()[0];
+}
+
 $errorMessage = '';
 $firstNameValue = '';
 $lastNameValue = '';
 $emailValue = '';
+$customerSkillLevelOptions = customer_signup_skill_level_options();
+$skillLevelValue = normalize_customer_signup_skill_level($_POST['skill_level'] ?? '', true);
 $privacyAccepted = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $firstNameValue = trim($_POST['first_name'] ?? '');
     $lastNameValue = trim($_POST['last_name'] ?? '');
     $emailValue = trim($_POST['email'] ?? '');
+    $skillLevelValue = normalize_customer_signup_skill_level($_POST['skill_level'] ?? '', true);
     $passwordValue = $_POST['password'] ?? '';
     $confirmPasswordValue = $_POST['confirm_password'] ?? '';
     $privacyAccepted = isset($_POST['privacy_policy']);
 
     if ($firstNameValue === '' || $lastNameValue === '' || $emailValue === '' || $passwordValue === '' || $confirmPasswordValue === '') {
         $errorMessage = 'Please complete all fields.';
+    } elseif ($skillLevelValue === '') {
+        $errorMessage = 'Please select your skill level.';
     } elseif (!filter_var($emailValue, FILTER_VALIDATE_EMAIL)) {
         $errorMessage = 'Please enter a valid email address.';
     } elseif ($passwordValue !== $confirmPasswordValue) {
@@ -52,8 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errorMessage = 'An account with that email already exists.';
         } else {
             $hashedPassword = password_hash($passwordValue, PASSWORD_DEFAULT);
-            $insertStmt = $conn->prepare("INSERT INTO {$customerAccountsTable} (first_name, last_name, email, password, privacy_policy_accepted_at) VALUES (?, ?, ?, ?, NOW())");
-            $insertStmt->bind_param('ssss', $firstNameValue, $lastNameValue, $emailValue, $hashedPassword);
+            $insertStmt = $conn->prepare("INSERT INTO {$customerAccountsTable} (first_name, last_name, email, skill_level, password, privacy_policy_accepted_at) VALUES (?, ?, ?, ?, ?, NOW())");
+            $insertStmt->bind_param('sssss', $firstNameValue, $lastNameValue, $emailValue, $skillLevelValue, $hashedPassword);
 
             if ($insertStmt->execute()) {
                 $_SESSION['pending_customer_verification_id'] = (int) $insertStmt->insert_id;
@@ -149,6 +176,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         >
                             <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/visibility_off.svg" alt="">
                         </button>
+                    </div>
+
+                    <label class="sr-only" for="customer_signup_skill_level">Skill Level</label>
+                    <div class="input-row input-row-plain">
+                        <select id="customer_signup_skill_level" name="skill_level" aria-label="Skill Level" required>
+                            <option value="" disabled<?php echo $skillLevelValue === '' ? ' selected' : ''; ?>>Skill Level</option>
+                            <?php foreach ($customerSkillLevelOptions as $skillOption): ?>
+                                <option value="<?php echo htmlspecialchars((string) $skillOption, ENT_QUOTES, 'UTF-8'); ?>"<?php echo strcasecmp($skillLevelValue, (string) $skillOption) === 0 ? ' selected' : ''; ?>>
+                                    <?php echo htmlspecialchars((string) $skillOption, ENT_QUOTES, 'UTF-8'); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                 </div>
 
