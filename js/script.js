@@ -6599,37 +6599,64 @@ document.addEventListener("DOMContentLoaded", function () {
                     var statsElement = document.createElement("div");
                     statsElement.className = "admin-booking-detail-item-stats";
 
+                    var assignedUnitIds = [];
+                    var rawAssignedUnitIds = Array.isArray(item.assigned_unit_ids)
+                        ? item.assigned_unit_ids
+                        : (Array.isArray(item.assignedUnitIds) ? item.assignedUnitIds : []);
+                    var fallbackAssignedUnitId = String(item.assigned_unit_id || item.assignedUnitId || "").trim();
+
+                    if (!rawAssignedUnitIds.length && fallbackAssignedUnitId) {
+                        rawAssignedUnitIds = [fallbackAssignedUnitId];
+                    }
+
+                    rawAssignedUnitIds.forEach(function (candidate) {
+                        var normalizedCandidate = String(candidate || "").trim().toUpperCase();
+
+                        if (!normalizedCandidate || assignedUnitIds.indexOf(normalizedCandidate) !== -1) {
+                            return;
+                        }
+
+                        assignedUnitIds.push(normalizedCandidate);
+                    });
+
+                    var metaRowElement = document.createElement("div");
+                    metaRowElement.className = "admin-booking-detail-item-meta-row";
+
                     var qtyElement = document.createElement("p");
                     qtyElement.className = "admin-booking-detail-item-meta";
 
                     var qtyLabelElement = document.createElement("span");
                     qtyLabelElement.className = "admin-booking-detail-item-meta-label";
-                    qtyLabelElement.textContent = "Quantity:";
+                    qtyLabelElement.textContent = "Qty / Days:";
 
                     var qtyValueElement = document.createElement("span");
                     qtyValueElement.className = "admin-booking-detail-item-meta-value";
-                    qtyValueElement.textContent = String(qty);
+                    qtyValueElement.textContent = String(qty) + " / " + String(days);
 
                     qtyElement.appendChild(qtyLabelElement);
                     qtyElement.appendChild(document.createTextNode(" "));
                     qtyElement.appendChild(qtyValueElement);
-                    statsElement.appendChild(qtyElement);
 
-                    var daysElement = document.createElement("p");
-                    daysElement.className = "admin-booking-detail-item-meta";
+                    var unitIdElement = document.createElement("p");
+                    unitIdElement.className = "admin-booking-detail-item-meta is-unit-id";
 
-                    var daysLabelElement = document.createElement("span");
-                    daysLabelElement.className = "admin-booking-detail-item-meta-label";
-                    daysLabelElement.textContent = "Days:";
+                    var unitIdLabelElement = document.createElement("span");
+                    unitIdLabelElement.className = "admin-booking-detail-item-meta-label";
+                    unitIdLabelElement.textContent = assignedUnitIds.length > 1 ? "Unit IDs:" : "Unit ID:";
 
-                    var daysValueElement = document.createElement("span");
-                    daysValueElement.className = "admin-booking-detail-item-meta-value";
-                    daysValueElement.textContent = String(days);
+                    var unitIdValueElement = document.createElement("span");
+                    unitIdValueElement.className = "admin-booking-detail-item-meta-value";
+                    unitIdValueElement.textContent = assignedUnitIds.length
+                        ? assignedUnitIds.join(", ")
+                        : "-";
 
-                    daysElement.appendChild(daysLabelElement);
-                    daysElement.appendChild(document.createTextNode(" "));
-                    daysElement.appendChild(daysValueElement);
-                    statsElement.appendChild(daysElement);
+                    unitIdElement.appendChild(unitIdLabelElement);
+                    unitIdElement.appendChild(document.createTextNode(" "));
+                    unitIdElement.appendChild(unitIdValueElement);
+
+                    metaRowElement.appendChild(qtyElement);
+                    metaRowElement.appendChild(unitIdElement);
+                    statsElement.appendChild(metaRowElement);
 
                     if (Number.isFinite(lineAmount)) {
                         var estimateElement = document.createElement("p");

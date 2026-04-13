@@ -8414,10 +8414,22 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     align-content: center;
 }
 
+.admin-booking-detail-item-meta-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
 .admin-booking-detail-item-meta {
     margin: 0;
     color: #d6dae2;
     font-size: 0.82rem;
+}
+
+.admin-booking-detail-item-meta.is-unit-id {
+    text-align: right;
 }
 
 .admin-booking-detail-item-meta-label {
@@ -9140,6 +9152,14 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 
     .admin-booking-detail-item-name {
         font-size: 0.86rem;
+    }
+
+    .admin-booking-detail-item-meta-row {
+        gap: 0.38rem;
+    }
+
+    .admin-booking-detail-item-meta.is-unit-id {
+        text-align: left;
     }
 
     .admin-booking-review-proof-row {

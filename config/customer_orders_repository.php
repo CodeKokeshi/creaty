@@ -1038,6 +1038,212 @@ function expire_customer_orders_missing_payment_receipts($orders, &$didExpire = 
     return $orders;
 }
 
+function customer_order_normalize_assigned_unit_serials($value)
+{
+    $rawValues = is_array($value) ? $value : [$value];
+    $normalized = [];
+
+    foreach ($rawValues as $rawValue) {
+        $serial = filter_var($rawValue, FILTER_VALIDATE_INT);
+
+        if ($serial === false || $serial < 0) {
+            continue;
+        }
+
+        if (!in_array((int) $serial, $normalized, true)) {
+            $normalized[] = (int) $serial;
+        }
+    }
+
+    sort($normalized, SORT_NUMERIC);
+
+    return $normalized;
+}
+
+function customer_order_normalize_assigned_unit_ids($value)
+{
+    $rawValues = is_array($value) ? $value : [$value];
+    $normalized = [];
+
+    foreach ($rawValues as $rawValue) {
+        $unitId = strtoupper(trim((string) $rawValue));
+
+        if ($unitId === '') {
+            continue;
+        }
+
+        $unitId = preg_replace('/[^A-Z0-9-]+/', '', $unitId) ?? $unitId;
+        $unitId = trim((string) $unitId, '-');
+
+        if ($unitId === '' || in_array($unitId, $normalized, true)) {
+            continue;
+        }
+
+        $normalized[] = $unitId;
+    }
+
+    return array_values($normalized);
+}
+
+function customer_order_extract_serial_from_unit_identifier($unitIdentifier)
+{
+    $value = strtoupper(trim((string) $unitIdentifier));
+
+    if (!preg_match('/-(\d+)$/', $value, $matches)) {
+        return null;
+    }
+
+    $serial = filter_var((string) ($matches[1] ?? ''), FILTER_VALIDATE_INT);
+
+    if ($serial === false || $serial < 0) {
+        return null;
+    }
+
+    return (int) $serial;
+}
+
+function customer_order_extract_item_assigned_unit_serials($item)
+{
+    if (!is_array($item)) {
+        return [];
+    }
+
+    $serials = customer_order_normalize_assigned_unit_serials(
+        $item['assigned_unit_serials']
+            ?? $item['assignedUnitSerials']
+            ?? $item['assigned_unit_serial']
+            ?? $item['assignedUnitSerial']
+            ?? []
+    );
+
+    if ($serials !== []) {
+        return $serials;
+    }
+
+    $unitIds = customer_order_normalize_assigned_unit_ids(
+        $item['assigned_unit_ids']
+            ?? $item['assignedUnitIds']
+            ?? $item['assigned_unit_id']
+            ?? $item['assignedUnitId']
+            ?? []
+    );
+
+    $derivedSerials = [];
+
+    foreach ($unitIds as $unitId) {
+        $serial = customer_order_extract_serial_from_unit_identifier($unitId);
+
+        if ($serial === null) {
+            continue;
+        }
+
+        $derivedSerials[] = $serial;
+    }
+
+    return customer_order_normalize_assigned_unit_serials($derivedSerials);
+}
+
+function customer_order_clear_item_unit_assignments($item, &$didMutate = false)
+{
+    $didMutate = false;
+
+    if (!is_array($item)) {
+        return [];
+    }
+
+    $nextItem = $item;
+    $assignmentKeys = [
+        'assigned_unit_serials',
+        'assignedUnitSerials',
+        'assigned_unit_serial',
+        'assignedUnitSerial',
+        'assigned_unit_ids',
+        'assignedUnitIds',
+        'assigned_unit_id',
+        'assignedUnitId',
+    ];
+
+    foreach ($assignmentKeys as $assignmentKey) {
+        if (!array_key_exists($assignmentKey, $nextItem)) {
+            continue;
+        }
+
+        unset($nextItem[$assignmentKey]);
+        $didMutate = true;
+    }
+
+    return $nextItem;
+}
+
+function customer_order_build_unit_identifier_for_item($product, $productKey, $serial)
+{
+    static $didAttemptLoadEquipmentFunctions = false;
+
+    if (
+        !$didAttemptLoadEquipmentFunctions
+        && (!function_exists('equipment_model_label_from_product') || !function_exists('equipment_unit_identifier'))
+    ) {
+        $didAttemptLoadEquipmentFunctions = true;
+        require_once __DIR__ . '/equipment_inventory_repository.php';
+    }
+
+    $modelLabel = '';
+
+    if (is_array($product) && function_exists('equipment_model_label_from_product')) {
+        $modelLabel = trim((string) equipment_model_label_from_product($product));
+    }
+
+    if ($modelLabel === '') {
+        $fallbackKey = strtoupper((string) $productKey);
+        $fallbackKey = preg_replace('/[^A-Z0-9]+/', '', $fallbackKey) ?? $fallbackKey;
+        $modelLabel = trim((string) $fallbackKey) !== '' ? trim((string) $fallbackKey) : 'MODEL';
+    }
+
+    $normalizedSerial = max(0, (int) $serial);
+
+    if (function_exists('equipment_unit_identifier')) {
+        return (string) equipment_unit_identifier($modelLabel, $normalizedSerial);
+    }
+
+    return $modelLabel . '-' . str_pad((string) $normalizedSerial, 3, '0', STR_PAD_LEFT);
+}
+
+function customer_order_apply_item_unit_assignments($item, $serials, $product = null, $productKey = '', &$didMutate = false)
+{
+    $didMutate = false;
+
+    if (!is_array($item)) {
+        return [];
+    }
+
+    $nextItem = customer_order_clear_item_unit_assignments($item);
+    $normalizedSerials = customer_order_normalize_assigned_unit_serials($serials);
+
+    if ($normalizedSerials !== []) {
+        $nextItem['assigned_unit_serials'] = $normalizedSerials;
+
+        $unitIds = [];
+
+        foreach ($normalizedSerials as $serial) {
+            $unitIds[] = customer_order_build_unit_identifier_for_item($product, $productKey, $serial);
+        }
+
+        $unitIds = customer_order_normalize_assigned_unit_ids($unitIds);
+
+        if ($unitIds !== []) {
+            $nextItem['assigned_unit_ids'] = $unitIds;
+
+            if (count($unitIds) === 1) {
+                $nextItem['assigned_unit_id'] = $unitIds[0];
+            }
+        }
+    }
+
+    $didMutate = $nextItem != $item;
+
+    return $nextItem;
+}
+
 function normalize_customer_order_items($items)
 {
     if (!is_array($items)) {
@@ -1075,6 +1281,15 @@ function normalize_customer_order_items($items)
             $productKey = customer_order_extract_product_key_from_item_id($itemId);
         }
 
+        $assignedUnitSerials = customer_order_extract_item_assigned_unit_serials($item);
+        $assignedUnitIds = customer_order_normalize_assigned_unit_ids(
+            $item['assigned_unit_ids']
+                ?? $item['assignedUnitIds']
+                ?? $item['assigned_unit_id']
+                ?? $item['assignedUnitId']
+                ?? []
+        );
+
         $normalizedItem = [
             'name' => $name,
             'qty' => $qty,
@@ -1091,6 +1306,18 @@ function normalize_customer_order_items($items)
 
         if ($productKey !== '') {
             $normalizedItem['product_key'] = $productKey;
+        }
+
+        if ($assignedUnitSerials !== []) {
+            $normalizedItem['assigned_unit_serials'] = $assignedUnitSerials;
+        }
+
+        if ($assignedUnitIds !== []) {
+            $normalizedItem['assigned_unit_ids'] = $assignedUnitIds;
+
+            if (count($assignedUnitIds) === 1) {
+                $normalizedItem['assigned_unit_id'] = $assignedUnitIds[0];
+            }
         }
 
         $normalized[] = $normalizedItem;
@@ -1327,6 +1554,11 @@ function customer_order_in_use_lock_status_tokens()
     return ['ongoing', 'return'];
 }
 
+function customer_order_unit_assignment_status_tokens()
+{
+    return ['approved', 'ongoing', 'return'];
+}
+
 function customer_order_record_requires_in_use_lock($record)
 {
     if (!is_array($record)) {
@@ -1336,6 +1568,17 @@ function customer_order_record_requires_in_use_lock($record)
     $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
 
     return in_array($statusToken, customer_order_in_use_lock_status_tokens(), true);
+}
+
+function customer_order_record_requires_unit_assignment($record)
+{
+    if (!is_array($record)) {
+        return false;
+    }
+
+    $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+
+    return in_array($statusToken, customer_order_unit_assignment_status_tokens(), true);
 }
 
 function customer_order_collect_in_use_requirements_by_product($orders, $products, $nameLookup = null)
@@ -1376,101 +1619,398 @@ function customer_order_collect_in_use_requirements_by_product($orders, $product
     return $requirements;
 }
 
-function customer_order_align_inventory_with_in_use_requirements($inventory, $requirementsByProduct, &$didMutate = false)
+function customer_order_collect_in_use_assignment_rows($orders, $products, $nameLookup = null)
 {
-    $didMutate = false;
-
-    if (!is_array($inventory)) {
+    if (!is_array($orders) || !is_array($products) || !$products) {
         return [];
     }
 
-    $requirements = is_array($requirementsByProduct) ? $requirementsByProduct : [];
+    $lookup = is_array($nameLookup)
+        ? $nameLookup
+        : customer_order_product_name_lookup_map($products);
+    $rowsByProduct = [];
+    $orderDescriptors = [];
 
-    foreach ($inventory as $productKey => $entry) {
-        if (!is_array($entry)) {
+    foreach ($orders as $orderIndex => $record) {
+        if (!is_array($record) || !customer_order_record_requires_unit_assignment($record)) {
             continue;
         }
 
-        $didMutateProduct = false;
+        $requiresInUseLock = customer_order_record_requires_in_use_lock($record);
 
-        $normalizedProductKey = normalize_customer_order_product_key($productKey);
-        $requiredInUse = max(0, (int) ($requirements[$normalizedProductKey] ?? 0));
-        $units = is_array($entry['units'] ?? null)
-            ? array_values($entry['units'])
+        $receiveTimestamp = customer_order_receiving_timestamp($record);
+        $createdTimestamp = null;
+        $createdAt = customer_order_parse_datetime_value($record['created_at'] ?? '');
+
+        if ($createdAt instanceof DateTimeImmutable) {
+            $createdTimestamp = (int) $createdAt->getTimestamp();
+        } else {
+            $fallbackCreatedTimestamp = strtotime((string) ($record['created_at'] ?? ''));
+
+            if ($fallbackCreatedTimestamp !== false) {
+                $createdTimestamp = (int) $fallbackCreatedTimestamp;
+            }
+        }
+
+        $orderDescriptors[] = [
+            'order_index' => (int) $orderIndex,
+            'receive_ts' => is_int($receiveTimestamp) ? $receiveTimestamp : PHP_INT_MAX,
+            'created_ts' => is_int($createdTimestamp) ? $createdTimestamp : PHP_INT_MAX,
+            'order_id' => trim((string) ($record['id'] ?? '')),
+            'requires_in_use_lock' => $requiresInUseLock,
+        ];
+    }
+
+    usort($orderDescriptors, static function ($left, $right) {
+        $receiveCompare = ((int) ($left['receive_ts'] ?? PHP_INT_MAX)) <=> ((int) ($right['receive_ts'] ?? PHP_INT_MAX));
+
+        if ($receiveCompare !== 0) {
+            return $receiveCompare;
+        }
+
+        $createdCompare = ((int) ($left['created_ts'] ?? PHP_INT_MAX)) <=> ((int) ($right['created_ts'] ?? PHP_INT_MAX));
+
+        if ($createdCompare !== 0) {
+            return $createdCompare;
+        }
+
+        return strcmp((string) ($left['order_id'] ?? ''), (string) ($right['order_id'] ?? ''));
+    });
+
+    foreach ($orderDescriptors as $orderDescriptor) {
+        $orderIndex = (int) ($orderDescriptor['order_index'] ?? -1);
+        $requiresInUseLock = !empty($orderDescriptor['requires_in_use_lock']);
+
+        if (!isset($orders[$orderIndex]) || !is_array($orders[$orderIndex])) {
+            continue;
+        }
+
+        $record = $orders[$orderIndex];
+        $items = is_array($record['items'] ?? null)
+            ? array_values($record['items'])
             : [];
 
-        if (!$units) {
-            continue;
-        }
-
-        $inUseIndexes = [];
-        $availableIndexes = [];
-
-        foreach ($units as $index => $unit) {
-            if (!is_array($unit)) {
+        foreach ($items as $itemIndex => $item) {
+            if (!is_array($item)) {
                 continue;
             }
 
-            $statusToken = customer_order_normalize_equipment_status_token($unit['status'] ?? 'available');
+            $productKey = customer_order_resolve_item_product_key($item, $products, $lookup);
 
-            if ($statusToken === 'in-use') {
-                $inUseIndexes[] = $index;
+            if ($productKey === '') {
                 continue;
             }
 
-            if ($statusToken === 'available') {
-                $availableIndexes[] = $index;
-            }
-        }
+            $qty = max(1, (int) ($item['qty'] ?? 1));
 
-        $currentInUseCount = count($inUseIndexes);
-
-        if ($currentInUseCount > $requiredInUse) {
-            $releaseCount = $currentInUseCount - $requiredInUse;
-
-            for ($offset = 0; $offset < $releaseCount; $offset++) {
-                $indexToRelease = $inUseIndexes[$currentInUseCount - 1 - $offset] ?? null;
-
-                if ($indexToRelease === null || !isset($units[$indexToRelease]) || !is_array($units[$indexToRelease])) {
-                    continue;
-                }
-
-                $units[$indexToRelease]['status'] = 'available';
-                $didMutateProduct = true;
-                $didMutate = true;
+            if (!isset($rowsByProduct[$productKey])) {
+                $rowsByProduct[$productKey] = [];
             }
 
-            $currentInUseCount = $requiredInUse;
-        }
-
-        if ($currentInUseCount < $requiredInUse) {
-            $promoteCount = min($requiredInUse - $currentInUseCount, count($availableIndexes));
-
-            for ($offset = 0; $offset < $promoteCount; $offset++) {
-                $indexToPromote = $availableIndexes[$offset] ?? null;
-
-                if ($indexToPromote === null || !isset($units[$indexToPromote]) || !is_array($units[$indexToPromote])) {
-                    continue;
-                }
-
-                $units[$indexToPromote]['status'] = 'in-use';
-                $didMutateProduct = true;
-                $didMutate = true;
-            }
-        }
-
-        if ($didMutateProduct) {
-            $entry['units'] = array_values($units);
-            $inventory[$productKey] = $entry;
+            $rowsByProduct[$productKey][] = [
+                'order_index' => $orderIndex,
+                'item_index' => (int) $itemIndex,
+                'qty' => $qty,
+                'requires_in_use_lock' => $requiresInUseLock,
+                'existing_serials' => customer_order_extract_item_assigned_unit_serials($item),
+            ];
         }
     }
 
-    return $inventory;
+    return $rowsByProduct;
+}
+
+function customer_order_assign_in_use_units_to_orders_and_inventory($orders, $products, $inventory, &$didOrdersMutate = false, &$didInventoryMutate = false)
+{
+    $didOrdersMutate = false;
+    $didInventoryMutate = false;
+
+    $orderCollection = is_array($orders) ? $orders : [];
+    $productCollection = is_array($products) ? $products : [];
+    $inventoryCollection = is_array($inventory) ? $inventory : [];
+
+    $productByNormalizedKey = [];
+
+    foreach ($productCollection as $productKey => $product) {
+        if (!is_string($productKey) || trim($productKey) === '' || !is_array($product)) {
+            continue;
+        }
+
+        $normalizedProductKey = normalize_customer_order_product_key($productKey);
+
+        if ($normalizedProductKey === '' || isset($productByNormalizedKey[$normalizedProductKey])) {
+            continue;
+        }
+
+        $productByNormalizedKey[$normalizedProductKey] = $product;
+    }
+
+    $inventoryKeyByNormalizedProduct = [];
+
+    foreach ($inventoryCollection as $inventoryKey => $inventoryEntry) {
+        if (!is_string($inventoryKey) || trim($inventoryKey) === '' || !is_array($inventoryEntry)) {
+            continue;
+        }
+
+        $normalizedProductKey = normalize_customer_order_product_key($inventoryKey);
+
+        if ($normalizedProductKey === '' || isset($inventoryKeyByNormalizedProduct[$normalizedProductKey])) {
+            continue;
+        }
+
+        $inventoryKeyByNormalizedProduct[$normalizedProductKey] = $inventoryKey;
+    }
+
+    $assignmentRowsByProduct = customer_order_collect_in_use_assignment_rows(
+        $orderCollection,
+        $productCollection,
+        customer_order_product_name_lookup_map($productCollection)
+    );
+    $itemAssignments = [];
+    $assignedSerialsByProduct = [];
+    $inUseAssignedSerialsByProduct = [];
+
+    foreach ($assignmentRowsByProduct as $productKey => $rows) {
+        $normalizedProductKey = normalize_customer_order_product_key($productKey);
+
+        if ($normalizedProductKey === '') {
+            continue;
+        }
+
+        $inventoryKey = (string) ($inventoryKeyByNormalizedProduct[$normalizedProductKey] ?? '');
+        $inventoryEntry = $inventoryKey !== '' && isset($inventoryCollection[$inventoryKey]) && is_array($inventoryCollection[$inventoryKey])
+            ? $inventoryCollection[$inventoryKey]
+            : [];
+        $units = is_array($inventoryEntry['units'] ?? null)
+            ? array_values($inventoryEntry['units'])
+            : [];
+
+        $assignableSerialLookup = [];
+
+        foreach ($units as $unit) {
+            if (!customer_order_unit_counts_for_capacity($unit)) {
+                continue;
+            }
+
+            $serial = max(0, (int) ($unit['serial'] ?? -1));
+            $assignableSerialLookup[$serial] = true;
+        }
+
+        if ($assignableSerialLookup !== []) {
+            ksort($assignableSerialLookup, SORT_NUMERIC);
+        }
+
+        $reservedSerialLookup = [];
+        $inUseSerialLookup = [];
+
+        foreach ($rows as $rowIndex => $row) {
+            $qty = max(1, (int) ($row['qty'] ?? 1));
+            $keptSerials = [];
+
+            foreach ((array) ($row['existing_serials'] ?? []) as $serial) {
+                $normalizedSerial = max(0, (int) $serial);
+
+                if (count($keptSerials) >= $qty) {
+                    break;
+                }
+
+                if (!isset($assignableSerialLookup[$normalizedSerial]) || isset($reservedSerialLookup[$normalizedSerial])) {
+                    continue;
+                }
+
+                $keptSerials[] = $normalizedSerial;
+                $reservedSerialLookup[$normalizedSerial] = true;
+            }
+
+            $rows[$rowIndex]['assigned_serials'] = customer_order_normalize_assigned_unit_serials($keptSerials);
+        }
+
+        $availableSerials = [];
+
+        foreach ($assignableSerialLookup as $serialValue => $_isAssignable) {
+            if (isset($reservedSerialLookup[$serialValue])) {
+                continue;
+            }
+
+            $availableSerials[] = (int) $serialValue;
+        }
+
+        sort($availableSerials, SORT_NUMERIC);
+
+        $availableSerialPointer = 0;
+
+        foreach ($rows as $rowIndex => $row) {
+            $qty = max(1, (int) ($row['qty'] ?? 1));
+            $assignedSerials = customer_order_normalize_assigned_unit_serials($row['assigned_serials'] ?? []);
+
+            while (count($assignedSerials) < $qty && isset($availableSerials[$availableSerialPointer])) {
+                $nextSerial = (int) $availableSerials[$availableSerialPointer];
+                $availableSerialPointer++;
+
+                if (isset($reservedSerialLookup[$nextSerial])) {
+                    continue;
+                }
+
+                $assignedSerials[] = $nextSerial;
+                $reservedSerialLookup[$nextSerial] = true;
+            }
+
+            $assignedSerials = customer_order_normalize_assigned_unit_serials($assignedSerials);
+            $rows[$rowIndex]['assigned_serials'] = $assignedSerials;
+
+            $orderIndex = (int) ($row['order_index'] ?? -1);
+            $itemIndex = (int) ($row['item_index'] ?? -1);
+
+            if ($orderIndex < 0 || $itemIndex < 0) {
+                continue;
+            }
+
+            $itemAssignments[$orderIndex . ':' . $itemIndex] = [
+                'product_key' => $normalizedProductKey,
+                'serials' => $assignedSerials,
+            ];
+
+            if (!empty($row['requires_in_use_lock'])) {
+                foreach ($assignedSerials as $assignedSerial) {
+                    $inUseSerialLookup[(int) $assignedSerial] = true;
+                }
+            }
+        }
+
+        $assignedSerialValues = array_map('intval', array_keys($reservedSerialLookup));
+        sort($assignedSerialValues, SORT_NUMERIC);
+        $assignedSerialsByProduct[$normalizedProductKey] = $assignedSerialValues;
+
+        $inUseSerialValues = array_map('intval', array_keys($inUseSerialLookup));
+        sort($inUseSerialValues, SORT_NUMERIC);
+        $inUseAssignedSerialsByProduct[$normalizedProductKey] = $inUseSerialValues;
+    }
+
+    foreach ($inventoryCollection as $inventoryKey => $inventoryEntry) {
+        if (!is_array($inventoryEntry)) {
+            continue;
+        }
+
+        $normalizedProductKey = normalize_customer_order_product_key($inventoryKey);
+        $assignedSerialLookup = [];
+
+        foreach ((array) ($inUseAssignedSerialsByProduct[$normalizedProductKey] ?? []) as $assignedSerial) {
+            $assignedSerialLookup[(int) $assignedSerial] = true;
+        }
+
+        $units = is_array($inventoryEntry['units'] ?? null)
+            ? array_values($inventoryEntry['units'])
+            : [];
+
+        if ($units === []) {
+            continue;
+        }
+
+        $didMutateProductInventory = false;
+
+        foreach ($units as $unitIndex => $unit) {
+            if (!customer_order_unit_counts_for_capacity($unit)) {
+                continue;
+            }
+
+            $serial = max(0, (int) ($unit['serial'] ?? -1));
+            $currentStatus = customer_order_normalize_equipment_status_token($unit['status'] ?? 'available');
+            $nextStatus = isset($assignedSerialLookup[$serial])
+                ? 'in-use'
+                : 'available';
+
+            if ($currentStatus === $nextStatus) {
+                continue;
+            }
+
+            $units[$unitIndex]['status'] = $nextStatus;
+            $didMutateProductInventory = true;
+        }
+
+        if (!$didMutateProductInventory) {
+            continue;
+        }
+
+        $inventoryEntry['units'] = array_values($units);
+        $inventoryCollection[$inventoryKey] = $inventoryEntry;
+        $didInventoryMutate = true;
+    }
+
+    foreach ($orderCollection as $orderIndex => $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        $requiresUnitAssignment = customer_order_record_requires_unit_assignment($record);
+        $items = is_array($record['items'] ?? null)
+            ? array_values($record['items'])
+            : [];
+
+        if ($items === []) {
+            continue;
+        }
+
+        $didMutateRecordItems = false;
+
+        foreach ($items as $itemIndex => $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $coordKey = ((int) $orderIndex) . ':' . ((int) $itemIndex);
+
+            if ($requiresUnitAssignment && isset($itemAssignments[$coordKey]) && is_array($itemAssignments[$coordKey])) {
+                $assignment = $itemAssignments[$coordKey];
+                $assignmentProductKey = normalize_customer_order_product_key($assignment['product_key'] ?? '');
+                $assignmentProduct = isset($productByNormalizedKey[$assignmentProductKey]) && is_array($productByNormalizedKey[$assignmentProductKey])
+                    ? $productByNormalizedKey[$assignmentProductKey]
+                    : null;
+
+                $didMutateItem = false;
+                $items[$itemIndex] = customer_order_apply_item_unit_assignments(
+                    $item,
+                    $assignment['serials'] ?? [],
+                    $assignmentProduct,
+                    $assignmentProductKey,
+                    $didMutateItem
+                );
+
+                if ($didMutateItem) {
+                    $didMutateRecordItems = true;
+                }
+
+                continue;
+            }
+
+            $didMutateItem = false;
+            $items[$itemIndex] = customer_order_clear_item_unit_assignments($item, $didMutateItem);
+
+            if ($didMutateItem) {
+                $didMutateRecordItems = true;
+            }
+        }
+
+        if (!$didMutateRecordItems) {
+            continue;
+        }
+
+        $record['items'] = array_values($items);
+        $orderCollection[$orderIndex] = $record;
+        $didOrdersMutate = true;
+    }
+
+    return [
+        'orders' => $orderCollection,
+        'inventory' => $inventoryCollection,
+        'didMutateOrders' => $didOrdersMutate,
+        'didMutateInventory' => $didInventoryMutate,
+    ];
 }
 
 function customer_order_synchronize_equipment_inventory_in_use_statuses($orders, $products = null, $inventory = null, &$didMutate = false)
 {
     $didMutate = false;
+    $orderCollection = is_array($orders) ? $orders : [];
     $productCollection = is_array($products) ? $products : customer_order_load_products_for_availability();
     $inventoryCollection = is_array($inventory) ? $inventory : customer_order_load_inventory_for_availability();
 
@@ -1488,30 +2028,42 @@ function customer_order_synchronize_equipment_inventory_in_use_statuses($orders,
 
     $beforeSyncInventory = $inventoryCollection;
     $syncedInventory = sync_equipment_inventory_with_products($productCollection, $inventoryCollection, 12);
-    $didMutate = $syncedInventory != $beforeSyncInventory;
+    $didMutateByInventorySync = $syncedInventory != $beforeSyncInventory;
+
+    $didMutateOrdersByAssignment = false;
+    $didMutateInventoryByAssignment = false;
+    $assignmentResult = customer_order_assign_in_use_units_to_orders_and_inventory(
+        $orderCollection,
+        $productCollection,
+        $syncedInventory,
+        $didMutateOrdersByAssignment,
+        $didMutateInventoryByAssignment
+    );
+
+    $alignedOrders = is_array($assignmentResult['orders'] ?? null)
+        ? $assignmentResult['orders']
+        : $orderCollection;
+    $alignedInventory = is_array($assignmentResult['inventory'] ?? null)
+        ? $assignmentResult['inventory']
+        : $syncedInventory;
+
+    $didMutateInventory = $didMutateByInventorySync || $didMutateInventoryByAssignment;
+    $didMutate = $didMutateOrdersByAssignment || $didMutateInventory;
 
     $lookup = customer_order_product_name_lookup_map($productCollection);
     $requirementsByProduct = customer_order_collect_in_use_requirements_by_product(
-        is_array($orders) ? $orders : [],
+        $alignedOrders,
         $productCollection,
         $lookup
     );
 
-    $didMutateByAlignment = false;
-    $alignedInventory = customer_order_align_inventory_with_in_use_requirements(
-        $syncedInventory,
-        $requirementsByProduct,
-        $didMutateByAlignment
-    );
-
-    if ($didMutateByAlignment) {
-        $didMutate = true;
-    }
-
     return [
+        'orders' => $alignedOrders,
         'inventory' => $alignedInventory,
         'requirementsByProduct' => $requirementsByProduct,
         'didMutate' => $didMutate,
+        'didMutateOrders' => $didMutateOrdersByAssignment,
+        'didMutateInventory' => $didMutateInventory,
     ];
 }
 
@@ -2326,15 +2878,23 @@ function load_customer_orders_repository()
         save_customer_orders_repository($orders);
     }
 
-    $didSyncInventoryStatuses = false;
+    $didSyncInUseState = false;
     $syncInventoryResult = customer_order_synchronize_equipment_inventory_in_use_statuses(
         $orders,
         null,
         null,
-        $didSyncInventoryStatuses
+        $didSyncInUseState
     );
 
-    if ($didSyncInventoryStatuses) {
+    $orders = is_array($syncInventoryResult['orders'] ?? null)
+        ? $syncInventoryResult['orders']
+        : $orders;
+    $didMutateOrdersFromSync = !empty($syncInventoryResult['didMutateOrders']);
+    $didMutateInventoryFromSync = !empty($syncInventoryResult['didMutateInventory']);
+
+    if ($didMutateOrdersFromSync) {
+        save_customer_orders_repository($orders);
+    } elseif ($didMutateInventoryFromSync) {
         if (!function_exists('save_equipment_inventory_repository')) {
             require_once __DIR__ . '/equipment_inventory_repository.php';
         }
@@ -2433,7 +2993,35 @@ function save_customer_orders_repository($orders)
         $normalized[] = $next;
     }
 
-    $encoded = json_encode($normalized, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    $didSyncInUseState = false;
+    $syncInventoryResult = customer_order_synchronize_equipment_inventory_in_use_statuses(
+        $normalized,
+        null,
+        null,
+        $didSyncInUseState
+    );
+
+    $ordersForPersistence = is_array($syncInventoryResult['orders'] ?? null)
+        ? $syncInventoryResult['orders']
+        : $normalized;
+    $inventoryPayload = is_array($syncInventoryResult['inventory'] ?? null)
+        ? $syncInventoryResult['inventory']
+        : [];
+    $didMutateInventoryFromSync = !empty($syncInventoryResult['didMutateInventory']);
+
+    $normalizedOrdersForPersistence = [];
+
+    foreach ($ordersForPersistence as $record) {
+        $next = normalize_customer_order_record($record);
+
+        if ($next['customer_id'] === '') {
+            continue;
+        }
+
+        $normalizedOrdersForPersistence[] = $next;
+    }
+
+    $encoded = json_encode($normalizedOrdersForPersistence, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     if ($encoded === false) {
         return false;
     }
@@ -2442,27 +3030,15 @@ function save_customer_orders_repository($orders)
         return false;
     }
 
-    customer_order_sync_notifications_to_orders($normalized);
+    customer_order_sync_notifications_to_orders($normalizedOrdersForPersistence);
 
-    $didSyncInventoryStatuses = false;
-    $syncInventoryResult = customer_order_synchronize_equipment_inventory_in_use_statuses(
-        $normalized,
-        null,
-        null,
-        $didSyncInventoryStatuses
-    );
-
-    if (!$didSyncInventoryStatuses) {
+    if (!$didMutateInventoryFromSync) {
         return true;
     }
 
     if (!function_exists('save_equipment_inventory_repository')) {
         require_once __DIR__ . '/equipment_inventory_repository.php';
     }
-
-    $inventoryPayload = is_array($syncInventoryResult['inventory'] ?? null)
-        ? $syncInventoryResult['inventory']
-        : [];
 
     return save_equipment_inventory_repository($inventoryPayload);
 }
