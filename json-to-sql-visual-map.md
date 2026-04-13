@@ -1,10 +1,10 @@
-# CREATY JSON to SQL Visual Map
+# CREATY JSON to SQL Visual Map (+ Account SQL Tables)
 
 Generated: 2026-04-13
 
 Scope:
 - Covers all JSON-backed data stores found in `config/` and `config/archives/`.
-- Excludes MySQL account tables (`customer_accounts`, `admin_accounts`, `staff_accounts`) as requested.
+- Includes existing SQL account tables (`customer_accounts`, `admin_accounts`, `staff_accounts`) for screenshot/reference completeness.
 - This is a visualization map for migration/design, not an exact SQL migration script.
 
 ## 1) JSON Stores Found (Top to Bottom)
@@ -28,6 +28,14 @@ Scope:
 | `config/archives/how_it_works_archived.json` | `archived_how_it_works` | array | `archiveKey` |
 | `config/archives/promo_banners_archived.json` | `archived_promo_banners` | array | `archiveKey` |
 
+### Existing SQL Account Tables Included for Screenshot
+
+| SQL Table (already MySQL) | Why included here |
+| --- | --- |
+| `customer_accounts` | Referenced by orders, customer notifications, and customer gcash profiles |
+| `admin_accounts` | Operational account table used by admin auth and admin-created users |
+| `staff_accounts` | Operational account table used by staff auth and admin-created users |
+
 ## 2) FK-Style Connection Map
 
 | From | To | Type | Notes |
@@ -38,20 +46,56 @@ Scope:
 | `equipment_inventory_models.product_key` | `products.product_key` | FK-like | Inventory is keyed by product key |
 | `equipment_inventory_units.product_key` | `products.product_key` | FK-like | Child rows from `units[]` |
 | `equipment_inventory_units.status` | `equipment_statuses.status_token` | FK-like | Status token list comes from statuses JSON |
-| `customer_orders.customer_id` | `customers.id` | External FK | Customer account table is MySQL (excluded) |
+| `customer_orders.customer_id` | `customer_accounts.id` | FK-like | JSON stores customer id as string; target is SQL int id |
 | `customer_order_items.order_id` | `customer_orders.id` | FK | Derived from order `items[]` |
 | `customer_order_items.product_key` | `products.product_key` | Conditional FK | Applies when `item_type='camera'` |
 | `customer_order_items.event_package_key` | `event_packages.package_key` | Derived FK | For `item_type='event-package'` via `item_id='event-{package_key}'` |
 | `customer_order_item_assigned_units.(product_key,serial)` | `equipment_inventory_units.(product_key,serial)` | Composite FK-like | Assignment generated from inventory sync |
-| `customer_notifications.customer_id` | `customers.id` | External FK | Customer account table excluded |
+| `customer_notifications.customer_id` | `customer_accounts.id` | FK-like | Customer notification ownership |
 | `customer_notifications.order_id` | `customer_orders.id` | FK-like | Order-status and delivery notifications |
 | `message_notifications.payload.order_id` | `customer_orders.id` | Conditional FK | Applies when `type='order'` |
-| `customer_gcash_profiles.customer_id` | `customers.id` | External FK | One profile per customer |
+| `customer_gcash_profiles.customer_id` | `customer_accounts.id` | FK-like | One profile per customer |
 | `customer_gcash_profiles.customer_id` | `customer_orders.customer_id` | Logical FK | Payment profile used during order receipt flow |
 | `archived_equipment_units.productKey` | `products.product_key` | Weak FK | Can reference removed products |
 | `archived_equipment_units.productArchiveKey` | `archived_products.archiveKey` | Optional FK | Present when tied to product archive event |
 
 ## 3) SQL-Style Tables (Tabularized)
+
+### 3.0 Account Domain (Existing SQL)
+
+#### `customer_accounts` (already SQL, from `config/db.php`)
+
+| Column | SQL Type | Key | Notes |
+| --- | --- | --- | --- |
+| `id` | INT AUTO_INCREMENT | PK | Referenced by JSON customer-facing records |
+| `first_name` | VARCHAR(100) |  | |
+| `last_name` | VARCHAR(100) |  | |
+| `email` | VARCHAR(190) | UNIQUE | Customer login identity |
+| `skill_level` | VARCHAR(32) |  | Beginner/Professional normalization |
+| `password` | VARCHAR(255) |  | Hashed password |
+| `email_verified_at` | TIMESTAMP NULL |  | Set during email verification flow |
+| `privacy_policy_accepted_at` | TIMESTAMP NULL |  | Set at signup/admin-create |
+| `created_at` | TIMESTAMP |  | Default current timestamp |
+
+#### `admin_accounts` (already SQL, from `config/db.php`)
+
+| Column | SQL Type | Key | Notes |
+| --- | --- | --- | --- |
+| `id` | INT AUTO_INCREMENT | PK | |
+| `username` | VARCHAR(50) | UNIQUE | Admin login identity |
+| `employee_number` | VARCHAR(50) | UNIQUE | Optional/nullable unique value |
+| `password` | VARCHAR(255) |  | Hashed password |
+| `created_at` | TIMESTAMP |  | Default current timestamp |
+
+#### `staff_accounts` (already SQL, from `config/db.php`)
+
+| Column | SQL Type | Key | Notes |
+| --- | --- | --- | --- |
+| `id` | INT AUTO_INCREMENT | PK | |
+| `name` | VARCHAR(190) |  | |
+| `email` | VARCHAR(190) | UNIQUE | Staff login identity |
+| `password` | VARCHAR(255) |  | Hashed password |
+| `created_at` | TIMESTAMP |  | Default current timestamp |
 
 ### 3.1 Product Catalog Domain
 
@@ -355,6 +399,9 @@ Payload structures observed:
 
 | Table(s) Affected | Main Writers (Endpoints / Pages) | Repository Function Layer |
 | --- | --- | --- |
+| `customer_accounts` | `signup_page_customer.php`, `verify_email_page_customer.php`, `dashboard_page_admin.php` (admin creates customer), `account_settings_page_customer.php` (skill level update) | SQL in page/controller layer (no JSON repository wrapper) |
+| `admin_accounts` | `signup_page_admin.php`, `dashboard_page_admin.php` (admin creates admin), `config/db.php` (default admin seed) | SQL in page/controller layer |
+| `staff_accounts` | `dashboard_page_admin.php` (admin creates staff) | SQL in page/controller layer |
 | `customer_orders`, `customer_order_items` | `customer_order_submit.php`, `customer_order_cancel.php`, `customer_order_upload_receipt.php`, `customer_order_upload_delivery_receipt.php`, `admin/dashboard/update_booking_status.php`, `admin/dashboard/upload_delivery_receipt.php`, `admin/dashboard/close_delivery_leg.php` | `append_customer_order_for_customer`, `cancel_customer_order_for_customer`, `upload_customer_order_receipt_for_customer`, `upload_customer_order_delivery_receipt_for_customer`, `upload_customer_order_delivery_receipt_for_admin`, `close_customer_order_delivery_leg_by_admin`, `update_customer_order_status_by_id`, `save_customer_orders_repository` |
 | `customer_notifications` | Auto from order transitions + `customer_notifications_mark_read.php` | `append_customer_order_status_notification`, `append_customer_order_delivery_notification`, `save_customer_notifications_repository` |
 | `message_notifications` | `customer_message_submit.php`, `customer_order_submit.php` (order placed), delivery hooks in order repo, admin notification mark-read/live-update endpoints | `append_message_notification`, `append_order_placed_notification`, `append_order_delivery_notification`, `save_message_notifications_repository` |
@@ -373,3 +420,4 @@ Payload structures observed:
 - Normalize nested arrays (`items`, `units`, `recommendations`, attachments) into child tables when you need strict relational constraints.
 - Keep current token values (status/method enums) as controlled lookup tables or SQL enums to preserve behavior.
 - Keep order `status` label and optionally add a dedicated `status_token` column in SQL for cleaner transitions.
+- Account tables are already SQL in your app, so this document now mirrors them only for schema screenshot consistency.
