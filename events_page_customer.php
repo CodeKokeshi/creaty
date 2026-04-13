@@ -525,7 +525,7 @@ unset($eventPackage);
                     $detailPageUrl = $assetBase . $eventDetailPath . '?package=' . urlencode($eventPackage['key']);
                     ?>
                     <article
-                        class="package-card"
+                        class="package-card<?php echo $discountPercent > 0 ? ' package-card-highlight' : ''; ?>"
                         data-admin-event-package
                         data-admin-event-package-key="<?php echo htmlspecialchars((string) $eventPackage['key'], ENT_QUOTES, 'UTF-8'); ?>"
                         data-admin-event-package-title="<?php echo htmlspecialchars((string) $title, ENT_QUOTES, 'UTF-8'); ?>"
@@ -539,6 +539,10 @@ unset($eventPackage);
                                 <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
                             </button>
                             <button class="product-card-admin-remove" type="button" data-admin-remove-event-package aria-label="Archive <?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?> package">&times;</button>
+                        <?php endif; ?>
+
+                        <?php if ($discountPercent > 0): ?>
+                            <div class="product-ribbon">PROMO <?php echo htmlspecialchars((string) $discountPercent, ENT_QUOTES, 'UTF-8'); ?>% OFF!</div>
                         <?php endif; ?>
 
                         <div
