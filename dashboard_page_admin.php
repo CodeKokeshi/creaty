@@ -81,6 +81,262 @@ function format_admin_local_datetime_label($value, $uppercase = false)
     return $uppercase ? strtoupper($label) : $label;
 }
 
+function admin_local_timezone()
+{
+    if (function_exists('customer_order_timezone')) {
+        $timezone = customer_order_timezone();
+
+        if ($timezone instanceof DateTimeZone) {
+            return $timezone;
+        }
+    }
+
+    static $fallbackTimezone = null;
+
+    if ($fallbackTimezone instanceof DateTimeZone) {
+        return $fallbackTimezone;
+    }
+
+    try {
+        $fallbackTimezone = new DateTimeZone('Asia/Manila');
+    } catch (Throwable $error) {
+        $fallbackTimezone = new DateTimeZone('UTC');
+    }
+
+    return $fallbackTimezone;
+}
+
+function admin_parse_local_datetime($value)
+{
+    $raw = trim((string) $value);
+
+    if ($raw === '') {
+        return null;
+    }
+
+    if (function_exists('customer_order_parse_datetime_value')) {
+        $parsed = customer_order_parse_datetime_value($raw);
+
+        if ($parsed instanceof DateTimeImmutable) {
+            return $parsed;
+        }
+    }
+
+    try {
+        $parsed = new DateTimeImmutable($raw, admin_local_timezone());
+    } catch (Throwable $error) {
+        return null;
+    }
+
+    return $parsed->setTimezone(admin_local_timezone());
+}
+
+function admin_extract_order_usage_datetime($record)
+{
+    if (!is_array($record)) {
+        return null;
+    }
+
+    $handoverTimestamp = admin_parse_local_datetime($record['receive_handover_confirmed_at'] ?? '');
+
+    if ($handoverTimestamp instanceof DateTimeImmutable) {
+        return $handoverTimestamp;
+    }
+
+    $receiveDate = normalize_customer_order_date($record['receive_date'] ?? '');
+    $receiveTime = normalize_customer_order_time($record['receive_time'] ?? '');
+
+    if ($receiveDate !== '') {
+        if (function_exists('customer_order_parse_schedule_datetime') && $receiveTime !== '') {
+            $parsedSchedule = customer_order_parse_schedule_datetime($receiveDate, $receiveTime);
+
+            if ($parsedSchedule instanceof DateTimeImmutable) {
+                return $parsedSchedule->setTimezone(admin_local_timezone());
+            }
+        }
+
+        $scheduleTime = $receiveTime !== '' ? $receiveTime : '00:00';
+        $fallbackSchedule = DateTimeImmutable::createFromFormat('Y-m-d H:i', $receiveDate . ' ' . $scheduleTime, admin_local_timezone());
+        $fallbackScheduleErrors = DateTimeImmutable::getLastErrors();
+
+        if (
+            $fallbackSchedule instanceof DateTimeImmutable
+            && ((int) ($fallbackScheduleErrors['warning_count'] ?? 0)) === 0
+            && ((int) ($fallbackScheduleErrors['error_count'] ?? 0)) === 0
+        ) {
+            return $fallbackSchedule;
+        }
+
+        $fallbackDateOnly = DateTimeImmutable::createFromFormat('Y-m-d', $receiveDate, admin_local_timezone());
+        $fallbackDateErrors = DateTimeImmutable::getLastErrors();
+
+        if (
+            $fallbackDateOnly instanceof DateTimeImmutable
+            && ((int) ($fallbackDateErrors['warning_count'] ?? 0)) === 0
+            && ((int) ($fallbackDateErrors['error_count'] ?? 0)) === 0
+        ) {
+            return $fallbackDateOnly;
+        }
+    }
+
+    return admin_parse_local_datetime($record['created_at'] ?? '');
+}
+
+function admin_extract_order_report_datetime($record)
+{
+    if (!is_array($record)) {
+        return null;
+    }
+
+    $statusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
+
+    if ($statusToken === 'refunded') {
+        $refundTimestamp = admin_parse_local_datetime($record['refund_proof_uploaded_at'] ?? '');
+
+        if ($refundTimestamp instanceof DateTimeImmutable) {
+            return $refundTimestamp;
+        }
+    }
+
+    return admin_parse_local_datetime($record['created_at'] ?? '');
+}
+
+function admin_resolve_booking_item_product_key($item, $products, $nameLookup, $archivedProductsByOriginalKey, $archivedProductsByLookupLabel)
+{
+    if (!is_array($item)) {
+        return '';
+    }
+
+    $resolvedProductKey = '';
+
+    if (function_exists('customer_order_resolve_item_product_key')) {
+        $resolvedProductKey = normalize_customer_order_product_key(
+            customer_order_resolve_item_product_key($item, $products, $nameLookup)
+        );
+    }
+
+    if ($resolvedProductKey === '') {
+        $resolvedProductKey = normalize_customer_order_product_key($item['product_key'] ?? $item['productKey'] ?? '');
+    }
+
+    if ($resolvedProductKey === '' && function_exists('customer_order_extract_product_key_from_item_id')) {
+        $resolvedProductKey = customer_order_extract_product_key_from_item_id($item['item_id'] ?? $item['itemId'] ?? '');
+    }
+
+    if ($resolvedProductKey !== '') {
+        return $resolvedProductKey;
+    }
+
+    $lookupLabel = function_exists('customer_order_normalize_lookup_label')
+        ? customer_order_normalize_lookup_label($item['name'] ?? '')
+        : strtolower(trim((string) ($item['name'] ?? '')));
+
+    if ($lookupLabel !== '' && isset($nameLookup[$lookupLabel])) {
+        return normalize_customer_order_product_key($nameLookup[$lookupLabel]);
+    }
+
+    if ($lookupLabel !== '' && isset($archivedProductsByLookupLabel[$lookupLabel]) && is_array($archivedProductsByLookupLabel[$lookupLabel])) {
+        return normalize_customer_order_product_key($archivedProductsByLookupLabel[$lookupLabel]['originalKey'] ?? '');
+    }
+
+    return '';
+}
+
+function admin_resolve_product_payload_by_key($productKey, $item, $products, $archivedProductsByOriginalKey, $archivedProductsByLookupLabel)
+{
+    $normalizedProductKey = normalize_customer_order_product_key($productKey);
+
+    if ($normalizedProductKey !== '' && isset($products[$normalizedProductKey]) && is_array($products[$normalizedProductKey])) {
+        return $products[$normalizedProductKey];
+    }
+
+    if (
+        $normalizedProductKey !== ''
+        && isset($archivedProductsByOriginalKey[$normalizedProductKey])
+        && is_array($archivedProductsByOriginalKey[$normalizedProductKey])
+        && is_array($archivedProductsByOriginalKey[$normalizedProductKey]['product'] ?? null)
+    ) {
+        return $archivedProductsByOriginalKey[$normalizedProductKey]['product'];
+    }
+
+    $lookupLabel = function_exists('customer_order_normalize_lookup_label')
+        ? customer_order_normalize_lookup_label($item['name'] ?? '')
+        : strtolower(trim((string) ($item['name'] ?? '')));
+
+    if (
+        $lookupLabel !== ''
+        && isset($archivedProductsByLookupLabel[$lookupLabel])
+        && is_array($archivedProductsByLookupLabel[$lookupLabel])
+        && is_array($archivedProductsByLookupLabel[$lookupLabel]['product'] ?? null)
+    ) {
+        return $archivedProductsByLookupLabel[$lookupLabel]['product'];
+    }
+
+    return null;
+}
+
+function admin_calculate_booking_amount_without_penalty($record, $products, $nameLookup, $archivedProductsByOriginalKey, $archivedProductsByLookupLabel)
+{
+    if (!is_array($record)) {
+        return 0.0;
+    }
+
+    $items = is_array($record['items'] ?? null)
+        ? array_values($record['items'])
+        : [];
+    $amount = 0.0;
+
+    foreach ($items as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $resolvedProductKey = admin_resolve_booking_item_product_key(
+            $item,
+            $products,
+            $nameLookup,
+            $archivedProductsByOriginalKey,
+            $archivedProductsByLookupLabel
+        );
+        $productPayload = admin_resolve_product_payload_by_key(
+            $resolvedProductKey,
+            $item,
+            $products,
+            $archivedProductsByOriginalKey,
+            $archivedProductsByLookupLabel
+        );
+
+        if (!is_array($productPayload)) {
+            continue;
+        }
+
+        $basePrice = (float) ($productPayload['price'] ?? 0);
+
+        if (!is_finite($basePrice) || $basePrice < 0) {
+            $basePrice = 0;
+        }
+
+        $discountPercent = (int) ($productPayload['discountPercent'] ?? 0);
+        $discountPercent = max(0, min(95, $discountPercent));
+
+        $effectivePrice = $basePrice * (1 - ($discountPercent / 100));
+
+        if (!is_finite($effectivePrice) || $effectivePrice < 0) {
+            $effectivePrice = 0;
+        }
+
+        $qty = max(1, (int) ($item['qty'] ?? 1));
+        $days = max(1, (int) ($item['days'] ?? 1));
+        $lineAmount = $effectivePrice * $qty * $days;
+
+        if (is_finite($lineAmount) && $lineAmount > 0) {
+            $amount += $lineAmount;
+        }
+    }
+
+    return $amount;
+}
+
 function admin_normalize_media_relative_path($value)
 {
     $path = trim((string) $value);
@@ -567,6 +823,32 @@ $adminBookingDetails = [];
 $customerBookingsRecords = load_customer_orders_repository();
 $customerGcashProfiles = load_customer_gcash_profiles_repository();
 $adminBookingsSignature = customer_orders_live_state_signature($customerBookingsRecords);
+$priorityCustomerSuccessfulThreshold = 3;
+$customerSuccessfulTransactionsById = [];
+
+foreach ($customerBookingsRecords as $bookingRecord) {
+    if (!is_array($bookingRecord)) {
+        continue;
+    }
+
+    $customerId = trim((string) ($bookingRecord['customer_id'] ?? ''));
+
+    if ($customerId === '') {
+        continue;
+    }
+
+    $statusToken = normalize_customer_order_status_token($bookingRecord['status'] ?? 'pending');
+
+    if ($statusToken !== 'completed') {
+        continue;
+    }
+
+    if (!isset($customerSuccessfulTransactionsById[$customerId])) {
+        $customerSuccessfulTransactionsById[$customerId] = 0;
+    }
+
+    $customerSuccessfulTransactionsById[$customerId]++;
+}
 
 if (!is_array($products)) {
     $products = [];
@@ -628,6 +910,227 @@ if (is_array($archivedProducts) && $archivedProducts) {
         }
     }
 }
+
+$timesUsedLast30DaysByProduct = [];
+$timesUsedStatuses = ['ongoing', 'return', 'completed'];
+$reportsMonthLabels = [
+    1 => 'January',
+    2 => 'February',
+    3 => 'March',
+    4 => 'April',
+    5 => 'May',
+    6 => 'June',
+    7 => 'July',
+    8 => 'August',
+    9 => 'September',
+    10 => 'October',
+    11 => 'November',
+    12 => 'December',
+];
+$reportYearLookup = [];
+$reportRowsByMonth = [];
+$reportApprovedPaymentStatuses = ['approved', 'ongoing', 'return', 'completed', 'awaiting-refund'];
+$reportNowDateTime = function_exists('customer_order_datetime_from_timestamp')
+    ? customer_order_datetime_from_timestamp()
+    : (new DateTimeImmutable('now', admin_local_timezone()));
+$reportTimesUsedWindowStart = $reportNowDateTime->sub(new DateInterval('P30D'));
+
+foreach ($reportsMonthLabels as $monthNumber => $monthLabel) {
+    $reportRowsByMonth[$monthNumber] = [
+        'monthNumber' => (int) $monthNumber,
+        'monthLabel' => $monthLabel,
+        'transactions' => 0,
+        'revenue' => 0.0,
+    ];
+}
+
+foreach ($customerBookingsRecords as $bookingRecord) {
+    if (!is_array($bookingRecord)) {
+        continue;
+    }
+
+    $createdAtDateTime = admin_extract_order_report_datetime($bookingRecord);
+
+    if ($createdAtDateTime instanceof DateTimeImmutable) {
+        $reportYearLookup[(int) $createdAtDateTime->format('Y')] = true;
+    }
+
+    $statusToken = normalize_customer_order_status_token($bookingRecord['status'] ?? 'pending');
+
+    if (!in_array($statusToken, $timesUsedStatuses, true)) {
+        continue;
+    }
+
+    $usageDateTime = admin_extract_order_usage_datetime($bookingRecord);
+
+    if (!$usageDateTime instanceof DateTimeImmutable) {
+        continue;
+    }
+
+    if ($usageDateTime < $reportTimesUsedWindowStart || $usageDateTime > $reportNowDateTime) {
+        continue;
+    }
+
+    $usageItems = is_array($bookingRecord['items'] ?? null)
+        ? array_values($bookingRecord['items'])
+        : [];
+
+    foreach ($usageItems as $usageItem) {
+        if (!is_array($usageItem)) {
+            continue;
+        }
+
+        $resolvedProductKey = admin_resolve_booking_item_product_key(
+            $usageItem,
+            $products,
+            $productNameLookup,
+            $archivedProductsByOriginalKey,
+            $archivedProductsByLookupLabel
+        );
+
+        if ($resolvedProductKey === '') {
+            continue;
+        }
+
+        if (!isset($timesUsedLast30DaysByProduct[$resolvedProductKey])) {
+            $timesUsedLast30DaysByProduct[$resolvedProductKey] = 0;
+        }
+
+        $timesUsedLast30DaysByProduct[$resolvedProductKey] += max(1, (int) ($usageItem['qty'] ?? 1));
+    }
+}
+
+$currentReportYear = (int) $reportNowDateTime->format('Y');
+$reportYearLookup[$currentReportYear] = true;
+$reportYearOptions = array_map('intval', array_keys($reportYearLookup));
+rsort($reportYearOptions, SORT_NUMERIC);
+
+if (!$reportYearOptions) {
+    $reportYearOptions = [$currentReportYear];
+}
+
+$reportsSortColumn = strtolower(trim((string) ($_GET['reports_sort'] ?? 'month')));
+
+if (!in_array($reportsSortColumn, ['month', 'transactions', 'revenue'], true)) {
+    $reportsSortColumn = 'month';
+}
+
+$reportsDefaultSortDirection = $reportsSortColumn === 'month' ? 'asc' : 'desc';
+$reportsSortDirection = strtolower(trim((string) ($_GET['reports_dir'] ?? $reportsDefaultSortDirection)));
+
+if (!in_array($reportsSortDirection, ['asc', 'desc'], true)) {
+    $reportsSortDirection = $reportsDefaultSortDirection;
+}
+
+$reportsSelectedYearRaw = trim((string) ($_GET['reports_year'] ?? ''));
+$reportsSelectedYear = ctype_digit($reportsSelectedYearRaw)
+    ? (int) $reportsSelectedYearRaw
+    : (int) ($reportYearOptions[0] ?? $currentReportYear);
+
+if (!in_array($reportsSelectedYear, $reportYearOptions, true)) {
+    $reportsSelectedYear = (int) ($reportYearOptions[0] ?? $currentReportYear);
+}
+
+foreach ($customerBookingsRecords as $bookingRecord) {
+    if (!is_array($bookingRecord)) {
+        continue;
+    }
+
+    $createdAtDateTime = admin_extract_order_report_datetime($bookingRecord);
+
+    if (!$createdAtDateTime instanceof DateTimeImmutable) {
+        continue;
+    }
+
+    if ((int) $createdAtDateTime->format('Y') !== $reportsSelectedYear) {
+        continue;
+    }
+
+    $monthNumber = (int) $createdAtDateTime->format('n');
+
+    if (!isset($reportRowsByMonth[$monthNumber])) {
+        continue;
+    }
+
+    $statusToken = normalize_customer_order_status_token($bookingRecord['status'] ?? 'pending');
+    $bookingAmount = admin_calculate_booking_amount_without_penalty(
+        $bookingRecord,
+        $products,
+        $productNameLookup,
+        $archivedProductsByOriginalKey,
+        $archivedProductsByLookupLabel
+    );
+
+    if (in_array($statusToken, $reportApprovedPaymentStatuses, true)) {
+        $reportRowsByMonth[$monthNumber]['transactions']++;
+        $reportRowsByMonth[$monthNumber]['revenue'] += $bookingAmount;
+    }
+
+    if ($statusToken === 'refunded') {
+        $reportRowsByMonth[$monthNumber]['transactions']--;
+        $reportRowsByMonth[$monthNumber]['revenue'] -= $bookingAmount;
+    }
+}
+
+$reportRows = array_values($reportRowsByMonth);
+
+usort($reportRows, static function ($left, $right) use ($reportsSortColumn, $reportsSortDirection) {
+    $leftMonth = (int) ($left['monthNumber'] ?? 0);
+    $rightMonth = (int) ($right['monthNumber'] ?? 0);
+
+    if ($reportsSortColumn === 'transactions') {
+        $comparison = ((int) ($left['transactions'] ?? 0)) <=> ((int) ($right['transactions'] ?? 0));
+
+        if ($comparison === 0) {
+            $comparison = $leftMonth <=> $rightMonth;
+        }
+
+        return $reportsSortDirection === 'asc' ? $comparison : -$comparison;
+    }
+
+    if ($reportsSortColumn === 'revenue') {
+        $comparison = ((float) ($left['revenue'] ?? 0)) <=> ((float) ($right['revenue'] ?? 0));
+
+        if ($comparison === 0) {
+            $comparison = $leftMonth <=> $rightMonth;
+        }
+
+        return $reportsSortDirection === 'asc' ? $comparison : -$comparison;
+    }
+
+    $comparison = $leftMonth <=> $rightMonth;
+
+    return $reportsSortDirection === 'asc' ? $comparison : -$comparison;
+});
+
+$reportsMonthNextDirection = ($reportsSortColumn === 'month' && $reportsSortDirection === 'asc')
+    ? 'desc'
+    : 'asc';
+$reportsTransactionsNextDirection = ($reportsSortColumn === 'transactions' && $reportsSortDirection === 'asc')
+    ? 'desc'
+    : 'asc';
+$reportsRevenueNextDirection = ($reportsSortColumn === 'revenue' && $reportsSortDirection === 'asc')
+    ? 'desc'
+    : 'asc';
+
+$reportsMonthSortUrl = $adminHomePath . '?' . http_build_query([
+    'admin_view' => 'reports',
+    'reports_year' => (string) $reportsSelectedYear,
+    'reports_sort' => 'month',
+    'reports_dir' => $reportsMonthNextDirection,
+]);
+$reportsTransactionsSortUrl = $adminHomePath . '?' . http_build_query([
+    'admin_view' => 'reports',
+    'reports_year' => (string) $reportsSelectedYear,
+    'reports_sort' => 'transactions',
+    'reports_dir' => $reportsTransactionsNextDirection,
+]);
+$reportsRevenueSortUrl = $adminHomePath . '?' . http_build_query([
+    'admin_view' => 'reports',
+    'reports_year' => (string) $reportsSelectedYear,
+    'reports_sort' => 'revenue',
+    'reports_dir' => $reportsRevenueNextDirection,
+]);
 
 foreach ($customerBookingsRecords as $bookingRecord) {
     if (!is_array($bookingRecord)) {
@@ -744,6 +1247,10 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         : '';
     $bookingTimestampRaw = trim((string) ($bookingRecord['created_at'] ?? ''));
     $bookingTimestampLabel = format_admin_local_datetime_label($bookingTimestampRaw, true);
+    $bookingCustomerId = trim((string) ($bookingRecord['customer_id'] ?? ''));
+    $successfulTransactionCount = max(0, (int) ($customerSuccessfulTransactionsById[$bookingCustomerId] ?? 0));
+    $isPriorityCustomer = $bookingCustomerId !== '' && $successfulTransactionCount >= $priorityCustomerSuccessfulThreshold;
+    $isPendingRequest = $bookingStatusToken === 'pending';
 
     $customerName = trim((string) ($bookingRecord['customer_name'] ?? ''));
     if ($customerName === '') {
@@ -759,6 +1266,9 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         'time' => $bookingTimestampLabel,
         'status' => $bookingStatusLabel,
         'statusClass' => $bookingStatusClass,
+        'isPendingRequest' => $isPendingRequest,
+        'isPriorityCustomer' => $isPriorityCustomer,
+        'showPriorityStar' => $isPendingRequest && $isPriorityCustomer,
     ];
 
     $bookingItemsWithImages = [];
@@ -839,6 +1349,8 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         'status' => $bookingStatusLabel,
         'statusClass' => $bookingStatusClass,
         'statusToken' => $bookingStatusToken,
+        'isPriorityCustomer' => $isPriorityCustomer,
+        'successfulTransactions' => $successfulTransactionCount,
         'items' => $bookingItemsWithImages,
         'receiveDate' => (string) ($bookingRecord['receive_date'] ?? ''),
         'receiveTime' => (string) ($bookingRecord['receive_time'] ?? ''),
@@ -903,6 +1415,29 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         'forReturnPenaltyAmount' => max(0, (int) ($forReturnState['penalty_amount'] ?? 0)),
     ];
 }
+
+$priorityPendingBookings = [];
+$regularPendingBookings = [];
+$nonPendingBookings = [];
+
+foreach ($dashboardBookings as $dashboardBookingRow) {
+    $isPendingRequest = !empty($dashboardBookingRow['isPendingRequest']);
+    $isPriorityCustomer = !empty($dashboardBookingRow['isPriorityCustomer']);
+
+    if (!$isPendingRequest) {
+        $nonPendingBookings[] = $dashboardBookingRow;
+        continue;
+    }
+
+    if ($isPriorityCustomer) {
+        $priorityPendingBookings[] = $dashboardBookingRow;
+        continue;
+    }
+
+    $regularPendingBookings[] = $dashboardBookingRow;
+}
+
+$dashboardBookings = array_merge($priorityPendingBookings, $regularPendingBookings, $nonPendingBookings);
 
 if (!is_array($products)) {
     $products = [];
@@ -1436,7 +1971,7 @@ foreach ($products as $productKey => $product) {
             'unitId' => equipment_unit_identifier($modelLabel, $serial),
             'status' => $statusValue,
             'lockedInUse' => $statusValue === 'in-use' && $inUseRequired > 0,
-            'timesUsed' => (int) ($inventoryEntry['timesUsed'] ?? 0)
+            'timesUsed' => (int) ($timesUsedLast30DaysByProduct[$normalizedProductKey] ?? 0)
         ];
     }
 }
@@ -1566,7 +2101,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260410-1">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260413-3">
 </head>
 <body
     class="home-page-customer"
@@ -1811,7 +2346,14 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                         <?php if ($dashboardBookings): ?>
                             <?php foreach ($dashboardBookings as $booking): ?>
                                 <tr class="admin-bookings-row" data-admin-booking-row data-admin-booking-id="<?php echo htmlspecialchars((string) ($booking['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" tabindex="0">
-                                    <td class="admin-bookings-name-col"><?php echo htmlspecialchars((string) ($booking['name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td class="admin-bookings-name-col">
+                                        <span class="admin-bookings-name-wrap">
+                                            <?php if (!empty($booking['showPriorityStar'])): ?>
+                                                <img class="admin-bookings-priority-star" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/star.svg" alt="Priority customer" title="Priority customer">
+                                            <?php endif; ?>
+                                            <span><?php echo htmlspecialchars((string) ($booking['name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </span>
+                                    </td>
                                     <td><?php echo htmlspecialchars((string) ($booking['order'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                     <td><?php echo htmlspecialchars((string) ($booking['time'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                     <td>
@@ -2056,32 +2598,68 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
 
         <section class="admin-reports-shell" data-admin-dashboard-panel="reports" hidden>
             <div class="admin-reports-head" role="group" aria-label="Report breakdown">
-                <p>Breakdown by:</p>
-                <span class="admin-reports-breakdown-value">Month</span>
+                <div class="admin-reports-breakdown-group">
+                    <p>Breakdown by:</p>
+                    <span class="admin-reports-breakdown-value"><?php echo htmlspecialchars((string) $reportsSelectedYear, ENT_QUOTES, 'UTF-8'); ?></span>
+                </div>
+
+                <form class="admin-reports-year-filter" method="get" action="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="admin_view" value="reports">
+                    <input type="hidden" name="reports_sort" value="<?php echo htmlspecialchars($reportsSortColumn, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="reports_dir" value="<?php echo htmlspecialchars($reportsSortDirection, ENT_QUOTES, 'UTF-8'); ?>">
+                    <label for="admin-reports-year">Year:</label>
+                    <select id="admin-reports-year" name="reports_year" onchange="this.form.submit()">
+                        <?php foreach ($reportYearOptions as $reportYearOption): ?>
+                            <option value="<?php echo htmlspecialchars((string) $reportYearOption, ENT_QUOTES, 'UTF-8'); ?>" <?php echo (int) $reportYearOption === $reportsSelectedYear ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) $reportYearOption, ENT_QUOTES, 'UTF-8'); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="submit">Apply</button>
+                </form>
             </div>
 
             <div class="admin-reports-table-wrap" role="region" aria-label="Reports list">
                 <table class="admin-reports-table">
                     <thead>
                         <tr>
-                            <th scope="col">MONTH</th>
-                            <th scope="col">TRANSACTIONS</th>
-                            <th scope="col">REVENUE</th>
+                            <th scope="col">
+                                <a class="admin-reports-sort-link<?php echo $reportsSortColumn === 'month' ? ' is-active' : ''; ?>" href="<?php echo htmlspecialchars($reportsMonthSortUrl, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <span>MONTH</span>
+                                    <span class="admin-reports-sort-indicator<?php echo $reportsSortColumn !== 'month' ? ' is-inactive' : ''; ?><?php echo $reportsSortColumn === 'month' && $reportsSortDirection === 'desc' ? ' is-desc' : ''; ?>" aria-hidden="true">
+                                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/arrow_up.svg" alt="">
+                                    </span>
+                                </a>
+                            </th>
+                            <th scope="col">
+                                <a class="admin-reports-sort-link<?php echo $reportsSortColumn === 'transactions' ? ' is-active' : ''; ?>" href="<?php echo htmlspecialchars($reportsTransactionsSortUrl, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <span>TRANSACTIONS</span>
+                                    <span class="admin-reports-sort-indicator<?php echo $reportsSortColumn !== 'transactions' ? ' is-inactive' : ''; ?><?php echo $reportsSortColumn === 'transactions' && $reportsSortDirection === 'desc' ? ' is-desc' : ''; ?>" aria-hidden="true">
+                                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/arrow_up.svg" alt="">
+                                    </span>
+                                </a>
+                            </th>
+                            <th scope="col">
+                                <a class="admin-reports-sort-link<?php echo $reportsSortColumn === 'revenue' ? ' is-active' : ''; ?>" href="<?php echo htmlspecialchars($reportsRevenueSortUrl, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <span>REVENUE</span>
+                                    <span class="admin-reports-sort-indicator<?php echo $reportsSortColumn !== 'revenue' ? ' is-inactive' : ''; ?><?php echo $reportsSortColumn === 'revenue' && $reportsSortDirection === 'desc' ? ' is-desc' : ''; ?>" aria-hidden="true">
+                                        <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/arrow_up.svg" alt="">
+                                    </span>
+                                </a>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td><span class="admin-reports-month-pill">January</span></td><td>53</td><td>&#8369; 5,000</td></tr>
-                        <tr><td><span class="admin-reports-month-pill">February</span></td><td>53</td><td>&#8369; 5,000</td></tr>
-                        <tr><td><span class="admin-reports-month-pill">March</span></td><td>53</td><td>&#8369; 5,000</td></tr>
-                        <tr><td><span class="admin-reports-month-pill">April</span></td><td>53</td><td>&#8369; 5,000</td></tr>
-                        <tr><td><span class="admin-reports-month-pill">May</span></td><td>53</td><td>&#8369; 5,000</td></tr>
-                        <tr><td><span class="admin-reports-month-pill">June</span></td><td>53</td><td>&#8369; 5,000</td></tr>
-                        <tr><td><span class="admin-reports-month-pill">July</span></td><td>53</td><td>&#8369; 5,000</td></tr>
-                        <tr><td><span class="admin-reports-month-pill">August</span></td><td>53</td><td>&#8369; 5,000</td></tr>
-                        <tr><td><span class="admin-reports-month-pill">September</span></td><td>53</td><td>&#8369; 5,000</td></tr>
-                        <tr><td><span class="admin-reports-month-pill">October</span></td><td>53</td><td>&#8369; 5,000</td></tr>
-                        <tr><td><span class="admin-reports-month-pill">November</span></td><td>53</td><td>&#8369; 5,000</td></tr>
-                        <tr><td><span class="admin-reports-month-pill">December</span></td><td>53</td><td>&#8369; 5,000</td></tr>
+                        <?php foreach ($reportRows as $reportRow): ?>
+                            <?php
+                                $reportRevenue = (float) ($reportRow['revenue'] ?? 0);
+                                $reportRevenueAbsolute = abs($reportRevenue);
+                                $reportRevenuePrefix = $reportRevenue < 0 ? '-&#8369; ' : '&#8369; ';
+                            ?>
+                            <tr>
+                                <td><span class="admin-reports-month-pill"><?php echo htmlspecialchars((string) ($reportRow['monthLabel'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                <td><?php echo htmlspecialchars((string) ((int) ($reportRow['transactions'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo $reportRevenuePrefix; ?><?php echo htmlspecialchars(number_format($reportRevenueAbsolute, 2), ENT_QUOTES, 'UTF-8'); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
