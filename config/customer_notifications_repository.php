@@ -196,6 +196,78 @@ function save_customer_notifications_repository($notifications)
     return file_put_contents(customer_notifications_repository_path(), $encoded . PHP_EOL, LOCK_EX) !== false;
 }
 
+function customer_notification_build_order_id_lookup($orderIds)
+{
+    $lookup = [];
+
+    if (!is_array($orderIds)) {
+        return $lookup;
+    }
+
+    foreach ($orderIds as $key => $value) {
+        $candidate = is_int($key) ? $value : $key;
+        $normalizedOrderId = strtoupper(trim((string) $candidate));
+
+        if ($normalizedOrderId === '') {
+            $normalizedOrderId = strtoupper(trim((string) $value));
+        }
+
+        if ($normalizedOrderId === '') {
+            continue;
+        }
+
+        $lookup[$normalizedOrderId] = true;
+    }
+
+    return $lookup;
+}
+
+function prune_customer_order_notifications_by_order_ids($orderIds, $notifications = null)
+{
+    $source = is_array($notifications) ? $notifications : load_customer_notifications_repository();
+    $allowedOrderIds = customer_notification_build_order_id_lookup($orderIds);
+    $filtered = [];
+    $changed = false;
+    $removedCount = 0;
+
+    foreach ($source as $record) {
+        if (!is_array($record)) {
+            $changed = true;
+            $removedCount += 1;
+            continue;
+        }
+
+        $normalized = normalize_customer_notification_record($record);
+
+        if ($normalized['customer_id'] === '') {
+            $changed = true;
+            $removedCount += 1;
+            continue;
+        }
+
+        if ($normalized['type'] !== 'order-status') {
+            $filtered[] = $normalized;
+            continue;
+        }
+
+        $orderId = strtoupper(trim((string) ($normalized['order_id'] ?? '')));
+
+        if ($orderId !== '' && isset($allowedOrderIds[$orderId])) {
+            $filtered[] = $normalized;
+            continue;
+        }
+
+        $changed = true;
+        $removedCount += 1;
+    }
+
+    return [
+        'notifications' => array_values($filtered),
+        'changed' => $changed,
+        'removedCount' => $removedCount,
+    ];
+}
+
 function sort_customer_notifications_for_view($notifications)
 {
     if (!is_array($notifications)) {

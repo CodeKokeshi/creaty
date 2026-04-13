@@ -2346,7 +2346,73 @@ function load_customer_orders_repository()
         save_equipment_inventory_repository($inventoryPayload);
     }
 
+    customer_order_sync_notifications_to_orders($orders);
+
     return $orders;
+}
+
+function customer_order_build_id_lookup($orders)
+{
+    $lookup = [];
+
+    if (!is_array($orders)) {
+        return $lookup;
+    }
+
+    foreach ($orders as $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        $orderId = strtoupper(trim((string) ($record['id'] ?? '')));
+
+        if ($orderId === '') {
+            continue;
+        }
+
+        $lookup[$orderId] = true;
+    }
+
+    return $lookup;
+}
+
+function customer_order_sync_notifications_to_orders($orders)
+{
+    $orderIdLookup = customer_order_build_id_lookup($orders);
+
+    if (!function_exists('prune_customer_order_notifications_by_order_ids')) {
+        require_once __DIR__ . '/customer_notifications_repository.php';
+    }
+
+    if (
+        function_exists('prune_customer_order_notifications_by_order_ids')
+        && function_exists('load_customer_notifications_repository')
+        && function_exists('save_customer_notifications_repository')
+    ) {
+        $customerNotifications = load_customer_notifications_repository();
+        $customerPruneResult = prune_customer_order_notifications_by_order_ids($orderIdLookup, $customerNotifications);
+
+        if (!empty($customerPruneResult['changed']) && is_array($customerPruneResult['notifications'] ?? null)) {
+            save_customer_notifications_repository($customerPruneResult['notifications']);
+        }
+    }
+
+    if (!function_exists('prune_message_order_notifications_by_order_ids')) {
+        require_once __DIR__ . '/message_notifications_repository.php';
+    }
+
+    if (
+        function_exists('prune_message_order_notifications_by_order_ids')
+        && function_exists('load_message_notifications_repository')
+        && function_exists('save_message_notifications_repository')
+    ) {
+        $adminNotifications = load_message_notifications_repository();
+        $adminPruneResult = prune_message_order_notifications_by_order_ids($orderIdLookup, $adminNotifications);
+
+        if (!empty($adminPruneResult['changed']) && is_array($adminPruneResult['notifications'] ?? null)) {
+            save_message_notifications_repository($adminPruneResult['notifications']);
+        }
+    }
 }
 
 function save_customer_orders_repository($orders)
@@ -2375,6 +2441,8 @@ function save_customer_orders_repository($orders)
     if (file_put_contents(customer_orders_repository_path(), $encoded . PHP_EOL, LOCK_EX) === false) {
         return false;
     }
+
+    customer_order_sync_notifications_to_orders($normalized);
 
     $didSyncInventoryStatuses = false;
     $syncInventoryResult = customer_order_synchronize_equipment_inventory_in_use_statuses(
