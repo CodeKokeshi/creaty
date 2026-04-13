@@ -1,138 +1,97 @@
-# CREATY JSON to SQL Visual Map (+ Account SQL Tables)
+# CREATY SQL Visual Tables
 
-Generated: 2026-04-13
-
-Scope:
-- Covers all JSON-backed data stores found in `config/` and `config/archives/`.
-- Includes existing SQL account tables (`customer_accounts`, `admin_accounts`, `staff_accounts`) for screenshot/reference completeness.
-- This is a visualization map for migration/design, not an exact SQL migration script.
-
-## 1) JSON Stores Found (Top to Bottom)
-
-| JSON File | Suggested SQL Table | Current JSON Shape | Primary Key Candidate |
-| --- | --- | --- | --- |
-| `config/products.json` | `products` | object map keyed by product key | `product_key` (from object key) |
-| `config/brands.json` | `product_brands` | array of strings | `brand_name` |
-| `config/categories.json` | `product_categories` | array of strings | `category_name` |
-| `config/event_packages.json` | `event_packages` | object map keyed by package key | `package_key` (from object key) |
-| `config/equipment_inventory.json` | `equipment_inventory_models` + `equipment_inventory_units` | object map with nested units array | `product_key` + (`product_key`,`serial`) |
-| `config/equipment_statuses.json` | `equipment_statuses` | array of strings | `status_token` |
-| `config/customer_orders.json` | `customer_orders` + `customer_order_items` | array of order objects with nested items | `id` + derived item key |
-| `config/customer_notifications.json` | `customer_notifications` | array of notification objects | `id` |
-| `config/message_notifications.json` | `message_notifications` + `message_notification_attachments` | array with polymorphic payload | `id` |
-| `config/customer_gcash_profiles.json` | `customer_gcash_profiles` | array of customer gcash records | `customer_id` |
-| `config/gcash_qr.json` | `gcash_qr_settings` | single object | single row (`id=1`) |
-| `config/customer_terms.json` | `customer_terms` | single object | single row (`id=1`) |
-| `config/archives/products_archived.json` | `archived_products` | array of archive entries with product snapshot | `archiveKey` |
-| `config/archives/equipment_units_archived.json` | `archived_equipment_units` | array of archived unit entries | `archiveKey` |
-| `config/archives/how_it_works_archived.json` | `archived_how_it_works` | array | `archiveKey` |
-| `config/archives/promo_banners_archived.json` | `archived_promo_banners` | array | `archiveKey` |
-
-### Existing SQL Account Tables Included for Screenshot
-
-| SQL Table (already MySQL) | Why included here |
-| --- | --- |
-| `customer_accounts` | Referenced by orders, customer notifications, and customer gcash profiles |
-| `admin_accounts` | Operational account table used by admin auth and admin-created users |
-| `staff_accounts` | Operational account table used by staff auth and admin-created users |
-
-## 2) FK-Style Connection Map
-
-| From | To | Type | Notes |
-| --- | --- | --- | --- |
-| `products.brand` | `product_brands.brand_name` | FK-like | Enforced by brand normalization helpers |
-| `products.category` | `product_categories.category_name` | FK-like | Enforced by category normalization helpers |
-| `products.recommendations[]` | `products.product_key` | self-FK (array) | Product recommendations point to product keys |
-| `equipment_inventory_models.product_key` | `products.product_key` | FK-like | Inventory is keyed by product key |
-| `equipment_inventory_units.product_key` | `products.product_key` | FK-like | Child rows from `units[]` |
-| `equipment_inventory_units.status` | `equipment_statuses.status_token` | FK-like | Status token list comes from statuses JSON |
-| `customer_orders.customer_id` | `customer_accounts.id` | FK-like | JSON stores customer id as string; target is SQL int id |
-| `customer_order_items.order_id` | `customer_orders.id` | FK | Derived from order `items[]` |
-| `customer_order_items.product_key` | `products.product_key` | Conditional FK | Applies when `item_type='camera'` |
-| `customer_order_items.event_package_key` | `event_packages.package_key` | Derived FK | For `item_type='event-package'` via `item_id='event-{package_key}'` |
-| `customer_order_item_assigned_units.(product_key,serial)` | `equipment_inventory_units.(product_key,serial)` | Composite FK-like | Assignment generated from inventory sync |
-| `customer_notifications.customer_id` | `customer_accounts.id` | FK-like | Customer notification ownership |
-| `customer_notifications.order_id` | `customer_orders.id` | FK-like | Order-status and delivery notifications |
-| `message_notifications.payload.order_id` | `customer_orders.id` | Conditional FK | Applies when `type='order'` |
-| `customer_gcash_profiles.customer_id` | `customer_accounts.id` | FK-like | One profile per customer |
-| `customer_gcash_profiles.customer_id` | `customer_orders.customer_id` | Logical FK | Payment profile used during order receipt flow |
-| `archived_equipment_units.productKey` | `products.product_key` | Weak FK | Can reference removed products |
-| `archived_equipment_units.productArchiveKey` | `archived_products.archiveKey` | Optional FK | Present when tied to product archive event |
-
-## 3) SQL-Style Tables (Tabularized)
-
-### 3.0 Account Domain (Existing SQL)
-
-#### `customer_accounts` (already SQL, from `config/db.php`)
-
-| Column | SQL Type | Key | Notes |
-| --- | --- | --- | --- |
-| `id` | INT AUTO_INCREMENT | PK | Referenced by JSON customer-facing records |
-| `first_name` | VARCHAR(100) |  | |
-| `last_name` | VARCHAR(100) |  | |
-| `email` | VARCHAR(190) | UNIQUE | Customer login identity |
-| `skill_level` | VARCHAR(32) |  | Beginner/Professional normalization |
-| `password` | VARCHAR(255) |  | Hashed password |
-| `email_verified_at` | TIMESTAMP NULL |  | Set during email verification flow |
-| `privacy_policy_accepted_at` | TIMESTAMP NULL |  | Set at signup/admin-create |
-| `created_at` | TIMESTAMP |  | Default current timestamp |
-
-#### `admin_accounts` (already SQL, from `config/db.php`)
+## customer_accounts
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
 | `id` | INT AUTO_INCREMENT | PK | |
-| `username` | VARCHAR(50) | UNIQUE | Admin login identity |
-| `employee_number` | VARCHAR(50) | UNIQUE | Optional/nullable unique value |
-| `password` | VARCHAR(255) |  | Hashed password |
-| `created_at` | TIMESTAMP |  | Default current timestamp |
+| `first_name` | VARCHAR(100) |  | |
+| `last_name` | VARCHAR(100) |  | |
+| `email` | VARCHAR(190) | UNIQUE | |
+| `skill_level` | VARCHAR(32) |  | |
+| `password` | VARCHAR(255) |  | |
+| `email_verified_at` | TIMESTAMP NULL |  | |
+| `privacy_policy_accepted_at` | TIMESTAMP NULL |  | |
+| `created_at` | TIMESTAMP |  | |
 
-#### `staff_accounts` (already SQL, from `config/db.php`)
+| id | first_name | last_name | email | skill_level | password | email_verified_at | privacy_policy_accepted_at | created_at |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | qwe | qwe | qwe@gmail.com | Beginner | (hashed) |  |  |  |
+
+## admin_accounts
+
+| Column | SQL Type | Key | Notes |
+| --- | --- | --- | --- |
+| `id` | INT AUTO_INCREMENT | PK | |
+| `username` | VARCHAR(50) | UNIQUE | |
+| `employee_number` | VARCHAR(50) | UNIQUE | Optional nullable unique |
+| `password` | VARCHAR(255) |  | |
+| `created_at` | TIMESTAMP |  | |
+
+| id | username | employee_number | password | created_at |
+| --- | --- | --- | --- | --- |
+| 1 | admin | 132245 | $2y$10$QxEyUfqp9N... | 2026-03-12 07:57:09 |
+
+## staff_accounts
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
 | `id` | INT AUTO_INCREMENT | PK | |
 | `name` | VARCHAR(190) |  | |
-| `email` | VARCHAR(190) | UNIQUE | Staff login identity |
-| `password` | VARCHAR(255) |  | Hashed password |
-| `created_at` | TIMESTAMP |  | Default current timestamp |
+| `email` | VARCHAR(190) | UNIQUE | |
+| `password` | VARCHAR(255) |  | |
+| `created_at` | TIMESTAMP |  | |
 
-### 3.1 Product Catalog Domain
+| id | name | email | password | created_at |
+| --- | --- | --- | --- | --- |
+|  |  |  |  |  |
 
-#### `product_brands` (from `brands.json`)
-
-| Column | SQL Type | Key | Notes |
-| --- | --- | --- | --- |
-| `brand_name` | VARCHAR(120) | PK | Canon, Fuji, Nikon, Sony, etc. |
-
-#### `product_categories` (from `categories.json`)
+## product_brands
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
-| `category_name` | VARCHAR(120) | PK | Photography, Videography, etc. |
+| `brand_name` | VARCHAR(120) | PK | |
 
-#### `products` (from `products.json` object map)
+| brand_name |
+| --- |
+| Canon |
+
+## product_categories
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
-| `product_key` | VARCHAR(120) | PK | Derived from JSON object key (example: `canon-700d`) |
-| `brand` | VARCHAR(120) | FK-like | -> `product_brands.brand_name` |
-| `name` | VARCHAR(160) |  | Product name |
-| `skillLevel` | VARCHAR(60) |  | Primary skill level |
-| `skillLevels` | JSON |  | Optional multi-skill array |
-| `category` | VARCHAR(120) | FK-like | -> `product_categories.category_name` |
-| `price` | DECIMAL(10,2) |  | Stored as string in JSON |
-| `discountPercent` | INT |  | 0..95 in normalizers |
-| `spec1` | VARCHAR(255) |  | Quick spec line |
-| `spec2` | VARCHAR(255) |  | Quick spec line |
-| `tagline` | VARCHAR(255) |  | Product tagline |
-| `cameraImage` | VARCHAR(500) |  | Asset path |
-| `captureSlides` | JSON |  | Array of strings |
-| `specs` | JSON |  | Object of grouped spec arrays |
-| `recommendations` | JSON |  | Array of recommended product keys |
-| `informationImages` | JSON |  | Optional array of image paths |
+| `category_name` | VARCHAR(120) | PK | |
 
-#### `product_recommendations` (normalized child of `products.recommendations[]`)
+| category_name |
+| --- |
+| Photography |
+
+## products
+
+| Column | SQL Type | Key | Notes |
+| --- | --- | --- | --- |
+| `product_key` | VARCHAR(120) | PK | |
+| `brand` | VARCHAR(120) | FK-like | |
+| `name` | VARCHAR(160) |  | |
+| `skillLevel` | VARCHAR(60) |  | |
+| `skillLevels` | JSON |  | |
+| `category` | VARCHAR(120) | FK-like | |
+| `price` | DECIMAL(10,2) |  | |
+| `discountPercent` | INT |  | |
+| `spec1` | VARCHAR(255) |  | |
+| `spec2` | VARCHAR(255) |  | |
+| `tagline` | VARCHAR(255) |  | |
+| `cameraImage` | VARCHAR(500) |  | |
+| `captureSlides` | JSON |  | |
+| `specs` | JSON |  | |
+| `recommendations` | JSON |  | |
+| `informationImages` | JSON |  | |
+
+| product_key | brand | name | skillLevel | skillLevels | category | price | discountPercent | spec1 | spec2 | tagline | cameraImage | captureSlides | specs | recommendations | informationImages |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| canon-700d | Canon | 700D | Beginner |  | Photography | 800.00 | 50 | 18MP APS-C CMOS sensor | 1080p Full HD video recording at up to 30 fps | 18MP APS-C CMOS sensor and 1080p Full HD recording. | assets/cameras/Canon%20700D.png | ["Street portrait placeholder","Indoor sample placeholder","Outdoor detail placeholder"] | {"Brand":["Canon"],"Imaging and Performance":["Sensor: 18MP APS-C CMOS sensor"]} | ["nikon-d60","sony-zv-e10","fuji-x-a3"] | ["assets/cameras/product_information/Canon%20700D%20Information.jpg"] |
+
+## product_recommendations
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -140,200 +99,246 @@ Scope:
 | `recommended_product_key` | VARCHAR(120) | PK/FK | Target product |
 | `position` | INT | PK | Array index order |
 
-#### `event_packages` (from `event_packages.json` object map)
+| product_key | recommended_product_key | position |
+| --- | --- | --- |
+| canon-700d | nikon-d60 | 0 |
+
+## event_packages
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
-| `package_key` | VARCHAR(120) | PK | Derived from JSON object key |
-| `title` | VARCHAR(180) |  | Package title |
-| `price` | DECIMAL(10,2) |  | Stored as string in JSON |
-| `discountPercent` | INT |  | 0..95 |
-| `folder` | VARCHAR(40) |  | Folder code (`0000`, etc.) |
-| `thumbnail_images` | JSON |  | Array of image paths |
-| `archived` | BOOLEAN |  | Soft archive flag |
-| `archivedAt` | DATETIME |  | Empty if not archived |
+| `package_key` | VARCHAR(120) | PK | |
+| `title` | VARCHAR(180) |  | |
+| `price` | DECIMAL(10,2) |  | |
+| `discountPercent` | INT |  | |
+| `folder` | VARCHAR(40) |  | |
+| `thumbnail_images` | JSON |  | |
+| `archived` | BOOLEAN |  | |
+| `archivedAt` | DATETIME |  | |
 
-#### `event_package_thumbnail_images` (normalized child)
+| package_key | title | price | discountPercent | folder | thumbnail_images | archived | archivedAt |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| wedding | WEDDING PACKAGE | 800.00 | 10 | 0000 | ["assets/event_packages/0000/civil-wedding_Jerome-and-Marian/CLT05321.jpg"] | false |  |
 
-| Column | SQL Type | Key | Notes |
-| --- | --- | --- | --- |
-| `package_key` | VARCHAR(120) | PK/FK | -> `event_packages.package_key` |
-| `position` | INT | PK | Array order |
-| `image_path` | VARCHAR(500) |  | Thumbnail path |
-
-### 3.2 Inventory Domain
-
-#### `equipment_statuses` (from `equipment_statuses.json`)
+## event_package_thumbnail_images
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
-| `status_token` | VARCHAR(50) | PK | available, maintenance, in-use, retired, etc. |
+| `package_key` | VARCHAR(120) | PK/FK | |
+| `position` | INT | PK | |
+| `image_path` | VARCHAR(500) |  | |
 
-#### `equipment_inventory_models` (from `equipment_inventory.json` object map)
+| package_key | position | image_path |
+| --- | --- | --- |
+| wedding | 0 | assets/event_packages/0000/civil-wedding_Jerome-and-Marian/CLT05321.jpg |
 
-| Column | SQL Type | Key | Notes |
-| --- | --- | --- | --- |
-| `product_key` | VARCHAR(120) | PK/FK | -> `products.product_key` |
-| `timesUsed` | INT |  | Usage metric |
-| `nextSerial` | INT |  | Next generated unit serial |
-
-#### `equipment_inventory_units` (normalized from `equipment_inventory.json[*].units[]`)
+## equipment_statuses
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
-| `product_key` | VARCHAR(120) | PK/FK | -> `products.product_key` |
-| `serial` | INT | PK | Unit serial per model |
-| `status` | VARCHAR(50) | FK-like | -> `equipment_statuses.status_token` |
+| `status_token` | VARCHAR(50) | PK | |
 
-### 3.3 Orders and Payment Domain
+| status_token |
+| --- |
+| available |
 
-#### `customer_orders` (from `customer_orders.json`)
+## equipment_inventory_models
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
-| `id` | VARCHAR(64) | PK | Example: `ord-...` |
-| `customer_id` | VARCHAR(64) | FK (external) | -> MySQL customers table |
-| `customer_name` | VARCHAR(180) |  | Snapshot at booking time |
-| `customer_email` | VARCHAR(180) |  | Snapshot at booking time |
-| `status` | VARCHAR(40) |  | Display label (`Pending`, `For Return`, etc.) |
+| `product_key` | VARCHAR(120) | PK/FK | |
+| `timesUsed` | INT |  | |
+| `nextSerial` | INT |  | |
+
+| product_key | timesUsed | nextSerial |
+| --- | --- | --- |
+| canon-700d | 12 | 1 |
+
+## equipment_inventory_units
+
+| Column | SQL Type | Key | Notes |
+| --- | --- | --- | --- |
+| `product_key` | VARCHAR(120) | PK/FK | |
+| `serial` | INT | PK | |
+| `status` | VARCHAR(50) | FK-like | |
+
+| product_key | serial | status |
+| --- | --- | --- |
+| canon-700d | 0 | available |
+
+## customer_orders
+
+| Column | SQL Type | Key | Notes |
+| --- | --- | --- | --- |
+| `id` | VARCHAR(64) | PK | |
+| `customer_id` | VARCHAR(64) | FK external | |
+| `customer_name` | VARCHAR(180) |  | |
+| `customer_email` | VARCHAR(180) |  | |
+| `status` | VARCHAR(40) |  | |
 | `receive_date` | DATE |  | |
-| `receive_time` | TIME |  | Hour slot |
+| `receive_time` | TIME |  | |
 | `return_date` | DATE |  | |
 | `return_time` | TIME |  | |
-| `place` | VARCHAR(255) |  | Used for meetup flows |
-| `receiving_method` | ENUM-like |  | pickup, meetup, delivery |
-| `returning_method` | ENUM-like |  | pickup, meetup, delivery |
-| `courier` | ENUM-like |  | lalamove, grab-express, lbc, j-and-t, self-booked |
-| `valid_id_path` | VARCHAR(500) |  | Required for delivery routes |
+| `place` | VARCHAR(255) |  | |
+| `receiving_method` | ENUM-like |  | |
+| `returning_method` | ENUM-like |  | |
+| `courier` | ENUM-like |  | |
+| `valid_id_path` | VARCHAR(500) |  | |
 | `valid_id_uploaded_at` | DATETIME |  | |
-| `selfie_with_id_path` | VARCHAR(500) |  | Required for delivery routes |
+| `selfie_with_id_path` | VARCHAR(500) |  | |
 | `selfie_with_id_uploaded_at` | DATETIME |  | |
-| `cancel_reason` | VARCHAR(500) |  | Required for cancel/refund statuses |
-| `canceled_by` | ENUM-like |  | admin, customer, system |
-| `payment_method` | ENUM-like |  | gcash, cash-pickup, cash-meetup |
-| `payment_receipt_path` | VARCHAR(500) |  | GCash receipt path |
+| `cancel_reason` | VARCHAR(500) |  | |
+| `canceled_by` | ENUM-like |  | |
+| `payment_method` | ENUM-like |  | |
+| `payment_receipt_path` | VARCHAR(500) |  | |
 | `payment_receipt_uploaded_at` | DATETIME |  | |
-| `receive_delivery_status` | ENUM-like |  | not-required, waiting-proof, in-transit, closed |
+| `receive_delivery_status` | ENUM-like |  | |
 | `receive_delivery_receipt_path` | VARCHAR(500) |  | |
 | `receive_delivery_receipt_uploaded_at` | DATETIME |  | |
-| `receive_delivery_receipt_uploaded_by` | ENUM-like |  | admin, customer, system |
-| `receive_delivery_reference` | VARCHAR(120) |  | Tracking/reference |
+| `receive_delivery_receipt_uploaded_by` | ENUM-like |  | |
+| `receive_delivery_reference` | VARCHAR(120) |  | |
 | `receive_delivery_notes` | VARCHAR(500) |  | |
 | `receive_delivery_closed_at` | DATETIME |  | |
-| `receive_delivery_closed_by` | ENUM-like |  | admin, customer, system |
-| `return_delivery_status` | ENUM-like |  | not-required, waiting-customer-proof, in-transit, closed |
+| `receive_delivery_closed_by` | ENUM-like |  | |
+| `return_delivery_status` | ENUM-like |  | |
 | `return_delivery_receipt_path` | VARCHAR(500) |  | |
 | `return_delivery_receipt_uploaded_at` | DATETIME |  | |
-| `return_delivery_receipt_uploaded_by` | ENUM-like |  | admin, customer, system |
-| `return_delivery_reference` | VARCHAR(120) |  | Tracking/reference |
+| `return_delivery_receipt_uploaded_by` | ENUM-like |  | |
+| `return_delivery_reference` | VARCHAR(120) |  | |
 | `return_delivery_notes` | VARCHAR(500) |  | |
 | `return_delivery_closed_at` | DATETIME |  | |
-| `return_delivery_closed_by` | ENUM-like |  | admin, customer, system |
-| `receive_handover_confirmed_at` | DATETIME |  | Pickup/meetup handover confirmation |
-| `receive_handover_confirmed_by` | ENUM-like |  | admin, customer, system |
-| `refund_proof_path` | VARCHAR(500) |  | Required when status becomes refunded |
+| `return_delivery_closed_by` | ENUM-like |  | |
+| `receive_handover_confirmed_at` | DATETIME |  | |
+| `receive_handover_confirmed_by` | ENUM-like |  | |
+| `refund_proof_path` | VARCHAR(500) |  | |
 | `refund_proof_uploaded_at` | DATETIME |  | |
-| `created_at` | DATETIME |  | Creation timestamp |
+| `created_at` | DATETIME |  | |
 
-#### `customer_order_items` (normalized child of `customer_orders.items[]`)
+| id | customer_id | customer_name | customer_email | status | receive_date | receive_time | return_date | return_time | place | receiving_method | returning_method | courier | payment_method | receive_delivery_status | return_delivery_status | created_at |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ord-20260413231540-d1d3ad10 | 4 | qwe qwe | qwe@gmail.com | Pending | 2026-04-15 | 09:00 | 2026-04-16 | 09:00 |  | pickup | pickup |  | cash-pickup | not-required | not-required | 2026-04-13T23:15:40+08:00 |
 
-| Column | SQL Type | Key | Notes |
-| --- | --- | --- | --- |
-| `order_id` | VARCHAR(64) | PK/FK | -> `customer_orders.id` |
-| `item_index` | INT | PK | Position inside `items[]` |
-| `name` | VARCHAR(200) |  | Item label |
-| `qty` | INT |  | Quantity |
-| `days` | INT |  | Rental days |
-| `item_id` | VARCHAR(160) |  | Example `camera-canon-700d`, `event-wedding` |
-| `item_type` | VARCHAR(60) |  | camera, event-package, etc. |
-| `product_key` | VARCHAR(120) | FK-like | Camera link to `products.product_key` |
-| `event_package_key` | VARCHAR(120) | Derived FK-like | Derived when `item_type='event-package'` and `item_id` starts with `event-` |
-
-#### `customer_order_item_assigned_units` (normalized child of assignment arrays)
+## customer_order_items
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
-| `order_id` | VARCHAR(64) | PK/FK | -> `customer_orders.id` |
-| `item_index` | INT | PK/FK | -> `customer_order_items.item_index` |
-| `product_key` | VARCHAR(120) | FK-like | camera product |
-| `serial` | INT | PK | Unit serial |
-| `unit_id` | VARCHAR(120) |  | Computed model-serial id |
+| `order_id` | VARCHAR(64) | PK/FK | |
+| `item_index` | INT | PK | |
+| `name` | VARCHAR(200) |  | |
+| `qty` | INT |  | |
+| `days` | INT |  | |
+| `item_id` | VARCHAR(160) |  | |
+| `item_type` | VARCHAR(60) |  | |
+| `product_key` | VARCHAR(120) | FK-like | |
+| `event_package_key` | VARCHAR(120) | Derived FK-like | |
 
-### 3.4 Notifications Domain
+| order_id | item_index | name | qty | days | item_id | item_type | product_key | event_package_key |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ord-20260413231540-d1d3ad10 | 0 | Canon 700D | 1 | 1 | camera-canon-700d | camera | canon-700d |  |
 
-#### `customer_notifications` (from `customer_notifications.json`)
+## customer_order_item_assigned_units
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
-| `id` | VARCHAR(80) | PK | `cust-notif-...` |
-| `customer_id` | VARCHAR(64) | FK (external) | -> MySQL customers table |
-| `type` | VARCHAR(60) |  | Usually `order-status` |
-| `order_id` | VARCHAR(64) | FK-like | -> `customer_orders.id` |
-| `status_token` | VARCHAR(80) |  | approved/rejected/refunded/delivery event tokens |
+| `order_id` | VARCHAR(64) | PK/FK | |
+| `item_index` | INT | PK/FK | |
+| `product_key` | VARCHAR(120) | FK-like | |
+| `serial` | INT | PK | |
+| `unit_id` | VARCHAR(120) |  | |
+
+| order_id | item_index | product_key | serial | unit_id |
+| --- | --- | --- | --- | --- |
+|  |  |  |  |  |
+
+## customer_notifications
+
+| Column | SQL Type | Key | Notes |
+| --- | --- | --- | --- |
+| `id` | VARCHAR(80) | PK | |
+| `customer_id` | VARCHAR(64) | FK external | |
+| `type` | VARCHAR(60) |  | |
+| `order_id` | VARCHAR(64) | FK-like | |
+| `status_token` | VARCHAR(80) |  | |
 | `title` | VARCHAR(220) |  | |
 | `summary` | VARCHAR(220) |  | |
-| `target_view` | VARCHAR(60) |  | currently `order-status` |
+| `target_view` | VARCHAR(60) |  | |
 | `is_read` | BOOLEAN |  | |
 | `created_at` | DATETIME |  | |
 | `read_at` | DATETIME |  | |
 
-#### `message_notifications` (from `message_notifications.json`)
+| id | customer_id | type | order_id | status_token | title | summary | target_view | is_read | created_at | read_at |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+|  |  |  |  |  |  |  |  |  |  |  |
+
+## message_notifications
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
-| `id` | VARCHAR(80) | PK | `notif-...` or legacy `msg-...` |
-| `type` | VARCHAR(60) |  | `message`, `order` |
+| `id` | VARCHAR(80) | PK | |
+| `type` | VARCHAR(60) |  | |
 | `title` | VARCHAR(220) |  | |
 | `summary` | VARCHAR(220) |  | |
-| `payload` | JSON |  | Polymorphic payload |
+| `payload` | JSON |  | |
 | `is_read` | BOOLEAN |  | |
 | `created_at` | DATETIME |  | |
 | `read_at` | DATETIME |  | |
 
-Payload structures observed:
-- `type='order'`: `{ order_id, event? }`
-- `type='message'`: `{ sender_name, sender_email, message, attachments[] }`
+| id | type | title | summary | payload | is_read | created_at | read_at |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| notif-20260413151540-a5db387d | order | A new order has been placed: ORD-20260413231540-D1D3AD10 | A new order has been placed: ORD-20260413231540-D1D3AD10 | {"order_id":"ORD-20260413231540-D1D3AD10"} | false | 2026-04-13T15:15:40+00:00 |  |
 
-#### `message_notification_attachments` (normalized child from message payload)
-
-| Column | SQL Type | Key | Notes |
-| --- | --- | --- | --- |
-| `notification_id` | VARCHAR(80) | PK/FK | -> `message_notifications.id` |
-| `position` | INT | PK | Array order |
-| `path` | VARCHAR(500) |  | Stored attachment path |
-
-### 3.5 Customer Payment Profile and App Settings Domain
-
-#### `customer_gcash_profiles` (from `customer_gcash_profiles.json`)
+## message_notification_attachments
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
-| `customer_id` | VARCHAR(64) | PK/FK (external) | One row per customer |
+| `notification_id` | VARCHAR(80) | PK/FK | |
+| `position` | INT | PK | |
+| `path` | VARCHAR(500) |  | |
+
+| notification_id | position | path |
+| --- | --- | --- |
+| notif-20260402055426-0818b51f | 0 | assets/message_attachments/20260402055426-7f014a426b83-0002.png |
+
+## customer_gcash_profiles
+
+| Column | SQL Type | Key | Notes |
+| --- | --- | --- | --- |
+| `customer_id` | VARCHAR(64) | PK/FK external | |
 | `gcash_name` | VARCHAR(120) |  | |
 | `gcash_number` | VARCHAR(40) |  | |
 | `updated_at` | DATETIME |  | |
 
-#### `gcash_qr_settings` (from `gcash_qr.json`)
+| customer_id | gcash_name | gcash_number | updated_at |
+| --- | --- | --- | --- |
+| 4 | Mark Ardie Dolar | 09380432591 | 2026-04-13T12:57:06+00:00 |
+
+## gcash_qr_settings
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
-| `id` | TINYINT | PK | Constant 1 (single-row table design) |
-| `qrImagePath` | VARCHAR(500) |  | QR image path |
+| `id` | TINYINT | PK | Constant 1 |
+| `qrImagePath` | VARCHAR(500) |  | |
 | `accountName` | VARCHAR(120) |  | |
 | `accountNumber` | VARCHAR(40) |  | |
 | `updatedAt` | DATETIME |  | |
 
-#### `customer_terms` (from `customer_terms.json`)
+| id | qrImagePath | accountName | accountNumber | updatedAt |
+| --- | --- | --- | --- | --- |
+| 1 | assets/gcash_qr/gcash-qr.png | Admin Gcash | 09123456789 | 2026-04-08T09:46:19+00:00 |
+
+## customer_terms
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
-| `id` | TINYINT | PK | Constant 1 (single-row table design) |
-| `contentHtml` | LONGTEXT |  | Sanitized TOC HTML |
+| `id` | TINYINT | PK | Constant 1 |
+| `contentHtml` | LONGTEXT |  | |
 | `updatedAt` | DATETIME |  | |
 
-### 3.6 Archive Domain
+| id | contentHtml | updatedAt |
+| --- | --- | --- |
+| 1 | <h3>Key Rental Rules</h3> ... | 2026-04-09T00:21:22+00:00 |
 
-#### `archived_products` (from `archives/products_archived.json`)
+## archived_products
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -342,19 +347,27 @@ Payload structures observed:
 | `originalKey` | VARCHAR(120) |  | Previous active `products.product_key` |
 | `product` | JSON |  | Snapshot payload of product row |
 
-#### `archived_equipment_units` (from `archives/equipment_units_archived.json`)
+| archiveKey | archivedAt | originalKey | product |
+| --- | --- | --- | --- |
+| Nikon Ardie 20260324-150311 | 2026-03-24T15:03:11+00:00 | canon-700d-copy | {"brand":"Nikon","name":"Ardie","price":"800.00"} |
+
+## archived_equipment_units
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
 | `archiveKey` | VARCHAR(180) | PK | Unit archive id |
 | `archivedAt` | DATETIME |  | |
-| `productKey` | VARCHAR(120) | Weak FK | Product key at archive time |
-| `model` | VARCHAR(160) |  | Model token |
-| `reason` | VARCHAR(255) |  | Archive reason |
+| `productKey` | VARCHAR(120) | Weak FK | |
+| `model` | VARCHAR(160) |  | |
+| `reason` | VARCHAR(255) |  | |
 | `unit` | JSON |  | `{ serial, status }` |
-| `productArchiveKey` | VARCHAR(180) | Optional FK-like | Links to `archived_products.archiveKey` when available |
+| `productArchiveKey` | VARCHAR(180) | Optional FK-like | |
 
-#### `archived_how_it_works` (from `archives/how_it_works_archived.json`)
+| archiveKey | archivedAt | productKey | model | reason | unit | productArchiveKey |
+| --- | --- | --- | --- | --- | --- | --- |
+| CANON_NEWPRODUCTCOPY_000_20260327-093924 | 2026-03-27T09:39:24+00:00 | canon-new-product-copy | CANON_NEWPRODUCTCOPY | Removed from active inventory | {"serial":0,"status":"available"} |  |
+
+## archived_how_it_works
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -363,7 +376,11 @@ Payload structures observed:
 | `slot` | INT |  | UI slot number |
 | `imagePath` | VARCHAR(500) |  | Archived image path |
 
-#### `archived_promo_banners` (from `archives/promo_banners_archived.json`)
+| archiveKey | archivedAt | slot | imagePath |
+| --- | --- | --- | --- |
+| how-it-works-4-20260326-102556 | 2026-03-26T10:25:56+00:00 | 4 | assets/how_it_works/_archived/how-it-works-4-20260326-102556.png |
+
+## archived_promo_banners
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -372,52 +389,6 @@ Payload structures observed:
 | `slot` | INT |  | Banner slot number |
 | `imagePath` | VARCHAR(500) |  | Archived image path |
 
-## 4) Status and Enum Tokens Found in Code
-
-### Order status tokens
-- `pending`
-- `approved`
-- `ongoing`
-- `return`
-- `completed`
-- `canceled`
-- `awaiting-refund`
-- `rejected`
-- `refunded`
-
-### Delivery status tokens
-- Receive leg: `not-required`, `waiting-proof`, `in-transit`, `closed`
-- Return leg: `not-required`, `waiting-customer-proof`, `in-transit`, `closed`
-
-### Method tokens
-- Receiving/returning method: `pickup`, `meetup`, `delivery`
-- Payment method: `gcash`, `cash-pickup`, `cash-meetup`
-- Courier: `lalamove`, `grab-express`, `lbc`, `j-and-t`, `self-booked`
-- Delivery actor / cancel actor: `admin`, `customer`, `system`
-
-## 5) Data Generation / Mutation Paths (Who Writes What)
-
-| Table(s) Affected | Main Writers (Endpoints / Pages) | Repository Function Layer |
-| --- | --- | --- |
-| `customer_accounts` | `signup_page_customer.php`, `verify_email_page_customer.php`, `dashboard_page_admin.php` (admin creates customer), `account_settings_page_customer.php` (skill level update) | SQL in page/controller layer (no JSON repository wrapper) |
-| `admin_accounts` | `signup_page_admin.php`, `dashboard_page_admin.php` (admin creates admin), `config/db.php` (default admin seed) | SQL in page/controller layer |
-| `staff_accounts` | `dashboard_page_admin.php` (admin creates staff) | SQL in page/controller layer |
-| `customer_orders`, `customer_order_items` | `customer_order_submit.php`, `customer_order_cancel.php`, `customer_order_upload_receipt.php`, `customer_order_upload_delivery_receipt.php`, `admin/dashboard/update_booking_status.php`, `admin/dashboard/upload_delivery_receipt.php`, `admin/dashboard/close_delivery_leg.php` | `append_customer_order_for_customer`, `cancel_customer_order_for_customer`, `upload_customer_order_receipt_for_customer`, `upload_customer_order_delivery_receipt_for_customer`, `upload_customer_order_delivery_receipt_for_admin`, `close_customer_order_delivery_leg_by_admin`, `update_customer_order_status_by_id`, `save_customer_orders_repository` |
-| `customer_notifications` | Auto from order transitions + `customer_notifications_mark_read.php` | `append_customer_order_status_notification`, `append_customer_order_delivery_notification`, `save_customer_notifications_repository` |
-| `message_notifications` | `customer_message_submit.php`, `customer_order_submit.php` (order placed), delivery hooks in order repo, admin notification mark-read/live-update endpoints | `append_message_notification`, `append_order_placed_notification`, `append_order_delivery_notification`, `save_message_notifications_repository` |
-| `customer_gcash_profiles` | `account_settings_page_customer.php`, `customer_order_upload_receipt.php` | `upsert_customer_gcash_profile_for_customer` |
-| `gcash_qr_settings` | `admin/dashboard/update_gcash_qr.php` | `save_gcash_qr_repository` |
-| `customer_terms` | `admin/dashboard/update_customer_terms.php` | `save_customer_terms_repository` |
-| `event_packages` | `events_page_customer.php` (admin mode), `admin/dashboard/archive_event_package.php`, `admin/dashboard/restore_archived_event_package.php` | `save_event_packages_repository` |
-| `products`, `product_brands`, `product_categories` | `dashboard_page_admin.php`, `admin/dashboard/create_product.php`, `admin/dashboard/update_product.php`, `admin/dashboard/duplicate_product.php`, `admin/brands/index.php`, `admin/categories/index.php` | `save_products_repository`, `save_product_brands_repository`, `save_product_categories_repository` |
-| `equipment_inventory_models`, `equipment_inventory_units`, `equipment_statuses` | `dashboard_page_admin.php`, `admin/brands/index.php`, order save/sync pipeline | `save_equipment_inventory_repository`, `save_equipment_statuses_repository`, inventory sync functions in order repo |
-| Archive tables | `admin/dashboard/archive_product.php`, `admin/dashboard/restore_archived_product.php`, dashboard/admin archive actions for how-it-works and promo banners | `save_archived_products_repository`, `save_archived_equipment_units_repository`, `save_archived_how_it_works_repository`, `save_archived_promo_banners_repository` |
-
-## 6) Practical Notes for SQL Migration
-
-- JSON object maps (`products`, `event_packages`, `equipment_inventory`) should become normal tables with explicit key columns.
-- Keep raw JSON columns (`specs`, `payload`, product snapshots) if you want minimal behavior change first.
-- Normalize nested arrays (`items`, `units`, `recommendations`, attachments) into child tables when you need strict relational constraints.
-- Keep current token values (status/method enums) as controlled lookup tables or SQL enums to preserve behavior.
-- Keep order `status` label and optionally add a dedicated `status_token` column in SQL for cleaner transitions.
-- Account tables are already SQL in your app, so this document now mirrors them only for schema screenshot consistency.
+| archiveKey | archivedAt | slot | imagePath |
+| --- | --- | --- | --- |
+| promo-banner-4-20260326-102653 | 2026-03-26T10:26:53+00:00 | 4 | assets/promo_images/_archived/promo-banner-4-20260326-102653.png |
