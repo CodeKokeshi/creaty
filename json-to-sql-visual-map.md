@@ -2,6 +2,8 @@
 
 ## customer_accounts
 
+Customer login and profile records used for customer authentication and ownership references.
+
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
 | `id` | INT AUTO_INCREMENT | PK | |
@@ -16,9 +18,11 @@
 
 | id | first_name | last_name | email | skill_level | password | email_verified_at | privacy_policy_accepted_at | created_at |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 4 | qwe | qwe | qwe@gmail.com | Beginner | (hashed) |  |  |  |
+| 4 | qwe | qwe | qwe@gmail.com | Beginner | (hashed) | 2026-04-01 08:10:22 | 2026-04-01 08:08:30 | 2026-04-01 08:08:30 |
 
 ## admin_accounts
+
+Admin login accounts used to access and manage the admin dashboard.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -34,6 +38,8 @@
 
 ## staff_accounts
 
+Staff login accounts used by non-admin team members.
+
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
 | `id` | INT AUTO_INCREMENT | PK | |
@@ -44,9 +50,11 @@
 
 | id | name | email | password | created_at |
 | --- | --- | --- | --- | --- |
-|  |  |  |  |  |
+| 1 | Demo Staff | staff@creaty.local | (hashed) | 2026-04-01 09:00:00 |
 
 ## product_brands
+
+Lookup table of allowed camera and equipment brands.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -58,6 +66,8 @@
 
 ## product_categories
 
+Lookup table of product categories used in catalog grouping and filtering.
+
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
 | `category_name` | VARCHAR(120) | PK | |
@@ -67,6 +77,8 @@
 | Photography |
 
 ## products
+
+Main customer-facing product catalog entries.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -93,6 +105,8 @@
 
 ## product_recommendations
 
+Mapping table that links a product to its recommended products.
+
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
 | `product_key` | VARCHAR(120) | PK/FK | Source product |
@@ -104,6 +118,8 @@
 | canon-700d | nikon-d60 | 0 |
 
 ## event_packages
+
+Event service package catalog records (for example wedding and birthday packages).
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -118,9 +134,11 @@
 
 | package_key | title | price | discountPercent | folder | thumbnail_images | archived | archivedAt |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| wedding | WEDDING PACKAGE | 800.00 | 10 | 0000 | ["assets/event_packages/0000/civil-wedding_Jerome-and-Marian/CLT05321.jpg"] | false |  |
+| wedding | WEDDING PACKAGE | 800.00 | 10 | 0000 | ["assets/event_packages/0000/civil-wedding_Jerome-and-Marian/CLT05321.jpg"] | false | 2026-04-13 00:00:00 |
 
 ## event_package_thumbnail_images
+
+Ordered thumbnail images attached to each event package.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -134,6 +152,8 @@
 
 ## equipment_statuses
 
+Allowed status values that can be assigned to inventory units.
+
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
 | `status_token` | VARCHAR(50) | PK | |
@@ -143,6 +163,8 @@
 | available |
 
 ## equipment_inventory_models
+
+Per-product inventory counters and serial tracking.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -156,6 +178,8 @@
 
 ## equipment_inventory_units
 
+Each physical inventory unit for a product and its current status.
+
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
 | `product_key` | VARCHAR(120) | PK/FK | |
@@ -167,6 +191,8 @@
 | canon-700d | 0 | available |
 
 ## customer_orders
+
+Top-level customer booking/order records created during checkout.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -216,9 +242,11 @@
 
 | id | customer_id | customer_name | customer_email | status | receive_date | receive_time | return_date | return_time | place | receiving_method | returning_method | courier | payment_method | receive_delivery_status | return_delivery_status | created_at |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ord-20260413231540-d1d3ad10 | 4 | qwe qwe | qwe@gmail.com | Pending | 2026-04-15 | 09:00 | 2026-04-16 | 09:00 |  | pickup | pickup |  | cash-pickup | not-required | not-required | 2026-04-13T23:15:40+08:00 |
+| ord-20260413231540-d1d3ad10 | 4 | qwe qwe | qwe@gmail.com | Pending | 2026-04-15 | 09:00 | 2026-04-16 | 09:00 | Nifty Fifty Main Branch | pickup | pickup | self-booked | cash-pickup | not-required | not-required | 2026-04-13T23:15:40+08:00 |
 
 ## customer_order_items
+
+Line items contained inside each customer order.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -235,8 +263,11 @@
 | order_id | item_index | name | qty | days | item_id | item_type | product_key | event_package_key |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | ord-20260413231540-d1d3ad10 | 0 | Canon 700D | 1 | 1 | camera-canon-700d | camera | canon-700d |  |
+| ord-20260413231540-d1d3ad10 | 1 | Wedding Package | 1 | 1 | event-wedding | event-package | wedding | wedding |
 
 ## customer_order_item_assigned_units
+
+Inventory units assigned to specific order line items.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -248,9 +279,11 @@
 
 | order_id | item_index | product_key | serial | unit_id |
 | --- | --- | --- | --- | --- |
-|  |  |  |  |  |
+| ord-20260413231540-d1d3ad10 | 0 | canon-700d | 0 | canon-700d-0 |
 
 ## customer_notifications
+
+Customer-visible notifications related to order updates and events.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -268,9 +301,11 @@
 
 | id | customer_id | type | order_id | status_token | title | summary | target_view | is_read | created_at | read_at |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-|  |  |  |  |  |  |  |  |  |  |  |
+| cust-notif-20260413153000-0001 | 4 | order-status | ord-20260413231540-d1d3ad10 | pending | Order Received | Your booking request is pending admin review. | order-status | false | 2026-04-13T15:30:00+00:00 | 2026-04-13T15:45:00+00:00 |
 
 ## message_notifications
+
+Admin-side notifications for incoming customer messages and order events.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -285,9 +320,11 @@
 
 | id | type | title | summary | payload | is_read | created_at | read_at |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| notif-20260413151540-a5db387d | order | A new order has been placed: ORD-20260413231540-D1D3AD10 | A new order has been placed: ORD-20260413231540-D1D3AD10 | {"order_id":"ORD-20260413231540-D1D3AD10"} | false | 2026-04-13T15:15:40+00:00 |  |
+| notif-20260413151540-a5db387d | order | A new order has been placed: ORD-20260413231540-D1D3AD10 | A new order has been placed: ORD-20260413231540-D1D3AD10 | {"order_id":"ORD-20260413231540-D1D3AD10"} | false | 2026-04-13T15:15:40+00:00 | 2026-04-13T15:20:00+00:00 |
 
 ## message_notification_attachments
+
+File attachments linked to message notifications.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -301,6 +338,8 @@
 
 ## customer_gcash_profiles
 
+Saved customer GCash payer details used for payment convenience.
+
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
 | `customer_id` | VARCHAR(64) | PK/FK external | |
@@ -313,6 +352,8 @@
 | 4 | Mark Ardie Dolar | 09380432591 | 2026-04-13T12:57:06+00:00 |
 
 ## gcash_qr_settings
+
+Single active GCash QR configuration shown to customers.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -328,6 +369,8 @@
 
 ## customer_terms
 
+Current Terms and Conditions content displayed in the app.
+
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
 | `id` | TINYINT | PK | Constant 1 |
@@ -339,6 +382,8 @@
 | 1 | <h3>Key Rental Rules</h3> ... | 2026-04-09T00:21:22+00:00 |
 
 ## archived_products
+
+Archived snapshots of products removed from the active catalog.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -353,6 +398,8 @@
 
 ## archived_equipment_units
 
+Archived records of inventory units removed from active stock.
+
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
 | `archiveKey` | VARCHAR(180) | PK | Unit archive id |
@@ -365,9 +412,11 @@
 
 | archiveKey | archivedAt | productKey | model | reason | unit | productArchiveKey |
 | --- | --- | --- | --- | --- | --- | --- |
-| CANON_NEWPRODUCTCOPY_000_20260327-093924 | 2026-03-27T09:39:24+00:00 | canon-new-product-copy | CANON_NEWPRODUCTCOPY | Removed from active inventory | {"serial":0,"status":"available"} |  |
+| CANON_NEWPRODUCTCOPY_000_20260328-090022-2586 | 2026-03-28T09:00:22+00:00 | canon-new-product-copy | CANON_NEWPRODUCTCOPY | Archived because last active quantity was removed. | {"serial":0,"status":"available"} | Canon New Product (Copy) 20260328-090022 |
 
 ## archived_how_it_works
+
+Archived versions of website "How It Works" images.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
@@ -381,6 +430,8 @@
 | how-it-works-4-20260326-102556 | 2026-03-26T10:25:56+00:00 | 4 | assets/how_it_works/_archived/how-it-works-4-20260326-102556.png |
 
 ## archived_promo_banners
+
+Archived versions of website promo banner images.
 
 | Column | SQL Type | Key | Notes |
 | --- | --- | --- | --- |
