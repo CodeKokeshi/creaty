@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!filter_var($emailValue, FILTER_VALIDATE_EMAIL)) {
         $errorMessage = 'Please enter a valid email address.';
     } else {
-        $loginStmt = $conn->prepare("SELECT id, first_name, last_name, email, password, email_verified_at FROM {$customerAccountsTable} WHERE email = ? LIMIT 1");
+        $loginStmt = $conn->prepare("SELECT id, first_name, last_name, email, skill_level, password, email_verified_at FROM {$customerAccountsTable} WHERE email = ? LIMIT 1");
         $loginStmt->bind_param('s', $emailValue);
         $loginStmt->execute();
         $customerResult = $loginStmt->get_result();
@@ -68,9 +68,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($customer['email_verified_at'] === null) {
             $errorMessage = 'Please verify your email address before logging in.';
         } else {
+            $customerSkillLevel = trim((string) ($customer['skill_level'] ?? ''));
+
+            if (strcasecmp($customerSkillLevel, 'Professional') === 0) {
+                $customerSkillLevel = 'Professional';
+            } else {
+                $customerSkillLevel = 'Beginner';
+            }
+
             $_SESSION['customer_id'] = (int) $customer['id'];
             $_SESSION['customer_name'] = trim(($customer['first_name'] ?? '') . ' ' . ($customer['last_name'] ?? ''));
             $_SESSION['customer_email'] = $customer['email'];
+            $_SESSION['customer_skill_level'] = $customerSkillLevel;
 
             if (!isset($_SESSION['customer_cart_count'])) {
                 $_SESSION['customer_cart_count'] = 0;

@@ -11,7 +11,13 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 $routeBase = $routeBase ?? '';
 $targetPath = $routeBase === '' ? './' : $routeBase;
 
-unset($_SESSION['customer_id'], $_SESSION['customer_name'], $_SESSION['customer_email'], $_SESSION['customer_cart_count']);
+unset(
+    $_SESSION['customer_id'],
+    $_SESSION['customer_name'],
+    $_SESSION['customer_email'],
+    $_SESSION['customer_cart_count'],
+    $_SESSION['customer_skill_level']
+);
 
 header('Location: ' . $targetPath);
 exit;

@@ -341,6 +341,34 @@ function normalize_product_skill_level($skillLevel)
     return isset($normalized[0]) ? (string) $normalized[0] : default_product_skill_level();
 }
 
+function filter_products_by_skill_level($products, $skillLevel)
+{
+    if (!is_array($products)) {
+        return [];
+    }
+
+    $targetSkillLevel = normalize_product_skill_level($skillLevel);
+    $filtered = [];
+
+    foreach ($products as $productKey => $product) {
+        if (!is_array($product)) {
+            continue;
+        }
+
+        $productSkillLevels = normalize_product_skill_levels(
+            $product['skillLevels'] ?? ($product['skillLevel'] ?? default_product_skill_level())
+        );
+
+        if (!in_array($targetSkillLevel, $productSkillLevels, true)) {
+            continue;
+        }
+
+        $filtered[$productKey] = $product;
+    }
+
+    return $filtered;
+}
+
 function default_product_categories()
 {
     return [

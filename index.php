@@ -20,6 +20,37 @@ $products = load_products_repository();
 $productBrandOptions = load_product_brands_repository();
 $productBrandValueMap = product_brand_value_map($productBrandOptions);
 
+if ($isCustomerLoggedIn) {
+    $customerSkillLevel = trim((string) ($_SESSION['customer_skill_level'] ?? ''));
+
+    if ($customerSkillLevel === '') {
+        require_once __DIR__ . '/config/db.php';
+
+        $customerId = (int) ($_SESSION['customer_id'] ?? 0);
+        $customerAccountsTable = $customerAccountsTable ?? 'customer_accounts';
+
+        if ($customerId > 0) {
+            $skillStmt = $conn->prepare("SELECT skill_level FROM {$customerAccountsTable} WHERE id = ? LIMIT 1");
+
+            if ($skillStmt instanceof mysqli_stmt) {
+                $skillStmt->bind_param('i', $customerId);
+                $skillStmt->execute();
+                $skillResult = $skillStmt->get_result();
+                $skillRecord = $skillResult ? $skillResult->fetch_assoc() : null;
+                $skillStmt->close();
+
+                if (is_array($skillRecord)) {
+                    $customerSkillLevel = trim((string) ($skillRecord['skill_level'] ?? ''));
+                }
+            }
+        }
+    }
+
+    $customerSkillLevel = normalize_product_skill_level($customerSkillLevel);
+    $_SESSION['customer_skill_level'] = $customerSkillLevel;
+    $products = filter_products_by_skill_level($products, $customerSkillLevel);
+}
+
 if (!is_array($products)) {
     $products = [];
 }
