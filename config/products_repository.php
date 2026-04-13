@@ -283,21 +283,62 @@ function default_product_skill_level()
     return isset($levels[0]) ? (string) $levels[0] : 'Beginner';
 }
 
-function normalize_product_skill_level($skillLevel)
+function normalize_product_skill_levels($skillLevels, $fallbackToDefault = true)
 {
-    $cleaned = preg_replace('/\s+/', ' ', trim((string) $skillLevel));
+    $source = [];
 
-    if ($cleaned === '') {
-        return default_product_skill_level();
-    }
+    if (is_array($skillLevels)) {
+        $source = $skillLevels;
+    } else {
+        $raw = trim((string) $skillLevels);
 
-    foreach (default_product_skill_levels() as $option) {
-        if (strcasecmp($cleaned, $option) === 0) {
-            return $option;
+        if ($raw !== '' && preg_match('/[,|]/', $raw)) {
+            $splitLevels = preg_split('/\s*[,|]\s*/', $raw);
+            $source = is_array($splitLevels) ? $splitLevels : [$raw];
+        } else {
+            $source = [$skillLevels];
         }
     }
 
-    return default_product_skill_level();
+    $normalized = [];
+    $seen = [];
+
+    foreach ($source as $entry) {
+        $cleaned = preg_replace('/\s+/', ' ', trim((string) $entry));
+
+        if ($cleaned === '') {
+            continue;
+        }
+
+        foreach (default_product_skill_levels() as $option) {
+            if (strcasecmp($cleaned, $option) !== 0) {
+                continue;
+            }
+
+            $optionKey = strtolower((string) $option);
+
+            if (isset($seen[$optionKey])) {
+                break;
+            }
+
+            $seen[$optionKey] = true;
+            $normalized[] = (string) $option;
+            break;
+        }
+    }
+
+    if ($normalized || !$fallbackToDefault) {
+        return array_values($normalized);
+    }
+
+    return [default_product_skill_level()];
+}
+
+function normalize_product_skill_level($skillLevel)
+{
+    $normalized = normalize_product_skill_levels($skillLevel, true);
+
+    return isset($normalized[0]) ? (string) $normalized[0] : default_product_skill_level();
 }
 
 function default_product_categories()
@@ -660,7 +701,13 @@ function duplicate_product_record($products, $sourceKey, $projectRoot)
     $duplicate = $source;
     $duplicate['brand'] = $brand;
     $duplicate['name'] = $newName;
-    $duplicate['skillLevel'] = normalize_product_skill_level($source['skillLevel'] ?? default_product_skill_level());
+    $duplicateSkillLevels = normalize_product_skill_levels(
+        $source['skillLevels'] ?? ($source['skillLevel'] ?? default_product_skill_level())
+    );
+    $duplicate['skillLevels'] = $duplicateSkillLevels;
+    $duplicate['skillLevel'] = isset($duplicateSkillLevels[0])
+        ? (string) $duplicateSkillLevels[0]
+        : default_product_skill_level();
     $duplicate['category'] = normalize_product_category($source['category'] ?? default_product_category());
     unset($duplicate['availability']);
     unset($duplicate['featuredDate']);
@@ -720,6 +767,7 @@ function create_product_record($products, $projectRoot)
     $newProduct = [
         'brand' => $brand,
         'name' => $newName,
+        'skillLevels' => [default_product_skill_level()],
         'skillLevel' => default_product_skill_level(),
         'category' => default_product_category(),
         'price' => '0.00',
@@ -1089,7 +1137,13 @@ function restore_archived_product_record($products, $archivedProducts, $archiveK
         );
     }
 
-    $product['skillLevel'] = normalize_product_skill_level($product['skillLevel'] ?? default_product_skill_level());
+    $restoredSkillLevels = normalize_product_skill_levels(
+        $product['skillLevels'] ?? ($product['skillLevel'] ?? default_product_skill_level())
+    );
+    $product['skillLevels'] = $restoredSkillLevels;
+    $product['skillLevel'] = isset($restoredSkillLevels[0])
+        ? (string) $restoredSkillLevels[0]
+        : default_product_skill_level();
     $product['category'] = normalize_product_category($product['category'] ?? default_product_category());
     ensure_product_category_exists($product['category']);
 

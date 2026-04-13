@@ -54,11 +54,15 @@ $tagline = trim((string) ($payload['tagline'] ?? ''));
 $priceValue = (float) ($payload['price'] ?? 0);
 $discount = (int) ($payload['discountPercent'] ?? 0);
 $discount = max(0, min(95, $discount));
-$skillLevelValue = null;
+$skillLevelsValue = null;
 $categoryValue = null;
 
-if (array_key_exists('skillLevel', $payload)) {
-    $skillLevelValue = normalize_product_skill_level($payload['skillLevel'] ?? default_product_skill_level());
+if (array_key_exists('skillLevels', $payload) || array_key_exists('skillLevel', $payload)) {
+    $rawSkillLevels = array_key_exists('skillLevels', $payload)
+        ? $payload['skillLevels']
+        : ($payload['skillLevel'] ?? default_product_skill_level());
+
+    $skillLevelsValue = normalize_product_skill_levels($rawSkillLevels);
 }
 
 if (array_key_exists('category', $payload)) {
@@ -93,8 +97,11 @@ $product['spec2'] = $spec2;
 $product['price'] = number_format($priceValue, 2, '.', '');
 $product['discountPercent'] = $discount;
 
-if ($skillLevelValue !== null) {
-    $product['skillLevel'] = $skillLevelValue;
+if ($skillLevelsValue !== null) {
+    $product['skillLevels'] = $skillLevelsValue;
+    $product['skillLevel'] = isset($skillLevelsValue[0])
+        ? (string) $skillLevelsValue[0]
+        : default_product_skill_level();
 }
 
 if ($categoryValue !== null) {

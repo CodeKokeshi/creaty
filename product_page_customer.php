@@ -233,7 +233,9 @@ if (
 
             $brandValue = normalize_product_brand($postedBrandValue !== '' ? $postedBrandValue : ($productToUpdate['brand'] ?? default_product_brand()));
             $categoryValue = normalize_product_category($postedCategoryValue !== '' ? $postedCategoryValue : ($productToUpdate['category'] ?? default_product_category()));
-            $skillLevelValue = normalize_product_skill_level($_POST['skillLevel'] ?? ($productToUpdate['skillLevel'] ?? default_product_skill_level()));
+            $skillLevelsValue = normalize_product_skill_levels(
+                $_POST['skillLevels'] ?? ($productToUpdate['skillLevels'] ?? ($productToUpdate['skillLevel'] ?? default_product_skill_level()))
+            );
             $nameValue = trim((string) ($_POST['name'] ?? ($productToUpdate['name'] ?? '')));
 
             if ($nameValue !== '' && has_duplicate_product_display_name($products, $brandValue, $nameValue, $postedKey)) {
@@ -244,7 +246,10 @@ if (
                 }
 
                 $productToUpdate['brand'] = $brandValue;
-                $productToUpdate['skillLevel'] = $skillLevelValue;
+                $productToUpdate['skillLevels'] = $skillLevelsValue;
+                $productToUpdate['skillLevel'] = isset($skillLevelsValue[0])
+                    ? (string) $skillLevelsValue[0]
+                    : default_product_skill_level();
                 $productToUpdate['category'] = $categoryValue;
                 ensure_product_brand_exists($brandValue);
                 ensure_product_category_exists($categoryValue);
@@ -305,7 +310,9 @@ if ($productKey === null || !isset($products[$productKey])) {
 $selectedProduct = $products[$productKey];
 $selectedBrand = normalize_product_brand($selectedProduct['brand'] ?? 'Canon');
 $selectedBrandValue = product_brand_slug($selectedBrand);
-$selectedSkillLevel = normalize_product_skill_level($selectedProduct['skillLevel'] ?? default_product_skill_level());
+$selectedSkillLevels = normalize_product_skill_levels(
+    $selectedProduct['skillLevels'] ?? ($selectedProduct['skillLevel'] ?? default_product_skill_level())
+);
 $selectedCategory = normalize_product_category($selectedProduct['category'] ?? default_product_category());
 $selectedCategoryValue = product_category_slug($selectedCategory);
 $selectedProductName = trim((string) ($selectedProduct['name'] ?? ''));
@@ -620,12 +627,17 @@ if (!$isAdminView && function_exists('customer_order_build_equipment_availabilit
                                 <label for="admin-spec-name">Product Name</label>
                                 <input id="admin-spec-name" type="text" name="name" value="<?php echo htmlspecialchars($selectedProductName, ENT_QUOTES, 'UTF-8'); ?>" required>
 
-                                <label for="admin-spec-skill-level">Skill Level</label>
-                                <select id="admin-spec-skill-level" name="skillLevel" required>
+                                <label>Skill Levels</label>
+                                <div class="admin-skill-level-tags" role="group" aria-label="Skill levels">
                                     <?php foreach ($productSkillLevels as $skillLevelLabel): ?>
-                                        <option value="<?php echo htmlspecialchars((string) $skillLevelLabel, ENT_QUOTES, 'UTF-8'); ?>"<?php echo strcasecmp($selectedSkillLevel, (string) $skillLevelLabel) === 0 ? ' selected' : ''; ?>><?php echo htmlspecialchars((string) $skillLevelLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                        <?php $isSkillSelected = in_array((string) $skillLevelLabel, $selectedSkillLevels, true); ?>
+                                        <label class="admin-skill-level-option">
+                                            <input type="checkbox" name="skillLevels[]" value="<?php echo htmlspecialchars((string) $skillLevelLabel, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $isSkillSelected ? ' checked' : ''; ?>>
+                                            <span><?php echo htmlspecialchars((string) $skillLevelLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </label>
                                     <?php endforeach; ?>
-                                </select>
+                                </div>
+                                <p class="admin-skill-level-hint">Select one or more tags.</p>
 
                                 <label for="admin-spec-category">Category</label>
                                 <select id="admin-spec-category" name="category" data-category-manage-select data-category-manage-url="<?php echo htmlspecialchars($manageCategoriesPath, ENT_QUOTES, 'UTF-8'); ?>" required>

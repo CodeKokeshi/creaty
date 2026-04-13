@@ -2004,6 +2004,60 @@ button {
     gap: 0.5rem;
 }
 
+.admin-skill-level-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.admin-skill-level-option {
+    position: relative;
+    display: inline-flex;
+}
+
+.admin-skill-level-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.admin-skill-level-option span {
+    min-height: 34px;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #f4f4f4;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.25;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.admin-skill-level-option:hover span,
+.admin-skill-level-option input:focus-visible + span {
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
+}
+
+.admin-skill-level-option input:checked + span {
+    border-color: rgba(221, 229, 49, 0.72);
+    background: rgba(221, 229, 49, 0.2);
+    color: #f5f7dc;
+}
+
+.admin-skill-level-hint {
+    margin: -0.2rem 0 0;
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.74rem;
+    line-height: 1.35;
+}
+
 .product-information-card {
     position: relative;
     padding: 1.5rem 1rem 1rem;
