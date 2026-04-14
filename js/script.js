@@ -251,6 +251,10 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEventEditName = document.querySelector("[data-admin-event-edit-name]");
     var adminEventEditPrice = document.querySelector("[data-admin-event-edit-price]");
     var adminEventEditDiscount = document.querySelector("[data-admin-event-edit-discount]");
+    var adminEventEditCamera1 = document.querySelector("[data-admin-event-edit-camera-1]");
+    var adminEventEditCamera2 = document.querySelector("[data-admin-event-edit-camera-2]");
+    var adminEventEditBackupCamera1 = document.querySelector("[data-admin-event-edit-backup-camera-1]");
+    var adminEventEditBackupCamera2 = document.querySelector("[data-admin-event-edit-backup-camera-2]");
     var adminEventRemoveButtons = document.querySelectorAll("[data-admin-remove-event-package]");
     var adminEventSetThumbButtonInEdit = document.querySelector("[data-admin-event-set-thumbnails-edit]");
     var adminEventThumbsBackdrop = document.querySelector("[data-admin-event-thumbs-backdrop]");
@@ -265,13 +269,43 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEventArchiveEndpoint = adminEventEditBackdrop ? (adminEventEditBackdrop.getAttribute("data-admin-event-archive-endpoint") || "") : "";
     var adminEventRestoreEndpoint = adminEventEditBackdrop ? (adminEventEditBackdrop.getAttribute("data-admin-event-restore-endpoint") || "") : "";
     var adminEventCollectionConfig = document.querySelector("[data-admin-event-collection-config]");
+    var adminEventCollectionCreateOpenButton = document.querySelector("[data-admin-event-collection-add-open]");
     var adminEventCollectionEditButtons = document.querySelectorAll("[data-admin-event-collection-edit]");
     var adminEventCollectionRemoveButtons = document.querySelectorAll("[data-admin-remove-event-collection]");
     var adminEventCollectionCards = document.querySelectorAll("[data-admin-event-collection-card]");
     var adminEventCollectionsShell = document.querySelector("[data-admin-event-collections-shell]");
     var adminEventCollectionsEmptyState = document.querySelector("[data-admin-event-collections-empty]");
+    var adminEventCollectionCreateBackdrop = document.querySelector("[data-admin-event-collection-create-backdrop]");
+    var adminEventCollectionCreateForm = document.querySelector("[data-admin-event-collection-create-form]");
+    var adminEventCollectionCreateClose = document.querySelector("[data-admin-event-collection-create-close]");
+    var adminEventCollectionCreateCancel = document.querySelector("[data-admin-event-collection-create-cancel]");
+    var adminEventCollectionCreateSave = document.querySelector("[data-admin-event-collection-create-save]");
+    var adminEventCollectionCreateCategoryInput = document.querySelector("[data-admin-event-collection-create-category]");
+    var adminEventCollectionCreateNameInput = document.querySelector("[data-admin-event-collection-create-name]");
+    var adminEventCollectionCreateFeedback = document.querySelector("[data-admin-event-collection-create-feedback]");
+    var adminEventCollectionEditBackdrop = document.querySelector("[data-admin-event-collection-edit-backdrop]");
+    var adminEventCollectionEditForm = document.querySelector("[data-admin-event-collection-edit-form]");
+    var adminEventCollectionEditTitle = document.querySelector("[data-admin-event-collection-edit-title]");
+    var adminEventCollectionEditClose = document.querySelector("[data-admin-event-collection-edit-close]");
+    var adminEventCollectionEditCancel = document.querySelector("[data-admin-event-collection-edit-cancel]");
+    var adminEventCollectionEditSave = document.querySelector("[data-admin-event-collection-edit-save]");
+    var adminEventCollectionEditGrid = document.querySelector("[data-admin-event-collection-edit-grid]");
+    var adminEventCollectionEditEmpty = document.querySelector("[data-admin-event-collection-edit-empty]");
+    var adminEventCollectionEditFeedback = document.querySelector("[data-admin-event-collection-edit-feedback]");
+    var adminEventCollectionEditPackageKeyInput = document.querySelector("[data-admin-event-collection-edit-package-key]");
+    var adminEventCollectionEditPackageFolderInput = document.querySelector("[data-admin-event-collection-edit-package-folder]");
+    var adminEventCollectionEditCollectionFolderInput = document.querySelector("[data-admin-event-collection-edit-collection-folder]");
+    var adminEventCollectionEditCategoryInput = document.querySelector("[data-admin-event-collection-edit-category]");
+    var adminEventCollectionEditNameInput = document.querySelector("[data-admin-event-collection-edit-name]");
+    var adminEventCollectionAddTrigger = document.querySelector("[data-admin-event-collection-add-trigger]");
+    var adminEventCollectionAddInput = document.querySelector("[data-admin-event-collection-add-input]");
+    var adminEventCollectionCreateEndpoint = adminEventCollectionConfig ? (adminEventCollectionConfig.getAttribute("data-admin-event-collection-create-endpoint") || "") : "";
     var adminEventCollectionArchiveEndpoint = adminEventCollectionConfig ? (adminEventCollectionConfig.getAttribute("data-admin-event-collection-archive-endpoint") || "") : "";
     var adminEventCollectionRestoreEndpoint = adminEventCollectionConfig ? (adminEventCollectionConfig.getAttribute("data-admin-event-collection-restore-endpoint") || "") : "";
+    var adminEventCollectionUpdateEndpoint = adminEventCollectionConfig ? (adminEventCollectionConfig.getAttribute("data-admin-event-collection-update-endpoint") || "") : "";
+    var adminEventCollectionAssetBase = adminEventCollectionConfig ? (adminEventCollectionConfig.getAttribute("data-admin-event-collection-asset-base") || "") : "";
+    var adminEventCollectionDefaultPackageKey = adminEventCollectionConfig ? (adminEventCollectionConfig.getAttribute("data-admin-event-collection-package-key") || "") : "";
+    var adminEventCollectionDefaultPackageFolder = adminEventCollectionConfig ? (adminEventCollectionConfig.getAttribute("data-admin-event-collection-package-folder") || "") : "";
     var adminHowGrid = document.querySelector("[data-admin-how-grid]");
     var adminHowEditBackdrop = document.querySelector("[data-admin-how-edit-backdrop]");
     var adminHowForm = document.querySelector("[data-admin-how-form]");
@@ -360,6 +394,20 @@ document.addEventListener("DOMContentLoaded", function () {
         onConfirm: null,
         onClose: null,
         quantityRequired: false
+    };
+    var adminEventCollectionEditState = {
+        card: null,
+        packageKey: "",
+        packageFolder: "",
+        collectionFolder: "",
+        collectionName: "",
+        categoryLabel: "",
+        images: [],
+        isSaving: false,
+        tempCounter: 0
+    };
+    var adminEventCollectionCreateState = {
+        isSaving: false
     };
     var activeAdminBookingCancelReason = "";
     var activeAdminBookingReviewMode = "";
@@ -1674,15 +1722,964 @@ document.addEventListener("DOMContentLoaded", function () {
         syncAdminEventCollectionEmptyState();
     }
 
-    adminEventCollectionEditButtons.forEach(function (button) {
-        button.addEventListener("click", function () {
-            openAdminActionModal({
-                title: "Collection Edit",
-                message: "Collection editing will be included next. For now, you can archive collections using the X button.",
-                confirmLabel: "OK"
+    function setAdminEventCollectionCreateSavingState(isSaving) {
+        var saving = Boolean(isSaving);
+
+        adminEventCollectionCreateState.isSaving = saving;
+
+        if (adminEventCollectionCreateSave) {
+            adminEventCollectionCreateSave.disabled = saving;
+            adminEventCollectionCreateSave.textContent = saving ? "Creating..." : "Create Collection";
+        }
+
+        if (adminEventCollectionCreateCancel) {
+            adminEventCollectionCreateCancel.disabled = saving;
+        }
+
+        if (adminEventCollectionCreateClose) {
+            adminEventCollectionCreateClose.disabled = saving;
+        }
+
+        if (adminEventCollectionCreateOpenButton) {
+            adminEventCollectionCreateOpenButton.disabled = saving;
+        }
+
+        if (adminEventCollectionCreateCategoryInput) {
+            adminEventCollectionCreateCategoryInput.disabled = saving;
+        }
+
+        if (adminEventCollectionCreateNameInput) {
+            adminEventCollectionCreateNameInput.disabled = saving;
+        }
+    }
+
+    function setAdminEventCollectionCreateFeedback(message, type) {
+        if (!adminEventCollectionCreateFeedback) {
+            return;
+        }
+
+        var normalizedMessage = String(message || "").trim();
+        var normalizedType = String(type || "").toLowerCase().trim();
+
+        adminEventCollectionCreateFeedback.classList.remove("is-error", "is-success");
+        adminEventCollectionCreateFeedback.textContent = normalizedMessage;
+        adminEventCollectionCreateFeedback.hidden = normalizedMessage === "";
+
+        if (normalizedMessage !== "" && (normalizedType === "error" || normalizedType === "success")) {
+            adminEventCollectionCreateFeedback.classList.add("is-" + normalizedType);
+        }
+    }
+
+    function resetAdminEventCollectionCreateState() {
+        if (adminEventCollectionCreateCategoryInput) {
+            adminEventCollectionCreateCategoryInput.value = "";
+        }
+
+        if (adminEventCollectionCreateNameInput) {
+            adminEventCollectionCreateNameInput.value = "";
+        }
+
+        setAdminEventCollectionCreateFeedback("", "error");
+        setAdminEventCollectionCreateSavingState(false);
+    }
+
+    function closeAdminEventCollectionCreateModal(forceClose) {
+        if (!adminEventCollectionCreateBackdrop || (adminEventCollectionCreateState.isSaving && !forceClose)) {
+            return;
+        }
+
+        adminEventCollectionCreateBackdrop.hidden = true;
+        resetAdminEventCollectionCreateState();
+        syncAdminModalBodyLock();
+    }
+
+    function openAdminEventCollectionCreateModal() {
+        if (!adminEventCollectionCreateBackdrop) {
+            return;
+        }
+
+        resetAdminEventCollectionCreateState();
+        adminEventCollectionCreateBackdrop.hidden = false;
+        syncAdminModalBodyLock();
+
+        if (adminEventCollectionCreateCategoryInput) {
+            adminEventCollectionCreateCategoryInput.focus();
+        }
+    }
+
+    function submitAdminEventCollectionCreate() {
+        if (adminEventCollectionCreateState.isSaving) {
+            return;
+        }
+
+        var packageKey = String(adminEventCollectionDefaultPackageKey || "").trim();
+        var categoryLabel = String(adminEventCollectionCreateCategoryInput ? adminEventCollectionCreateCategoryInput.value : "").trim();
+        var collectionLabel = String(adminEventCollectionCreateNameInput ? adminEventCollectionCreateNameInput.value : "").trim();
+
+        if (!packageKey) {
+            setAdminEventCollectionCreateFeedback("Event package key is unavailable.", "error");
+            return;
+        }
+
+        if (!categoryLabel) {
+            setAdminEventCollectionCreateFeedback("Main Tag is required.", "error");
+            return;
+        }
+
+        if (!collectionLabel) {
+            setAdminEventCollectionCreateFeedback("Collection Name is required.", "error");
+            return;
+        }
+
+        if (!adminEventCollectionCreateEndpoint) {
+            setAdminEventCollectionCreateFeedback("Collection create endpoint is unavailable.", "error");
+            return;
+        }
+
+        setAdminEventCollectionCreateFeedback("", "error");
+        setAdminEventCollectionCreateSavingState(true);
+
+        fetch(adminEventCollectionCreateEndpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                packageKey: packageKey,
+                packageFolder: String(adminEventCollectionDefaultPackageFolder || "").trim(),
+                categoryLabel: categoryLabel,
+                collectionLabel: collectionLabel
+            })
+        })
+            .then(function (response) {
+                return response.json().then(function (payload) {
+                    return {
+                        ok: response.ok,
+                        payload: payload
+                    };
+                });
+            })
+            .then(function (result) {
+                if (!result.ok || !result.payload || !result.payload.ok) {
+                    var message = result.payload && result.payload.message ? result.payload.message : "Unable to create collection.";
+                    throw new Error(message);
+                }
+
+                closeAdminEventCollectionCreateModal(true);
+                window.location.reload();
+            })
+            .catch(function (error) {
+                setAdminEventCollectionCreateFeedback(error.message || "Unable to create collection.", "error");
+            })
+            .finally(function () {
+                setAdminEventCollectionCreateSavingState(false);
+            });
+    }
+
+    function normalizeAdminEventCollectionImagePath(value) {
+        return String(value || "")
+            .replace(/\\/g, "/")
+            .replace(/^\/+/, "")
+            .trim();
+    }
+
+    function buildAdminEventCollectionImageUrl(pathValue) {
+        var normalizedPath = normalizeAdminEventCollectionImagePath(pathValue);
+
+        if (!normalizedPath) {
+            return "";
+        }
+
+        if (/^(?:https?:)?\/\//i.test(normalizedPath) || normalizedPath.indexOf("data:image/") === 0) {
+            return normalizedPath;
+        }
+
+        var encodedPath = normalizedPath
+            .split("/")
+            .map(function (segment) {
+                return encodeURIComponent(segment);
+            })
+            .join("/");
+        var base = String(adminEventCollectionAssetBase || "").trim();
+
+        if (base) {
+            return base.replace(/\/?$/, "/") + encodedPath;
+        }
+
+        return "/" + encodedPath;
+    }
+
+    function setAdminEventCollectionEditSavingState(isSaving) {
+        var saving = Boolean(isSaving);
+
+        adminEventCollectionEditState.isSaving = saving;
+
+        if (adminEventCollectionEditSave) {
+            adminEventCollectionEditSave.disabled = saving;
+            adminEventCollectionEditSave.textContent = saving ? "Saving..." : "Save Changes";
+        }
+
+        if (adminEventCollectionEditCancel) {
+            adminEventCollectionEditCancel.disabled = saving;
+        }
+
+        if (adminEventCollectionEditClose) {
+            adminEventCollectionEditClose.disabled = saving;
+        }
+
+        if (adminEventCollectionAddTrigger) {
+            adminEventCollectionAddTrigger.disabled = saving;
+        }
+
+        if (adminEventCollectionEditCategoryInput) {
+            adminEventCollectionEditCategoryInput.disabled = saving;
+        }
+
+        if (adminEventCollectionEditNameInput) {
+            adminEventCollectionEditNameInput.disabled = saving;
+        }
+    }
+
+    function setAdminEventCollectionEditFeedback(message, type) {
+        if (!adminEventCollectionEditFeedback) {
+            return;
+        }
+
+        var normalizedMessage = String(message || "").trim();
+        var normalizedType = String(type || "").toLowerCase().trim();
+
+        adminEventCollectionEditFeedback.classList.remove("is-error", "is-success");
+        adminEventCollectionEditFeedback.textContent = normalizedMessage;
+        adminEventCollectionEditFeedback.hidden = normalizedMessage === "";
+
+        if (normalizedMessage !== "" && (normalizedType === "error" || normalizedType === "success")) {
+            adminEventCollectionEditFeedback.classList.add("is-" + normalizedType);
+        }
+    }
+
+    function resetAdminEventCollectionEditState() {
+        adminEventCollectionEditState.card = null;
+        adminEventCollectionEditState.packageKey = "";
+        adminEventCollectionEditState.packageFolder = "";
+        adminEventCollectionEditState.collectionFolder = "";
+        adminEventCollectionEditState.collectionName = "";
+        adminEventCollectionEditState.categoryLabel = "";
+        adminEventCollectionEditState.images = [];
+        adminEventCollectionEditState.isSaving = false;
+        adminEventCollectionEditState.tempCounter = 0;
+
+        if (adminEventCollectionEditPackageKeyInput) {
+            adminEventCollectionEditPackageKeyInput.value = "";
+        }
+
+        if (adminEventCollectionEditPackageFolderInput) {
+            adminEventCollectionEditPackageFolderInput.value = "";
+        }
+
+        if (adminEventCollectionEditCollectionFolderInput) {
+            adminEventCollectionEditCollectionFolderInput.value = "";
+        }
+
+        if (adminEventCollectionEditCategoryInput) {
+            adminEventCollectionEditCategoryInput.value = "";
+        }
+
+        if (adminEventCollectionEditNameInput) {
+            adminEventCollectionEditNameInput.value = "";
+        }
+
+        if (adminEventCollectionEditGrid) {
+            adminEventCollectionEditGrid.innerHTML = "";
+        }
+
+        if (adminEventCollectionAddInput) {
+            adminEventCollectionAddInput.value = "";
+        }
+
+        if (adminEventCollectionEditTitle) {
+            adminEventCollectionEditTitle.textContent = "Edit Collection";
+        }
+
+        if (adminEventCollectionEditEmpty) {
+            adminEventCollectionEditEmpty.hidden = true;
+        }
+
+        setAdminEventCollectionEditFeedback("", "error");
+        setAdminEventCollectionEditSavingState(false);
+    }
+
+    function renderAdminEventCollectionEditGrid() {
+        if (!adminEventCollectionEditGrid) {
+            return;
+        }
+
+        adminEventCollectionEditGrid.innerHTML = "";
+
+        adminEventCollectionEditState.images.forEach(function (imageEntry, imageIndex) {
+            var tile = document.createElement("article");
+            tile.className = "admin-event-collection-image-item";
+            tile.setAttribute("data-admin-event-collection-image-index", String(imageIndex));
+
+            if (imageEntry.isExcluded) {
+                tile.classList.add("is-excluded");
+            }
+
+            var toggleButton = document.createElement("button");
+            toggleButton.type = "button";
+            toggleButton.className = "admin-event-collection-image-toggle";
+            toggleButton.setAttribute("data-admin-event-collection-toggle", String(imageIndex));
+            toggleButton.setAttribute("aria-label", imageEntry.isExcluded ? "Undo exclusion" : "Exclude image");
+
+            if (imageEntry.isExcluded) {
+                toggleButton.classList.add("is-undo");
+                toggleButton.innerHTML = "&#10003;";
+            } else {
+                toggleButton.innerHTML = "&times;";
+            }
+
+            var imageElement = document.createElement("img");
+            imageElement.src = String(imageEntry.previewUrl || "");
+            imageElement.alt = String(imageEntry.alt || "Collection image");
+            imageElement.loading = "lazy";
+
+            var metaLabel = document.createElement("span");
+            metaLabel.className = "admin-event-collection-image-meta";
+            metaLabel.textContent = String(imageEntry.label || ("Image " + String(imageIndex + 1)));
+
+            tile.appendChild(toggleButton);
+            tile.appendChild(imageElement);
+            tile.appendChild(metaLabel);
+            adminEventCollectionEditGrid.appendChild(tile);
+        });
+
+        if (adminEventCollectionEditEmpty) {
+            adminEventCollectionEditEmpty.hidden = adminEventCollectionEditState.images.length > 0;
+        }
+    }
+
+    function applyAdminEventCollectionImagesToCard(card, imageEntries) {
+        if (!card) {
+            return;
+        }
+
+        var activeImages = (Array.isArray(imageEntries) ? imageEntries : []).filter(function (entry) {
+            return !entry.isExcluded;
+        });
+        var collectionName = String(card.getAttribute("data-admin-event-collection-name") || "Collection").trim() || "Collection";
+        var masonry = card.querySelector(".event-photo-masonry");
+        var emptyState = card.querySelector(".event-card-empty");
+
+        if (activeImages.length === 0) {
+            if (masonry) {
+                masonry.remove();
+            }
+
+            if (!emptyState) {
+                emptyState = document.createElement("div");
+                emptyState.className = "event-card-empty";
+                emptyState.textContent = "No photos were found for this event yet.";
+                card.appendChild(emptyState);
+            }
+
+            return;
+        }
+
+        if (!masonry) {
+            masonry = document.createElement("div");
+            masonry.className = "event-photo-masonry";
+            card.appendChild(masonry);
+        }
+
+        masonry.setAttribute("aria-label", collectionName + " gallery");
+        masonry.innerHTML = "";
+
+        if (emptyState) {
+            emptyState.remove();
+        }
+
+        activeImages.forEach(function (entry, index) {
+            var figure = document.createElement("figure");
+            figure.className = "event-photo-item";
+
+            var image = document.createElement("img");
+            image.src = String(entry.previewUrl || "");
+            image.alt = collectionName + " photo " + String(index + 1);
+            image.loading = "lazy";
+
+            if (entry.imagePath) {
+                image.setAttribute("data-admin-event-image-path", String(entry.imagePath));
+            }
+
+            figure.appendChild(image);
+            masonry.appendChild(figure);
+        });
+    }
+
+    function closeAdminEventCollectionEditModal(forceClose) {
+        if (!adminEventCollectionEditBackdrop || (adminEventCollectionEditState.isSaving && !forceClose)) {
+            return;
+        }
+
+        adminEventCollectionEditBackdrop.hidden = true;
+        resetAdminEventCollectionEditState();
+        syncAdminModalBodyLock();
+    }
+
+    function openAdminEventCollectionEditModal(card) {
+        if (!adminEventCollectionEditBackdrop || !card) {
+            return;
+        }
+
+        resetAdminEventCollectionEditState();
+
+        adminEventCollectionEditState.card = card;
+        adminEventCollectionEditState.packageKey = String(card.getAttribute("data-admin-event-package-key") || "").trim();
+        adminEventCollectionEditState.packageFolder = String(card.getAttribute("data-admin-event-package-folder") || "").trim();
+        adminEventCollectionEditState.collectionFolder = String(card.getAttribute("data-admin-event-collection-folder") || "").trim();
+        adminEventCollectionEditState.collectionName = String(card.getAttribute("data-admin-event-collection-name") || "Collection").trim() || "Collection";
+        adminEventCollectionEditState.categoryLabel = String(card.getAttribute("data-admin-event-collection-category") || "").trim();
+
+        if (adminEventCollectionEditPackageKeyInput) {
+            adminEventCollectionEditPackageKeyInput.value = adminEventCollectionEditState.packageKey;
+        }
+
+        if (adminEventCollectionEditPackageFolderInput) {
+            adminEventCollectionEditPackageFolderInput.value = adminEventCollectionEditState.packageFolder;
+        }
+
+        if (adminEventCollectionEditCollectionFolderInput) {
+            adminEventCollectionEditCollectionFolderInput.value = adminEventCollectionEditState.collectionFolder;
+        }
+
+        if (adminEventCollectionEditCategoryInput) {
+            adminEventCollectionEditCategoryInput.value = adminEventCollectionEditState.categoryLabel;
+        }
+
+        if (adminEventCollectionEditNameInput) {
+            adminEventCollectionEditNameInput.value = adminEventCollectionEditState.collectionName;
+        }
+
+        if (adminEventCollectionEditTitle) {
+            adminEventCollectionEditTitle.textContent = "Edit Collection: " + adminEventCollectionEditState.collectionName;
+        }
+
+        var imageNodes = card.querySelectorAll(".event-photo-item img");
+
+        imageNodes.forEach(function (imageNode, imageIndex) {
+            var imagePath = normalizeAdminEventCollectionImagePath(imageNode.getAttribute("data-admin-event-image-path") || "");
+            var imageUrl = String(imageNode.getAttribute("src") || "").trim();
+            var imageLabel = imagePath ? imagePath.split("/").pop() : ("Image " + String(imageIndex + 1));
+
+            adminEventCollectionEditState.images.push({
+                id: "existing-" + String(imageIndex + 1),
+                tempId: "",
+                imagePath: imagePath,
+                previewUrl: imageUrl,
+                alt: String(imageNode.getAttribute("alt") || "Collection image"),
+                label: imageLabel,
+                fileName: imageLabel,
+                dataUrl: "",
+                isNew: false,
+                isArchived: false,
+                isExcluded: false
             });
         });
+
+        var activeImagePathLookup = Object.create(null);
+
+        adminEventCollectionEditState.images.forEach(function (imageEntry) {
+            var normalizedPath = normalizeAdminEventCollectionImagePath(imageEntry.imagePath || "");
+
+            if (normalizedPath) {
+                activeImagePathLookup[normalizedPath.toLowerCase()] = true;
+            }
+        });
+
+        var archivedImagePathsRaw = String(card.getAttribute("data-admin-event-collection-archived-images") || "[]");
+        var archivedImagePaths = [];
+
+        try {
+            var decodedArchivedPaths = JSON.parse(archivedImagePathsRaw);
+
+            if (Array.isArray(decodedArchivedPaths)) {
+                archivedImagePaths = decodedArchivedPaths;
+            }
+        } catch (error) {
+            archivedImagePaths = [];
+        }
+
+        archivedImagePaths.forEach(function (archivedPath, archivedIndex) {
+            var normalizedArchivedPath = normalizeAdminEventCollectionImagePath(archivedPath);
+            var pathKey = normalizedArchivedPath.toLowerCase();
+
+            if (!normalizedArchivedPath || activeImagePathLookup[pathKey]) {
+                return;
+            }
+
+            activeImagePathLookup[pathKey] = true;
+
+            var archivedFileName = normalizedArchivedPath.split("/").pop() || ("Archived image " + String(archivedIndex + 1));
+
+            adminEventCollectionEditState.images.push({
+                id: "archived-" + String(archivedIndex + 1),
+                tempId: "",
+                imagePath: normalizedArchivedPath,
+                previewUrl: buildAdminEventCollectionImageUrl(normalizedArchivedPath),
+                alt: adminEventCollectionEditState.collectionName + " archived image",
+                label: archivedFileName + " (Archived)",
+                fileName: archivedFileName,
+                dataUrl: "",
+                isNew: false,
+                isArchived: true,
+                isExcluded: true
+            });
+        });
+
+        renderAdminEventCollectionEditGrid();
+        adminEventCollectionEditBackdrop.hidden = false;
+        syncAdminModalBodyLock();
+    }
+
+    function readAdminEventCollectionFileAsDataUrl(file) {
+        return new Promise(function (resolve, reject) {
+            var reader = new FileReader();
+
+            reader.onload = function (event) {
+                var dataUrl = String(event && event.target && event.target.result ? event.target.result : "");
+
+                if (dataUrl.indexOf("data:image/") !== 0) {
+                    reject(new Error("Only image files are allowed."));
+                    return;
+                }
+
+                resolve(dataUrl);
+            };
+
+            reader.onerror = function () {
+                reject(new Error("Unable to read one of the selected image files."));
+            };
+
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function handleAdminEventCollectionAddFiles(fileList) {
+        var files = Array.prototype.slice.call(fileList || []);
+
+        if (!files.length) {
+            return;
+        }
+
+        var imageFiles = files.filter(function (file) {
+            var mimeType = String(file && file.type ? file.type : "").toLowerCase();
+            return /^image\/(png|jpeg|jpg|webp|gif)$/.test(mimeType);
+        });
+
+        if (!imageFiles.length) {
+            setAdminEventCollectionEditFeedback("Please select valid image files (PNG, JPG, WEBP, or GIF).", "error");
+            return;
+        }
+
+        Promise.all(imageFiles.map(function (file) {
+            return readAdminEventCollectionFileAsDataUrl(file).then(function (dataUrl) {
+                return {
+                    file: file,
+                    dataUrl: dataUrl
+                };
+            });
+        }))
+            .then(function (results) {
+                results.forEach(function (entry) {
+                    adminEventCollectionEditState.tempCounter += 1;
+
+                    var fileName = String(entry.file && entry.file.name ? entry.file.name : ("new-image-" + String(adminEventCollectionEditState.tempCounter) + ".png"));
+
+                    adminEventCollectionEditState.images.push({
+                        id: "new-" + String(adminEventCollectionEditState.tempCounter),
+                        tempId: "new-" + String(adminEventCollectionEditState.tempCounter),
+                        imagePath: "",
+                        previewUrl: String(entry.dataUrl || ""),
+                        alt: adminEventCollectionEditState.collectionName + " new image",
+                        label: fileName + " (New)",
+                        fileName: fileName,
+                        dataUrl: String(entry.dataUrl || ""),
+                        isNew: true,
+                        isExcluded: false
+                    });
+                });
+
+                setAdminEventCollectionEditFeedback("", "error");
+                renderAdminEventCollectionEditGrid();
+            })
+            .catch(function (error) {
+                setAdminEventCollectionEditFeedback(error.message || "Unable to read selected files.", "error");
+            });
+    }
+
+    function submitAdminEventCollectionEditChanges() {
+        if (adminEventCollectionEditState.isSaving) {
+            return;
+        }
+
+        var card = adminEventCollectionEditState.card;
+        var packageKey = adminEventCollectionEditState.packageKey;
+        var collectionFolder = adminEventCollectionEditState.collectionFolder;
+        var categoryLabel = adminEventCollectionEditState.categoryLabel;
+        var collectionName = adminEventCollectionEditState.collectionName;
+        var nextCategoryLabel = String(adminEventCollectionEditCategoryInput ? adminEventCollectionEditCategoryInput.value : categoryLabel).trim();
+        var nextCollectionName = String(adminEventCollectionEditNameInput ? adminEventCollectionEditNameInput.value : collectionName).trim();
+
+        if (!card || !packageKey || !collectionFolder) {
+            closeAdminEventCollectionEditModal();
+            return;
+        }
+
+        if (!nextCategoryLabel) {
+            setAdminEventCollectionEditFeedback("Main Tag is required.", "error");
+            return;
+        }
+
+        if (!nextCollectionName) {
+            setAdminEventCollectionEditFeedback("Collection Name is required.", "error");
+            return;
+        }
+
+        var hasLabelChanges = nextCategoryLabel !== categoryLabel || nextCollectionName !== collectionName;
+
+        adminEventCollectionEditState.categoryLabel = nextCategoryLabel;
+        adminEventCollectionEditState.collectionName = nextCollectionName;
+
+        var excludedImagePaths = [];
+        var restoreImagePaths = [];
+        var addedImages = [];
+
+        adminEventCollectionEditState.images.forEach(function (imageEntry) {
+            if (imageEntry.isNew) {
+                if (!imageEntry.isExcluded && imageEntry.dataUrl) {
+                    addedImages.push({
+                        tempId: String(imageEntry.tempId || ""),
+                        dataUrl: String(imageEntry.dataUrl || ""),
+                        fileName: String(imageEntry.fileName || "")
+                    });
+                }
+
+                return;
+            }
+
+            if (imageEntry.isArchived) {
+                if (!imageEntry.isExcluded && imageEntry.imagePath) {
+                    restoreImagePaths.push(String(imageEntry.imagePath));
+                }
+
+                return;
+            }
+
+            if (imageEntry.isExcluded && imageEntry.imagePath) {
+                excludedImagePaths.push(String(imageEntry.imagePath));
+            }
+        });
+
+        if (!hasLabelChanges && !excludedImagePaths.length && !restoreImagePaths.length && !addedImages.length) {
+            closeAdminEventCollectionEditModal();
+            return;
+        }
+
+        if (!adminEventCollectionUpdateEndpoint) {
+            setAdminEventCollectionEditFeedback("Collection update endpoint is unavailable.", "error");
+            return;
+        }
+
+        setAdminEventCollectionEditFeedback("", "error");
+        setAdminEventCollectionEditSavingState(true);
+
+        fetch(adminEventCollectionUpdateEndpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                packageKey: packageKey,
+                collectionFolder: collectionFolder,
+                categoryLabel: nextCategoryLabel,
+                collectionLabel: nextCollectionName,
+                excludedImagePaths: excludedImagePaths,
+                restoreImagePaths: restoreImagePaths,
+                addedImages: addedImages
+            })
+        })
+            .then(function (response) {
+                return response.json().then(function (payload) {
+                    return {
+                        ok: response.ok,
+                        payload: payload
+                    };
+                });
+            })
+            .then(function (result) {
+                if (!result.ok || !result.payload || !result.payload.ok) {
+                    var message = result.payload && result.payload.message ? result.payload.message : "Unable to save collection changes.";
+                    throw new Error(message);
+                }
+
+                var returnedCategoryLabel = String(result.payload.categoryLabel || nextCategoryLabel).trim() || nextCategoryLabel;
+                var returnedCollectionName = String(result.payload.collectionLabel || nextCollectionName).trim() || nextCollectionName;
+                var returnedCollectionFolder = normalizeAdminEventCollectionImagePath(result.payload.collectionFolder || collectionFolder);
+                var wasRenamed = Boolean(result.payload.renamed);
+
+                adminEventCollectionEditState.categoryLabel = returnedCategoryLabel;
+                adminEventCollectionEditState.collectionName = returnedCollectionName;
+
+                if (returnedCollectionFolder) {
+                    adminEventCollectionEditState.collectionFolder = returnedCollectionFolder;
+                }
+
+                card.setAttribute("data-admin-event-collection-category", returnedCategoryLabel);
+                card.setAttribute("data-admin-event-collection-name", returnedCollectionName);
+
+                if (returnedCollectionFolder) {
+                    card.setAttribute("data-admin-event-collection-folder", returnedCollectionFolder);
+
+                    if (adminEventCollectionEditCollectionFolderInput) {
+                        adminEventCollectionEditCollectionFolderInput.value = returnedCollectionFolder;
+                    }
+                }
+
+                var cardTitle = card.querySelector(".event-gallery-meta h3");
+                if (cardTitle) {
+                    cardTitle.textContent = returnedCollectionName;
+                }
+
+                var editButton = card.querySelector("[data-admin-event-collection-edit]");
+                if (editButton) {
+                    editButton.setAttribute("aria-label", "Edit collection " + returnedCollectionName);
+                }
+
+                var removeButton = card.querySelector("[data-admin-remove-event-collection]");
+                if (removeButton) {
+                    removeButton.setAttribute("aria-label", "Archive collection " + returnedCollectionName);
+                }
+
+                if (adminEventCollectionEditTitle) {
+                    adminEventCollectionEditTitle.textContent = "Edit Collection: " + returnedCollectionName;
+                }
+
+                if (wasRenamed || returnedCategoryLabel !== categoryLabel) {
+                    closeAdminEventCollectionEditModal(true);
+                    window.location.reload();
+                    return;
+                }
+
+                var returnedAddedImages = Array.isArray(result.payload.addedImages) ? result.payload.addedImages : [];
+                var addedPathByTempId = Object.create(null);
+
+                returnedAddedImages.forEach(function (entry) {
+                    var tempId = String(entry && entry.tempId ? entry.tempId : "").trim();
+                    var imagePath = normalizeAdminEventCollectionImagePath(entry && entry.imagePath ? entry.imagePath : "");
+
+                    if (!tempId || !imagePath) {
+                        return;
+                    }
+
+                    addedPathByTempId[tempId] = imagePath;
+                });
+
+                if (addedImages.length && Object.keys(addedPathByTempId).length < addedImages.length) {
+                    throw new Error("Some newly added images were not saved. Please try again.");
+                }
+
+                var archivedImageMap = Object.create(null);
+                var archivedImagesRaw = String(card.getAttribute("data-admin-event-collection-archived-images") || "[]");
+
+                try {
+                    var decodedArchivedImages = JSON.parse(archivedImagesRaw);
+
+                    if (Array.isArray(decodedArchivedImages)) {
+                        decodedArchivedImages.forEach(function (path) {
+                            var normalizedArchivedPath = normalizeAdminEventCollectionImagePath(path);
+
+                            if (!normalizedArchivedPath) {
+                                return;
+                            }
+
+                            archivedImageMap[normalizedArchivedPath.toLowerCase()] = normalizedArchivedPath;
+                        });
+                    }
+                } catch (error) {
+                    archivedImageMap = Object.create(null);
+                }
+
+                restoreImagePaths.forEach(function (path) {
+                    var normalizedRestorePath = normalizeAdminEventCollectionImagePath(path);
+
+                    if (!normalizedRestorePath) {
+                        return;
+                    }
+
+                    delete archivedImageMap[normalizedRestorePath.toLowerCase()];
+                });
+
+                excludedImagePaths.forEach(function (path) {
+                    var normalizedExcludedPath = normalizeAdminEventCollectionImagePath(path);
+
+                    if (!normalizedExcludedPath) {
+                        return;
+                    }
+
+                    archivedImageMap[normalizedExcludedPath.toLowerCase()] = normalizedExcludedPath;
+                });
+
+                var nextArchivedImages = Object.keys(archivedImageMap).map(function (key) {
+                    return archivedImageMap[key];
+                });
+
+                card.setAttribute("data-admin-event-collection-archived-images", JSON.stringify(nextArchivedImages));
+
+                adminEventCollectionEditState.images = adminEventCollectionEditState.images.filter(function (imageEntry) {
+                    if (imageEntry.isExcluded) {
+                        return false;
+                    }
+
+                    if (imageEntry.isNew) {
+                        var resolvedPath = normalizeAdminEventCollectionImagePath(addedPathByTempId[String(imageEntry.tempId || "")]);
+                        if (!resolvedPath) {
+                            return false;
+                        }
+
+                        imageEntry.imagePath = resolvedPath;
+                        imageEntry.previewUrl = buildAdminEventCollectionImageUrl(resolvedPath);
+                        imageEntry.dataUrl = "";
+                        imageEntry.isNew = false;
+                        imageEntry.isArchived = false;
+                    } else if (imageEntry.isArchived) {
+                        imageEntry.isArchived = false;
+                        imageEntry.previewUrl = buildAdminEventCollectionImageUrl(imageEntry.imagePath || imageEntry.previewUrl || "");
+                    }
+
+                    return true;
+                });
+
+                applyAdminEventCollectionImagesToCard(card, adminEventCollectionEditState.images);
+                closeAdminEventCollectionEditModal(true);
+            })
+            .catch(function (error) {
+                setAdminEventCollectionEditFeedback(error.message || "Unable to save collection changes.", "error");
+            })
+            .finally(function () {
+                setAdminEventCollectionEditSavingState(false);
+            });
+    }
+
+    if (adminEventCollectionCreateOpenButton) {
+        adminEventCollectionCreateOpenButton.addEventListener("click", function () {
+            if (adminEventCollectionCreateState.isSaving) {
+                return;
+            }
+
+            openAdminEventCollectionCreateModal();
+        });
+    }
+
+    if (adminEventCollectionCreateClose) {
+        adminEventCollectionCreateClose.addEventListener("click", function () {
+            closeAdminEventCollectionCreateModal();
+        });
+    }
+
+    if (adminEventCollectionCreateCancel) {
+        adminEventCollectionCreateCancel.addEventListener("click", function () {
+            closeAdminEventCollectionCreateModal();
+        });
+    }
+
+    if (adminEventCollectionCreateBackdrop) {
+        adminEventCollectionCreateBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminEventCollectionCreateBackdrop) {
+                closeAdminEventCollectionCreateModal();
+            }
+        });
+    }
+
+    if (adminEventCollectionCreateForm) {
+        adminEventCollectionCreateForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+            submitAdminEventCollectionCreate();
+        });
+    }
+
+    adminEventCollectionEditButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            var card = button.closest("[data-admin-event-collection-card]");
+            openAdminEventCollectionEditModal(card);
+        });
     });
+
+    if (adminEventCollectionEditGrid) {
+        adminEventCollectionEditGrid.addEventListener("click", function (event) {
+            var toggleButton = event.target.closest("[data-admin-event-collection-toggle]");
+
+            if (!toggleButton || adminEventCollectionEditState.isSaving) {
+                return;
+            }
+
+            var imageIndex = Number.parseInt(String(toggleButton.getAttribute("data-admin-event-collection-toggle") || "-1"), 10);
+            if (!Number.isFinite(imageIndex) || imageIndex < 0 || imageIndex >= adminEventCollectionEditState.images.length) {
+                return;
+            }
+
+            adminEventCollectionEditState.images[imageIndex].isExcluded = !adminEventCollectionEditState.images[imageIndex].isExcluded;
+            renderAdminEventCollectionEditGrid();
+        });
+    }
+
+    if (adminEventCollectionAddTrigger) {
+        adminEventCollectionAddTrigger.addEventListener("click", function () {
+            if (adminEventCollectionEditState.isSaving || !adminEventCollectionAddInput) {
+                return;
+            }
+
+            adminEventCollectionAddInput.click();
+        });
+    }
+
+    if (adminEventCollectionAddInput) {
+        adminEventCollectionAddInput.addEventListener("change", function () {
+            if (adminEventCollectionEditState.isSaving) {
+                return;
+            }
+
+            var selectedFiles = adminEventCollectionAddInput.files;
+            adminEventCollectionAddInput.value = "";
+
+            handleAdminEventCollectionAddFiles(selectedFiles);
+        });
+    }
+
+    if (adminEventCollectionEditClose) {
+        adminEventCollectionEditClose.addEventListener("click", function () {
+            closeAdminEventCollectionEditModal();
+        });
+    }
+
+    if (adminEventCollectionEditCancel) {
+        adminEventCollectionEditCancel.addEventListener("click", function () {
+            closeAdminEventCollectionEditModal();
+        });
+    }
+
+    if (adminEventCollectionEditBackdrop) {
+        adminEventCollectionEditBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminEventCollectionEditBackdrop) {
+                closeAdminEventCollectionEditModal();
+            }
+        });
+    }
+
+    if (adminEventCollectionEditForm) {
+        adminEventCollectionEditForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+            submitAdminEventCollectionEditChanges();
+        });
+    }
 
     adminEventCollectionRemoveButtons.forEach(function (button) {
         button.addEventListener("click", function () {
@@ -2046,6 +3043,10 @@ document.addEventListener("DOMContentLoaded", function () {
         var packageTitle = String(card.getAttribute("data-admin-event-package-title") || "").trim();
         var packagePrice = Number.parseFloat(String(card.getAttribute("data-admin-event-package-price") || "0"));
         var packageDiscount = clampDiscount(card.getAttribute("data-admin-event-package-discount") || "0");
+        var packageCamera1 = String(card.getAttribute("data-admin-event-package-camera-1") || "").trim();
+        var packageCamera2 = String(card.getAttribute("data-admin-event-package-camera-2") || "").trim();
+        var packageBackupCamera1 = String(card.getAttribute("data-admin-event-package-backup-camera-1") || "").trim();
+        var packageBackupCamera2 = String(card.getAttribute("data-admin-event-package-backup-camera-2") || "").trim();
 
         if (adminEventEditKey) {
             adminEventEditKey.value = packageKey;
@@ -2061,6 +3062,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (adminEventEditDiscount) {
             adminEventEditDiscount.value = String(packageDiscount);
+        }
+
+        if (adminEventEditCamera1) {
+            adminEventEditCamera1.value = packageCamera1;
+        }
+
+        if (adminEventEditCamera2) {
+            adminEventEditCamera2.value = packageCamera2;
+        }
+
+        if (adminEventEditBackupCamera1) {
+            adminEventEditBackupCamera1.value = packageBackupCamera1;
+        }
+
+        if (adminEventEditBackupCamera2) {
+            adminEventEditBackupCamera2.value = packageBackupCamera2;
         }
 
         adminEventEditBackdrop.hidden = false;
@@ -4946,11 +5963,13 @@ document.addEventListener("DOMContentLoaded", function () {
         var hasVisibleActionModal = Boolean(adminActionModalBackdrop && !adminActionModalBackdrop.hidden);
         var hasVisibleEventEditModal = Boolean(adminEventEditBackdrop && !adminEventEditBackdrop.hidden);
         var hasVisibleEventThumbsModal = Boolean(adminEventThumbsBackdrop && !adminEventThumbsBackdrop.hidden);
+        var hasVisibleEventCollectionCreateModal = Boolean(adminEventCollectionCreateBackdrop && !adminEventCollectionCreateBackdrop.hidden);
+        var hasVisibleEventCollectionEditModal = Boolean(adminEventCollectionEditBackdrop && !adminEventCollectionEditBackdrop.hidden);
         var hasVisibleBookingDetailModal = Boolean(adminBookingDetailBackdrop && !adminBookingDetailBackdrop.hidden);
         var hasVisibleBookingCancelModal = Boolean(adminBookingCancelBackdrop && !adminBookingCancelBackdrop.hidden);
         var hasVisibleBookingReviewModal = Boolean(adminBookingReviewBackdrop && !adminBookingReviewBackdrop.hidden);
         var hasVisibleBookingDeliveryModal = Boolean(adminBookingDeliveryBackdrop && !adminBookingDeliveryBackdrop.hidden);
-        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal || hasVisibleEventEditModal || hasVisibleEventThumbsModal || hasVisibleBookingDetailModal || hasVisibleBookingCancelModal || hasVisibleBookingReviewModal || hasVisibleBookingDeliveryModal);
+        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal || hasVisibleEventEditModal || hasVisibleEventThumbsModal || hasVisibleEventCollectionCreateModal || hasVisibleEventCollectionEditModal || hasVisibleBookingDetailModal || hasVisibleBookingCancelModal || hasVisibleBookingReviewModal || hasVisibleBookingDeliveryModal);
     }
 
     function setAdminBookingCancelError(message) {

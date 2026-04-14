@@ -1054,7 +1054,8 @@ button {
 .admin-notification-modal-scroll,
 .admin-equipments-archive-modal,
 .admin-equipments-status-modal,
-.admin-event-thumbs-grid {
+.admin-event-thumbs-grid,
+.admin-event-collection-edit-grid {
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
 }
@@ -1066,7 +1067,8 @@ button {
 .admin-notification-modal-scroll::-webkit-scrollbar,
 .admin-equipments-archive-modal::-webkit-scrollbar,
 .admin-equipments-status-modal::-webkit-scrollbar,
-.admin-event-thumbs-grid::-webkit-scrollbar {
+.admin-event-thumbs-grid::-webkit-scrollbar,
+.admin-event-collection-edit-grid::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
@@ -1078,7 +1080,8 @@ button {
 .admin-notification-modal-scroll::-webkit-scrollbar-track,
 .admin-equipments-archive-modal::-webkit-scrollbar-track,
 .admin-equipments-status-modal::-webkit-scrollbar-track,
-.admin-event-thumbs-grid::-webkit-scrollbar-track {
+.admin-event-thumbs-grid::-webkit-scrollbar-track,
+.admin-event-collection-edit-grid::-webkit-scrollbar-track {
     background: transparent;
 }
 
@@ -1089,7 +1092,8 @@ button {
 .admin-notification-modal-scroll::-webkit-scrollbar-thumb,
 .admin-equipments-archive-modal::-webkit-scrollbar-thumb,
 .admin-equipments-status-modal::-webkit-scrollbar-thumb,
-.admin-event-thumbs-grid::-webkit-scrollbar-thumb {
+.admin-event-thumbs-grid::-webkit-scrollbar-thumb,
+.admin-event-collection-edit-grid::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.28);
     border-radius: 999px;
 }
@@ -1101,7 +1105,8 @@ button {
 .admin-notification-modal-scroll::-webkit-scrollbar-thumb:hover,
 .admin-equipments-archive-modal::-webkit-scrollbar-thumb:hover,
 .admin-equipments-status-modal::-webkit-scrollbar-thumb:hover,
-.admin-event-thumbs-grid::-webkit-scrollbar-thumb:hover {
+.admin-event-thumbs-grid::-webkit-scrollbar-thumb:hover,
+.admin-event-collection-edit-grid::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.4);
 }
 
@@ -1371,6 +1376,18 @@ button {
     transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
 }
 
+.admin-event-collection-create-fields input,
+.admin-event-collection-edit-fields input {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+    color: #f4f4f4;
+    padding: 0 0.75rem;
+    border-radius: 10px;
+    transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
 .admin-edit-fields-column textarea {
     width: 100%;
     min-height: 84px;
@@ -1385,6 +1402,14 @@ button {
 
 .admin-edit-fields-column input:focus-visible,
 .admin-edit-fields-column select:focus-visible {
+    outline: 0;
+    border-color: rgba(255, 255, 255, 0.52);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(103, 194, 61, 0.22);
+}
+
+.admin-event-collection-create-fields input:focus-visible,
+.admin-event-collection-edit-fields input:focus-visible {
     outline: 0;
     border-color: rgba(255, 255, 255, 0.52);
     background: rgba(255, 255, 255, 0.08);
@@ -7231,6 +7256,33 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     font-size: 0.95rem;
 }
 
+.event-detail-page .event-detail-header-copy {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.event-detail-admin-add-collection {
+    margin-left: auto;
+    min-height: 34px;
+    padding: 0 0.95rem;
+    border: 1px solid rgba(255, 255, 255, 0.36);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f4f4;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+.event-detail-admin-add-collection:hover,
+.event-detail-admin-add-collection:focus-visible {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.52);
+    transform: translateY(-1px);
+}
+
 .event-package-cta {
     margin-top: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.28);
@@ -7390,6 +7442,174 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 }
 
 .admin-event-thumbs-empty {
+    margin: 0;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    min-height: 140px;
+    display: grid;
+    place-items: center;
+    color: #ced4dd;
+    font-size: 0.92rem;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-event-collection-edit-modal {
+    width: min(100%, 1080px);
+}
+
+.admin-event-collection-create-modal {
+    width: min(100%, 560px);
+}
+
+.admin-event-collection-create-note {
+    margin: 0 0 0.75rem;
+    color: #d7dde6;
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.admin-event-collection-create-fields,
+.admin-event-collection-edit-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.7rem;
+    margin-bottom: 0.8rem;
+}
+
+.admin-event-collection-create-feedback {
+    margin: 0 0 0.7rem;
+    font-size: 0.84rem;
+    line-height: 1.4;
+    color: #e7ebf1;
+}
+
+.admin-event-collection-create-feedback.is-error {
+    color: #ffb4b4;
+}
+
+.admin-event-collection-create-feedback.is-success {
+    color: #9ee9a2;
+}
+
+.admin-event-collection-edit-note {
+    margin: 0 0 0.8rem;
+    color: #d7dde6;
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.admin-event-collection-edit-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-bottom: 0.72rem;
+}
+
+.admin-event-collection-add-trigger {
+    min-width: 130px;
+}
+
+.admin-event-collection-edit-feedback {
+    margin: 0 0 0.7rem;
+    font-size: 0.84rem;
+    line-height: 1.4;
+    color: #e7ebf1;
+}
+
+.admin-event-collection-edit-feedback.is-error {
+    color: #ffb4b4;
+}
+
+.admin-event-collection-edit-feedback.is-success {
+    color: #9ee9a2;
+}
+
+.admin-event-collection-edit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+    gap: 0.65rem;
+    max-height: 56vh;
+    overflow: auto;
+    padding-right: 0.3rem;
+}
+
+.admin-event-collection-image-item {
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.35rem;
+    transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.admin-event-collection-image-item img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 8px;
+    transition: opacity 160ms ease, filter 160ms ease;
+}
+
+.admin-event-collection-image-item.is-excluded img {
+    opacity: 0.35;
+    filter: grayscale(0.9);
+}
+
+.admin-event-collection-image-item.is-excluded {
+    border-color: rgba(224, 74, 74, 0.68);
+    background: rgba(224, 74, 74, 0.08);
+}
+
+.admin-event-collection-image-toggle {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.55rem;
+    z-index: 2;
+    width: 28px;
+    height: 28px;
+    border: 1px solid #c83f3f;
+    border-radius: 8px;
+    background: #e04a4a;
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+
+.admin-event-collection-image-toggle:hover,
+.admin-event-collection-image-toggle:focus-visible {
+    transform: scale(1.06);
+    background: #c83a3a;
+    border-color: #d95a5a;
+}
+
+.admin-event-collection-image-toggle.is-undo {
+    border-color: #3d9042;
+    background: #4aaa52;
+}
+
+.admin-event-collection-image-toggle.is-undo:hover,
+.admin-event-collection-image-toggle.is-undo:focus-visible {
+    background: #3f9446;
+    border-color: #53ad5c;
+}
+
+.admin-event-collection-image-meta {
+    display: block;
+    margin-top: 0.36rem;
+    font-size: 0.75rem;
+    color: #c8ced8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.admin-event-collection-edit-empty {
     margin: 0;
     border: 1px dashed rgba(255, 255, 255, 0.3);
     border-radius: 10px;
@@ -8003,6 +8223,15 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
         font-size: 1.5rem;
     }
 
+    .event-detail-page .catalog-header {
+        flex-wrap: wrap;
+    }
+
+    .event-detail-admin-add-collection {
+        margin-left: 0;
+        width: 100%;
+    }
+
     .package-grid {
         grid-template-columns: 1fr;
     }
@@ -8035,6 +8264,11 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     }
 
     .admin-edit-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-event-collection-create-fields,
+    .admin-event-collection-edit-fields {
         grid-template-columns: 1fr;
     }
 

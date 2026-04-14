@@ -23,6 +23,7 @@ if ($isAdminView && !$isAdminLoggedIn) {
 
 require __DIR__ . '/config/event_packages_repository.php';
 require __DIR__ . '/config/event_collections_archive_repository.php';
+require __DIR__ . '/config/event_collection_images_archive_repository.php';
 
 function parseEventPackagePrice($value): float
 {
@@ -282,9 +283,68 @@ function isEventCollectionArchivedForPackage(array $archivedCollections, string 
     return false;
 }
 
+function buildArchivedEventCollectionImageLookups(array $archivedImages, string $packageKey, string $packageFolder): array
+{
+    $setLookup = [];
+    $listLookup = [];
+    $normalizedPackageKey = normalize_event_package_key($packageKey);
+    $normalizedPackageFolder = trim($packageFolder);
+
+    foreach ($archivedImages as $archivedEntry) {
+        if (!is_array($archivedEntry)) {
+            continue;
+        }
+
+        $entryCollectionFolder = normalize_event_collection_folder_name($archivedEntry['collectionFolder'] ?? '');
+        $entryImagePath = normalize_event_collection_image_relative_path($archivedEntry['imagePath'] ?? '');
+
+        if ($entryCollectionFolder === '' || $entryImagePath === '') {
+            continue;
+        }
+
+        $entryPackageFolder = trim((string) ($archivedEntry['packageFolder'] ?? ''));
+        $entryPackageKey = normalize_event_package_key((string) ($archivedEntry['packageKey'] ?? ''));
+        $isSamePackage = false;
+
+        if ($normalizedPackageFolder !== '' && $entryPackageFolder !== '' && strcasecmp($entryPackageFolder, $normalizedPackageFolder) === 0) {
+            $isSamePackage = true;
+        } elseif ($normalizedPackageKey !== '' && $entryPackageKey !== '' && $entryPackageKey === $normalizedPackageKey) {
+            $isSamePackage = true;
+        }
+
+        if (!$isSamePackage) {
+            continue;
+        }
+
+        $collectionKey = strtolower($entryCollectionFolder);
+        $pathKey = strtolower($entryImagePath);
+
+        if (!isset($setLookup[$collectionKey])) {
+            $setLookup[$collectionKey] = [];
+        }
+
+        if (!isset($listLookup[$collectionKey])) {
+            $listLookup[$collectionKey] = [];
+        }
+
+        if (isset($setLookup[$collectionKey][$pathKey])) {
+            continue;
+        }
+
+        $setLookup[$collectionKey][$pathKey] = true;
+        $listLookup[$collectionKey][] = $entryImagePath;
+    }
+
+    return [
+        'set' => $setLookup,
+        'list' => $listLookup,
+    ];
+}
+
 $projectRoot = __DIR__;
 $selectedPackageFolder = trim((string) ($selectedPackage['folder'] ?? ''));
 $archivedEventCollections = load_archived_event_collections_repository();
+$archivedEventCollectionImages = load_archived_event_collection_images_repository();
 $packageEvents = array_values(array_filter(
     collectPackageEvents($projectRoot, $selectedPackageFolder),
     static function (array $event) use ($archivedEventCollections, $selectedPackageKey, $selectedPackageFolder): bool {
@@ -298,6 +358,50 @@ $packageEvents = array_values(array_filter(
         );
     }
 ));
+
+$archivedCollectionImageLookups = buildArchivedEventCollectionImageLookups(
+    $archivedEventCollectionImages,
+    (string) $selectedPackageKey,
+    $selectedPackageFolder
+);
+
+$archivedCollectionImageLookup = is_array($archivedCollectionImageLookups['set'] ?? null)
+    ? $archivedCollectionImageLookups['set']
+    : [];
+
+$archivedCollectionImageListLookup = is_array($archivedCollectionImageLookups['list'] ?? null)
+    ? $archivedCollectionImageLookups['list']
+    : [];
+
+$packageEvents = array_map(
+    static function (array $event) use ($archivedCollectionImageLookup, $archivedCollectionImageListLookup): array {
+        $collectionKey = strtolower(normalize_event_collection_folder_name($event['folder_name'] ?? ''));
+        $excludedPathLookup = $collectionKey !== '' && isset($archivedCollectionImageLookup[$collectionKey])
+            ? $archivedCollectionImageLookup[$collectionKey]
+            : [];
+
+        $event['archived_images'] = $collectionKey !== '' && isset($archivedCollectionImageListLookup[$collectionKey])
+            ? array_values((array) $archivedCollectionImageListLookup[$collectionKey])
+            : [];
+
+        $event['images'] = array_values(array_filter(
+            (array) ($event['images'] ?? []),
+            static function ($imagePath) use ($excludedPathLookup): bool {
+                $normalizedPath = strtolower(normalize_event_collection_image_relative_path((string) $imagePath));
+
+                if ($normalizedPath === '') {
+                    return true;
+                }
+
+                return !isset($excludedPathLookup[$normalizedPath]);
+            }
+        ));
+
+        return $event;
+    },
+    $packageEvents
+);
+
 $categoryGroups = [];
 
 foreach ($packageEvents as $event) {
@@ -416,6 +520,9 @@ foreach ($packageEvents as $event) {
                     <h1><?php echo htmlspecialchars($selectedPackage['title'], ENT_QUOTES, 'UTF-8'); ?></h1>
                     <p>Event folders below are categorized sample galleries for this package.</p>
                 </div>
+                <?php if ($isAdminView): ?>
+                    <button class="event-detail-admin-add-collection" type="button" data-admin-event-collection-add-open>Add Collection</button>
+                <?php endif; ?>
             </div>
 
             <article class="event-package-cta">
@@ -495,6 +602,7 @@ foreach ($packageEvents as $event) {
                                     data-admin-event-collection-folder="<?php echo htmlspecialchars((string) ($event['folder_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                     data-admin-event-collection-category="<?php echo htmlspecialchars((string) $categoryLabel, ENT_QUOTES, 'UTF-8'); ?>"
                                     data-admin-event-collection-name="<?php echo htmlspecialchars((string) ($event['event_label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-admin-event-collection-archived-images="<?php echo htmlspecialchars((string) json_encode(array_values((array) ($event['archived_images'] ?? [])), JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8'); ?>"
                                 <?php endif; ?>
                             >
                                 <?php if ($isAdminView): ?>
@@ -516,6 +624,7 @@ foreach ($packageEvents as $event) {
                                             <figure class="event-photo-item">
                                                 <img
                                                     src="<?php echo htmlspecialchars(buildAssetUrl($assetBase, $imagePath), ENT_QUOTES, 'UTF-8'); ?>"
+                                                    data-admin-event-image-path="<?php echo htmlspecialchars((string) $imagePath, ENT_QUOTES, 'UTF-8'); ?>"
                                                     alt="<?php echo htmlspecialchars($event['event_label'] . ' photo ' . ($imageIndex + 1), ENT_QUOTES, 'UTF-8'); ?>"
                                                     loading="lazy"
                                                 >
@@ -536,10 +645,87 @@ foreach ($packageEvents as $event) {
     <?php if ($isAdminView): ?>
         <div
             data-admin-event-collection-config
+            data-admin-event-collection-create-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/create_event_collection.php', ENT_QUOTES, 'UTF-8'); ?>"
             data-admin-event-collection-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_event_collection.php', ENT_QUOTES, 'UTF-8'); ?>"
             data-admin-event-collection-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_event_collection.php', ENT_QUOTES, 'UTF-8'); ?>"
+            data-admin-event-collection-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_event_collection_images.php', ENT_QUOTES, 'UTF-8'); ?>"
+            data-admin-event-collection-asset-base="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>"
+            data-admin-event-collection-package-key="<?php echo htmlspecialchars((string) $selectedPackageKey, ENT_QUOTES, 'UTF-8'); ?>"
+            data-admin-event-collection-package-folder="<?php echo htmlspecialchars((string) $selectedPackageFolder, ENT_QUOTES, 'UTF-8'); ?>"
             hidden
         ></div>
+
+        <div class="admin-edit-modal-backdrop admin-event-collection-create-backdrop" data-admin-event-collection-create-backdrop hidden>
+            <section class="admin-edit-modal admin-event-collection-create-modal" role="dialog" aria-modal="true" aria-labelledby="admin-event-collection-create-title">
+                <div class="admin-edit-modal-head">
+                    <h2 id="admin-event-collection-create-title">Add Collection</h2>
+                    <button class="admin-edit-close" type="button" data-admin-event-collection-create-close aria-label="Close add collection modal">&times;</button>
+                </div>
+
+                <form class="admin-edit-form admin-event-collection-create-form" data-admin-event-collection-create-form>
+                    <p class="admin-event-collection-create-note">
+                        Add a <strong>Main Tag</strong> and <strong>Collection Name</strong>. You can upload images afterwards via Edit Collection.
+                    </p>
+
+                    <div class="admin-event-collection-create-fields">
+                        <label class="admin-edit-label" for="admin-event-collection-create-category">Main Tag</label>
+                        <input id="admin-event-collection-create-category" type="text" data-admin-event-collection-create-category maxlength="120" required>
+
+                        <label class="admin-edit-label" for="admin-event-collection-create-name">Collection Name</label>
+                        <input id="admin-event-collection-create-name" type="text" data-admin-event-collection-create-name maxlength="120" required>
+                    </div>
+
+                    <p class="admin-event-collection-create-feedback" data-admin-event-collection-create-feedback hidden></p>
+
+                    <div class="admin-edit-actions">
+                        <button class="admin-edit-secondary" type="button" data-admin-event-collection-create-cancel>Cancel</button>
+                        <button class="admin-edit-primary" type="submit" data-admin-event-collection-create-save>Create Collection</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+
+        <div class="admin-edit-modal-backdrop admin-event-collection-edit-backdrop" data-admin-event-collection-edit-backdrop hidden>
+            <section class="admin-edit-modal admin-event-collection-edit-modal" role="dialog" aria-modal="true" aria-labelledby="admin-event-collection-edit-title">
+                <div class="admin-edit-modal-head">
+                    <h2 id="admin-event-collection-edit-title" data-admin-event-collection-edit-title>Edit Collection</h2>
+                    <button class="admin-edit-close" type="button" data-admin-event-collection-edit-close aria-label="Close collection editor">&times;</button>
+                </div>
+
+                <form class="admin-edit-form admin-event-collection-edit-form" data-admin-event-collection-edit-form>
+                    <input type="hidden" data-admin-event-collection-edit-package-key>
+                    <input type="hidden" data-admin-event-collection-edit-package-folder>
+                    <input type="hidden" data-admin-event-collection-edit-collection-folder>
+
+                    <div class="admin-event-collection-edit-fields">
+                        <label class="admin-edit-label" for="admin-event-collection-edit-category">Main Tag</label>
+                        <input id="admin-event-collection-edit-category" type="text" data-admin-event-collection-edit-category maxlength="120" required>
+
+                        <label class="admin-edit-label" for="admin-event-collection-edit-name">Collection Name</label>
+                        <input id="admin-event-collection-edit-name" type="text" data-admin-event-collection-edit-name maxlength="120" required>
+                    </div>
+
+                    <p class="admin-event-collection-edit-note">
+                        Use the red <strong>&times;</strong> button to exclude an image. Excluded images dim out. Click the green <strong>&#10003;</strong> button to undo the exclusion before saving. Editing Main Tag or Collection Name will rename this collection.
+                    </p>
+
+                    <div class="admin-event-collection-edit-toolbar">
+                        <button class="admin-edit-secondary admin-event-collection-add-trigger" type="button" data-admin-event-collection-add-trigger>Add Image</button>
+                        <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple data-admin-event-collection-add-input hidden>
+                    </div>
+
+                    <p class="admin-event-collection-edit-feedback" data-admin-event-collection-edit-feedback hidden></p>
+
+                    <div class="admin-event-collection-edit-grid" data-admin-event-collection-edit-grid></div>
+                    <p class="admin-event-collection-edit-empty" data-admin-event-collection-edit-empty hidden>No images in this collection yet. Add one to get started.</p>
+
+                    <div class="admin-edit-actions">
+                        <button class="admin-edit-secondary" type="button" data-admin-event-collection-edit-cancel>Cancel</button>
+                        <button class="admin-edit-primary" type="submit" data-admin-event-collection-edit-save>Save Changes</button>
+                    </div>
+                </form>
+            </section>
+        </div>
 
         <aside class="admin-undo-toast" data-admin-undo-toast hidden aria-live="polite" aria-atomic="true">
             <p class="admin-undo-toast-message" data-admin-undo-message>Collection archived.</p>
@@ -573,6 +759,6 @@ foreach ($packageEvents as $event) {
     <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-3"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260414-2"></script>
 </body>
 </html>

@@ -13,6 +13,10 @@
             "assets/event_packages/0000/wedding_Jeanne-and-Nilo/CLT04842.jpg",
             "assets/event_packages/0000/wedding_Jeanne-and-Nilo/CLT04801.jpg"
         ],
+        "camera1": "canon-1200d",
+        "camera2": "",
+        "backupCamera1": "",
+        "backupCamera2": "",
         "archived": false,
         "archivedAt": ""
     },
@@ -27,6 +31,10 @@
             "assets/event_packages/0001/baptism_Padua-Silang-Baptism/CLT04304.jpg",
             "assets/event_packages/0001/birthday-Xth_Zofia/CLT00760.jpg"
         ],
+        "camera1": "canon-4000d",
+        "camera2": "",
+        "backupCamera1": "",
+        "backupCamera2": "",
         "archived": false,
         "archivedAt": ""
     },
@@ -44,6 +52,10 @@
             "assets/event_packages/0002/debut_Janna/IMG_6377.jpg",
             "assets/event_packages/0002/pre-debut_Sina/IMG_1878.jpg"
         ],
+        "camera1": "canon-700d",
+        "camera2": "",
+        "backupCamera1": "",
+        "backupCamera2": "",
         "archived": false,
         "archivedAt": ""
     },
@@ -53,6 +65,10 @@
         "discountPercent": 0,
         "folder": "0003",
         "thumbnail_images": [],
+        "camera1": "fuji-x-a3",
+        "camera2": "",
+        "backupCamera1": "",
+        "backupCamera2": "",
         "archived": false,
         "archivedAt": ""
     },
@@ -76,6 +92,10 @@
             "assets/event_packages/0004/business_JCRD-Builders/CLT02041.jpg",
             "assets/event_packages/0004/business_JCRD-Builders/CLT02061.jpg"
         ],
+        "camera1": "nikon-d60",
+        "camera2": "",
+        "backupCamera1": "",
+        "backupCamera2": "",
         "archived": false,
         "archivedAt": ""
     },
@@ -85,6 +105,10 @@
         "discountPercent": 0,
         "folder": "0005",
         "thumbnail_images": [],
+        "camera1": "sony-zv-e10",
+        "camera2": "",
+        "backupCamera1": "",
+        "backupCamera2": "",
         "archived": false,
         "archivedAt": ""
     }

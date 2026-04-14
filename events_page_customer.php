@@ -22,6 +22,8 @@ if ($isAdminView && !$isAdminLoggedIn) {
 }
 
 require __DIR__ . '/config/event_packages_repository.php';
+require __DIR__ . '/config/products_repository.php';
+require __DIR__ . '/config/equipment_inventory_repository.php';
 
 function parseEventPackagePrice($value): float
 {
@@ -239,7 +241,97 @@ function collectEventPackageFolders(string $projectRoot): array
     return array_values($folders);
 }
 
+function build_event_package_camera_label(string $productKey, array $productRecord): string
+{
+    $brand = trim((string) ($productRecord['brand'] ?? ''));
+    $name = trim((string) ($productRecord['name'] ?? ''));
+
+    if ($brand !== '' && $name !== '') {
+        return $brand . ' ' . $name;
+    }
+
+    if ($name !== '') {
+        return $name;
+    }
+
+    if ($brand !== '') {
+        return $brand;
+    }
+
+    return strtoupper(str_replace('-', ' ', $productKey));
+}
+
+function build_event_package_camera_options(array $products, array $inventory): array
+{
+    $options = [];
+
+    foreach ($inventory as $productKey => $inventoryEntry) {
+        if (!is_array($inventoryEntry)) {
+            continue;
+        }
+
+        $normalizedKey = normalize_event_package_key((string) $productKey);
+
+        if ($normalizedKey === '' || isset($options[$normalizedKey])) {
+            continue;
+        }
+
+        $productRecord = isset($products[$normalizedKey]) && is_array($products[$normalizedKey])
+            ? $products[$normalizedKey]
+            : [];
+
+        $options[$normalizedKey] = [
+            'key' => $normalizedKey,
+            'label' => build_event_package_camera_label($normalizedKey, $productRecord),
+        ];
+    }
+
+    uasort(
+        $options,
+        static function (array $left, array $right): int {
+            return strcasecmp((string) ($left['label'] ?? ''), (string) ($right['label'] ?? ''));
+        }
+    );
+
+    return array_values($options);
+}
+
+function build_event_package_camera_key_lookup(array $cameraOptions): array
+{
+    $lookup = [];
+
+    foreach ($cameraOptions as $cameraOption) {
+        if (!is_array($cameraOption)) {
+            continue;
+        }
+
+        $cameraKey = normalize_event_package_key((string) ($cameraOption['key'] ?? ''));
+        if ($cameraKey === '') {
+            continue;
+        }
+
+        $lookup[$cameraKey] = true;
+    }
+
+    return $lookup;
+}
+
+function sanitize_event_package_camera_assignment($value, array $cameraKeyLookup): string
+{
+    $cameraKey = normalize_event_package_key((string) $value);
+
+    if ($cameraKey === '' || !isset($cameraKeyLookup[$cameraKey])) {
+        return '';
+    }
+
+    return $cameraKey;
+}
+
 $eventPackagesRepository = load_event_packages_repository();
+$cameraInventory = load_equipment_inventory_repository();
+$cameraProducts = load_products_repository();
+$eventPackageCameraOptions = build_event_package_camera_options($cameraProducts, $cameraInventory);
+$eventPackageCameraKeyLookup = build_event_package_camera_key_lookup($eventPackageCameraOptions);
 
 if ($isAdminView && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $adminEventAction = trim((string) ($_POST['admin_event_action'] ?? ''));
@@ -249,6 +341,10 @@ if ($isAdminView && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') 
         $titleValue = trim((string) ($_POST['title'] ?? ''));
         $priceValue = (float) ($_POST['price'] ?? 0);
         $discountValue = (int) ($_POST['discountPercent'] ?? 0);
+        $camera1Value = sanitize_event_package_camera_assignment($_POST['camera1'] ?? '', $eventPackageCameraKeyLookup);
+        $camera2Value = sanitize_event_package_camera_assignment($_POST['camera2'] ?? '', $eventPackageCameraKeyLookup);
+        $backupCamera1Value = sanitize_event_package_camera_assignment($_POST['backupCamera1'] ?? '', $eventPackageCameraKeyLookup);
+        $backupCamera2Value = sanitize_event_package_camera_assignment($_POST['backupCamera2'] ?? '', $eventPackageCameraKeyLookup);
 
         $updated = false;
 
@@ -257,6 +353,10 @@ if ($isAdminView && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') 
                 $eventPackagesRepository[$packageKey]['title'] = $titleValue;
                 $eventPackagesRepository[$packageKey]['price'] = number_format($priceValue, 2, '.', '');
                 $eventPackagesRepository[$packageKey]['discountPercent'] = max(0, min(95, $discountValue));
+                $eventPackagesRepository[$packageKey]['camera1'] = $camera1Value;
+                $eventPackagesRepository[$packageKey]['camera2'] = $camera2Value;
+                $eventPackagesRepository[$packageKey]['backupCamera1'] = $backupCamera1Value;
+                $eventPackagesRepository[$packageKey]['backupCamera2'] = $backupCamera2Value;
 
                 $updated = save_event_packages_repository($eventPackagesRepository);
             }
@@ -353,6 +453,10 @@ foreach ($eventPackagesRepository as $packageKey => $packageRecord) {
 
     $selectedThumbnailImages = sanitize_selected_thumbnail_paths($packageRecord['thumbnail_images'] ?? [], $projectRoot);
     $selectedThumbnailImages = filter_thumbnail_paths_for_folder($selectedThumbnailImages, $folder);
+    $camera1Key = sanitize_event_package_camera_assignment($packageRecord['camera1'] ?? '', $eventPackageCameraKeyLookup);
+    $camera2Key = sanitize_event_package_camera_assignment($packageRecord['camera2'] ?? '', $eventPackageCameraKeyLookup);
+    $backupCamera1Key = sanitize_event_package_camera_assignment($packageRecord['backupCamera1'] ?? '', $eventPackageCameraKeyLookup);
+    $backupCamera2Key = sanitize_event_package_camera_assignment($packageRecord['backupCamera2'] ?? '', $eventPackageCameraKeyLookup);
 
     $eventPackages[] = [
         'key' => (string) $packageKey,
@@ -362,6 +466,10 @@ foreach ($eventPackagesRepository as $packageKey => $packageRecord) {
         'discount_percent' => $discountPercent,
         'folder' => $folder,
         'selected_thumbnail_images' => $selectedThumbnailImages,
+        'camera1' => $camera1Key,
+        'camera2' => $camera2Key,
+        'backupCamera1' => $backupCamera1Key,
+        'backupCamera2' => $backupCamera2Key,
     ];
 }
 
@@ -532,6 +640,10 @@ unset($eventPackage);
                         data-admin-event-package-price="<?php echo htmlspecialchars(number_format($basePriceValue, 2, '.', ''), ENT_QUOTES, 'UTF-8'); ?>"
                         data-admin-event-package-discount="<?php echo htmlspecialchars((string) $discountPercent, ENT_QUOTES, 'UTF-8'); ?>"
                         data-admin-event-package-folder="<?php echo htmlspecialchars((string) ($eventPackage['folder'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-event-package-camera-1="<?php echo htmlspecialchars((string) ($eventPackage['camera1'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-event-package-camera-2="<?php echo htmlspecialchars((string) ($eventPackage['camera2'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-event-package-backup-camera-1="<?php echo htmlspecialchars((string) ($eventPackage['backupCamera1'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-event-package-backup-camera-2="<?php echo htmlspecialchars((string) ($eventPackage['backupCamera2'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                         data-admin-event-selected-thumbnails="<?php echo htmlspecialchars((string) json_encode(array_values((array) ($eventPackage['selected_thumbnail_images'] ?? [])), JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8'); ?>"
                     >
                         <?php if ($isAdminView): ?>
@@ -649,6 +761,38 @@ unset($eventPackage);
 
                         <label class="admin-edit-label" for="admin-event-edit-discount">Discount Percentage</label>
                         <input id="admin-event-edit-discount" type="number" min="0" max="95" step="1" name="discountPercent" data-admin-event-edit-discount>
+
+                        <label class="admin-edit-label" for="admin-event-edit-camera-1">Camera 1</label>
+                        <select id="admin-event-edit-camera-1" name="camera1" data-admin-event-edit-camera-1>
+                            <option value="">Select Camera</option>
+                            <?php foreach ($eventPackageCameraOptions as $cameraOption): ?>
+                                <option value="<?php echo htmlspecialchars((string) ($cameraOption['key'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) ($cameraOption['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <label class="admin-edit-label" for="admin-event-edit-camera-2">Camera 2</label>
+                        <select id="admin-event-edit-camera-2" name="camera2" data-admin-event-edit-camera-2>
+                            <option value="">Select Camera</option>
+                            <?php foreach ($eventPackageCameraOptions as $cameraOption): ?>
+                                <option value="<?php echo htmlspecialchars((string) ($cameraOption['key'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) ($cameraOption['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <label class="admin-edit-label" for="admin-event-edit-backup-camera-1">Backup Camera 1</label>
+                        <select id="admin-event-edit-backup-camera-1" name="backupCamera1" data-admin-event-edit-backup-camera-1>
+                            <option value="">Select Camera</option>
+                            <?php foreach ($eventPackageCameraOptions as $cameraOption): ?>
+                                <option value="<?php echo htmlspecialchars((string) ($cameraOption['key'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) ($cameraOption['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <label class="admin-edit-label" for="admin-event-edit-backup-camera-2">Backup Camera 2</label>
+                        <select id="admin-event-edit-backup-camera-2" name="backupCamera2" data-admin-event-edit-backup-camera-2>
+                            <option value="">Select Camera</option>
+                            <?php foreach ($eventPackageCameraOptions as $cameraOption): ?>
+                                <option value="<?php echo htmlspecialchars((string) ($cameraOption['key'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) ($cameraOption['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
 
                     <div class="admin-edit-actions">
@@ -719,6 +863,6 @@ unset($eventPackage);
     <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260407-3"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260414-3"></script>
 </body>
 </html>
