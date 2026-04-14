@@ -10,10 +10,12 @@ if (!isset($_SESSION['user_id']) || isset($_SESSION['customer_id'])) {
 
 require __DIR__ . '/../config/products_repository.php';
 require __DIR__ . '/../config/event_packages_repository.php';
+require __DIR__ . '/../config/event_collections_archive_repository.php';
 
 $productArchiveCount = count(load_archived_products_repository());
 $howArchiveCount = count(load_archived_how_it_works_repository());
 $promoBannerArchiveCount = count(load_archived_promo_banners_repository());
+$eventCollectionArchiveCount = count(load_archived_event_collections_repository());
 $eventPackageArchiveCount = 0;
 
 foreach (load_event_packages_repository() as $eventPackageRecord) {
@@ -102,6 +104,12 @@ foreach (load_event_packages_repository() as $eventPackageRecord) {
                 <span class="archive-pill"><?php echo htmlspecialchars((string) $eventPackageArchiveCount, ENT_QUOTES, 'UTF-8'); ?> item(s)</span>
                 <h2>Archived Event Packages</h2>
                 <p>View and restore archived event packages without moving media files.</p>
+            </a>
+
+            <a class="archive-link-card" href="events-collections/">
+                <span class="archive-pill"><?php echo htmlspecialchars((string) $eventCollectionArchiveCount, ENT_QUOTES, 'UTF-8'); ?> item(s)</span>
+                <h2>Archived Event Collections</h2>
+                <p>View and restore archived event collections inside each package gallery.</p>
             </a>
         </section>
     </main>

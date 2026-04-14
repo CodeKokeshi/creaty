@@ -4,7 +4,7 @@
         "customer_id": "4",
         "customer_name": "qwe qwe",
         "customer_email": "qwe@gmail.com",
-        "status": "Pending",
+        "status": "Approved",
         "items": [
             {
                 "name": "Canon 700D",
@@ -12,7 +12,14 @@
                 "days": 1,
                 "item_id": "camera-canon-700d",
                 "item_type": "camera",
-                "product_key": "canon-700d"
+                "product_key": "canon-700d",
+                "assigned_unit_serials": [
+                    0
+                ],
+                "assigned_unit_ids": [
+                    "CANON700D-000"
+                ],
+                "assigned_unit_id": "CANON700D-000"
             }
         ],
         "receive_date": "2026-04-15",

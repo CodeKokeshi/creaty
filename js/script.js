@@ -264,6 +264,14 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEventThumbsFolderEmpty = document.querySelector("[data-admin-event-thumbs-folder-empty]");
     var adminEventArchiveEndpoint = adminEventEditBackdrop ? (adminEventEditBackdrop.getAttribute("data-admin-event-archive-endpoint") || "") : "";
     var adminEventRestoreEndpoint = adminEventEditBackdrop ? (adminEventEditBackdrop.getAttribute("data-admin-event-restore-endpoint") || "") : "";
+    var adminEventCollectionConfig = document.querySelector("[data-admin-event-collection-config]");
+    var adminEventCollectionEditButtons = document.querySelectorAll("[data-admin-event-collection-edit]");
+    var adminEventCollectionRemoveButtons = document.querySelectorAll("[data-admin-remove-event-collection]");
+    var adminEventCollectionCards = document.querySelectorAll("[data-admin-event-collection-card]");
+    var adminEventCollectionsShell = document.querySelector("[data-admin-event-collections-shell]");
+    var adminEventCollectionsEmptyState = document.querySelector("[data-admin-event-collections-empty]");
+    var adminEventCollectionArchiveEndpoint = adminEventCollectionConfig ? (adminEventCollectionConfig.getAttribute("data-admin-event-collection-archive-endpoint") || "") : "";
+    var adminEventCollectionRestoreEndpoint = adminEventCollectionConfig ? (adminEventCollectionConfig.getAttribute("data-admin-event-collection-restore-endpoint") || "") : "";
     var adminHowGrid = document.querySelector("[data-admin-how-grid]");
     var adminHowEditBackdrop = document.querySelector("[data-admin-how-edit-backdrop]");
     var adminHowForm = document.querySelector("[data-admin-how-form]");
@@ -1275,6 +1283,9 @@ document.addEventListener("DOMContentLoaded", function () {
             } else if (pending.type === "event-package") {
                 endpoint = adminEventRestoreEndpoint;
                 fallbackError = "Unable to restore event package.";
+            } else if (pending.type === "event-collection") {
+                endpoint = adminEventCollectionRestoreEndpoint;
+                fallbackError = "Unable to restore event collection.";
             } else {
                 endpoint = adminRestoreEndpoint;
                 fallbackError = "Unable to restore product.";
@@ -1321,6 +1332,12 @@ document.addEventListener("DOMContentLoaded", function () {
                         pending.card.hidden = false;
                         pending.card.classList.remove("is-hidden");
                         pending.card.classList.remove("is-admin-removing");
+                    } else if (pending.type === "event-collection" && pending.card) {
+                        pending.card.hidden = false;
+                        pending.card.classList.remove("is-hidden");
+                        pending.card.classList.remove("is-admin-removing");
+                        updateAdminEventCollectionSectionState(pending.card.closest(".event-category-section"));
+                        syncAdminEventCollectionEmptyState();
                     } else if (pending.card) {
                         pending.card.removeAttribute("data-admin-removed");
                         pending.card.classList.remove("is-hidden");
@@ -1342,7 +1359,20 @@ document.addEventListener("DOMContentLoaded", function () {
                     hideAdminUndoToast();
                 })
                 .catch(function (error) {
-                    window.alert(error.message || fallbackError);
+                    var restoreErrorMessage = error.message || fallbackError;
+
+                    if (adminActionModalBackdrop && adminActionModalTitle && adminActionModalMessage && adminActionModalConfirm) {
+                        openAdminActionModal({
+                            title: "Restore Failed",
+                            message: restoreErrorMessage,
+                            confirmLabel: "OK"
+                        });
+                    } else if (adminUndoToast && adminUndoMessage) {
+                        adminUndoToast.hidden = false;
+                        adminUndoToast.classList.add("is-visible");
+                        adminUndoMessage.textContent = restoreErrorMessage;
+                    }
+
                     adminUndoAction.disabled = false;
                     adminUndoAction.textContent = "Undo";
                 });
@@ -1519,6 +1549,159 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             archiveEventPackage(card, button);
+        });
+    });
+
+    function updateAdminEventCollectionSectionState(section) {
+        if (!section) {
+            return;
+        }
+
+        var cards = section.querySelectorAll("[data-admin-event-collection-card]");
+        var visibleCount = 0;
+
+        cards.forEach(function (card) {
+            if (!card.hidden && !card.classList.contains("is-hidden")) {
+                visibleCount += 1;
+            }
+        });
+
+        var countLabel = section.querySelector("[data-admin-event-category-count]");
+        if (countLabel) {
+            countLabel.textContent = String(visibleCount) + " event" + (visibleCount === 1 ? "" : "s");
+        }
+
+        section.hidden = visibleCount === 0;
+    }
+
+    function syncAdminEventCollectionEmptyState() {
+        if (!adminEventCollectionsShell || !adminEventCollectionsEmptyState) {
+            return;
+        }
+
+        var visibleSections = adminEventCollectionsShell.querySelectorAll(".event-category-section:not([hidden])");
+        adminEventCollectionsEmptyState.hidden = visibleSections.length > 0;
+    }
+
+    function archiveEventCollection(card, button) {
+        if (!card || !button || !adminEventCollectionArchiveEndpoint) {
+            return;
+        }
+
+        var packageKey = String(card.getAttribute("data-admin-event-package-key") || "").trim();
+        var collectionFolder = String(card.getAttribute("data-admin-event-collection-folder") || "").trim();
+        var categoryLabel = String(card.getAttribute("data-admin-event-collection-category") || "").trim();
+        var collectionName = String(card.getAttribute("data-admin-event-collection-name") || "Collection").trim();
+
+        if (!packageKey || !collectionFolder) {
+            return;
+        }
+
+        card.classList.add("is-admin-removing");
+        button.disabled = true;
+
+        fetch(adminEventCollectionArchiveEndpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                packageKey: packageKey,
+                collectionFolder: collectionFolder,
+                categoryLabel: categoryLabel,
+                collectionLabel: collectionName
+            })
+        })
+            .then(function (response) {
+                return response.json().then(function (payload) {
+                    return {
+                        ok: response.ok,
+                        payload: payload
+                    };
+                });
+            })
+            .then(function (result) {
+                if (!result.ok || !result.payload || !result.payload.ok) {
+                    var message = result.payload && result.payload.message ? result.payload.message : "Unable to archive collection.";
+                    throw new Error(message);
+                }
+
+                var archivedEntry = result.payload.archivedEntry || {};
+                var archivedAt = archivedEntry.archivedAt ? String(archivedEntry.archivedAt) : "";
+                var archiveKey = archivedEntry.archiveKey ? String(archivedEntry.archiveKey) : "";
+
+                window.setTimeout(function () {
+                    card.classList.remove("is-admin-removing");
+                    card.classList.add("is-hidden");
+                    card.hidden = true;
+
+                    updateAdminEventCollectionSectionState(card.closest(".event-category-section"));
+                    syncAdminEventCollectionEmptyState();
+
+                    showAdminUndoToast(collectionName + " archived" + (archivedAt ? " (" + formatArchiveDateLabel(archivedAt) + ")" : ""), {
+                        type: "event-collection",
+                        archiveKey: archiveKey,
+                        card: card,
+                        button: button
+                    });
+                }, 160);
+            })
+            .catch(function (error) {
+                openAdminActionModal({
+                    title: "Archive Failed",
+                    message: error.message || "Unable to archive collection.",
+                    confirmLabel: "OK"
+                });
+                card.classList.remove("is-admin-removing");
+                button.disabled = false;
+            });
+    }
+
+    if (adminEventCollectionCards.length) {
+        var updatedSections = [];
+
+        adminEventCollectionCards.forEach(function (card) {
+            var section = card.closest(".event-category-section");
+
+            if (!section || updatedSections.indexOf(section) >= 0) {
+                return;
+            }
+
+            updatedSections.push(section);
+            updateAdminEventCollectionSectionState(section);
+        });
+
+        syncAdminEventCollectionEmptyState();
+    }
+
+    adminEventCollectionEditButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            openAdminActionModal({
+                title: "Collection Edit",
+                message: "Collection editing will be included next. For now, you can archive collections using the X button.",
+                confirmLabel: "OK"
+            });
+        });
+    });
+
+    adminEventCollectionRemoveButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            var card = button.closest("[data-admin-event-collection-card]");
+
+            if (!card || !adminEventCollectionArchiveEndpoint || button.disabled || card.classList.contains("is-admin-removing")) {
+                return;
+            }
+
+            var collectionName = String(card.getAttribute("data-admin-event-collection-name") || "This collection").trim();
+
+            openAdminActionModal({
+                title: "Archive Collection",
+                message: collectionName + " will be moved to archive and can be restored from the archive page or Undo.",
+                confirmLabel: "Archive Collection",
+                onConfirm: function () {
+                    archiveEventCollection(card, button);
+                }
+            });
         });
     });
 

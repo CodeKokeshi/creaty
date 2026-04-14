@@ -7459,6 +7459,34 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     background: rgba(13, 14, 16, 0.94);
 }
 
+.event-gallery-card-admin {
+    position: relative;
+    padding-top: 2.8rem;
+}
+
+.event-gallery-admin-actions {
+    position: absolute;
+    top: 0.68rem;
+    right: 0.68rem;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.event-gallery-admin-actions .product-card-admin-edit,
+.event-gallery-admin-actions .product-card-admin-remove {
+    position: static;
+    top: auto;
+    right: auto;
+}
+
+.event-gallery-card.is-admin-removing {
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
 .event-gallery-meta {
     margin-bottom: 0.8rem;
 }

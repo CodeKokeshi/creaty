@@ -22,6 +22,7 @@ if ($isAdminView && !$isAdminLoggedIn) {
 }
 
 require __DIR__ . '/config/event_packages_repository.php';
+require __DIR__ . '/config/event_collections_archive_repository.php';
 
 function parseEventPackagePrice($value): float
 {
@@ -246,8 +247,57 @@ function buildAssetUrl(string $assetBasePath, string $relativePath): string
     return $normalizedBase . $encodedPath;
 }
 
+function isEventCollectionArchivedForPackage(array $archivedCollections, string $packageKey, string $packageFolder, string $collectionFolder): bool
+{
+    $normalizedCollectionFolder = normalize_event_collection_folder_name($collectionFolder);
+    if ($normalizedCollectionFolder === '') {
+        return false;
+    }
+
+    $normalizedPackageKey = normalize_event_package_key($packageKey);
+    $normalizedPackageFolder = trim($packageFolder);
+
+    foreach ($archivedCollections as $archivedEntry) {
+        if (!is_array($archivedEntry)) {
+            continue;
+        }
+
+        $entryCollectionFolder = normalize_event_collection_folder_name($archivedEntry['collectionFolder'] ?? '');
+        if ($entryCollectionFolder === '' || strcasecmp($entryCollectionFolder, $normalizedCollectionFolder) !== 0) {
+            continue;
+        }
+
+        $entryPackageFolder = trim((string) ($archivedEntry['packageFolder'] ?? ''));
+        $entryPackageKey = normalize_event_package_key((string) ($archivedEntry['packageKey'] ?? ''));
+
+        if ($normalizedPackageFolder !== '' && $entryPackageFolder !== '' && strcasecmp($entryPackageFolder, $normalizedPackageFolder) === 0) {
+            return true;
+        }
+
+        if ($normalizedPackageKey !== '' && $entryPackageKey !== '' && $entryPackageKey === $normalizedPackageKey) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 $projectRoot = __DIR__;
-$packageEvents = collectPackageEvents($projectRoot, $selectedPackage['folder']);
+$selectedPackageFolder = trim((string) ($selectedPackage['folder'] ?? ''));
+$archivedEventCollections = load_archived_event_collections_repository();
+$packageEvents = array_values(array_filter(
+    collectPackageEvents($projectRoot, $selectedPackageFolder),
+    static function (array $event) use ($archivedEventCollections, $selectedPackageKey, $selectedPackageFolder): bool {
+        $folderName = (string) ($event['folder_name'] ?? '');
+
+        return !isEventCollectionArchivedForPackage(
+            $archivedEventCollections,
+            (string) $selectedPackageKey,
+            $selectedPackageFolder,
+            $folderName
+        );
+    }
+));
 $categoryGroups = [];
 
 foreach ($packageEvents as $event) {
@@ -357,7 +407,7 @@ foreach ($packageEvents as $event) {
     </header>
 
     <main class="events-shell event-detail-shell">
-        <section class="catalog-section reveal">
+        <section class="catalog-section reveal"<?php echo $isAdminView ? ' data-admin-event-collections-shell' : ''; ?>>
             <div class="catalog-header">
                 <a class="catalog-back" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>" aria-label="Back to event packages">
                     <span class="catalog-back-icon" aria-hidden="true"></span>
@@ -417,23 +467,45 @@ foreach ($packageEvents as $event) {
                 </div>
             </article>
 
-            <?php if ($categoryGroups === []): ?>
-                <article class="event-gallery-empty-state">
-                    <h2>No event photos found yet.</h2>
-                    <p>This package has no uploaded event galleries at the moment.</p>
-                </article>
-            <?php endif; ?>
+            <article class="event-gallery-empty-state" data-admin-event-collections-empty<?php echo $categoryGroups === [] ? '' : ' hidden'; ?>>
+                <h2>No event photos found yet.</h2>
+                <p>This package has no uploaded event galleries at the moment.</p>
+            </article>
 
             <?php foreach ($categoryGroups as $categoryLabel => $events): ?>
-                <section class="event-category-section" aria-labelledby="category-<?php echo htmlspecialchars(strtolower(str_replace(' ', '-', $categoryLabel)), ENT_QUOTES, 'UTF-8'); ?>">
+                <?php
+                $categorySlug = strtolower(str_replace(' ', '-', (string) $categoryLabel));
+                $categoryCount = count($events);
+                ?>
+                <section class="event-category-section" aria-labelledby="category-<?php echo htmlspecialchars($categorySlug, ENT_QUOTES, 'UTF-8'); ?>">
                     <header class="event-category-head">
-                        <h2 id="category-<?php echo htmlspecialchars(strtolower(str_replace(' ', '-', $categoryLabel)), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($categoryLabel, ENT_QUOTES, 'UTF-8'); ?></h2>
-                        <span><?php echo count($events); ?> event<?php echo count($events) === 1 ? '' : 's'; ?></span>
+                        <h2 id="category-<?php echo htmlspecialchars($categorySlug, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($categoryLabel, ENT_QUOTES, 'UTF-8'); ?></h2>
+                        <span data-admin-event-category-count><?php echo $categoryCount; ?> event<?php echo $categoryCount === 1 ? '' : 's'; ?></span>
                     </header>
 
                     <div class="event-card-grid">
                         <?php foreach ($events as $event): ?>
-                            <article class="event-gallery-card">
+                            <article
+                                class="event-gallery-card<?php echo $isAdminView ? ' event-gallery-card-admin' : ''; ?>"
+                                <?php if ($isAdminView): ?>
+                                    data-admin-event-collection-card
+                                    data-admin-event-package-key="<?php echo htmlspecialchars((string) $selectedPackageKey, ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-admin-event-package-title="<?php echo htmlspecialchars((string) ($selectedPackage['title'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-admin-event-package-folder="<?php echo htmlspecialchars($selectedPackageFolder, ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-admin-event-collection-folder="<?php echo htmlspecialchars((string) ($event['folder_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-admin-event-collection-category="<?php echo htmlspecialchars((string) $categoryLabel, ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-admin-event-collection-name="<?php echo htmlspecialchars((string) ($event['event_label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                <?php endif; ?>
+                            >
+                                <?php if ($isAdminView): ?>
+                                    <div class="event-gallery-admin-actions">
+                                        <button class="product-card-admin-edit" type="button" data-admin-event-collection-edit aria-label="Edit collection <?php echo htmlspecialchars((string) ($event['event_label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/pencil.svg" alt="">
+                                        </button>
+                                        <button class="product-card-admin-remove" type="button" data-admin-remove-event-collection aria-label="Archive collection <?php echo htmlspecialchars((string) ($event['event_label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">&times;</button>
+                                    </div>
+                                <?php endif; ?>
+
                                 <header class="event-gallery-meta">
                                     <h3><?php echo htmlspecialchars($event['event_label'], ENT_QUOTES, 'UTF-8'); ?></h3>
                                 </header>
@@ -460,6 +532,41 @@ foreach ($packageEvents as $event) {
             <?php endforeach; ?>
         </section>
     </main>
+
+    <?php if ($isAdminView): ?>
+        <div
+            data-admin-event-collection-config
+            data-admin-event-collection-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_event_collection.php', ENT_QUOTES, 'UTF-8'); ?>"
+            data-admin-event-collection-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_event_collection.php', ENT_QUOTES, 'UTF-8'); ?>"
+            hidden
+        ></div>
+
+        <aside class="admin-undo-toast" data-admin-undo-toast hidden aria-live="polite" aria-atomic="true">
+            <p class="admin-undo-toast-message" data-admin-undo-message>Collection archived.</p>
+            <button class="admin-undo-toast-button" type="button" data-admin-undo-action>Undo</button>
+        </aside>
+
+        <div class="admin-action-modal-backdrop" data-admin-action-modal-backdrop hidden>
+            <section class="admin-action-modal" role="dialog" aria-modal="true" aria-labelledby="admin-action-modal-title">
+                <div class="admin-action-modal-head">
+                    <h2 id="admin-action-modal-title" data-admin-action-modal-title>Confirm Action</h2>
+                    <button class="admin-action-modal-close" type="button" data-admin-action-modal-close aria-label="Close confirmation modal">&times;</button>
+                </div>
+
+                <p class="admin-action-modal-copy" data-admin-action-modal-message>Please confirm this action.</p>
+
+                <label class="admin-action-modal-quantity" data-admin-action-modal-quantity-wrap hidden>
+                    <span>Quantity</span>
+                    <input type="number" min="1" max="200" step="1" value="1" data-admin-action-modal-quantity-input>
+                </label>
+
+                <div class="admin-action-modal-actions">
+                    <button class="admin-action-modal-cancel" type="button" data-admin-action-modal-cancel>Cancel</button>
+                    <button class="admin-action-modal-confirm" type="button" data-admin-action-modal-confirm>Confirm</button>
+                </div>
+            </section>
+        </div>
+    <?php endif; ?>
 
     <?php if (!$isAdminView): ?>
         <?php require __DIR__ . '/customer_message_modal.php'; ?>
