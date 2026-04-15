@@ -1,5 +1,9 @@
 <?php
 
+if (!class_exists('mysqli')) {
+	die('MySQLi extension is not available. Please enable the mysqli PHP extension.');
+}
+
 $host = 'localhost';
 $user = 'root';
 $pass = '';
@@ -9,10 +13,67 @@ $adminAccountsTable = 'admin_accounts';
 $customerAccountsTable = 'customer_accounts';
 $staffAccountsTable = 'staff_accounts';
 
-$conn = new mysqli($host, $user, $pass, $dbname);
+if (!function_exists('creaty_bootstrap_database')) {
+	function creaty_bootstrap_database(string $host, string $user, string $pass, string $dbname): void
+	{
+		$safeDbName = str_replace('`', '``', $dbname);
+
+		try {
+			$bootstrapConn = new mysqli($host, $user, $pass);
+		} catch (Throwable $exception) {
+			die('Database connection failed: ' . $exception->getMessage());
+		}
+
+		if ($bootstrapConn->connect_error) {
+			die('Database connection failed: ' . $bootstrapConn->connect_error);
+		}
+
+		$bootstrapConn->set_charset('utf8mb4');
+
+		try {
+			$bootstrapConn->query(
+				"CREATE DATABASE IF NOT EXISTS `{$safeDbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+			);
+		} catch (Throwable $exception) {
+			$bootstrapConn->close();
+			die('Unable to create database automatically: ' . $exception->getMessage());
+		}
+
+		$bootstrapConn->close();
+	}
+}
+
+try {
+	$conn = new mysqli($host, $user, $pass, $dbname);
+} catch (Throwable $exception) {
+	$isUnknownDatabase = ((int) $exception->getCode() === 1049)
+		|| stripos($exception->getMessage(), 'Unknown database') !== false;
+
+	if ($isUnknownDatabase) {
+		creaty_bootstrap_database($host, $user, $pass, $dbname);
+
+		try {
+			$conn = new mysqli($host, $user, $pass, $dbname);
+		} catch (Throwable $reconnectException) {
+			die('Database connection failed: ' . $reconnectException->getMessage());
+		}
+	} else {
+		die('Database connection failed: ' . $exception->getMessage());
+	}
+}
 
 if ($conn->connect_error) {
-	die('Database connection failed: ' . $conn->connect_error);
+	$isUnknownDatabase = ((int) $conn->connect_errno === 1049)
+		|| stripos((string) $conn->connect_error, 'Unknown database') !== false;
+
+	if ($isUnknownDatabase) {
+		creaty_bootstrap_database($host, $user, $pass, $dbname);
+		$conn = new mysqli($host, $user, $pass, $dbname);
+	}
+
+	if ($conn->connect_error) {
+		die('Database connection failed: ' . $conn->connect_error);
+	}
 }
 
 $conn->set_charset('utf8mb4');
