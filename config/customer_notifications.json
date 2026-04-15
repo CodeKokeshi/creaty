@@ -1,5 +1,18 @@
 [
     {
+        "id": "cust-notif-20260415010002-a4a02f85",
+        "customer_id": "4",
+        "type": "order-status",
+        "order_id": "ORD-20260413231540-D1D3AD10",
+        "status_token": "ongoing",
+        "title": "Order status updated: ORD-20260413231540-D1D3AD10",
+        "summary": "Your order status is now Ongoing.",
+        "target_view": "order-status",
+        "is_read": false,
+        "created_at": "2026-04-15T01:00:02+00:00",
+        "read_at": ""
+    },
+    {
         "id": "cust-notif-20260414141712-f5447b9a",
         "customer_id": "4",
         "type": "order-status",

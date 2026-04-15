@@ -99,6 +99,7 @@ $accountSettingsPath = $isAdminView ? ($assetBase . 'admin/dashboard/') : ($asse
 $logoutPath = $isAdminView ? ($assetBase . 'admin/logout.php') : ($assetBase . 'customer-logout/');
 $cartPath = $assetBase . 'customer-cart/';
 $eventsPath = $isAdminView ? ($assetBase . 'admin/events/') : ($assetBase . 'customer-events/');
+$servicesPath = $isAdminView ? ($assetBase . 'admin/services/') : ($assetBase . 'customer-services/');
 $notificationsPath = $assetBase . 'admin/notifications/';
 $adminNotificationCount = 0;
 
@@ -479,6 +480,7 @@ foreach ($packageEvents as $event) {
                         <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                             <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
                             <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
                         </ul>
@@ -493,6 +495,7 @@ foreach ($packageEvents as $event) {
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                         <li><a class="dropdown-item" href="#">Help Center</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
@@ -506,6 +509,7 @@ foreach ($packageEvents as $event) {
         <nav class="section-nav section-nav-disabled" aria-label="Catalog filters">
             <span class="section-nav-filter is-disabled" aria-disabled="true">BRANDS</span>
             <a class="section-nav-section is-active" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>" aria-current="page">EVENTS</a>
+            <a class="section-nav-section" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">SERVICES</a>
             <span class="section-nav-filter is-disabled" aria-disabled="true">DATE</span>
         </nav>
     </header>

@@ -156,6 +156,7 @@ $activePromoBannerSlots = $promoBannerSlots;
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
                         <li><a class="dropdown-item" href="customer-cart/">My Cart</a></li>
                         <li><a class="dropdown-item" href="customer-events/">Browse Events</a></li>
+                        <li><a class="dropdown-item" href="customer-services/">Browse Services</a></li>
                         <li><a class="dropdown-item" href="#">Help Center</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
@@ -181,6 +182,7 @@ $activePromoBannerSlots = $promoBannerSlots;
             </div>
 
             <a class="section-nav-section" href="customer-events/">EVENTS</a>
+            <a class="section-nav-section" href="customer-services/">SERVICES</a>
 
             <div class="section-nav-item section-nav-item-filter">
                 <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="date-filter-panel">

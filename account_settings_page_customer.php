@@ -15,6 +15,7 @@ $accountSettingsPath = $accountSettingsPath ?? $assetBase . 'customer-account-se
 $logoutPath = $logoutPath ?? $assetBase . 'customer-logout/';
 $cartPath = $cartPath ?? $assetBase . 'customer-cart/';
 $eventsPath = $eventsPath ?? $assetBase . 'customer-events/';
+$servicesPath = $servicesPath ?? $assetBase . 'customer-services/';
 
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/customer_gcash_profiles_repository.php';
@@ -225,6 +226,7 @@ $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No addr
                     <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
                     <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
                     <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
+                    <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                     <li><a class="dropdown-item" href="#">Help Center</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>

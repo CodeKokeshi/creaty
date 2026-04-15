@@ -255,6 +255,22 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEventEditCamera2 = document.querySelector("[data-admin-event-edit-camera-2]");
     var adminEventEditBackupCamera1 = document.querySelector("[data-admin-event-edit-backup-camera-1]");
     var adminEventEditBackupCamera2 = document.querySelector("[data-admin-event-edit-backup-camera-2]");
+    var adminServiceEditButtons = document.querySelectorAll("[data-admin-service-edit]");
+    var adminServiceEditBackdrop = document.querySelector("[data-admin-service-edit-backdrop]");
+    var adminServiceEditForm = document.querySelector("[data-admin-service-edit-form]");
+    var adminServiceEditClose = document.querySelector("[data-admin-service-edit-close]");
+    var adminServiceEditCancel = document.querySelector("[data-admin-service-edit-cancel]");
+    var adminServiceEditKey = document.querySelector("[data-admin-service-edit-key]");
+    var adminServiceEditName = document.querySelector("[data-admin-service-edit-name]");
+    var adminServiceEditDescription = document.querySelector("[data-admin-service-edit-description]");
+    var adminServiceEditPrice = document.querySelector("[data-admin-service-edit-price]");
+    var adminServiceEditDiscount = document.querySelector("[data-admin-service-edit-discount]");
+    var adminServiceEditCamera1 = document.querySelector("[data-admin-service-edit-camera-1]");
+    var adminServiceEditCamera2 = document.querySelector("[data-admin-service-edit-camera-2]");
+    var adminServiceEditBackupCamera1 = document.querySelector("[data-admin-service-edit-backup-camera-1]");
+    var adminServiceEditBackupCamera2 = document.querySelector("[data-admin-service-edit-backup-camera-2]");
+    var adminServiceEditTabButtons = document.querySelectorAll("[data-admin-service-edit-tab]");
+    var adminServiceEditPanels = document.querySelectorAll("[data-admin-service-edit-panel]");
     var adminEventRemoveButtons = document.querySelectorAll("[data-admin-remove-event-package]");
     var adminEventSetThumbButtonInEdit = document.querySelector("[data-admin-event-set-thumbnails-edit]");
     var adminEventThumbsBackdrop = document.querySelector("[data-admin-event-thumbs-backdrop]");
@@ -266,6 +282,16 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEventThumbItems = document.querySelectorAll("[data-admin-event-thumb-item]");
     var adminEventThumbsPackageTitle = document.querySelector("[data-admin-event-thumbs-package-title]");
     var adminEventThumbsFolderEmpty = document.querySelector("[data-admin-event-thumbs-folder-empty]");
+    var adminServiceSetThumbButtonInEdit = document.querySelector("[data-admin-service-set-thumbnails-edit]");
+    var adminServiceThumbsBackdrop = document.querySelector("[data-admin-service-thumbs-backdrop]");
+    var adminServiceThumbsForm = document.querySelector("[data-admin-service-thumbs-form]");
+    var adminServiceThumbsClose = document.querySelector("[data-admin-service-thumbs-close]");
+    var adminServiceThumbsCancel = document.querySelector("[data-admin-service-thumbs-cancel]");
+    var adminServiceThumbsKey = document.querySelector("[data-admin-service-thumbs-key]");
+    var adminServiceThumbsInput = document.querySelector("[data-admin-service-thumbs-input]");
+    var adminServiceThumbItems = document.querySelectorAll("[data-admin-service-thumb-item]");
+    var adminServiceThumbsPackageTitle = document.querySelector("[data-admin-service-thumbs-package-title]");
+    var adminServiceThumbsFolderEmpty = document.querySelector("[data-admin-service-thumbs-folder-empty]");
     var adminEventArchiveEndpoint = adminEventEditBackdrop ? (adminEventEditBackdrop.getAttribute("data-admin-event-archive-endpoint") || "") : "";
     var adminEventRestoreEndpoint = adminEventEditBackdrop ? (adminEventEditBackdrop.getAttribute("data-admin-event-restore-endpoint") || "") : "";
     var adminEventCollectionConfig = document.querySelector("[data-admin-event-collection-config]");
@@ -275,6 +301,12 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEventCollectionCards = document.querySelectorAll("[data-admin-event-collection-card]");
     var adminEventCollectionsShell = document.querySelector("[data-admin-event-collections-shell]");
     var adminEventCollectionsEmptyState = document.querySelector("[data-admin-event-collections-empty]");
+    var adminEventCollectionCountSingular = adminEventCollectionsShell
+        ? String(adminEventCollectionsShell.getAttribute("data-admin-event-collection-count-singular") || "event").trim()
+        : "event";
+    var adminEventCollectionCountPlural = adminEventCollectionsShell
+        ? String(adminEventCollectionsShell.getAttribute("data-admin-event-collection-count-plural") || ((adminEventCollectionCountSingular || "event") + "s")).trim()
+        : "events";
     var adminEventCollectionCreateBackdrop = document.querySelector("[data-admin-event-collection-create-backdrop]");
     var adminEventCollectionCreateForm = document.querySelector("[data-admin-event-collection-create-form]");
     var adminEventCollectionCreateClose = document.querySelector("[data-admin-event-collection-create-close]");
@@ -327,9 +359,13 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminHowImageBase = adminHowGrid ? (adminHowGrid.getAttribute("data-admin-how-image-base") || "assets/how_it_works/") : "assets/how_it_works/";
     var activeAdminEditCard = null;
     var activeAdminEventPackageCard = null;
+    var activeAdminServicePackageCard = null;
     var activeAdminEventThumbsCard = null;
     var activeAdminEventThumbFolder = "";
     var adminEventThumbSelection = [];
+    var activeAdminServiceThumbsCard = null;
+    var activeAdminServiceThumbFolder = "";
+    var adminServiceThumbSelection = [];
     var activeAdminHowSlot = "";
     var adminCropState = {
         zoom: 1,
@@ -1616,7 +1652,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         var countLabel = section.querySelector("[data-admin-event-category-count]");
         if (countLabel) {
-            countLabel.textContent = String(visibleCount) + " event" + (visibleCount === 1 ? "" : "s");
+            var singularLabel = adminEventCollectionCountSingular || "event";
+            var pluralLabel = adminEventCollectionCountPlural || (singularLabel + "s");
+            countLabel.textContent = String(visibleCount) + " " + (visibleCount === 1 ? singularLabel : pluralLabel);
         }
 
         section.hidden = visibleCount === 0;
@@ -1807,6 +1845,58 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function parseAdminJsonResponse(response) {
+        return response.text().then(function (rawText) {
+            var normalizedText = String(rawText || "").trim();
+            var payload = null;
+
+            if (normalizedText !== "") {
+                try {
+                    payload = JSON.parse(normalizedText);
+                } catch (error) {
+                    payload = null;
+                }
+            }
+
+            return {
+                ok: Boolean(response && response.ok),
+                payload: payload,
+                status: Number(response && response.status),
+                rawText: normalizedText
+            };
+        });
+    }
+
+    function buildAdminJsonResponseError(result, fallbackMessage) {
+        var fallback = String(fallbackMessage || "Request failed.").trim() || "Request failed.";
+
+        if (result && result.payload && typeof result.payload === "object") {
+            var payloadMessage = String(result.payload.message || "").trim();
+
+            if (payloadMessage) {
+                return payloadMessage;
+            }
+        }
+
+        if (result && result.rawText) {
+            var compactText = String(result.rawText || "").replace(/\s+/g, " ").trim();
+
+            if (compactText) {
+                if (compactText.length > 240) {
+                    compactText = compactText.slice(0, 240) + "...";
+                }
+
+                return compactText;
+            }
+        }
+
+        if (result && Number.isFinite(result.status) && result.status > 0) {
+            return fallback + " (HTTP " + String(result.status) + ")";
+        }
+
+        return fallback;
+    }
+
     function submitAdminEventCollectionCreate() {
         if (adminEventCollectionCreateState.isSaving) {
             return;
@@ -1851,17 +1941,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 collectionLabel: collectionLabel
             })
         })
-            .then(function (response) {
-                return response.json().then(function (payload) {
-                    return {
-                        ok: response.ok,
-                        payload: payload
-                    };
-                });
-            })
+            .then(parseAdminJsonResponse)
             .then(function (result) {
                 if (!result.ok || !result.payload || !result.payload.ok) {
-                    var message = result.payload && result.payload.message ? result.payload.message : "Unable to create collection.";
+                    var message = buildAdminJsonResponseError(result, "Unable to create collection.");
                     throw new Error(message);
                 }
 
@@ -1957,7 +2040,41 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function revokeAdminEventCollectionObjectUrl(imageEntry) {
+        if (!imageEntry || typeof imageEntry !== "object") {
+            return;
+        }
+
+        var previewUrl = String(imageEntry.previewUrl || "").trim();
+        var shouldRevoke = Boolean(imageEntry.isObjectUrl)
+            || (previewUrl.indexOf("blob:") === 0 && imageEntry.isNew);
+
+        if (!shouldRevoke || previewUrl === "") {
+            return;
+        }
+
+        try {
+            window.URL.revokeObjectURL(previewUrl);
+        } catch (error) {
+            // Ignore URL revocation failures and keep modal workflow uninterrupted.
+        }
+
+        imageEntry.isObjectUrl = false;
+    }
+
+    function revokeAdminEventCollectionObjectUrls(imageEntries) {
+        if (!Array.isArray(imageEntries) || !imageEntries.length) {
+            return;
+        }
+
+        imageEntries.forEach(function (entry) {
+            revokeAdminEventCollectionObjectUrl(entry);
+        });
+    }
+
     function resetAdminEventCollectionEditState() {
+        revokeAdminEventCollectionObjectUrls(adminEventCollectionEditState.images);
+
         adminEventCollectionEditState.card = null;
         adminEventCollectionEditState.packageKey = "";
         adminEventCollectionEditState.packageFolder = "";
@@ -2280,40 +2397,38 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        Promise.all(imageFiles.map(function (file) {
-            return readAdminEventCollectionFileAsDataUrl(file).then(function (dataUrl) {
-                return {
-                    file: file,
-                    dataUrl: dataUrl
-                };
+        imageFiles.forEach(function (file) {
+            adminEventCollectionEditState.tempCounter += 1;
+
+            var fileName = String(file && file.name ? file.name : ("new-image-" + String(adminEventCollectionEditState.tempCounter) + ".png"));
+            var previewUrl = "";
+
+            try {
+                if (window.URL && typeof window.URL.createObjectURL === "function") {
+                    previewUrl = String(window.URL.createObjectURL(file) || "");
+                }
+            } catch (error) {
+                previewUrl = "";
+            }
+
+            adminEventCollectionEditState.images.push({
+                id: "new-" + String(adminEventCollectionEditState.tempCounter),
+                tempId: "new-" + String(adminEventCollectionEditState.tempCounter),
+                imagePath: "",
+                previewUrl: previewUrl,
+                alt: adminEventCollectionEditState.collectionName + " new image",
+                label: fileName + " (New)",
+                fileName: fileName,
+                file: file,
+                dataUrl: "",
+                isObjectUrl: previewUrl.indexOf("blob:") === 0,
+                isNew: true,
+                isExcluded: false
             });
-        }))
-            .then(function (results) {
-                results.forEach(function (entry) {
-                    adminEventCollectionEditState.tempCounter += 1;
+        });
 
-                    var fileName = String(entry.file && entry.file.name ? entry.file.name : ("new-image-" + String(adminEventCollectionEditState.tempCounter) + ".png"));
-
-                    adminEventCollectionEditState.images.push({
-                        id: "new-" + String(adminEventCollectionEditState.tempCounter),
-                        tempId: "new-" + String(adminEventCollectionEditState.tempCounter),
-                        imagePath: "",
-                        previewUrl: String(entry.dataUrl || ""),
-                        alt: adminEventCollectionEditState.collectionName + " new image",
-                        label: fileName + " (New)",
-                        fileName: fileName,
-                        dataUrl: String(entry.dataUrl || ""),
-                        isNew: true,
-                        isExcluded: false
-                    });
-                });
-
-                setAdminEventCollectionEditFeedback("", "error");
-                renderAdminEventCollectionEditGrid();
-            })
-            .catch(function (error) {
-                setAdminEventCollectionEditFeedback(error.message || "Unable to read selected files.", "error");
-            });
+        setAdminEventCollectionEditFeedback("", "error");
+        renderAdminEventCollectionEditGrid();
     }
 
     function submitAdminEventCollectionEditChanges() {
@@ -2351,16 +2466,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         var excludedImagePaths = [];
         var restoreImagePaths = [];
-        var addedImages = [];
+        var addedImageEntries = [];
 
         adminEventCollectionEditState.images.forEach(function (imageEntry) {
             if (imageEntry.isNew) {
-                if (!imageEntry.isExcluded && imageEntry.dataUrl) {
-                    addedImages.push({
-                        tempId: String(imageEntry.tempId || ""),
-                        dataUrl: String(imageEntry.dataUrl || ""),
-                        fileName: String(imageEntry.fileName || "")
-                    });
+                if (!imageEntry.isExcluded) {
+                    addedImageEntries.push(imageEntry);
                 }
 
                 return;
@@ -2379,7 +2490,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        if (!hasLabelChanges && !excludedImagePaths.length && !restoreImagePaths.length && !addedImages.length) {
+        if (!hasLabelChanges && !excludedImagePaths.length && !restoreImagePaths.length && !addedImageEntries.length) {
             closeAdminEventCollectionEditModal();
             return;
         }
@@ -2391,40 +2502,132 @@ document.addEventListener("DOMContentLoaded", function () {
 
         setAdminEventCollectionEditFeedback("", "error");
         setAdminEventCollectionEditSavingState(true);
+        var pendingUploadCount = addedImageEntries.length;
+        var completedUploadCount = 0;
+        var addedPathByTempId = Object.create(null);
+        var currentCollectionFolder = collectionFolder;
+        var finalCategoryLabel = nextCategoryLabel;
+        var finalCollectionName = nextCollectionName;
+        var anyRenameDetected = false;
+        var uploadBatchSize = 1;
+        var uploadBatches = [];
 
-        fetch(adminEventCollectionUpdateEndpoint, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                packageKey: packageKey,
-                collectionFolder: collectionFolder,
-                categoryLabel: nextCategoryLabel,
-                collectionLabel: nextCollectionName,
-                excludedImagePaths: excludedImagePaths,
-                restoreImagePaths: restoreImagePaths,
-                addedImages: addedImages
-            })
-        })
-            .then(function (response) {
-                return response.json().then(function (payload) {
-                    return {
-                        ok: response.ok,
-                        payload: payload
-                    };
-                });
-            })
-            .then(function (result) {
-                if (!result.ok || !result.payload || !result.payload.ok) {
-                    var message = result.payload && result.payload.message ? result.payload.message : "Unable to save collection changes.";
-                    throw new Error(message);
+        if (pendingUploadCount > 0) {
+            for (var batchIndex = 0; batchIndex < addedImageEntries.length; batchIndex += uploadBatchSize) {
+                uploadBatches.push(addedImageEntries.slice(batchIndex, batchIndex + uploadBatchSize));
+            }
+        } else {
+            uploadBatches.push([]);
+        }
+
+        function updateAdminCollectionUploadProgressLabel() {
+            if (!adminEventCollectionEditSave || pendingUploadCount <= 0) {
+                return;
+            }
+
+            adminEventCollectionEditSave.textContent = "Uploading " + String(completedUploadCount) + "/" + String(pendingUploadCount) + "...";
+        }
+
+        function buildAdminCollectionAddedImagePayload(batchEntries) {
+            var entries = Array.isArray(batchEntries) ? batchEntries : [];
+
+            if (!entries.length) {
+                return Promise.resolve([]);
+            }
+
+            return Promise.all(entries.map(function (entry) {
+                if (entry && typeof entry === "object" && entry.file instanceof File) {
+                    return readAdminEventCollectionFileAsDataUrl(entry.file).then(function (dataUrl) {
+                        return {
+                            tempId: String(entry.tempId || ""),
+                            dataUrl: String(dataUrl || ""),
+                            fileName: String(entry.fileName || (entry.file && entry.file.name) || "")
+                        };
+                    });
                 }
 
-                var returnedCategoryLabel = String(result.payload.categoryLabel || nextCategoryLabel).trim() || nextCategoryLabel;
-                var returnedCollectionName = String(result.payload.collectionLabel || nextCollectionName).trim() || nextCollectionName;
-                var returnedCollectionFolder = normalizeAdminEventCollectionImagePath(result.payload.collectionFolder || collectionFolder);
-                var wasRenamed = Boolean(result.payload.renamed);
+                var fallbackDataUrl = String(entry && entry.dataUrl ? entry.dataUrl : "");
+
+                if (fallbackDataUrl.indexOf("data:image/") !== 0) {
+                    return Promise.reject(new Error("One of the selected images could not be prepared for upload."));
+                }
+
+                return Promise.resolve({
+                    tempId: String(entry && entry.tempId ? entry.tempId : ""),
+                    dataUrl: fallbackDataUrl,
+                    fileName: String(entry && entry.fileName ? entry.fileName : "")
+                });
+            }));
+        }
+
+        function submitAdminCollectionBatch(batchEntries, includeMetadata) {
+            return buildAdminCollectionAddedImagePayload(batchEntries).then(function (addedPayload) {
+                return fetch(adminEventCollectionUpdateEndpoint, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        packageKey: packageKey,
+                        collectionFolder: currentCollectionFolder,
+                        categoryLabel: nextCategoryLabel,
+                        collectionLabel: nextCollectionName,
+                        excludedImagePaths: includeMetadata ? excludedImagePaths : [],
+                        restoreImagePaths: includeMetadata ? restoreImagePaths : [],
+                        addedImages: addedPayload
+                    })
+                })
+                    .then(parseAdminJsonResponse)
+                    .then(function (result) {
+                        if (!result.ok || !result.payload || !result.payload.ok) {
+                            var message = buildAdminJsonResponseError(result, "Unable to save collection changes.");
+                            throw new Error(message);
+                        }
+
+                        finalCategoryLabel = String(result.payload.categoryLabel || finalCategoryLabel || nextCategoryLabel).trim() || nextCategoryLabel;
+                        finalCollectionName = String(result.payload.collectionLabel || finalCollectionName || nextCollectionName).trim() || nextCollectionName;
+
+                        var returnedCollectionFolder = normalizeAdminEventCollectionImagePath(result.payload.collectionFolder || currentCollectionFolder);
+                        if (returnedCollectionFolder) {
+                            currentCollectionFolder = returnedCollectionFolder;
+                        }
+
+                        if (Boolean(result.payload.renamed)) {
+                            anyRenameDetected = true;
+                        }
+
+                        var returnedAddedImages = Array.isArray(result.payload.addedImages) ? result.payload.addedImages : [];
+
+                        returnedAddedImages.forEach(function (entry) {
+                            var tempId = String(entry && entry.tempId ? entry.tempId : "").trim();
+                            var imagePath = normalizeAdminEventCollectionImagePath(entry && entry.imagePath ? entry.imagePath : "");
+
+                            if (!tempId || !imagePath) {
+                                return;
+                            }
+
+                            addedPathByTempId[tempId] = imagePath;
+                        });
+
+                        completedUploadCount += Array.isArray(batchEntries) ? batchEntries.length : 0;
+                        updateAdminCollectionUploadProgressLabel();
+                    });
+            });
+        }
+
+        var batchChain = Promise.resolve();
+
+        uploadBatches.forEach(function (batchEntries, index) {
+            batchChain = batchChain.then(function () {
+                return submitAdminCollectionBatch(batchEntries, index === 0);
+            });
+        });
+
+        batchChain
+            .then(function () {
+                var returnedCategoryLabel = finalCategoryLabel || nextCategoryLabel;
+                var returnedCollectionName = finalCollectionName || nextCollectionName;
+                var returnedCollectionFolder = normalizeAdminEventCollectionImagePath(currentCollectionFolder || collectionFolder);
 
                 adminEventCollectionEditState.categoryLabel = returnedCategoryLabel;
                 adminEventCollectionEditState.collectionName = returnedCollectionName;
@@ -2463,27 +2666,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     adminEventCollectionEditTitle.textContent = "Edit Collection: " + returnedCollectionName;
                 }
 
-                if (wasRenamed || returnedCategoryLabel !== categoryLabel) {
+                if (anyRenameDetected || returnedCategoryLabel !== categoryLabel) {
                     closeAdminEventCollectionEditModal(true);
                     window.location.reload();
                     return;
                 }
 
-                var returnedAddedImages = Array.isArray(result.payload.addedImages) ? result.payload.addedImages : [];
-                var addedPathByTempId = Object.create(null);
-
-                returnedAddedImages.forEach(function (entry) {
-                    var tempId = String(entry && entry.tempId ? entry.tempId : "").trim();
-                    var imagePath = normalizeAdminEventCollectionImagePath(entry && entry.imagePath ? entry.imagePath : "");
-
-                    if (!tempId || !imagePath) {
-                        return;
-                    }
-
-                    addedPathByTempId[tempId] = imagePath;
-                });
-
-                if (addedImages.length && Object.keys(addedPathByTempId).length < addedImages.length) {
+                if (pendingUploadCount > 0 && Object.keys(addedPathByTempId).length < pendingUploadCount) {
                     throw new Error("Some newly added images were not saved. Please try again.");
                 }
 
@@ -2536,18 +2725,23 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 adminEventCollectionEditState.images = adminEventCollectionEditState.images.filter(function (imageEntry) {
                     if (imageEntry.isExcluded) {
+                        revokeAdminEventCollectionObjectUrl(imageEntry);
                         return false;
                     }
 
                     if (imageEntry.isNew) {
                         var resolvedPath = normalizeAdminEventCollectionImagePath(addedPathByTempId[String(imageEntry.tempId || "")]);
                         if (!resolvedPath) {
+                            revokeAdminEventCollectionObjectUrl(imageEntry);
                             return false;
                         }
 
+                        revokeAdminEventCollectionObjectUrl(imageEntry);
                         imageEntry.imagePath = resolvedPath;
                         imageEntry.previewUrl = buildAdminEventCollectionImageUrl(resolvedPath);
+                        imageEntry.file = null;
                         imageEntry.dataUrl = "";
+                        imageEntry.isObjectUrl = false;
                         imageEntry.isNew = false;
                         imageEntry.isArchived = false;
                     } else if (imageEntry.isArchived) {
@@ -3022,6 +3216,123 @@ document.addEventListener("DOMContentLoaded", function () {
         return Math.min(95, Math.max(0, parsed));
     }
 
+    function setAdminServiceEditTab(tabKey) {
+        var normalizedTab = String(tabKey || "details").toLowerCase() === "camera" ? "camera" : "details";
+
+        adminServiceEditTabButtons.forEach(function (button) {
+            var buttonTab = String(button.getAttribute("data-admin-service-edit-tab") || "details").toLowerCase();
+            var isActive = buttonTab === normalizedTab;
+            button.classList.toggle("is-active", isActive);
+            button.setAttribute("aria-selected", isActive ? "true" : "false");
+        });
+
+        adminServiceEditPanels.forEach(function (panel) {
+            var panelTab = String(panel.getAttribute("data-admin-service-edit-panel") || "details").toLowerCase();
+            var isActive = panelTab === normalizedTab;
+            panel.classList.toggle("is-active", isActive);
+            panel.hidden = !isActive;
+        });
+    }
+
+    function closeAdminServiceEditModal() {
+        if (!adminServiceEditBackdrop) {
+            return;
+        }
+
+        adminServiceEditBackdrop.hidden = true;
+        activeAdminServicePackageCard = null;
+        setAdminServiceEditTab("details");
+        syncAdminModalBodyLock();
+    }
+
+    function openAdminServiceEditModal(card) {
+        if (!adminServiceEditBackdrop || !adminServiceEditForm || !card) {
+            return;
+        }
+
+        activeAdminServicePackageCard = card;
+
+        var packageKey = String(card.getAttribute("data-admin-service-package-key") || "").trim();
+        var packageTitle = String(card.getAttribute("data-admin-service-package-title") || "").trim();
+        var packageDescription = String(card.getAttribute("data-admin-service-package-description") || "").trim();
+        var packagePrice = Number.parseFloat(String(card.getAttribute("data-admin-service-package-price") || "0"));
+        var packageDiscount = clampDiscount(card.getAttribute("data-admin-service-package-discount") || "0");
+        var packageCamera1 = String(card.getAttribute("data-admin-service-package-camera-1") || "").trim();
+        var packageCamera2 = String(card.getAttribute("data-admin-service-package-camera-2") || "").trim();
+        var packageBackupCamera1 = String(card.getAttribute("data-admin-service-package-backup-camera-1") || "").trim();
+        var packageBackupCamera2 = String(card.getAttribute("data-admin-service-package-backup-camera-2") || "").trim();
+
+        if (adminServiceEditKey) {
+            adminServiceEditKey.value = packageKey;
+        }
+
+        if (adminServiceEditName) {
+            adminServiceEditName.value = packageTitle;
+        }
+
+        if (adminServiceEditDescription) {
+            adminServiceEditDescription.value = packageDescription;
+        }
+
+        if (adminServiceEditPrice) {
+            adminServiceEditPrice.value = Number.isFinite(packagePrice) ? packagePrice.toFixed(2) : "0.00";
+        }
+
+        if (adminServiceEditDiscount) {
+            adminServiceEditDiscount.value = String(packageDiscount);
+        }
+
+        if (adminServiceEditCamera1) {
+            adminServiceEditCamera1.value = packageCamera1;
+        }
+
+        if (adminServiceEditCamera2) {
+            adminServiceEditCamera2.value = packageCamera2;
+        }
+
+        if (adminServiceEditBackupCamera1) {
+            adminServiceEditBackupCamera1.value = packageBackupCamera1;
+        }
+
+        if (adminServiceEditBackupCamera2) {
+            adminServiceEditBackupCamera2.value = packageBackupCamera2;
+        }
+
+        setAdminServiceEditTab("details");
+        adminServiceEditBackdrop.hidden = false;
+        syncAdminModalBodyLock();
+    }
+
+    adminServiceEditButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            var card = button.closest("[data-admin-service-package]");
+            openAdminServiceEditModal(card);
+        });
+    });
+
+    adminServiceEditTabButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            var tabKey = String(button.getAttribute("data-admin-service-edit-tab") || "details");
+            setAdminServiceEditTab(tabKey);
+        });
+    });
+
+    if (adminServiceEditCancel) {
+        adminServiceEditCancel.addEventListener("click", closeAdminServiceEditModal);
+    }
+
+    if (adminServiceEditClose) {
+        adminServiceEditClose.addEventListener("click", closeAdminServiceEditModal);
+    }
+
+    if (adminServiceEditBackdrop) {
+        adminServiceEditBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminServiceEditBackdrop) {
+                closeAdminServiceEditModal();
+            }
+        });
+    }
+
     function closeAdminEventEditModal() {
         if (!adminEventEditBackdrop) {
             return;
@@ -3300,6 +3611,202 @@ document.addEventListener("DOMContentLoaded", function () {
     if (adminEventThumbsForm) {
         adminEventThumbsForm.addEventListener("submit", function () {
             syncAdminEventThumbSelectionUI();
+        });
+    }
+
+    function parseAdminServiceThumbSelection(rawValue) {
+        if (typeof rawValue !== "string" || rawValue.trim() === "") {
+            return [];
+        }
+
+        try {
+            var parsed = JSON.parse(rawValue);
+
+            if (!Array.isArray(parsed)) {
+                return [];
+            }
+
+            var unique = [];
+            var seen = Object.create(null);
+
+            parsed.forEach(function (entry) {
+                var path = String(entry || "").trim();
+
+                if (!path || seen[path]) {
+                    return;
+                }
+
+                seen[path] = true;
+                unique.push(path);
+            });
+
+            return unique;
+        } catch (error) {
+            return [];
+        }
+    }
+
+    function getAdminServiceImageFolder(imagePath) {
+        var normalizedPath = String(imagePath || "").replace(/\\/g, "/").replace(/^\/+/, "");
+        var prefix = "assets/service_packages/";
+
+        if (normalizedPath.indexOf(prefix) !== 0) {
+            return "";
+        }
+
+        var remainder = normalizedPath.slice(prefix.length);
+        var slashIndex = remainder.indexOf("/");
+
+        return (slashIndex >= 0 ? remainder.slice(0, slashIndex) : remainder).trim();
+    }
+
+    function syncAdminServiceThumbSelectionUI() {
+        if (!adminServiceThumbItems.length) {
+            if (adminServiceThumbsInput) {
+                adminServiceThumbsInput.value = JSON.stringify(adminServiceThumbSelection);
+            }
+
+            return;
+        }
+
+        var visibleCount = 0;
+
+        adminServiceThumbItems.forEach(function (item) {
+            var path = String(item.getAttribute("data-image-path") || "");
+            var itemFolder = String(item.getAttribute("data-image-folder") || "").trim();
+            var isVisible = activeAdminServiceThumbFolder === "" || itemFolder === activeAdminServiceThumbFolder;
+            var orderBadge = item.querySelector("[data-admin-service-thumb-order]");
+            var selectedIndex = adminServiceThumbSelection.indexOf(path);
+            var isSelected = selectedIndex >= 0;
+
+            item.hidden = !isVisible;
+
+            if (!isVisible) {
+                item.classList.remove("is-selected");
+                if (orderBadge) {
+                    orderBadge.hidden = true;
+                    orderBadge.textContent = "";
+                }
+
+                return;
+            }
+
+            visibleCount += 1;
+
+            item.classList.toggle("is-selected", isSelected);
+
+            if (orderBadge) {
+                if (isSelected) {
+                    orderBadge.hidden = false;
+                    orderBadge.textContent = String(selectedIndex + 1);
+                } else {
+                    orderBadge.hidden = true;
+                    orderBadge.textContent = "";
+                }
+            }
+        });
+
+        if (adminServiceThumbsFolderEmpty) {
+            adminServiceThumbsFolderEmpty.hidden = visibleCount > 0;
+        }
+
+        if (adminServiceThumbsInput) {
+            adminServiceThumbsInput.value = JSON.stringify(adminServiceThumbSelection);
+        }
+    }
+
+    function closeAdminServiceThumbsModal() {
+        if (!adminServiceThumbsBackdrop) {
+            return;
+        }
+
+        adminServiceThumbsBackdrop.hidden = true;
+        activeAdminServiceThumbsCard = null;
+        activeAdminServiceThumbFolder = "";
+        adminServiceThumbSelection = [];
+        syncAdminModalBodyLock();
+    }
+
+    function openAdminServiceThumbsModal(card, folderOverride) {
+        if (!adminServiceThumbsBackdrop || !card) {
+            return;
+        }
+
+        activeAdminServiceThumbsCard = card;
+
+        var packageKey = String(card.getAttribute("data-admin-service-package-key") || "").trim();
+        var packageTitle = String(card.getAttribute("data-admin-service-package-title") || "").trim();
+        var packageFolder = String(folderOverride || card.getAttribute("data-admin-service-package-folder") || "").trim();
+        var selectedRaw = String(card.getAttribute("data-admin-service-selected-thumbnails") || "[]");
+
+        activeAdminServiceThumbFolder = packageFolder;
+        adminServiceThumbSelection = parseAdminServiceThumbSelection(selectedRaw).filter(function (path) {
+            return getAdminServiceImageFolder(path) === activeAdminServiceThumbFolder;
+        });
+
+        if (adminServiceThumbsKey) {
+            adminServiceThumbsKey.value = packageKey;
+        }
+
+        if (adminServiceThumbsPackageTitle) {
+            adminServiceThumbsPackageTitle.textContent = packageTitle || "this package";
+        }
+
+        syncAdminServiceThumbSelectionUI();
+
+        adminServiceThumbsBackdrop.hidden = false;
+        syncAdminModalBodyLock();
+    }
+
+    if (adminServiceSetThumbButtonInEdit) {
+        adminServiceSetThumbButtonInEdit.addEventListener("click", function () {
+            if (!activeAdminServicePackageCard) {
+                return;
+            }
+
+            openAdminServiceThumbsModal(activeAdminServicePackageCard);
+        });
+    }
+
+    adminServiceThumbItems.forEach(function (item) {
+        item.addEventListener("click", function () {
+            var path = String(item.getAttribute("data-image-path") || "").trim();
+
+            if (!path) {
+                return;
+            }
+
+            var selectedIndex = adminServiceThumbSelection.indexOf(path);
+
+            if (selectedIndex >= 0) {
+                adminServiceThumbSelection.splice(selectedIndex, 1);
+            } else {
+                adminServiceThumbSelection.push(path);
+            }
+
+            syncAdminServiceThumbSelectionUI();
+        });
+    });
+
+    if (adminServiceThumbsClose) {
+        adminServiceThumbsClose.addEventListener("click", closeAdminServiceThumbsModal);
+    }
+
+    if (adminServiceThumbsCancel) {
+        adminServiceThumbsCancel.addEventListener("click", closeAdminServiceThumbsModal);
+    }
+
+    if (adminServiceThumbsBackdrop) {
+        adminServiceThumbsBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminServiceThumbsBackdrop) {
+                closeAdminServiceThumbsModal();
+            }
+        });
+    }
+
+    if (adminServiceThumbsForm) {
+        adminServiceThumbsForm.addEventListener("submit", function () {
+            syncAdminServiceThumbSelectionUI();
         });
     }
 
@@ -5961,15 +6468,17 @@ document.addEventListener("DOMContentLoaded", function () {
         var hasVisibleEquipmentArchiveModal = Boolean(adminEquipmentArchiveBackdrop && !adminEquipmentArchiveBackdrop.hidden);
         var hasVisibleEquipmentStatusModal = Boolean(adminEquipmentStatusBackdrop && !adminEquipmentStatusBackdrop.hidden);
         var hasVisibleActionModal = Boolean(adminActionModalBackdrop && !adminActionModalBackdrop.hidden);
+        var hasVisibleServiceEditModal = Boolean(adminServiceEditBackdrop && !adminServiceEditBackdrop.hidden);
         var hasVisibleEventEditModal = Boolean(adminEventEditBackdrop && !adminEventEditBackdrop.hidden);
         var hasVisibleEventThumbsModal = Boolean(adminEventThumbsBackdrop && !adminEventThumbsBackdrop.hidden);
+        var hasVisibleServiceThumbsModal = Boolean(adminServiceThumbsBackdrop && !adminServiceThumbsBackdrop.hidden);
         var hasVisibleEventCollectionCreateModal = Boolean(adminEventCollectionCreateBackdrop && !adminEventCollectionCreateBackdrop.hidden);
         var hasVisibleEventCollectionEditModal = Boolean(adminEventCollectionEditBackdrop && !adminEventCollectionEditBackdrop.hidden);
         var hasVisibleBookingDetailModal = Boolean(adminBookingDetailBackdrop && !adminBookingDetailBackdrop.hidden);
         var hasVisibleBookingCancelModal = Boolean(adminBookingCancelBackdrop && !adminBookingCancelBackdrop.hidden);
         var hasVisibleBookingReviewModal = Boolean(adminBookingReviewBackdrop && !adminBookingReviewBackdrop.hidden);
         var hasVisibleBookingDeliveryModal = Boolean(adminBookingDeliveryBackdrop && !adminBookingDeliveryBackdrop.hidden);
-        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal || hasVisibleEventEditModal || hasVisibleEventThumbsModal || hasVisibleEventCollectionCreateModal || hasVisibleEventCollectionEditModal || hasVisibleBookingDetailModal || hasVisibleBookingCancelModal || hasVisibleBookingReviewModal || hasVisibleBookingDeliveryModal);
+        document.body.classList.toggle("admin-modal-open", hasVisibleUsersModal || hasVisibleEquipmentArchiveModal || hasVisibleEquipmentStatusModal || hasVisibleActionModal || hasVisibleServiceEditModal || hasVisibleEventEditModal || hasVisibleEventThumbsModal || hasVisibleServiceThumbsModal || hasVisibleEventCollectionCreateModal || hasVisibleEventCollectionEditModal || hasVisibleBookingDetailModal || hasVisibleBookingCancelModal || hasVisibleBookingReviewModal || hasVisibleBookingDeliveryModal);
     }
 
     function setAdminBookingCancelError(message) {
@@ -12347,6 +12856,171 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
+        function normalizeCartCameraProductKey(value) {
+            var normalized = String(value || "").trim().toLowerCase();
+
+            if (!normalized) {
+                return "";
+            }
+
+            normalized = normalized.replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
+
+            return normalized;
+        }
+
+        function resolvePackageCameraField(source, primaryKey, fallbackKeys) {
+            if (!source || typeof source !== "object") {
+                return "";
+            }
+
+            var keyList = [primaryKey];
+
+            if (Array.isArray(fallbackKeys)) {
+                keyList = keyList.concat(fallbackKeys);
+            }
+
+            for (var index = 0; index < keyList.length; index += 1) {
+                var key = String(keyList[index] || "").trim();
+
+                if (!key || !Object.prototype.hasOwnProperty.call(source, key)) {
+                    continue;
+                }
+
+                return String(source[key] || "").trim();
+            }
+
+            return "";
+        }
+
+        function parseCartPackageCameraCatalog(rawCatalog) {
+            var sourceCatalog = rawCatalog;
+
+            if (typeof sourceCatalog === "string") {
+                try {
+                    sourceCatalog = JSON.parse(sourceCatalog);
+                } catch (error) {
+                    sourceCatalog = {};
+                }
+            }
+
+            if (!sourceCatalog || typeof sourceCatalog !== "object") {
+                return {};
+            }
+
+            var normalizedCatalog = {};
+
+            Object.keys(sourceCatalog).forEach(function (rawPackageKey) {
+                var packageKey = normalizeCartCameraProductKey(rawPackageKey);
+
+                if (!packageKey) {
+                    return;
+                }
+
+                var packageRecord = sourceCatalog[rawPackageKey];
+
+                if (!packageRecord || typeof packageRecord !== "object") {
+                    return;
+                }
+
+                normalizedCatalog[packageKey] = {
+                    camera1: normalizeCartCameraProductKey(resolvePackageCameraField(packageRecord, "camera1", ["camera_1"])),
+                    camera2: normalizeCartCameraProductKey(resolvePackageCameraField(packageRecord, "camera2", ["camera_2"])),
+                    backupCamera1: normalizeCartCameraProductKey(resolvePackageCameraField(packageRecord, "backupCamera1", ["backup_camera_1", "backupcamera1"])),
+                    backupCamera2: normalizeCartCameraProductKey(resolvePackageCameraField(packageRecord, "backupCamera2", ["backup_camera_2", "backupcamera2"]))
+                };
+            });
+
+            return normalizedCatalog;
+        }
+
+        var cartEventPackageCameraCatalog = parseCartPackageCameraCatalog(window.__creatyEventPackageCameras);
+        var cartServicePackageCameraCatalog = parseCartPackageCameraCatalog(window.__creatyServicePackageCameras);
+
+        function resolveCartPackageKeyFromItem(item, expectedType, idPrefix) {
+            if (!item || typeof item !== "object") {
+                return "";
+            }
+
+            var itemType = String(item.type || item.itemType || item.item_type || "").trim().toLowerCase();
+
+            if (itemType && itemType !== expectedType) {
+                return "";
+            }
+
+            var explicitPackageKey = normalizeCartCameraProductKey(
+                item.packageKey
+                || item.package_key
+                || item.package
+                || (expectedType === "event-package" ? (item.eventPackageKey || item.event_package_key) : "")
+                || (expectedType === "service-package" ? (item.servicePackageKey || item.service_package_key) : "")
+                || ""
+            );
+
+            if (explicitPackageKey) {
+                return explicitPackageKey;
+            }
+
+            var itemId = String(item.id || item.itemId || item.item_id || "").trim().toLowerCase();
+
+            if (itemId.indexOf(idPrefix) !== 0) {
+                return "";
+            }
+
+            return normalizeCartCameraProductKey(itemId.slice(idPrefix.length));
+        }
+
+        function getCartPackageCameraProductKeys(item) {
+            if (!item || typeof item !== "object") {
+                return [];
+            }
+
+            var cameraProductKeys = [];
+            var eventPackageKey = resolveCartPackageKeyFromItem(item, "event-package", "event-");
+            var servicePackageKey = resolveCartPackageKeyFromItem(item, "service-package", "service-");
+
+            if (eventPackageKey && cartEventPackageCameraCatalog[eventPackageKey]) {
+                var eventCameraConfig = cartEventPackageCameraCatalog[eventPackageKey];
+
+                if (eventCameraConfig.camera1) {
+                    cameraProductKeys.push(eventCameraConfig.camera1);
+                }
+
+                if (eventCameraConfig.camera2) {
+                    cameraProductKeys.push(eventCameraConfig.camera2);
+                }
+
+                if (eventCameraConfig.backupCamera1) {
+                    cameraProductKeys.push(eventCameraConfig.backupCamera1);
+                }
+
+                if (eventCameraConfig.backupCamera2) {
+                    cameraProductKeys.push(eventCameraConfig.backupCamera2);
+                }
+            }
+
+            if (servicePackageKey && cartServicePackageCameraCatalog[servicePackageKey]) {
+                var serviceCameraConfig = cartServicePackageCameraCatalog[servicePackageKey];
+
+                if (serviceCameraConfig.camera1) {
+                    cameraProductKeys.push(serviceCameraConfig.camera1);
+                }
+
+                if (serviceCameraConfig.camera2) {
+                    cameraProductKeys.push(serviceCameraConfig.camera2);
+                }
+
+                if (serviceCameraConfig.backupCamera1) {
+                    cameraProductKeys.push(serviceCameraConfig.backupCamera1);
+                }
+
+                if (serviceCameraConfig.backupCamera2) {
+                    cameraProductKeys.push(serviceCameraConfig.backupCamera2);
+                }
+            }
+
+            return cameraProductKeys;
+        }
+
         function extractCameraProductKeyFromCartItem(item) {
             if (!item || typeof item !== "object") {
                 return "";
@@ -12358,19 +13032,38 @@ document.addEventListener("DOMContentLoaded", function () {
                 return "";
             }
 
-            var productKey = String(item.productKey || item.product_key || "").trim().toLowerCase();
+            var productKey = normalizeCartCameraProductKey(item.productKey || item.product_key || "");
 
             if (!productKey) {
                 var itemId = String(item.id || item.itemId || item.item_id || "").trim().toLowerCase();
 
                 if (itemId.indexOf("camera-") === 0) {
-                    productKey = itemId.slice(7);
+                    productKey = normalizeCartCameraProductKey(itemId.slice(7));
                 }
             }
 
-            productKey = productKey.replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
-
             return productKey;
+        }
+
+        function extractCameraProductKeysFromCartItem(item) {
+            var productKeys = [];
+            var directCameraProductKey = extractCameraProductKeyFromCartItem(item);
+
+            if (directCameraProductKey) {
+                productKeys.push(directCameraProductKey);
+            }
+
+            var packageCameraProductKeys = getCartPackageCameraProductKeys(item);
+
+            packageCameraProductKeys.forEach(function (productKey) {
+                var normalizedProductKey = normalizeCartCameraProductKey(productKey);
+
+                if (normalizedProductKey) {
+                    productKeys.push(normalizedProductKey);
+                }
+            });
+
+            return productKeys;
         }
 
         var equipmentAvailability = normalizeCartEquipmentAvailabilityPayload(window.__creatyEquipmentAvailability);
@@ -12419,9 +13112,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
-                var productKey = extractCameraProductKeyFromCartItem(item);
+                var productKeys = extractCameraProductKeysFromCartItem(item);
 
-                if (!productKey) {
+                if (!productKeys.length) {
                     return;
                 }
 
@@ -12430,15 +13123,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 var qty = Number.isFinite(qtyParsed) && qtyParsed > 0 ? qtyParsed : 1;
                 var days = Number.isFinite(daysParsed) && daysParsed > 0 ? daysParsed : 1;
 
-                if (!requirements[productKey]) {
-                    requirements[productKey] = {
-                        qty: 0,
-                        days: 0
-                    };
-                }
+                productKeys.forEach(function (productKey) {
+                    if (!requirements[productKey]) {
+                        requirements[productKey] = {
+                            qty: 0,
+                            days: 0
+                        };
+                    }
 
-                requirements[productKey].qty += qty;
-                requirements[productKey].days = Math.max(requirements[productKey].days, days);
+                    requirements[productKey].qty += qty;
+                    requirements[productKey].days = Math.max(requirements[productKey].days, days);
+                });
             });
 
             return requirements;

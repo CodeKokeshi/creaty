@@ -49,6 +49,7 @@ $accountSettingsPath = $assetBase . 'customer-account-settings/';
 $logoutPath = $assetBase . 'customer-logout/';
 $cartPath = $assetBase . 'customer-cart/';
 $eventsPath = $assetBase . 'customer-events/';
+$servicesPath = $assetBase . 'customer-services/';
 $notificationsPath = $assetBase . 'admin/notifications/';
 $manageBrandsPath = $assetBase . 'admin/brands/';
 $manageCategoriesPath = $assetBase . 'admin/categories/';
@@ -1034,6 +1035,7 @@ if (!$isAdminView && function_exists('customer_order_build_equipment_availabilit
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                         <li><a class="dropdown-item" href="#">Help Center</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>

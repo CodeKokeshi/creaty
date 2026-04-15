@@ -20,17 +20,63 @@ $accountSettingsPath = $assetBase . 'customer-account-settings/';
 $logoutPath = $assetBase . 'customer-logout/';
 $cartPath = $assetBase . 'customer-cart/';
 $eventsPath = $assetBase . 'customer-events/';
+$servicesPath = $assetBase . 'customer-services/';
 
 require_once __DIR__ . '/config/products_repository.php';
 require_once __DIR__ . '/config/event_packages_repository.php';
+require_once __DIR__ . '/config/services_packages_repository.php';
 require_once __DIR__ . '/config/customer_orders_repository.php';
 require_once __DIR__ . '/config/gcash_qr_repository.php';
 require_once __DIR__ . '/config/customer_notifications_repository.php';
 require_once __DIR__ . '/config/customer_gcash_profiles_repository.php';
 require_once __DIR__ . '/config/customer_terms_repository.php';
 
+function normalize_cart_package_camera_key($value): string
+{
+    $normalized = strtolower(trim((string) $value));
+    $normalized = preg_replace('/[^a-z0-9-]+/', '-', $normalized) ?? $normalized;
+
+    return trim((string) $normalized, '-');
+}
+
+function map_cart_package_camera_catalog($repository): array
+{
+    if (!is_array($repository)) {
+        return [];
+    }
+
+    $catalog = [];
+
+    foreach ($repository as $packageKey => $packageRecord) {
+        if (!is_string($packageKey) || trim($packageKey) === '' || !is_array($packageRecord)) {
+            continue;
+        }
+
+        if (!empty($packageRecord['archived'])) {
+            continue;
+        }
+
+        $normalizedPackageKey = normalize_cart_package_camera_key($packageKey);
+        if ($normalizedPackageKey === '') {
+            continue;
+        }
+
+        $catalog[$normalizedPackageKey] = [
+            'camera1' => normalize_cart_package_camera_key($packageRecord['camera1'] ?? ''),
+            'camera2' => normalize_cart_package_camera_key($packageRecord['camera2'] ?? ''),
+            'backupCamera1' => normalize_cart_package_camera_key($packageRecord['backupCamera1'] ?? ''),
+            'backupCamera2' => normalize_cart_package_camera_key($packageRecord['backupCamera2'] ?? ''),
+        ];
+    }
+
+    return $catalog;
+}
+
 $productsRepository = load_products_repository();
 $eventPackagesRepository = load_event_packages_repository();
+$servicePackagesRepository = load_services_packages_repository();
+$eventPackageCameraCatalog = map_cart_package_camera_catalog($eventPackagesRepository);
+$servicePackageCameraCatalog = map_cart_package_camera_catalog($servicePackagesRepository);
 $availableCartItemIds = [];
 
 if (is_array($productsRepository)) {
@@ -54,6 +100,20 @@ if (is_array($eventPackagesRepository)) {
         }
 
         $availableCartItemIds[] = 'event-' . trim($packageKey);
+    }
+}
+
+if (is_array($servicePackagesRepository)) {
+    foreach ($servicePackagesRepository as $packageKey => $packageRecord) {
+        if (!is_string($packageKey) || trim($packageKey) === '' || !is_array($packageRecord)) {
+            continue;
+        }
+
+        if (!empty($packageRecord['archived'])) {
+            continue;
+        }
+
+        $availableCartItemIds[] = 'service-' . trim($packageKey);
     }
 }
 
@@ -150,6 +210,7 @@ if ($isCustomerLoggedIn) {
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                         <li><a class="dropdown-item" href="#">Help Center</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
@@ -567,6 +628,8 @@ if ($isCustomerLoggedIn) {
         window.__creatyGcashPaymentInfo = <?php echo json_encode($gcashPaymentInfo, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerGcashInfo = <?php echo json_encode($customerGcashInfo, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyEquipmentAvailability = <?php echo json_encode($equipmentAvailability, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyEventPackageCameras = <?php echo json_encode($eventPackageCameraCatalog, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyServicePackageCameras = <?php echo json_encode($servicePackageCameraCatalog, JSON_UNESCAPED_SLASHES); ?>;
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>

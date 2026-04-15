@@ -1479,6 +1479,10 @@ button {
     padding-left: 1.95rem;
 }
 
+#admin-service-edit-price {
+    padding-left: 1.95rem;
+}
+
 #admin-edit-price,
 #admin-edit-discount {
     appearance: textfield;
@@ -1487,6 +1491,12 @@ button {
 
 #admin-event-edit-price,
 #admin-event-edit-discount {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+#admin-service-edit-price,
+#admin-service-edit-discount {
     appearance: textfield;
     -moz-appearance: textfield;
 }
@@ -1503,6 +1513,14 @@ button {
 #admin-event-edit-price::-webkit-inner-spin-button,
 #admin-event-edit-discount::-webkit-outer-spin-button,
 #admin-event-edit-discount::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#admin-service-edit-price::-webkit-outer-spin-button,
+#admin-service-edit-price::-webkit-inner-spin-button,
+#admin-service-edit-discount::-webkit-outer-spin-button,
+#admin-service-edit-discount::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
@@ -7063,6 +7081,19 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     font-weight: 700;
 }
 
+.service-group + .service-group {
+    margin-top: 2.25rem;
+}
+
+.service-group-label {
+    margin: 0 0 0.85rem;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
 .package-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -7239,6 +7270,27 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     cursor: pointer;
 }
 
+.services-page .package-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.service-package-description {
+    margin: 0.55rem 0 0;
+    min-height: calc(var(--service-description-lines, 2) * 1.4em);
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.82rem;
+    line-height: 1.4;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.services-page .package-footer {
+    margin-top: auto;
+    padding-top: 0.55rem;
+}
+
 .package-admin-actions {
     display: inline-flex;
     align-items: center;
@@ -7337,6 +7389,61 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     width: min(100%, 560px);
 }
 
+.admin-service-edit-modal {
+    width: min(100%, 680px);
+}
+
+.admin-service-edit-tabs {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0 0 0.85rem;
+}
+
+.admin-service-edit-tab {
+    min-height: 34px;
+    padding: 0 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #d7dde6;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.admin-service-edit-tab:hover,
+.admin-service-edit-tab:focus-visible {
+    border-color: rgba(255, 255, 255, 0.48);
+    background: rgba(255, 255, 255, 0.14);
+    color: #f4f4f4;
+}
+
+.admin-service-edit-tab.is-active {
+    border-color: rgba(103, 194, 61, 0.72);
+    background: rgba(103, 194, 61, 0.2);
+    color: #eff9e8;
+}
+
+.admin-service-edit-panel {
+    display: none;
+}
+
+.admin-service-edit-panel.is-active {
+    display: grid;
+}
+
+#admin-service-edit-description {
+    min-height: 112px;
+    max-height: 112px;
+    resize: none;
+    overflow-y: auto;
+}
+
 .admin-event-edit-fields {
     width: 100%;
 }
@@ -7348,6 +7455,16 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 .admin-event-edit-form .admin-edit-actions .admin-edit-secondary,
 .admin-event-edit-form .admin-edit-actions .admin-edit-primary {
     min-width: 120px;
+}
+
+.admin-service-edit-form .admin-edit-actions {
+    flex-wrap: wrap;
+}
+
+.admin-service-edit-form .admin-edit-actions .admin-edit-secondary,
+.admin-service-edit-form .admin-edit-actions .admin-edit-primary {
+    flex: 1 1 140px;
+    min-width: 0;
 }
 
 .admin-event-edit-thumbs-open {
