@@ -65,6 +65,74 @@ function normalize_service_package_type($value)
     return default_service_package_type();
 }
 
+function clamp_service_package_duration_hour($value)
+{
+    $parsed = (int) $value;
+
+    return max(1, min(24, $parsed));
+}
+
+function normalize_service_package_duration_unit($value)
+{
+    $normalized = strtolower(trim((string) $value));
+
+    if (in_array($normalized, ['day', 'days'], true)) {
+        return 'days';
+    }
+
+    return 'hours';
+}
+
+function clamp_service_package_duration_day($value)
+{
+    $parsed = (int) $value;
+
+    return max(1, min(14, $parsed));
+}
+
+function clamp_service_package_duration_value($unit, $value)
+{
+    $normalizedUnit = normalize_service_package_duration_unit($unit);
+
+    if ($normalizedUnit === 'days') {
+        return clamp_service_package_duration_day($value);
+    }
+
+    return clamp_service_package_duration_hour($value);
+}
+
+function parse_service_package_duration_range_from_description($value)
+{
+    $description = strtolower(trim((string) $value));
+
+    if ($description === '') {
+        return ['min' => 1, 'max' => 1];
+    }
+
+    if (preg_match('/(\d{1,2})\s*(?:-|to)\s*(\d{1,2})\s*hours?/i', $description, $matches)) {
+        $minHours = clamp_service_package_duration_hour($matches[1] ?? 1);
+        $maxHours = clamp_service_package_duration_hour($matches[2] ?? $minHours);
+
+        if ($maxHours < $minHours) {
+            $maxHours = $minHours;
+        }
+
+        return ['min' => $minHours, 'max' => $maxHours];
+    }
+
+    if (preg_match('/(\d{1,2})\s*hours?/i', $description, $matches)) {
+        $hours = clamp_service_package_duration_hour($matches[1] ?? 1);
+
+        return ['min' => $hours, 'max' => $hours];
+    }
+
+    if (strpos($description, 'full day') !== false || strpos($description, 'whole day') !== false) {
+        return ['min' => 8, 'max' => 8];
+    }
+
+    return ['min' => 1, 'max' => 1];
+}
+
 function services_packages_repository_defaults()
 {
     return [
@@ -75,6 +143,8 @@ function services_packages_repository_defaults()
             'description' => '3 hours with 1 photographer, 200+ edited photos, Online gallery and download, No transportation fee around Carmona.',
             'price' => '3299.00',
             'discountPercent' => 0,
+            'durationUnit' => 'hours',
+            'durationValue' => 3,
             'thumbnail_images' => [],
             'camera1' => '',
             'camera2' => '',
@@ -88,6 +158,8 @@ function services_packages_repository_defaults()
             'description' => '5 hours with 2 photographers, 400+ edited photos, Online gallery and download, No transportation fee around Carmona and Laguna.',
             'price' => '8499.00',
             'discountPercent' => 0,
+            'durationUnit' => 'hours',
+            'durationValue' => 5,
             'thumbnail_images' => [],
             'camera1' => '',
             'camera2' => '',
@@ -101,6 +173,8 @@ function services_packages_repository_defaults()
             'description' => 'Full day with 2 photographers, 600+ edited photos, Online gallery and download, No transportation fee around Carmona and Laguna.',
             'price' => '10499.00',
             'discountPercent' => 0,
+            'durationUnit' => 'hours',
+            'durationValue' => 8,
             'thumbnail_images' => [],
             'camera1' => '',
             'camera2' => '',
@@ -114,6 +188,8 @@ function services_packages_repository_defaults()
             'description' => '3-4 hours with 1 photographer and 1 videographer, 200+ edited photos and videos, Online gallery and download, No transportation fee around Carmona.',
             'price' => '7499.00',
             'discountPercent' => 0,
+            'durationUnit' => 'hours',
+            'durationValue' => 4,
             'thumbnail_images' => [],
             'camera1' => '',
             'camera2' => '',
@@ -127,6 +203,8 @@ function services_packages_repository_defaults()
             'description' => '5-6 hours with 2 photographers and 1 videographer, 400+ edited photos and videos, Online gallery and download, No transportation fee around Carmona and Laguna.',
             'price' => '10899.00',
             'discountPercent' => 0,
+            'durationUnit' => 'hours',
+            'durationValue' => 6,
             'thumbnail_images' => [],
             'camera1' => '',
             'camera2' => '',
@@ -140,6 +218,8 @@ function services_packages_repository_defaults()
             'description' => 'Full day with 2 photographers, 1 videographer and 1 assistant, 600+ edited photos and videos, 20 page Photo album, Online gallery and download, No transportation fee around Carmona and Laguna.',
             'price' => '13899.00',
             'discountPercent' => 0,
+            'durationUnit' => 'hours',
+            'durationValue' => 8,
             'thumbnail_images' => [],
             'camera1' => '',
             'camera2' => '',
@@ -160,6 +240,8 @@ function normalize_service_package_record($key, $record, $defaults)
             'description' => '',
             'price' => '0.00',
             'discountPercent' => 0,
+            'durationUnit' => 'hours',
+            'durationValue' => 1,
             'thumbnail_images' => [],
             'camera1' => '',
             'camera2' => '',
@@ -188,6 +270,38 @@ function normalize_service_package_record($key, $record, $defaults)
     } else {
         $description = trim((string) substr($description, 0, 256));
     }
+
+    $descriptionDurationRange = parse_service_package_duration_range_from_description($description);
+    $durationUnit = normalize_service_package_duration_unit(
+        $record['durationUnit']
+            ?? $record['duration_unit']
+            ?? ($fallback['durationUnit'] ?? 'hours')
+    );
+    $durationValue = $record['durationValue'] ?? $record['duration_value'] ?? null;
+
+    $hasLegacyDuration = isset($record['durationHoursMin'])
+        || isset($record['durationHoursMax'])
+        || isset($record['durationMinHours'])
+        || isset($record['durationMaxHours']);
+
+    if (($durationValue === null || $durationValue === '') && $hasLegacyDuration) {
+        $durationUnit = 'hours';
+        $durationValue = $record['durationHoursMax']
+            ?? $record['durationMaxHours']
+            ?? $record['durationHoursMin']
+            ?? $record['durationMinHours']
+            ?? 1;
+    }
+
+    if ($durationValue === null || $durationValue === '') {
+        $durationUnit = normalize_service_package_duration_unit($fallback['durationUnit'] ?? 'hours');
+        $durationValue = $fallback['durationValue']
+            ?? ($fallback['durationHoursMax'] ?? null)
+            ?? ($fallback['durationHoursMin'] ?? null)
+            ?? ($descriptionDurationRange['max'] ?? 1);
+    }
+
+    $durationValue = clamp_service_package_duration_value($durationUnit, $durationValue);
 
     $priceValue = (float) ($record['price'] ?? $fallback['price']);
     $priceValue = max(0, $priceValue);
@@ -223,6 +337,8 @@ function normalize_service_package_record($key, $record, $defaults)
         'description' => $description,
         'price' => number_format($priceValue, 2, '.', ''),
         'discountPercent' => $discountValue,
+        'durationUnit' => $durationUnit,
+        'durationValue' => $durationValue,
         'thumbnail_images' => array_values($thumbnailImages),
         'camera1' => $camera1,
         'camera2' => $camera2,

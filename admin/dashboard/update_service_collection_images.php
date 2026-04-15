@@ -207,23 +207,39 @@ function sanitize_service_collection_image_filename_for_update($value)
     return substr($basename, 0, 64);
 }
 
-function save_service_collection_uploaded_image_from_data_url($dataUrl, $originalName, $collectionAbsoluteDirectory, $packageFolder, $collectionFolder)
+function save_service_collection_uploaded_image_from_data_url($dataUrl, $originalName, $collectionAbsoluteDirectory, $packageFolder, $collectionFolder, $allowVideoUploads)
 {
     $value = trim((string) $dataUrl);
 
-    if (!preg_match('/^data:image\/(png|jpeg|jpg|webp|gif);base64,(.+)$/i', $value, $matches)) {
-        throw new RuntimeException('Invalid image payload.');
+    if (!preg_match('/^data:(image|video)\/([a-z0-9.+-]+);base64,(.+)$/i', $value, $matches)) {
+        throw new RuntimeException('Invalid media payload.');
     }
 
-    $extension = strtolower((string) ($matches[1] ?? 'png'));
+    $mediaKind = strtolower((string) ($matches[1] ?? 'image'));
+    $extension = strtolower((string) ($matches[2] ?? 'png'));
+    $binaryPayload = (string) ($matches[3] ?? '');
+
+    if ($mediaKind === 'image' && !in_array($extension, ['png', 'jpeg', 'jpg', 'webp', 'gif'], true)) {
+        throw new RuntimeException('Unsupported image format.');
+    }
+
+    if ($mediaKind === 'video') {
+        if (!$allowVideoUploads) {
+            throw new RuntimeException('Videos are only allowed for Photography + Videography packages.');
+        }
+
+        if (!in_array($extension, ['mp4', 'webm', 'ogg'], true)) {
+            throw new RuntimeException('Unsupported video format. Use MP4, WEBM, or OGG.');
+        }
+    }
 
     if ($extension === 'jpg') {
         $extension = 'jpeg';
     }
 
-    $binary = base64_decode((string) ($matches[2] ?? ''), true);
+    $binary = base64_decode($binaryPayload, true);
     if ($binary === false) {
-        throw new RuntimeException('Invalid base64 image payload.');
+        throw new RuntimeException('Invalid base64 media payload.');
     }
 
     $filenameBase = sanitize_service_collection_image_filename_for_update($originalName);
@@ -237,10 +253,13 @@ function save_service_collection_uploaded_image_from_data_url($dataUrl, $origina
     } while (file_exists($absolutePath) && $counter < 2000);
 
     if (@file_put_contents($absolutePath, $binary, LOCK_EX) === false) {
-        throw new RuntimeException('Unable to save collection image.');
+        throw new RuntimeException('Unable to save collection media.');
     }
 
-    return 'assets/service_packages/' . $packageFolder . '/' . $collectionFolder . '/' . $filename;
+    return [
+        'path' => 'assets/service_packages/' . $packageFolder . '/' . $collectionFolder . '/' . $filename,
+        'type' => $mediaKind,
+    ];
 }
 
 $payloadRaw = file_get_contents('php://input');
@@ -281,6 +300,9 @@ if (!empty($servicePackages[$packageKey]['archived'])) {
     echo json_encode(['ok' => false, 'message' => 'Service package is archived']);
     exit;
 }
+
+$servicePackageType = normalize_service_package_type((string) ($servicePackages[$packageKey]['serviceType'] ?? default_service_package_type()));
+$allowVideoUploads = strpos($servicePackageType, 'videography') !== false;
 
 $packageFolder = build_service_package_folder_for_update($packageKey);
 
@@ -398,7 +420,7 @@ foreach ($excludedImagePaths as $normalizedPath => $absolutePath) {
 
     if (is_file($absolutePath)) {
         http_response_code(500);
-        echo json_encode(['ok' => false, 'message' => 'Unable to remove one of the selected images.']);
+        echo json_encode(['ok' => false, 'message' => 'Unable to remove one of the selected media files.']);
         exit;
     }
 }
@@ -409,7 +431,7 @@ if (!is_array($addedImagesInput)) {
 
 if (count($addedImagesInput) > 30) {
     http_response_code(422);
-    echo json_encode(['ok' => false, 'message' => 'You can add up to 30 images at a time.']);
+    echo json_encode(['ok' => false, 'message' => 'You can add up to 30 files at a time.']);
     exit;
 }
 
@@ -443,12 +465,13 @@ $addedImages = [];
 
 foreach ($normalizedAddedImagesInput as $addedImageEntry) {
     try {
-        $imagePath = save_service_collection_uploaded_image_from_data_url(
+        $savedMedia = save_service_collection_uploaded_image_from_data_url(
             (string) ($addedImageEntry['dataUrl'] ?? ''),
             (string) ($addedImageEntry['fileName'] ?? ''),
             $collectionDirectory,
             $packageFolder,
-            $collectionFolder
+            $collectionFolder,
+            $allowVideoUploads
         );
     } catch (Throwable $error) {
         http_response_code(422);
@@ -456,9 +479,14 @@ foreach ($normalizedAddedImagesInput as $addedImageEntry) {
         exit;
     }
 
+    $mediaPath = trim((string) ($savedMedia['path'] ?? ''));
+    $mediaType = trim((string) ($savedMedia['type'] ?? 'image'));
+
     $addedImages[] = [
         'tempId' => (string) ($addedImageEntry['tempId'] ?? ''),
-        'imagePath' => $imagePath,
+        'imagePath' => $mediaPath,
+        'mediaPath' => $mediaPath,
+        'mediaType' => $mediaType,
     ];
 }
 

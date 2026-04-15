@@ -81,26 +81,39 @@ function parseServiceCollectionFolderName(string $folderName): array
 }
 
 /**
- * @return string[]
+ * @return string
  */
-function collectServiceCollectionPhotos(string $projectRoot, string $collectionDirectory): array
+function resolveServiceCollectionMediaType(string $relativePath): string
+{
+    $extension = strtolower((string) pathinfo($relativePath, PATHINFO_EXTENSION));
+
+    if (in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+        return 'image';
+    }
+
+    if (in_array($extension, ['mp4', 'webm', 'ogg'], true)) {
+        return 'video';
+    }
+
+    return '';
+}
+
+/**
+ * @return array<int, array<string, string>>
+ */
+function collectServiceCollectionMedia(string $projectRoot, string $collectionDirectory): array
 {
     if (!is_dir($collectionDirectory)) {
         return [];
     }
 
-    $images = [];
+    $mediaItems = [];
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($collectionDirectory, FilesystemIterator::SKIP_DOTS)
     );
 
     foreach ($iterator as $fileInfo) {
         if (!$fileInfo->isFile()) {
-            continue;
-        }
-
-        $extension = strtolower((string) pathinfo($fileInfo->getFilename(), PATHINFO_EXTENSION));
-        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
             continue;
         }
 
@@ -111,12 +124,27 @@ function collectServiceCollectionPhotos(string $projectRoot, string $collectionD
             continue;
         }
 
-        $images[] = str_replace('\\', '/', $relativePath);
+        $normalizedPath = str_replace('\\', '/', $relativePath);
+        $mediaType = resolveServiceCollectionMediaType($normalizedPath);
+
+        if ($mediaType === '') {
+            continue;
+        }
+
+        $mediaItems[] = [
+            'path' => $normalizedPath,
+            'type' => $mediaType,
+        ];
     }
 
-    natcasesort($images);
+    usort(
+        $mediaItems,
+        static function (array $left, array $right): int {
+            return strnatcasecmp((string) ($left['path'] ?? ''), (string) ($right['path'] ?? ''));
+        }
+    );
 
-    return array_values($images);
+    return array_values($mediaItems);
 }
 
 /**
@@ -154,7 +182,7 @@ function collectServicePackageCollections(string $projectRoot, string $packageFo
             'folder_name' => $folderName,
             'category_label' => $labels['category'],
             'collection_label' => $labels['name'],
-            'images' => collectServiceCollectionPhotos($projectRoot, $entry->getPathname()),
+            'media_items' => collectServiceCollectionMedia($projectRoot, $entry->getPathname()),
         ];
     }
 
@@ -193,12 +221,20 @@ foreach ($servicePackagesRepository as $packageKey => $packageRecord) {
     $priceValue = parseServicePackagePrice($packageRecord['price'] ?? 0);
     $discountPercent = max(0, min(95, (int) ($packageRecord['discountPercent'] ?? 0)));
 
+    $durationUnit = normalize_service_package_duration_unit($packageRecord['durationUnit'] ?? 'hours');
+    $durationValue = (int) ($packageRecord['durationValue'] ?? 1);
+    $durationValue = clamp_service_package_duration_value($durationUnit, $durationValue);
+    $durationUnit = normalize_service_package_duration_unit($durationUnit);
+
     $servicePackages[$normalizedPackageKey] = [
+        'service_type' => normalize_service_package_type($packageRecord['serviceType'] ?? default_service_package_type()),
         'title' => trim((string) ($packageRecord['title'] ?? strtoupper(str_replace('-', ' ', $normalizedPackageKey)))),
         'description' => trim((string) ($packageRecord['description'] ?? '')),
         'price_value' => $priceValue,
         'price_label' => formatServicePackagePrice($priceValue),
         'discount_percent' => $discountPercent,
+        'duration_unit' => $durationUnit,
+        'duration_value' => $durationValue,
         'folder' => $normalizedPackageKey,
     ];
 }
@@ -249,11 +285,14 @@ if ($isAdminView) {
 $selectedPackage = $selectedPackageKey !== ''
     ? $servicePackages[$selectedPackageKey]
     : [
+        'service_type' => default_service_package_type(),
         'title' => 'SERVICE PACKAGE',
         'description' => '',
         'price_value' => 0,
         'price_label' => formatServicePackagePrice(0),
         'discount_percent' => 0,
+        'duration_unit' => 'hours',
+        'duration_value' => 1,
         'folder' => '',
     ];
 
@@ -262,6 +301,11 @@ $selectedPackageDiscount = max(0, min(95, (int) ($selectedPackage['discount_perc
 $selectedPackageDiscountedValue = calculateDiscountedServicePackagePrice($selectedPackagePriceValue, $selectedPackageDiscount);
 $selectedPackageFinalValue = $selectedPackageDiscount > 0 ? $selectedPackageDiscountedValue : $selectedPackagePriceValue;
 $selectedPackageFinalLabel = formatServicePackagePrice($selectedPackageFinalValue);
+$selectedPackageDurationUnit = normalize_service_package_duration_unit($selectedPackage['duration_unit'] ?? 'hours');
+$selectedPackageDurationValue = clamp_service_package_duration_value($selectedPackageDurationUnit, (int) ($selectedPackage['duration_value'] ?? 1));
+$selectedPackageDurationUnit = normalize_service_package_duration_unit($selectedPackageDurationUnit);
+$selectedPackageServiceType = normalize_service_package_type((string) ($selectedPackage['service_type'] ?? default_service_package_type()));
+$allowServiceCollectionVideos = strpos($selectedPackageServiceType, 'videography') !== false;
 
 $projectRoot = __DIR__;
 $selectedPackageFolder = trim((string) ($selectedPackage['folder'] ?? ''));
@@ -290,7 +334,7 @@ foreach ($packageCollections as $collection) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260415-2">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260415-7">
 </head>
 <body class="events-page event-detail-page service-detail-page">
     <header class="site-header">
@@ -422,25 +466,47 @@ foreach ($packageCollections as $collection) {
                     <?php else: ?>
                         <?php
                         $packagePreview = $assetBase . 'assets/images/main_logo.png';
-                        if ($packageCollections !== [] && !empty($packageCollections[0]['images'])) {
-                            $packagePreview = buildServiceAssetUrl($assetBase, (string) $packageCollections[0]['images'][0]);
+
+                        foreach ($packageCollections as $previewCollection) {
+                            $previewMediaItems = (array) ($previewCollection['media_items'] ?? []);
+
+                            foreach ($previewMediaItems as $previewMediaItem) {
+                                if (!is_array($previewMediaItem)) {
+                                    continue;
+                                }
+
+                                $previewMediaType = (string) ($previewMediaItem['type'] ?? '');
+                                $previewMediaPath = (string) ($previewMediaItem['path'] ?? '');
+
+                                if ($previewMediaType !== 'image' || $previewMediaPath === '') {
+                                    continue;
+                                }
+
+                                $packagePreview = buildServiceAssetUrl($assetBase, $previewMediaPath);
+                                break 2;
+                            }
                         }
+
                         $serviceDetailLoginUrl = $loginPath . '?redirect=' . rawurlencode($_SERVER['REQUEST_URI'] ?? ($assetBase . $serviceDetailPath . '?package=' . urlencode($selectedPackageKey)));
                         ?>
                         <button
                             type="button"
-                            data-add-cart
+                            data-service-purchase
                             data-item-id="service-<?php echo htmlspecialchars($selectedPackageKey, ENT_QUOTES, 'UTF-8'); ?>"
                             data-item-type="service-package"
+                            data-service-package-key="<?php echo htmlspecialchars($selectedPackageKey, ENT_QUOTES, 'UTF-8'); ?>"
                             data-item-name="<?php echo htmlspecialchars((string) ($selectedPackage['title'] ?? 'SERVICE PACKAGE'), ENT_QUOTES, 'UTF-8'); ?>"
                             data-item-copy="Service package booking for <?php echo htmlspecialchars((string) ($selectedPackage['title'] ?? 'SERVICE PACKAGE'), ENT_QUOTES, 'UTF-8'); ?>."
                             data-item-image="<?php echo htmlspecialchars($packagePreview, ENT_QUOTES, 'UTF-8'); ?>"
                             data-item-price="<?php echo htmlspecialchars($selectedPackageFinalLabel, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-duration-unit="<?php echo htmlspecialchars((string) $selectedPackageDurationUnit, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-duration-value="<?php echo htmlspecialchars((string) $selectedPackageDurationValue, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-service-cart-url="<?php echo htmlspecialchars($assetBase . 'customer-cart/?view=services-cart', ENT_QUOTES, 'UTF-8'); ?>"
                             <?php if (!$isCustomerLoggedIn): ?>
                                 data-login-url="<?php echo htmlspecialchars($serviceDetailLoginUrl, ENT_QUOTES, 'UTF-8'); ?>"
                             <?php endif; ?>
                         >
-                            ADD TO CART
+                            PURCHASE
                         </button>
                     <?php endif; ?>
                 </div>
@@ -489,21 +555,41 @@ foreach ($packageCollections as $collection) {
                                     <h3><?php echo htmlspecialchars((string) ($collection['collection_label'] ?? 'Collection'), ENT_QUOTES, 'UTF-8'); ?></h3>
                                 </header>
 
-                                <?php if ((array) ($collection['images'] ?? []) !== []): ?>
+                                <?php if ((array) ($collection['media_items'] ?? []) !== []): ?>
                                     <div class="event-photo-masonry" aria-label="<?php echo htmlspecialchars((string) ($collection['collection_label'] ?? 'Collection'), ENT_QUOTES, 'UTF-8'); ?> gallery">
-                                        <?php foreach ((array) ($collection['images'] ?? []) as $imageIndex => $imagePath): ?>
+                                        <?php foreach ((array) ($collection['media_items'] ?? []) as $mediaIndex => $mediaItem): ?>
+                                            <?php
+                                            $mediaPath = is_array($mediaItem) ? (string) ($mediaItem['path'] ?? '') : '';
+                                            $mediaType = is_array($mediaItem) ? (string) ($mediaItem['type'] ?? 'image') : 'image';
+                                            if ($mediaPath === '') {
+                                                continue;
+                                            }
+                                            ?>
                                             <figure class="event-photo-item">
-                                                <img
-                                                    src="<?php echo htmlspecialchars(buildServiceAssetUrl($assetBase, (string) $imagePath), ENT_QUOTES, 'UTF-8'); ?>"
-                                                    data-admin-event-image-path="<?php echo htmlspecialchars((string) $imagePath, ENT_QUOTES, 'UTF-8'); ?>"
-                                                    alt="<?php echo htmlspecialchars((string) ($collection['collection_label'] ?? 'Collection') . ' photo ' . ((int) $imageIndex + 1), ENT_QUOTES, 'UTF-8'); ?>"
-                                                    loading="lazy"
-                                                >
+                                                <?php if ($mediaType === 'video'): ?>
+                                                    <video
+                                                        src="<?php echo htmlspecialchars(buildServiceAssetUrl($assetBase, $mediaPath), ENT_QUOTES, 'UTF-8'); ?>"
+                                                        data-admin-event-image-path="<?php echo htmlspecialchars($mediaPath, ENT_QUOTES, 'UTF-8'); ?>"
+                                                        data-admin-event-media-type="video"
+                                                        controls
+                                                        muted
+                                                        playsinline
+                                                        preload="metadata"
+                                                    ></video>
+                                                <?php else: ?>
+                                                    <img
+                                                        src="<?php echo htmlspecialchars(buildServiceAssetUrl($assetBase, $mediaPath), ENT_QUOTES, 'UTF-8'); ?>"
+                                                        data-admin-event-image-path="<?php echo htmlspecialchars($mediaPath, ENT_QUOTES, 'UTF-8'); ?>"
+                                                        data-admin-event-media-type="image"
+                                                        alt="<?php echo htmlspecialchars((string) ($collection['collection_label'] ?? 'Collection') . ' media ' . ((int) $mediaIndex + 1), ENT_QUOTES, 'UTF-8'); ?>"
+                                                        loading="lazy"
+                                                    >
+                                                <?php endif; ?>
                                             </figure>
                                         <?php endforeach; ?>
                                     </div>
                                 <?php else: ?>
-                                    <div class="event-card-empty">No photos were found for this collection yet.</div>
+                                    <div class="event-card-empty">No media were found for this collection yet.</div>
                                 <?php endif; ?>
                             </article>
                         <?php endforeach; ?>
@@ -521,6 +607,7 @@ foreach ($packageCollections as $collection) {
             data-admin-event-collection-asset-base="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>"
             data-admin-event-collection-package-key="<?php echo htmlspecialchars((string) $selectedPackageKey, ENT_QUOTES, 'UTF-8'); ?>"
             data-admin-event-collection-package-folder="<?php echo htmlspecialchars((string) $selectedPackageFolder, ENT_QUOTES, 'UTF-8'); ?>"
+            data-admin-event-collection-allow-video="<?php echo $allowServiceCollectionVideos ? '1' : '0'; ?>"
             hidden
         ></div>
 
@@ -533,7 +620,7 @@ foreach ($packageCollections as $collection) {
 
                 <form class="admin-edit-form admin-event-collection-create-form" data-admin-event-collection-create-form>
                     <p class="admin-event-collection-create-note">
-                        Add a <strong>Main Tag</strong> and <strong>Collection Name</strong>. You can upload images afterwards via Edit Collection.
+                        Add a <strong>Main Tag</strong> and <strong>Collection Name</strong>. You can upload <?php echo $allowServiceCollectionVideos ? 'images and videos' : 'images'; ?> afterwards via Edit Collection.
                     </p>
 
                     <div class="admin-event-collection-create-fields">
@@ -575,18 +662,18 @@ foreach ($packageCollections as $collection) {
                     </div>
 
                     <p class="admin-event-collection-edit-note">
-                        Use the red <strong>&times;</strong> button to mark an image for removal. Marked images dim out. Click the green <strong>&#10003;</strong> button to undo before saving. Editing Main Tag or Collection Name will rename this collection.
+                        Use the red <strong>&times;</strong> button to mark a media file for removal. Marked items dim out. Click the green <strong>&#10003;</strong> button to undo before saving. Editing Main Tag or Collection Name will rename this collection.
                     </p>
 
                     <div class="admin-event-collection-edit-toolbar">
-                        <button class="admin-edit-secondary admin-event-collection-add-trigger" type="button" data-admin-event-collection-add-trigger>Add Image</button>
-                        <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple data-admin-event-collection-add-input hidden>
+                        <button class="admin-edit-secondary admin-event-collection-add-trigger" type="button" data-admin-event-collection-add-trigger><?php echo $allowServiceCollectionVideos ? 'Add Media' : 'Add Image'; ?></button>
+                        <input type="file" accept="<?php echo htmlspecialchars($allowServiceCollectionVideos ? 'image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/ogg' : 'image/png,image/jpeg,image/webp,image/gif', ENT_QUOTES, 'UTF-8'); ?>" multiple data-admin-event-collection-add-input hidden>
                     </div>
 
                     <p class="admin-event-collection-edit-feedback" data-admin-event-collection-edit-feedback hidden></p>
 
                     <div class="admin-event-collection-edit-grid" data-admin-event-collection-edit-grid></div>
-                    <p class="admin-event-collection-edit-empty" data-admin-event-collection-edit-empty hidden>No images in this collection yet. Add one to get started.</p>
+                    <p class="admin-event-collection-edit-empty" data-admin-event-collection-edit-empty hidden>No media in this collection yet. Add one to get started.</p>
 
                     <div class="admin-edit-actions">
                         <button class="admin-edit-secondary" type="button" data-admin-event-collection-edit-cancel>Cancel</button>
@@ -600,6 +687,6 @@ foreach ($packageCollections as $collection) {
     <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260415-3"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260415-6"></script>
 </body>
 </html>

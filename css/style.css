@@ -4056,6 +4056,7 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 }
 
 .cart-booking-card select,
+.cart-booking-card input[type="text"],
 .cart-booking-card input[type="date"],
 .cart-upload-row,
 .cart-summary-card {
@@ -4066,6 +4067,12 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 }
 
 .cart-booking-card select {
+    width: 100%;
+    border: 1px solid rgba(17, 18, 20, 0.08);
+    padding: 0 0.95rem;
+}
+
+.cart-booking-card input[type="text"] {
     width: 100%;
     border: 1px solid rgba(17, 18, 20, 0.08);
     padding: 0 0.95rem;
@@ -4100,6 +4107,8 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 
 .cart-booking-card select:focus,
 .cart-booking-card select:focus-visible,
+.cart-booking-card input[type="text"]:focus,
+.cart-booking-card input[type="text"]:focus-visible,
 .cart-booking-card input[type="date"]:focus,
 .cart-booking-card input[type="date"]:focus-visible {
     outline: 0;
@@ -4108,6 +4117,11 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 }
 
 .cart-booking-card select:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.cart-booking-card input[type="text"]:disabled {
     opacity: 0.55;
     cursor: not-allowed;
 }
@@ -4748,6 +4762,14 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 .account-dropdown-menu .account-logout-item:focus {
     background: rgba(161, 44, 44, 0.25);
     color: #ffd6d6;
+}
+
+/* Temporary nav toggle: hide Events navigation entries without removing feature code. */
+.account-dropdown-menu .dropdown-item[href*="events/"],
+.account-dropdown-menu .dropdown-item[href*="/events"],
+.section-nav > a.section-nav-section[href*="events/"],
+.section-nav > a.section-nav-section[href*="/events"] {
+    display: none;
 }
 
 .customer-message-modal {
@@ -7509,11 +7531,16 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     transition: border-color 160ms ease, transform 160ms ease, background-color 160ms ease;
 }
 
-.admin-event-thumb-item img {
+.admin-event-thumb-item img,
+.admin-event-thumb-item video {
     width: 100%;
     aspect-ratio: 1 / 1;
     object-fit: cover;
     border-radius: 8px;
+}
+
+.admin-event-thumb-item video {
+    pointer-events: none;
 }
 
 .admin-event-thumb-item:hover,
@@ -7659,7 +7686,8 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     transition: border-color 160ms ease, background-color 160ms ease;
 }
 
-.admin-event-collection-image-item img {
+.admin-event-collection-image-item img,
+.admin-event-collection-image-item video {
     width: 100%;
     aspect-ratio: 1 / 1;
     object-fit: cover;
@@ -7667,7 +7695,8 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     transition: opacity 160ms ease, filter 160ms ease;
 }
 
-.admin-event-collection-image-item.is-excluded img {
+.admin-event-collection-image-item.is-excluded img,
+.admin-event-collection-image-item.is-excluded video {
     opacity: 0.35;
     filter: grayscale(0.9);
 }
@@ -7848,10 +7877,15 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     background: rgba(0, 0, 0, 0.35);
 }
 
-.event-photo-item img {
+.event-photo-item img,
+.event-photo-item video {
     width: 100%;
     height: auto;
     display: block;
+}
+
+.event-photo-item video {
+    background: rgba(0, 0, 0, 0.75);
 }
 
 .event-card-empty {

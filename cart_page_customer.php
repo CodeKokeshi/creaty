@@ -133,7 +133,9 @@ $customerNotificationUnreadCount = 0;
 $customerNotificationLiveUpdatesEndpoint = $assetBase . 'customer_notifications_live_updates.php';
 $customerNotificationMarkReadEndpoint = $assetBase . 'customer_notifications_mark_read.php';
 $requestedCartView = strtolower(trim((string) ($_GET['view'] ?? 'cart')));
-$initialCartView = $requestedCartView === 'order-status' ? 'order-status' : 'cart';
+$allowedCartViews = ['cart', 'services-cart', 'order-status'];
+$initialCartView = in_array($requestedCartView, $allowedCartViews, true) ? $requestedCartView : 'cart';
+$isServicesCartInitialView = $initialCartView === 'services-cart';
 $gcashQrSettings = load_gcash_qr_repository();
 $gcashQrImagePath = trim((string) ($gcashQrSettings['qrImagePath'] ?? ''));
 $gcashPaymentInfo = [
@@ -234,24 +236,26 @@ if ($isCustomerLoggedIn) {
             <?php endif; ?>
         </div>
 
-        <nav class="section-nav" aria-label="Customer navigation">
-            <button
-                type="button"
-                class="section-nav-filter<?php echo $initialCartView === 'cart' ? ' is-active' : ''; ?>"
-                data-cart-nav="cart"
-                <?php echo $initialCartView === 'cart' ? 'aria-current="page"' : ''; ?>
-            >
-                Cart
-            </button>
-            <button
-                type="button"
-                class="section-nav-section<?php echo $initialCartView === 'order-status' ? ' is-active' : ''; ?>"
-                data-cart-nav="order-status"
-                <?php echo $initialCartView === 'order-status' ? 'aria-current="page"' : ''; ?>
-            >
-                Order Status
-            </button>
-        </nav>
+        <?php if (!$isServicesCartInitialView): ?>
+            <nav class="section-nav" aria-label="Customer navigation">
+                <button
+                    type="button"
+                    class="section-nav-filter<?php echo $initialCartView === 'cart' ? ' is-active' : ''; ?>"
+                    data-cart-nav="cart"
+                    <?php echo $initialCartView === 'cart' ? 'aria-current="page"' : ''; ?>
+                >
+                    Cart
+                </button>
+                <button
+                    type="button"
+                    class="section-nav-section<?php echo $initialCartView === 'order-status' ? ' is-active' : ''; ?>"
+                    data-cart-nav="order-status"
+                    <?php echo $initialCartView === 'order-status' ? 'aria-current="page"' : ''; ?>
+                >
+                    Order Status
+                </button>
+            </nav>
+        <?php endif; ?>
     </header>
 
     <main class="cart-shell">
@@ -262,7 +266,7 @@ if ($isCustomerLoggedIn) {
                     <a class="catalog-back" href="<?php echo htmlspecialchars($productListPath, ENT_QUOTES, 'UTF-8'); ?>" aria-label="Back to featured products">
                         <span class="catalog-back-icon" aria-hidden="true"></span>
                     </a>
-                    <h1>CART</h1>
+                    <h1 data-cart-main-heading>CART</h1>
                 </div>
 
                 <div class="cart-items-panel" data-cart-items-panel>
@@ -344,6 +348,16 @@ if ($isCustomerLoggedIn) {
                                 <option value="Walter Mart Entrance, Carmona" selected>Walter Mart Entrance, Carmona</option>
                                 <option value="Cabilang Baybay (Arko), Carmona">Cabilang Baybay (Arko), Carmona</option>
                             </select>
+                            <input
+                                type="text"
+                                data-booking-field="eventPlace"
+                                data-booking-event-place-input
+                                placeholder="Enter event place"
+                                maxlength="150"
+                                hidden
+                                disabled
+                                aria-disabled="true"
+                            >
                         </label>
                     </div>
 
@@ -367,7 +381,7 @@ if ($isCustomerLoggedIn) {
 
                         <p class="cart-late-note">Late returns = P50/hour</p>
 
-                        <label class="cart-form-line">
+                        <label class="cart-form-line"<?php echo $isServicesCartInitialView ? ' hidden' : ''; ?>>
                             <span>Courier:</span>
                             <select data-booking-field="courier">
                                 <option value="lalamove" selected>Lalamove</option>
@@ -439,13 +453,13 @@ if ($isCustomerLoggedIn) {
                     <div class="cart-summary-card">
                         <h3>TOTAL:</h3>
                         <strong data-cart-total>P 0.00</strong>
-                        <p class="cart-summary-breakdown" data-cart-breakdown>Subtotal P 0.00 + Service fee P 0.00</p>
+                        <p class="cart-summary-breakdown" data-cart-breakdown>Subtotal P 0.00 + Courier P 0.00</p>
                     </div>
 
-                    <select class="cart-payment-select" data-booking-field="paymentMethod">
-                        <option value="gcash">Gcash</option>
+                    <select class="cart-payment-select" data-booking-field="paymentMethod"<?php echo $isServicesCartInitialView ? ' hidden disabled aria-disabled="true"' : ''; ?>>
+                        <option value="gcash"<?php echo $isServicesCartInitialView ? '' : ' selected'; ?>>Gcash</option>
                         <option value="cash-pickup">Cash on Pickup</option>
-                        <option value="cash-meetup">Cash on Meetup</option>
+                        <option value="cash-meetup"<?php echo $isServicesCartInitialView ? ' selected' : ''; ?>>Cash on Meetup</option>
                     </select>
 
                     <button class="cart-confirm-button" type="button">CONFIRM BOOKING</button>
@@ -633,6 +647,6 @@ if ($isCustomerLoggedIn) {
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260410-1"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260415-6"></script>
 </body>
 </html>

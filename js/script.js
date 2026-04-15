@@ -265,6 +265,8 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminServiceEditDescription = document.querySelector("[data-admin-service-edit-description]");
     var adminServiceEditPrice = document.querySelector("[data-admin-service-edit-price]");
     var adminServiceEditDiscount = document.querySelector("[data-admin-service-edit-discount]");
+    var adminServiceEditDurationUnit = document.querySelector("[data-admin-service-edit-duration-unit]");
+    var adminServiceEditDurationValue = document.querySelector("[data-admin-service-edit-duration-value]");
     var adminServiceEditCamera1 = document.querySelector("[data-admin-service-edit-camera-1]");
     var adminServiceEditCamera2 = document.querySelector("[data-admin-service-edit-camera-2]");
     var adminServiceEditBackupCamera1 = document.querySelector("[data-admin-service-edit-backup-camera-1]");
@@ -338,6 +340,9 @@ document.addEventListener("DOMContentLoaded", function () {
     var adminEventCollectionAssetBase = adminEventCollectionConfig ? (adminEventCollectionConfig.getAttribute("data-admin-event-collection-asset-base") || "") : "";
     var adminEventCollectionDefaultPackageKey = adminEventCollectionConfig ? (adminEventCollectionConfig.getAttribute("data-admin-event-collection-package-key") || "") : "";
     var adminEventCollectionDefaultPackageFolder = adminEventCollectionConfig ? (adminEventCollectionConfig.getAttribute("data-admin-event-collection-package-folder") || "") : "";
+    var adminEventCollectionAllowVideo = adminEventCollectionConfig
+        ? /^(1|true|yes)$/i.test(String(adminEventCollectionConfig.getAttribute("data-admin-event-collection-allow-video") || "0").trim())
+        : false;
     var adminHowGrid = document.querySelector("[data-admin-how-grid]");
     var adminHowEditBackdrop = document.querySelector("[data-admin-how-edit-backdrop]");
     var adminHowForm = document.querySelector("[data-admin-how-form]");
@@ -1966,6 +1971,28 @@ document.addEventListener("DOMContentLoaded", function () {
             .trim();
     }
 
+    function resolveAdminEventCollectionMediaTypeFromPath(pathValue) {
+        var normalizedPath = normalizeAdminEventCollectionImagePath(pathValue);
+        var extensionMatch = normalizedPath.match(/\.([a-z0-9]+)(?:[?#].*)?$/i);
+        var extension = extensionMatch ? String(extensionMatch[1] || "").toLowerCase() : "";
+
+        if (/^(mp4|webm|ogg)$/.test(extension)) {
+            return "video";
+        }
+
+        return "image";
+    }
+
+    function resolveAdminEventCollectionMediaTypeFromMime(mimeType) {
+        var normalizedMime = String(mimeType || "").toLowerCase().trim();
+
+        if (normalizedMime.indexOf("video/") === 0) {
+            return "video";
+        }
+
+        return "image";
+    }
+
     function buildAdminEventCollectionImageUrl(pathValue) {
         var normalizedPath = normalizeAdminEventCollectionImagePath(pathValue);
 
@@ -1973,7 +2000,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return "";
         }
 
-        if (/^(?:https?:)?\/\//i.test(normalizedPath) || normalizedPath.indexOf("data:image/") === 0) {
+        if (/^(?:https?:)?\/\//i.test(normalizedPath) || normalizedPath.indexOf("data:image/") === 0 || normalizedPath.indexOf("data:video/") === 0) {
             return normalizedPath;
         }
 
@@ -2154,17 +2181,31 @@ document.addEventListener("DOMContentLoaded", function () {
                 toggleButton.innerHTML = "&times;";
             }
 
-            var imageElement = document.createElement("img");
-            imageElement.src = String(imageEntry.previewUrl || "");
-            imageElement.alt = String(imageEntry.alt || "Collection image");
-            imageElement.loading = "lazy";
+            var mediaType = String(imageEntry.mediaType || resolveAdminEventCollectionMediaTypeFromPath(imageEntry.imagePath || imageEntry.previewUrl || "image")).toLowerCase() === "video"
+                ? "video"
+                : "image";
+            var mediaElement;
+
+            if (mediaType === "video") {
+                mediaElement = document.createElement("video");
+                mediaElement.src = String(imageEntry.previewUrl || "");
+                mediaElement.controls = true;
+                mediaElement.muted = true;
+                mediaElement.playsInline = true;
+                mediaElement.preload = "metadata";
+            } else {
+                mediaElement = document.createElement("img");
+                mediaElement.src = String(imageEntry.previewUrl || "");
+                mediaElement.alt = String(imageEntry.alt || "Collection image");
+                mediaElement.loading = "lazy";
+            }
 
             var metaLabel = document.createElement("span");
             metaLabel.className = "admin-event-collection-image-meta";
             metaLabel.textContent = String(imageEntry.label || ("Image " + String(imageIndex + 1)));
 
             tile.appendChild(toggleButton);
-            tile.appendChild(imageElement);
+            tile.appendChild(mediaElement);
             tile.appendChild(metaLabel);
             adminEventCollectionEditGrid.appendChild(tile);
         });
@@ -2194,7 +2235,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!emptyState) {
                 emptyState = document.createElement("div");
                 emptyState.className = "event-card-empty";
-                emptyState.textContent = "No photos were found for this event yet.";
+                emptyState.textContent = "No media were found for this collection yet.";
                 card.appendChild(emptyState);
             }
 
@@ -2218,16 +2259,32 @@ document.addEventListener("DOMContentLoaded", function () {
             var figure = document.createElement("figure");
             figure.className = "event-photo-item";
 
-            var image = document.createElement("img");
-            image.src = String(entry.previewUrl || "");
-            image.alt = collectionName + " photo " + String(index + 1);
-            image.loading = "lazy";
+            var mediaType = String(entry.mediaType || resolveAdminEventCollectionMediaTypeFromPath(entry.imagePath || entry.previewUrl || "image")).toLowerCase() === "video"
+                ? "video"
+                : "image";
+            var mediaElement;
 
-            if (entry.imagePath) {
-                image.setAttribute("data-admin-event-image-path", String(entry.imagePath));
+            if (mediaType === "video") {
+                mediaElement = document.createElement("video");
+                mediaElement.src = String(entry.previewUrl || "");
+                mediaElement.controls = true;
+                mediaElement.muted = true;
+                mediaElement.playsInline = true;
+                mediaElement.preload = "metadata";
+                mediaElement.setAttribute("data-admin-event-media-type", "video");
+            } else {
+                mediaElement = document.createElement("img");
+                mediaElement.src = String(entry.previewUrl || "");
+                mediaElement.alt = collectionName + " media " + String(index + 1);
+                mediaElement.loading = "lazy";
+                mediaElement.setAttribute("data-admin-event-media-type", "image");
             }
 
-            figure.appendChild(image);
+            if (entry.imagePath) {
+                mediaElement.setAttribute("data-admin-event-image-path", String(entry.imagePath));
+            }
+
+            figure.appendChild(mediaElement);
             masonry.appendChild(figure);
         });
     }
@@ -2280,11 +2337,15 @@ document.addEventListener("DOMContentLoaded", function () {
             adminEventCollectionEditTitle.textContent = "Edit Collection: " + adminEventCollectionEditState.collectionName;
         }
 
-        var imageNodes = card.querySelectorAll(".event-photo-item img");
+        var imageNodes = card.querySelectorAll(".event-photo-item [data-admin-event-image-path]");
 
         imageNodes.forEach(function (imageNode, imageIndex) {
             var imagePath = normalizeAdminEventCollectionImagePath(imageNode.getAttribute("data-admin-event-image-path") || "");
-            var imageUrl = String(imageNode.getAttribute("src") || "").trim();
+            var mediaType = String(imageNode.getAttribute("data-admin-event-media-type") || imageNode.tagName || "").toLowerCase();
+            if (mediaType !== "video") {
+                mediaType = (String(imageNode.tagName || "").toLowerCase() === "video") ? "video" : "image";
+            }
+            var imageUrl = String(imageNode.getAttribute("src") || imageNode.getAttribute("poster") || "").trim();
             var imageLabel = imagePath ? imagePath.split("/").pop() : ("Image " + String(imageIndex + 1));
 
             adminEventCollectionEditState.images.push({
@@ -2292,10 +2353,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 tempId: "",
                 imagePath: imagePath,
                 previewUrl: imageUrl,
-                alt: String(imageNode.getAttribute("alt") || "Collection image"),
+                alt: String(imageNode.getAttribute("alt") || "Collection media"),
                 label: imageLabel,
                 fileName: imageLabel,
                 dataUrl: "",
+                mediaType: mediaType,
                 isNew: false,
                 isArchived: false,
                 isExcluded: false
@@ -2346,6 +2408,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 label: archivedFileName + " (Archived)",
                 fileName: archivedFileName,
                 dataUrl: "",
+                mediaType: resolveAdminEventCollectionMediaTypeFromPath(normalizedArchivedPath),
                 isNew: false,
                 isArchived: true,
                 isExcluded: true
@@ -2360,12 +2423,28 @@ document.addEventListener("DOMContentLoaded", function () {
     function readAdminEventCollectionFileAsDataUrl(file) {
         return new Promise(function (resolve, reject) {
             var reader = new FileReader();
+            var mimeType = String(file && file.type ? file.type : "").toLowerCase();
+            var fileName = String(file && file.name ? file.name : "").toLowerCase();
+            var isImage = /^image\/(png|jpeg|jpg|webp|gif)$/.test(mimeType);
+            var isVideo = /^video\/(mp4|webm|ogg)$/.test(mimeType);
+
+            if (!isImage && !isVideo) {
+                isImage = /\.(png|jpe?g|webp|gif)$/i.test(fileName);
+                isVideo = /\.(mp4|webm|ogg)$/i.test(fileName);
+            }
+
+            if (!isImage && !(adminEventCollectionAllowVideo && isVideo)) {
+                reject(new Error(adminEventCollectionAllowVideo
+                    ? "Only PNG, JPG, WEBP, GIF, MP4, WEBM, or OGG files are allowed."
+                    : "Only image files are allowed."));
+                return;
+            }
 
             reader.onload = function (event) {
                 var dataUrl = String(event && event.target && event.target.result ? event.target.result : "");
 
-                if (dataUrl.indexOf("data:image/") !== 0) {
-                    reject(new Error("Only image files are allowed."));
+                if (dataUrl.indexOf("data:image/") !== 0 && dataUrl.indexOf("data:video/") !== 0) {
+                    reject(new Error("Only image or video files are allowed."));
                     return;
                 }
 
@@ -2373,7 +2452,7 @@ document.addEventListener("DOMContentLoaded", function () {
             };
 
             reader.onerror = function () {
-                reject(new Error("Unable to read one of the selected image files."));
+                reject(new Error("Unable to read one of the selected media files."));
             };
 
             reader.readAsDataURL(file);
@@ -2387,21 +2466,45 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        var imageFiles = files.filter(function (file) {
+        var acceptedFiles = files.filter(function (file) {
             var mimeType = String(file && file.type ? file.type : "").toLowerCase();
-            return /^image\/(png|jpeg|jpg|webp|gif)$/.test(mimeType);
+            var fileName = String(file && file.name ? file.name : "").toLowerCase();
+
+            if (!mimeType) {
+                if (/\.(png|jpe?g|webp|gif)$/i.test(fileName)) {
+                    return true;
+                }
+
+                return adminEventCollectionAllowVideo && /\.(mp4|webm|ogg)$/i.test(fileName);
+            }
+
+            if (/^image\/(png|jpeg|jpg|webp|gif)$/.test(mimeType)) {
+                return true;
+            }
+
+            return adminEventCollectionAllowVideo && /^video\/(mp4|webm|ogg)$/.test(mimeType);
         });
 
-        if (!imageFiles.length) {
-            setAdminEventCollectionEditFeedback("Please select valid image files (PNG, JPG, WEBP, or GIF).", "error");
+        if (!acceptedFiles.length) {
+            setAdminEventCollectionEditFeedback(
+                adminEventCollectionAllowVideo
+                    ? "Please select valid files (PNG, JPG, WEBP, GIF, MP4, WEBM, or OGG)."
+                    : "Please select valid image files (PNG, JPG, WEBP, or GIF).",
+                "error"
+            );
             return;
         }
 
-        imageFiles.forEach(function (file) {
+        acceptedFiles.forEach(function (file) {
             adminEventCollectionEditState.tempCounter += 1;
 
             var fileName = String(file && file.name ? file.name : ("new-image-" + String(adminEventCollectionEditState.tempCounter) + ".png"));
             var previewUrl = "";
+            var mediaType = resolveAdminEventCollectionMediaTypeFromMime(String(file && file.type ? file.type : ""));
+
+            if (mediaType !== "video" && /\.(mp4|webm|ogg)$/i.test(fileName)) {
+                mediaType = "video";
+            }
 
             try {
                 if (window.URL && typeof window.URL.createObjectURL === "function") {
@@ -2416,11 +2519,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 tempId: "new-" + String(adminEventCollectionEditState.tempCounter),
                 imagePath: "",
                 previewUrl: previewUrl,
-                alt: adminEventCollectionEditState.collectionName + " new image",
+                alt: adminEventCollectionEditState.collectionName + " new media",
                 label: fileName + " (New)",
                 fileName: fileName,
                 file: file,
                 dataUrl: "",
+                mediaType: mediaType,
                 isObjectUrl: previewUrl.indexOf("blob:") === 0,
                 isNew: true,
                 isExcluded: false
@@ -2505,6 +2609,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var pendingUploadCount = addedImageEntries.length;
         var completedUploadCount = 0;
         var addedPathByTempId = Object.create(null);
+        var addedMediaTypeByTempId = Object.create(null);
         var currentCollectionFolder = collectionFolder;
         var finalCategoryLabel = nextCategoryLabel;
         var finalCollectionName = nextCollectionName;
@@ -2547,9 +2652,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 var fallbackDataUrl = String(entry && entry.dataUrl ? entry.dataUrl : "");
+                var isImagePayload = fallbackDataUrl.indexOf("data:image/") === 0;
+                var isVideoPayload = fallbackDataUrl.indexOf("data:video/") === 0;
 
-                if (fallbackDataUrl.indexOf("data:image/") !== 0) {
-                    return Promise.reject(new Error("One of the selected images could not be prepared for upload."));
+                if ((!isImagePayload && !isVideoPayload) || (isVideoPayload && !adminEventCollectionAllowVideo)) {
+                    return Promise.reject(new Error("One of the selected media files could not be prepared for upload."));
                 }
 
                 return Promise.resolve({
@@ -2601,12 +2708,17 @@ document.addEventListener("DOMContentLoaded", function () {
                         returnedAddedImages.forEach(function (entry) {
                             var tempId = String(entry && entry.tempId ? entry.tempId : "").trim();
                             var imagePath = normalizeAdminEventCollectionImagePath(entry && entry.imagePath ? entry.imagePath : "");
+                            var mediaType = String(entry && entry.mediaType ? entry.mediaType : "").toLowerCase().trim();
 
                             if (!tempId || !imagePath) {
                                 return;
                             }
 
                             addedPathByTempId[tempId] = imagePath;
+
+                            if (mediaType === "video" || mediaType === "image") {
+                                addedMediaTypeByTempId[tempId] = mediaType;
+                            }
                         });
 
                         completedUploadCount += Array.isArray(batchEntries) ? batchEntries.length : 0;
@@ -2739,6 +2851,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         revokeAdminEventCollectionObjectUrl(imageEntry);
                         imageEntry.imagePath = resolvedPath;
                         imageEntry.previewUrl = buildAdminEventCollectionImageUrl(resolvedPath);
+                        imageEntry.mediaType = String(addedMediaTypeByTempId[String(imageEntry.tempId || "")] || resolveAdminEventCollectionMediaTypeFromPath(resolvedPath));
                         imageEntry.file = null;
                         imageEntry.dataUrl = "";
                         imageEntry.isObjectUrl = false;
@@ -2747,6 +2860,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     } else if (imageEntry.isArchived) {
                         imageEntry.isArchived = false;
                         imageEntry.previewUrl = buildAdminEventCollectionImageUrl(imageEntry.imagePath || imageEntry.previewUrl || "");
+                        imageEntry.mediaType = resolveAdminEventCollectionMediaTypeFromPath(imageEntry.imagePath || imageEntry.previewUrl || "");
                     }
 
                     return true;
@@ -3216,8 +3330,52 @@ document.addEventListener("DOMContentLoaded", function () {
         return Math.min(95, Math.max(0, parsed));
     }
 
+    function normalizeServicePackageDurationUnit(value) {
+        var normalized = String(value || "").trim().toLowerCase();
+
+        if (normalized === "day" || normalized === "days") {
+            return "days";
+        }
+
+        return "hours";
+    }
+
+    function clampServicePackageDurationValue(unit, value) {
+        var normalizedUnit = normalizeServicePackageDurationUnit(unit);
+        var parsed = Number.parseInt(String(value || ""), 10);
+
+        if (!Number.isFinite(parsed) || parsed < 1) {
+            parsed = 1;
+        }
+
+        if (normalizedUnit === "days") {
+            return Math.max(1, Math.min(14, parsed));
+        }
+
+        return Math.max(1, Math.min(24, parsed));
+    }
+
+    function syncAdminServicePackageDurationConstraints() {
+        if (!adminServiceEditDurationUnit || !adminServiceEditDurationValue) {
+            return;
+        }
+
+        var unit = normalizeServicePackageDurationUnit(adminServiceEditDurationUnit.value);
+        var maxValue = unit === "days" ? 14 : 24;
+
+        adminServiceEditDurationValue.min = "1";
+        adminServiceEditDurationValue.max = String(maxValue);
+        adminServiceEditDurationValue.step = "1";
+
+        var clampedValue = clampServicePackageDurationValue(unit, adminServiceEditDurationValue.value);
+        adminServiceEditDurationValue.value = String(clampedValue);
+    }
+
     function setAdminServiceEditTab(tabKey) {
-        var normalizedTab = String(tabKey || "details").toLowerCase() === "camera" ? "camera" : "details";
+        var normalizedTabRaw = String(tabKey || "details").toLowerCase();
+        var normalizedTab = normalizedTabRaw === "camera" || normalizedTabRaw === "duration"
+            ? normalizedTabRaw
+            : "details";
 
         adminServiceEditTabButtons.forEach(function (button) {
             var buttonTab = String(button.getAttribute("data-admin-service-edit-tab") || "details").toLowerCase();
@@ -3257,10 +3415,30 @@ document.addEventListener("DOMContentLoaded", function () {
         var packageDescription = String(card.getAttribute("data-admin-service-package-description") || "").trim();
         var packagePrice = Number.parseFloat(String(card.getAttribute("data-admin-service-package-price") || "0"));
         var packageDiscount = clampDiscount(card.getAttribute("data-admin-service-package-discount") || "0");
+        var packageDurationUnit = normalizeServicePackageDurationUnit(card.getAttribute("data-admin-service-package-duration-unit") || "hours");
+        var packageDurationValue = Number.parseInt(String(card.getAttribute("data-admin-service-package-duration-value") || ""), 10);
+        var packageDurationMin = Number.parseInt(String(card.getAttribute("data-admin-service-package-duration-min") || "1"), 10);
+        var packageDurationMax = Number.parseInt(String(card.getAttribute("data-admin-service-package-duration-max") || "1"), 10);
         var packageCamera1 = String(card.getAttribute("data-admin-service-package-camera-1") || "").trim();
         var packageCamera2 = String(card.getAttribute("data-admin-service-package-camera-2") || "").trim();
         var packageBackupCamera1 = String(card.getAttribute("data-admin-service-package-backup-camera-1") || "").trim();
         var packageBackupCamera2 = String(card.getAttribute("data-admin-service-package-backup-camera-2") || "").trim();
+
+        if (!Number.isFinite(packageDurationValue) || packageDurationValue < 1) {
+            if (!Number.isFinite(packageDurationMin) || packageDurationMin < 1) {
+                packageDurationMin = 1;
+            }
+
+            if (!Number.isFinite(packageDurationMax) || packageDurationMax < packageDurationMin) {
+                packageDurationMax = packageDurationMin;
+            }
+
+            packageDurationUnit = "hours";
+            packageDurationValue = packageDurationMax;
+        }
+
+        packageDurationUnit = normalizeServicePackageDurationUnit(packageDurationUnit);
+        packageDurationValue = clampServicePackageDurationValue(packageDurationUnit, packageDurationValue);
 
         if (adminServiceEditKey) {
             adminServiceEditKey.value = packageKey;
@@ -3282,6 +3460,14 @@ document.addEventListener("DOMContentLoaded", function () {
             adminServiceEditDiscount.value = String(packageDiscount);
         }
 
+        if (adminServiceEditDurationUnit) {
+            adminServiceEditDurationUnit.value = packageDurationUnit;
+        }
+
+        if (adminServiceEditDurationValue) {
+            adminServiceEditDurationValue.value = String(packageDurationValue);
+        }
+
         if (adminServiceEditCamera1) {
             adminServiceEditCamera1.value = packageCamera1;
         }
@@ -3300,7 +3486,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         setAdminServiceEditTab("details");
         adminServiceEditBackdrop.hidden = false;
+        syncAdminServicePackageDurationConstraints();
         syncAdminModalBodyLock();
+    }
+
+    if (adminServiceEditDurationUnit) {
+        adminServiceEditDurationUnit.addEventListener("change", syncAdminServicePackageDurationConstraints);
     }
 
     adminServiceEditButtons.forEach(function (button) {
@@ -6168,6 +6359,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 slide.classList.toggle("is-active", isActive);
                 slide.setAttribute("aria-hidden", isActive ? "false" : "true");
+
+                if (String(slide && slide.tagName ? slide.tagName : "").toLowerCase() === "video") {
+                    if (isActive) {
+                        slide.muted = true;
+                        slide.playsInline = true;
+
+                        var playAttempt = slide.play();
+                        if (playAttempt && typeof playAttempt.catch === "function") {
+                            playAttempt.catch(function () {
+                                // Ignore autoplay restrictions and keep slideshow working.
+                            });
+                        }
+                    } else {
+                        if (typeof slide.pause === "function") {
+                            slide.pause();
+                        }
+
+                        try {
+                            slide.currentTime = 0;
+                        } catch (error) {
+                            // Ignore media seek failures for unsupported sources.
+                        }
+                    }
+                }
             });
         }
 
@@ -6184,16 +6399,26 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function start() {
-            if (slides.length < 2) {
-                return;
-            }
+            showSlide(currentIndex);
 
-            queueNext();
+            if (slides.length >= 2) {
+                queueNext();
+            }
         }
 
         function stop() {
             window.clearTimeout(timer);
             timer = null;
+
+            slides.forEach(function (slide) {
+                if (String(slide && slide.tagName ? slide.tagName : "").toLowerCase() !== "video") {
+                    return;
+                }
+
+                if (typeof slide.pause === "function") {
+                    slide.pause();
+                }
+            });
         }
 
         showSlide(0);
@@ -9220,6 +9445,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var cartStorageKey = "creaty_cart_v1";
     var bookingStorageKey = "creaty_booking_v1";
+    var serviceBookingStorageKey = "creaty_service_booking_v1";
 
     function loadJsonStorage(storageKey, fallbackValue) {
         try {
@@ -9289,6 +9515,83 @@ document.addEventListener("DOMContentLoaded", function () {
             .filter(function (item) {
                 return item && item.id;
             });
+    }
+
+    function normalizeServiceBookingItem(item) {
+        if (!item || typeof item !== "object") {
+            return null;
+        }
+
+        var itemId = String(item.id || "").trim();
+        if (!itemId) {
+            return null;
+        }
+
+        var durationUnitRaw = String(item.durationUnit || item.duration_unit || "").trim().toLowerCase();
+        var durationUnit = durationUnitRaw === "days" || durationUnitRaw === "day"
+            ? "days"
+            : "hours";
+        var durationValue = Number.parseInt(item.durationValue || item.duration_value || "", 10);
+
+        if (!Number.isFinite(durationValue) || durationValue < 1) {
+            var legacyMinHours = Number.parseInt(item.durationMinHours || item.duration_min_hours || 1, 10);
+            var legacyMaxHours = Number.parseInt(item.durationMaxHours || item.duration_max_hours || legacyMinHours, 10);
+
+            if (!Number.isFinite(legacyMinHours) || legacyMinHours < 1) {
+                legacyMinHours = 1;
+            }
+
+            if (!Number.isFinite(legacyMaxHours) || legacyMaxHours < legacyMinHours) {
+                legacyMaxHours = legacyMinHours;
+            }
+
+            durationUnit = "hours";
+            durationValue = legacyMaxHours;
+        }
+
+        if (durationUnit === "days") {
+            durationValue = Math.max(1, Math.min(14, durationValue));
+        } else {
+            durationUnit = "hours";
+            durationValue = Math.max(1, Math.min(24, durationValue));
+        }
+
+        return {
+            id: itemId,
+            type: "service-package",
+            servicePackageKey: String(item.servicePackageKey || item.service_package_key || "").trim().toLowerCase(),
+            name: String(item.name || "Service Package"),
+            copy: String(item.copy || ""),
+            image: String(item.image || ""),
+            price: parseMoney(item.price),
+            qty: 1,
+            days: 1,
+            durationUnit: durationUnit,
+            durationValue: durationValue
+        };
+    }
+
+    function getServiceBookingItem() {
+        return normalizeServiceBookingItem(loadJsonStorage(serviceBookingStorageKey, null));
+    }
+
+    function saveServiceBookingItem(item) {
+        var normalizedItem = normalizeServiceBookingItem(item);
+
+        if (!normalizedItem) {
+            clearServiceBookingItem();
+            return;
+        }
+
+        saveJsonStorage(serviceBookingStorageKey, normalizedItem);
+    }
+
+    function clearServiceBookingItem() {
+        try {
+            window.localStorage.removeItem(serviceBookingStorageKey);
+        } catch (error) {
+            saveJsonStorage(serviceBookingStorageKey, null);
+        }
     }
 
     function saveCartItems(items) {
@@ -9385,6 +9688,46 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    function initializeServicePurchaseButtons() {
+        var buttons = document.querySelectorAll("[data-service-purchase]");
+
+        buttons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                var loginUrl = button.getAttribute("data-login-url");
+                if (loginUrl) {
+                    window.location.href = loginUrl;
+                    return;
+                }
+
+                var itemId = String(button.getAttribute("data-item-id") || "").trim();
+                if (!itemId) {
+                    return;
+                }
+
+                var fallbackPackageKey = itemId.toLowerCase().indexOf("service-") === 0
+                    ? itemId.toLowerCase().slice(8)
+                    : "";
+
+                saveServiceBookingItem({
+                    id: itemId,
+                    servicePackageKey: button.getAttribute("data-service-package-key") || fallbackPackageKey,
+                    name: button.getAttribute("data-item-name") || "Service Package",
+                    copy: button.getAttribute("data-item-copy") || "",
+                    image: button.getAttribute("data-item-image") || "",
+                    price: parseMoney(button.getAttribute("data-item-price") || "0"),
+                    durationUnit: button.getAttribute("data-duration-unit") || "",
+                    durationValue: button.getAttribute("data-duration-value") || "",
+                    durationMinHours: button.getAttribute("data-duration-min-hours") || "",
+                    durationMaxHours: button.getAttribute("data-duration-max-hours") || button.getAttribute("data-duration-min-hours") || ""
+                });
+
+                var configuredUrl = String(button.getAttribute("data-service-cart-url") || "").trim();
+                var defaultUrl = (window.__creatyAssetBase ? String(window.__creatyAssetBase) : "/") + "customer-cart/?view=services-cart";
+                window.location.href = configuredUrl || defaultUrl;
+            });
+        });
+    }
+
     function escapeHtml(value) {
         return String(value)
             .replace(/&/g, "&amp;")
@@ -9409,8 +9752,11 @@ document.addEventListener("DOMContentLoaded", function () {
         var paymentSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='paymentMethod']") : null;
         var deliveryOnlyBlock = bookingCard ? bookingCard.querySelector("[data-delivery-only-block]") : null;
         var courierSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='courier']") : null;
+        var courierRow = courierSelect ? courierSelect.closest(".cart-form-line") : null;
         var placeSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='place']") : null;
         var placeFieldRow = placeSelect ? placeSelect.closest("[data-booking-place-row]") : null;
+        var placeFieldLabel = placeFieldRow ? placeFieldRow.querySelector("span") : null;
+        var eventPlaceInput = bookingCard ? bookingCard.querySelector("[data-booking-event-place-input]") : null;
         var receiveDateInput = bookingCard ? bookingCard.querySelector("[data-booking-field='receiveDate']") : null;
         var receiveDateDisplay = bookingCard ? bookingCard.querySelector("[data-receive-date-display]") : null;
         var receiveDateCalendar = bookingCard ? bookingCard.querySelector("[data-receive-date-calendar]") : null;
@@ -9421,12 +9767,32 @@ document.addEventListener("DOMContentLoaded", function () {
         var returnDateInput = bookingCard ? bookingCard.querySelector("[data-booking-field='returnDate']") : null;
         var receiveTimeSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='receiveTime']") : null;
         var returnTimeSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='returnTime']") : null;
+        var lateNote = bookingCard ? bookingCard.querySelector(".cart-late-note") : null;
         var receiveMethodInputs = bookingCard ? bookingCard.querySelectorAll("input[name='receivingMethod']") : [];
         var returnMethodInputs = bookingCard ? bookingCard.querySelectorAll("input[name='returningMethod']") : [];
+        var methodsRow = bookingCard ? bookingCard.querySelector(".cart-methods-row") : null;
         var uploadInputs = bookingCard ? bookingCard.querySelectorAll("input[type='file'][data-booking-field]") : [];
+        var equipmentReceiveTimeOptions = receiveTimeSelect
+            ? Array.prototype.map.call(receiveTimeSelect.options, function (option) {
+                return {
+                    value: String(option.value || ""),
+                    label: String(option.textContent || "")
+                };
+            })
+            : [];
+        var equipmentReturnTimeOptions = returnTimeSelect
+            ? Array.prototype.map.call(returnTimeSelect.options, function (option) {
+                return {
+                    value: String(option.value || ""),
+                    label: String(option.textContent || "")
+                };
+            })
+            : [];
+        var cartHeaderNav = document.querySelector("header.site-header .section-nav");
         var cartNavButtons = document.querySelectorAll("[data-cart-nav]");
         var cartSidebar = document.querySelector("[data-cart-sidebar]");
         var cartLayout = document.querySelector(".cart-layout");
+        var cartMainHeading = document.querySelector("[data-cart-main-heading]");
         var cartViewPanels = {
             cart: document.querySelector("[data-cart-view='cart']"),
             orderStatus: document.querySelector("[data-cart-view='order-status']")
@@ -9460,8 +9826,9 @@ document.addEventListener("DOMContentLoaded", function () {
         var customerNotificationMarkReadEndpoint = typeof window.__creatyCustomerNotificationMarkReadEndpoint === "string"
             ? String(window.__creatyCustomerNotificationMarkReadEndpoint || "")
             : "";
-        var customerInitialView = String(window.__creatyCustomerInitialView || "").toLowerCase().trim() === "order-status"
-            ? "order-status"
+        var customerInitialViewRaw = String(window.__creatyCustomerInitialView || "").toLowerCase().trim();
+        var customerInitialView = customerInitialViewRaw === "order-status" || customerInitialViewRaw === "services-cart"
+            ? customerInitialViewRaw
             : "cart";
         var serverOrders = Array.isArray(window.__creatyCustomerOrders)
             ? window.__creatyCustomerOrders.slice()
@@ -10061,8 +10428,8 @@ document.addEventListener("DOMContentLoaded", function () {
             try {
                 var nextUrl = new URL(window.location.href);
 
-                if (nextView === "order-status") {
-                    nextUrl.searchParams.set("view", "order-status");
+                if (nextView === "order-status" || nextView === "services-cart") {
+                    nextUrl.searchParams.set("view", nextView);
                 } else {
                     nextUrl.searchParams.delete("view");
                 }
@@ -10471,7 +10838,12 @@ document.addEventListener("DOMContentLoaded", function () {
         function setCartView(nextView, options) {
             var settings = options && typeof options === "object" ? options : {};
             var shouldPersist = settings.persist !== false;
-            var normalizedView = nextView === "order-status" ? "order-status" : "cart";
+            var requestedView = String(nextView || "").toLowerCase().trim();
+            var normalizedView = requestedView === "order-status" || requestedView === "services-cart"
+                ? requestedView
+                : "cart";
+            var isOrderStatusView = normalizedView === "order-status";
+            var isServicesCartView = normalizedView === "services-cart";
 
             activeCartView = normalizedView;
 
@@ -10479,23 +10851,36 @@ document.addEventListener("DOMContentLoaded", function () {
                 setCartViewQueryParam(normalizedView);
             }
 
+            if (cartHeaderNav) {
+                cartHeaderNav.hidden = isServicesCartView;
+            }
+
             if (cartViewPanels.cart) {
-                cartViewPanels.cart.hidden = normalizedView !== "cart";
+                cartViewPanels.cart.hidden = isOrderStatusView;
             }
 
             if (cartViewPanels.orderStatus) {
-                cartViewPanels.orderStatus.hidden = normalizedView !== "order-status";
+                cartViewPanels.orderStatus.hidden = !isOrderStatusView;
             }
 
             if (cartSidebar) {
-                cartSidebar.hidden = normalizedView !== "cart";
+                cartSidebar.hidden = isOrderStatusView;
             }
 
             if (cartLayout) {
-                cartLayout.classList.toggle("is-order-status-view", normalizedView === "order-status");
+                cartLayout.classList.toggle("is-order-status-view", isOrderStatusView);
             }
 
-            if (normalizedView === "order-status") {
+            if (cartMainHeading) {
+                cartMainHeading.textContent = isServicesCartView ? "SERVICES CART" : "CART";
+            }
+
+            updateDeliveryFields();
+            saveBookingSnapshot();
+            refreshTotals();
+            renderCartItems();
+
+            if (isOrderStatusView) {
                 renderOrderStatusList();
             }
 
@@ -10511,6 +10896,139 @@ document.addEventListener("DOMContentLoaded", function () {
                     button.removeAttribute("aria-current");
                 }
             });
+        }
+
+        function isServicesCartViewActive() {
+            return activeCartView === "services-cart";
+        }
+
+        function getServicesCartItems() {
+            var serviceItem = getServiceBookingItem();
+
+            if (!serviceItem) {
+                return [];
+            }
+
+            return [serviceItem];
+        }
+
+        function getActiveCartItems() {
+            return isServicesCartViewActive() ? getServicesCartItems() : getCartItems();
+        }
+
+        function getServiceDurationConfig(item) {
+            var source = item && typeof item === "object" ? item : getServiceBookingItem();
+
+            if (!source || typeof source !== "object") {
+                return {
+                    unit: "hours",
+                    value: 1
+                };
+            }
+
+            var rawUnit = String(source.durationUnit || source.duration_unit || "").trim().toLowerCase();
+            var unit = rawUnit === "days" || rawUnit === "day" ? "days" : "hours";
+            var value = Number.parseInt(source.durationValue || source.duration_value || "", 10);
+
+            if (!Number.isFinite(value) || value < 1) {
+                unit = "hours";
+                value = 1;
+            }
+
+            if (unit === "days") {
+                value = Math.max(1, Math.min(14, value));
+            } else {
+                unit = "hours";
+                value = Math.max(1, Math.min(24, value));
+            }
+
+            return {
+                unit: unit,
+                value: value
+            };
+        }
+
+        function formatServiceDurationLabel(item) {
+            var duration = getServiceDurationConfig(item);
+            var suffix = duration.unit === "days" ? "day" : "hour";
+
+            return String(duration.value) + " " + suffix + (duration.value === 1 ? "" : "s");
+        }
+
+        function formatHourSlotLabel(hourValue) {
+            var normalizedHour = Number.parseInt(hourValue, 10);
+
+            if (!Number.isFinite(normalizedHour) || normalizedHour < 0 || normalizedHour > 23) {
+                normalizedHour = 0;
+            }
+
+            var isAfternoon = normalizedHour >= 12;
+            var displayHour = normalizedHour % 12;
+
+            if (displayHour === 0) {
+                displayHour = 12;
+            }
+
+            return String(displayHour).padStart(2, "0") + ":00 " + (isAfternoon ? "PM" : "AM");
+        }
+
+        function buildHourOptions(minHour, maxHour) {
+            var options = [];
+
+            for (var hour = minHour; hour <= maxHour; hour += 1) {
+                options.push({
+                    value: String(hour).padStart(2, "0") + ":00",
+                    label: formatHourSlotLabel(hour)
+                });
+            }
+
+            return options;
+        }
+
+        function applySelectOptions(selectNode, options, selectedValue) {
+            if (!selectNode) {
+                return;
+            }
+
+            var sourceOptions = Array.isArray(options) ? options : [];
+            var preferredValue = String(selectedValue || "").trim();
+
+            selectNode.innerHTML = "";
+
+            sourceOptions.forEach(function (optionConfig) {
+                var optionNode = document.createElement("option");
+                optionNode.value = String(optionConfig && optionConfig.value ? optionConfig.value : "").trim();
+                optionNode.textContent = String(optionConfig && optionConfig.label ? optionConfig.label : optionNode.value);
+                selectNode.appendChild(optionNode);
+            });
+
+            if (!selectNode.options.length) {
+                return;
+            }
+
+            if (preferredValue) {
+                var hasPreferredValue = Array.prototype.some.call(selectNode.options, function (optionNode) {
+                    return optionNode.value === preferredValue;
+                });
+
+                if (hasPreferredValue) {
+                    selectNode.value = preferredValue;
+                    return;
+                }
+            }
+
+            selectNode.selectedIndex = 0;
+        }
+
+        function syncServiceTimeOptionSets() {
+            if (isServicesCartViewActive()) {
+                applySelectOptions(receiveTimeSelect, buildHourOptions(cartBookingOpenHour, cartBookingCloseHour), receiveTimeSelect ? receiveTimeSelect.value : "");
+                applySelectOptions(returnTimeSelect, buildHourOptions(0, 23), returnTimeSelect ? returnTimeSelect.value : "");
+                return;
+            }
+
+            applySelectOptions(receiveTimeSelect, equipmentReceiveTimeOptions, receiveTimeSelect ? receiveTimeSelect.value : "");
+            applySelectOptions(returnTimeSelect, equipmentReturnTimeOptions, returnTimeSelect ? returnTimeSelect.value : "");
         }
 
         function normalizeStoredOrder(order) {
@@ -11412,7 +11930,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     saveStoredOrders(existingOrders);
                     renderOrderStatusList();
 
-                    saveCartItems([]);
+                    if (isServicesCartViewActive()) {
+                        clearServiceBookingItem();
+                    } else {
+                        saveCartItems([]);
+                    }
+
                     renderCartItems();
 
                     if (bookingNote) {
@@ -11569,7 +12092,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function createPendingOrderRecord(items) {
             var booking = getBookingSnapshot();
-            var source = Array.isArray(items) ? items : getCartItems();
+            var source = Array.isArray(items) ? items : getActiveCartItems();
 
             if (!hasValidCurrentReceiveSchedule(source)) {
                 return Promise.reject(new Error("No available receiving slots for the selected quantities and rental days. Adjust your cart or choose a later schedule."));
@@ -11589,6 +12112,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     var itemId = String(item.id || item.itemId || item.item_id || "").trim();
                     var itemType = String(item.type || item.itemType || item.item_type || "").trim();
                     var productKey = extractCameraProductKeyFromCartItem(item);
+                    var servicePackageKey = String(item.servicePackageKey || item.service_package_key || "").trim().toLowerCase();
+                    var itemDurationMinHours = Number.parseInt(item.durationMinHours || item.duration_min_hours || 1, 10);
+                    var itemDurationMaxHours = Number.parseInt(item.durationMaxHours || item.duration_max_hours || itemDurationMinHours, 10);
 
                     if (itemId) {
                         normalizedItem.itemId = itemId;
@@ -11600,6 +12126,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     if (productKey) {
                         normalizedItem.productKey = productKey;
+                    }
+
+                    if (servicePackageKey) {
+                        if (!Number.isFinite(itemDurationMinHours) || itemDurationMinHours < 1) {
+                            itemDurationMinHours = 1;
+                        }
+
+                        if (!Number.isFinite(itemDurationMaxHours) || itemDurationMaxHours < itemDurationMinHours) {
+                            itemDurationMaxHours = itemDurationMinHours;
+                        }
+
+                        normalizedItem.servicePackageKey = servicePackageKey;
+                        normalizedItem.durationMinHours = itemDurationMinHours;
+                        normalizedItem.durationMaxHours = itemDurationMaxHours;
                     }
 
                     return normalizedItem;
@@ -12571,10 +13111,6 @@ document.addEventListener("DOMContentLoaded", function () {
         setCustomerNotificationBadgeCount(customerNotificationUnreadCount);
         renderCustomerNotificationList();
 
-        setCartView(customerInitialView, {
-            persist: false
-        });
-
         function getMethodValue(inputList, fallbackValue) {
             var checked = Array.prototype.find.call(inputList, function (input) {
                 return input.checked;
@@ -12647,6 +13183,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 var startDate = String(reservation.startDate || "").trim();
                 var startTime = String(reservation.startTime || "").trim();
                 var startTimestamp = parseCartLocalScheduleTimestamp(startDate, startTime);
+                var endDate = String(reservation.endDate || "").trim();
+                var endTime = String(reservation.endTime || "").trim();
+                var endTimestamp = parseCartLocalScheduleTimestamp(endDate, endTime);
 
                 if (!productKey || !Number.isFinite(startTimestamp)) {
                     return;
@@ -12659,7 +13198,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 reservationsByProduct[productKey].push({
                     qty: qty,
                     startTs: startTimestamp,
-                    endTs: startTimestamp + (days * 24 * 60 * 60 * 1000)
+                    endTs: Number.isFinite(endTimestamp) && endTimestamp > startTimestamp
+                        ? endTimestamp
+                        : (startTimestamp + (days * 24 * 60 * 60 * 1000))
                 });
             });
 
@@ -13074,6 +13615,10 @@ document.addEventListener("DOMContentLoaded", function () {
         var cartBookingAvailabilityHorizonDays = equipmentAvailability.horizonDays;
         var cartBookingTopHourReloadTimerId = null;
 
+        setCartView(customerInitialView, {
+            persist: false
+        });
+
         function parseCartBookingSlotHour(timeValue) {
             var normalized = String(timeValue || "").trim();
             var matches = normalized.match(/^(\d{2}):(\d{2})$/);
@@ -13093,6 +13638,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function getCartReceivingMinimumHour() {
+            if (isServicesCartViewActive()) {
+                return 8;
+            }
+
             var selectedReceivingMethod = getMethodValue(receiveMethodInputs, "pickup");
             var minimumHour = cartBookingOpenHour;
 
@@ -13104,7 +13653,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function buildCartCameraRequirements(sourceItems) {
-            var source = Array.isArray(sourceItems) ? sourceItems : getCartItems();
+            var source = Array.isArray(sourceItems) ? sourceItems : getActiveCartItems();
             var requirements = {};
 
             source.forEach(function (item) {
@@ -13166,6 +13715,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 return false;
             }
 
+            var servicesCartEndTimestamp = null;
+
+            if (isServicesCartViewActive()) {
+                var serviceDuration = getServiceDurationConfig();
+                var durationMs = serviceDuration.unit === "days"
+                    ? (serviceDuration.value * 24 * 60 * 60 * 1000)
+                    : (serviceDuration.value * 60 * 60 * 1000);
+
+                servicesCartEndTimestamp = startTimestamp + durationMs;
+
+                if (!Number.isFinite(servicesCartEndTimestamp) || servicesCartEndTimestamp <= startTimestamp) {
+                    servicesCartEndTimestamp = null;
+                }
+            }
+
             var requirementKeys = Object.keys(requirements || {});
 
             if (!requirementKeys.length) {
@@ -13189,7 +13753,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     return false;
                 }
 
-                var requiredEnd = startTimestamp + (requiredDays * 24 * 60 * 60 * 1000);
+                var requiredEnd = Number.isFinite(servicesCartEndTimestamp)
+                    ? servicesCartEndTimestamp
+                    : (startTimestamp + (requiredDays * 24 * 60 * 60 * 1000));
                 var occupiedQty = 0;
                 var intervals = Array.isArray(equipmentAvailability.reservationsByProduct[productKey])
                     ? equipmentAvailability.reservationsByProduct[productKey]
@@ -13389,6 +13955,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var todayDate = getStartOfDay(now);
             var todayKey = dateKeyFromDate(todayDate);
             var currentHour = now.getHours();
+
             var selectedMinimumHour = getCartReceivingMinimumHour();
             var minimumDate = new Date(
                 todayDate.getFullYear(),
@@ -13543,6 +14110,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
 
+            if (eventPlaceInput) {
+                var storedPlaceValue = String(bookingState.place || "").trim();
+
+                if (!storedPlaceValue && placeSelect) {
+                    storedPlaceValue = String(placeSelect.value || "").trim();
+                }
+
+                eventPlaceInput.value = storedPlaceValue;
+            }
+
             if (courierSelect && bookingState.courier) {
                 courierSelect.value = bookingState.courier;
             }
@@ -13551,7 +14128,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 receiveTimeSelect.value = bookingState.receiveTime;
             }
 
-            enforceReceiveScheduleConstraints(getCartItems());
+            enforceReceiveScheduleConstraints(getActiveCartItems());
 
             if (returnDateInput) {
                 returnDateInput.min = receiveDateInput ? receiveDateInput.value : context.minimumDateKey;
@@ -13596,7 +14173,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return {};
             }
 
-            enforceReceiveScheduleConstraints(getCartItems());
+            enforceReceiveScheduleConstraints(getActiveCartItems());
 
             var derivedSchedule = buildDerivedReturnSchedule();
 
@@ -13610,13 +14187,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
             var receivingMethod = getMethodValue(receiveMethodInputs, "pickup");
             var returningMethod = getMethodValue(returnMethodInputs, "meetup");
-            var hasDelivery = receivingMethod === "delivery" || returningMethod === "delivery";
-            var hasMeetup = receivingMethod === "meetup" || returningMethod === "meetup";
+            var servicesCartActive = isServicesCartViewActive();
+
+            if (servicesCartActive) {
+                receivingMethod = "meetup";
+                returningMethod = "meetup";
+            }
+
+            var hasDelivery = !servicesCartActive && (receivingMethod === "delivery" || returningMethod === "delivery");
+            var hasMeetup = servicesCartActive || receivingMethod === "meetup" || returningMethod === "meetup";
+            var placeValue = "";
+
+            if (hasMeetup) {
+                if (servicesCartActive) {
+                    placeValue = eventPlaceInput ? String(eventPlaceInput.value || "").trim() : "";
+                } else if (placeSelect) {
+                    placeValue = String(placeSelect.value || "").trim();
+                }
+            }
 
             return {
                 receiveDate: receiveDateInput ? receiveDateInput.value : "",
                 receiveTime: receiveTimeSelect ? receiveTimeSelect.value : "",
-                place: hasMeetup && placeSelect ? placeSelect.value : "",
+                place: placeValue,
                 returnDate: derivedSchedule.date || (returnDateInput ? returnDateInput.value : ""),
                 returnTime: derivedSchedule.time || (returnTimeSelect ? returnTimeSelect.value : ""),
                 courier: hasDelivery && courierSelect ? courierSelect.value : "",
@@ -13680,6 +14273,35 @@ document.addEventListener("DOMContentLoaded", function () {
                 return {
                     date: "",
                     time: receiveTimeValue
+                };
+            }
+
+            if (isServicesCartViewActive()) {
+                var serviceDuration = getServiceDurationConfig();
+                var serviceStartTimestamp = parseCartLocalScheduleTimestamp(receiveDateValue, receiveTimeValue);
+
+                if (!Number.isFinite(serviceStartTimestamp)) {
+                    return {
+                        date: "",
+                        time: receiveTimeValue
+                    };
+                }
+
+                var durationMs = serviceDuration.unit === "days"
+                    ? (serviceDuration.value * 24 * 60 * 60 * 1000)
+                    : (serviceDuration.value * 60 * 60 * 1000);
+                var serviceEndDate = new Date(serviceStartTimestamp + durationMs);
+
+                if (Number.isNaN(serviceEndDate.getTime())) {
+                    return {
+                        date: "",
+                        time: receiveTimeValue
+                    };
+                }
+
+                return {
+                    date: dateKeyFromDate(serviceEndDate),
+                    time: String(serviceEndDate.getHours()).padStart(2, "0") + ":00"
                 };
             }
 
@@ -13759,10 +14381,45 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function updateDeliveryFields() {
+            var servicesCartActive = isServicesCartViewActive();
             var receivingMethod = getMethodValue(receiveMethodInputs, "pickup");
             var returningMethod = getMethodValue(returnMethodInputs, "meetup");
-            var hasDelivery = receivingMethod === "delivery" || returningMethod === "delivery";
-            var hasMeetup = receivingMethod === "meetup" || returningMethod === "meetup";
+            var hasDelivery = !servicesCartActive && (receivingMethod === "delivery" || returningMethod === "delivery");
+            var hasMeetup = servicesCartActive || receivingMethod === "meetup" || returningMethod === "meetup";
+
+            syncServiceTimeOptionSets();
+
+            if (lateNote) {
+                if (servicesCartActive) {
+                    lateNote.textContent = "Event duration = " + formatServiceDurationLabel() + ".";
+                } else {
+                    lateNote.textContent = "Late returns = P50/hour";
+                }
+            }
+
+            if (methodsRow) {
+                methodsRow.hidden = servicesCartActive;
+            }
+
+            Array.prototype.forEach.call(receiveMethodInputs, function (input) {
+                input.disabled = servicesCartActive;
+
+                if (servicesCartActive) {
+                    input.setAttribute("aria-disabled", "true");
+                } else {
+                    input.removeAttribute("aria-disabled");
+                }
+            });
+
+            Array.prototype.forEach.call(returnMethodInputs, function (input) {
+                input.disabled = servicesCartActive;
+
+                if (servicesCartActive) {
+                    input.setAttribute("aria-disabled", "true");
+                } else {
+                    input.removeAttribute("aria-disabled");
+                }
+            });
 
             if (deliveryOnlyBlock) {
                 deliveryOnlyBlock.hidden = !hasDelivery;
@@ -13778,19 +14435,76 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
 
-            if (placeSelect) {
-                placeSelect.disabled = !hasMeetup;
+            if (courierRow) {
+                courierRow.hidden = servicesCartActive;
+            }
 
-                if (!hasMeetup) {
-                    placeSelect.value = "";
-                } else if (!placeSelect.value && placeSelect.options.length) {
-                    placeSelect.selectedIndex = 0;
+            if (paymentSelect) {
+                if (servicesCartActive) {
+                    paymentSelect.value = "cash-meetup";
+                    paymentSelect.hidden = true;
+                    paymentSelect.disabled = true;
+                    paymentSelect.setAttribute("aria-disabled", "true");
+                } else {
+                    paymentSelect.hidden = false;
+                    paymentSelect.disabled = false;
+                    paymentSelect.removeAttribute("aria-disabled");
+
+                    if (!paymentSelect.value && paymentSelect.options.length) {
+                        paymentSelect.selectedIndex = 0;
+                    }
                 }
+            }
 
-                if (placeSelect.disabled) {
+            if (placeFieldLabel) {
+                placeFieldLabel.textContent = servicesCartActive ? "Event Place:" : "Meeting Place:";
+            }
+
+            if (eventPlaceInput) {
+                if (servicesCartActive) {
+                    var fallbackPlaceValue = String(eventPlaceInput.value || "").trim();
+
+                    if (!fallbackPlaceValue && placeSelect) {
+                        fallbackPlaceValue = String(placeSelect.value || "").trim();
+                    }
+
+                    if (!fallbackPlaceValue) {
+                        fallbackPlaceValue = String(bookingState.place || "").trim();
+                    }
+
+                    eventPlaceInput.value = fallbackPlaceValue;
+                    eventPlaceInput.hidden = false;
+                    eventPlaceInput.disabled = false;
+                    eventPlaceInput.removeAttribute("aria-disabled");
+                } else {
+                    eventPlaceInput.hidden = true;
+                    eventPlaceInput.disabled = true;
+                    eventPlaceInput.setAttribute("aria-disabled", "true");
+                }
+            }
+
+            if (placeSelect) {
+                if (servicesCartActive) {
+                    placeSelect.hidden = true;
+                    placeSelect.disabled = true;
+                    placeSelect.setAttribute("aria-hidden", "true");
                     placeSelect.setAttribute("aria-disabled", "true");
                 } else {
-                    placeSelect.removeAttribute("aria-disabled");
+                    placeSelect.hidden = false;
+                    placeSelect.removeAttribute("aria-hidden");
+                    placeSelect.disabled = !hasMeetup;
+
+                    if (!hasMeetup) {
+                        placeSelect.value = "";
+                    } else if (!placeSelect.value && placeSelect.options.length) {
+                        placeSelect.selectedIndex = 0;
+                    }
+
+                    if (placeSelect.disabled) {
+                        placeSelect.setAttribute("aria-disabled", "true");
+                    } else {
+                        placeSelect.removeAttribute("aria-disabled");
+                    }
                 }
             }
 
@@ -13802,13 +14516,18 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function renderCartItems() {
-            var items = getCartItems();
+            var servicesCartActive = isServicesCartViewActive();
+            var items = getActiveCartItems();
+            var equipmentItems = getCartItems();
 
             panel.querySelectorAll(".cart-item-card").forEach(function (node) {
                 node.remove();
             });
 
             if (emptyMessage) {
+                emptyMessage.textContent = servicesCartActive
+                    ? "No service package selected yet. Open a service package then tap Purchase."
+                    : "Your cart is empty. Add event packages or camera rentals to continue.";
                 emptyMessage.hidden = items.length > 0;
             }
 
@@ -13818,16 +14537,41 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 if (breakdownNode) {
-                    breakdownNode.textContent = "Subtotal P 0.00 + Service fee P 0.00";
+                    breakdownNode.textContent = "Subtotal P 0.00 + Courier P 0.00";
                 }
 
-                syncCartCountBadges(items);
+                syncCartCountBadges(equipmentItems);
                 return;
             }
 
             var didAdjustItemQuantities = false;
 
             items.forEach(function (item) {
+                if (servicesCartActive) {
+                    var serviceLineTotal = item.price;
+                    var serviceCard = document.createElement("article");
+                    serviceCard.className = "cart-item-card";
+                    serviceCard.setAttribute("data-cart-item-id", item.id);
+                    serviceCard.innerHTML = '' +
+                        '<div class="cart-item-copy">' +
+                            '<h2 class="cart-item-name">' + escapeHtml(String(item.name || "Service Package").toUpperCase()) + '</h2>' +
+                            '<p class="cart-item-copy-text">' + escapeHtml(item.copy) + '</p>' +
+                        '</div>' +
+                        '<div class="cart-item-thumb">' +
+                            '<img class="cart-item-thumb-image" src="' + escapeHtml(item.image) + '" alt="' + escapeHtml(item.name) + '">' +
+                        '</div>' +
+                        '<div class="cart-item-pricebox">' +
+                            '<p class="cart-item-price-label">Duration:</p>' +
+                            '<strong>' + escapeHtml(formatServiceDurationLabel(item)) + '</strong>' +
+                            '<p class="cart-item-price-label">Price:</p>' +
+                            '<strong>' + formatMoney(serviceLineTotal) + '</strong>' +
+                        '</div>' +
+                        '<button class="cart-remove-button" type="button" aria-label="Remove item" data-cart-remove>&#10005;</button>';
+
+                    panel.appendChild(serviceCard);
+                    return;
+                }
+
                 var itemIsUnavailable = isUnavailableCartItem(item);
                 var itemProductKey = extractCameraProductKeyFromCartItem(item);
                 var capacityParsed = Number.parseInt(equipmentAvailability.capacities[itemProductKey], 10);
@@ -13878,7 +14622,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 panel.appendChild(card);
             });
 
-            if (didAdjustItemQuantities) {
+            if (!servicesCartActive && didAdjustItemQuantities) {
                 saveCartItems(items);
                 enforceReceiveScheduleConstraints(items);
                 syncReturnDateTimeFromReceive(items);
@@ -13898,14 +14642,19 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             refreshTotals(items);
-            syncCartCountBadges(items);
+            syncCartCountBadges(equipmentItems);
         }
 
         function refreshTotals(items) {
-            var activeItems = Array.isArray(items) ? items : getCartItems();
+            var servicesCartActive = isServicesCartViewActive();
+            var activeItems = Array.isArray(items) ? items : getActiveCartItems();
             var subtotal = activeItems.reduce(function (sum, item) {
                 if (isUnavailableCartItem(item)) {
                     return sum;
+                }
+
+                if (servicesCartActive) {
+                    return sum + item.price;
                 }
 
                 return sum + (item.price * item.qty * item.days);
@@ -13922,19 +14671,22 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             var courierFee = deliveryCount * 120;
-            var serviceFee = subtotal > 0 ? 45 : 0;
-            var total = subtotal + courierFee + serviceFee;
+            var total = subtotal + courierFee;
 
             if (totalNode) {
                 totalNode.textContent = formatMoney(total);
             }
 
             if (breakdownNode) {
-                breakdownNode.textContent = "Subtotal " + formatMoney(subtotal) + " + Service fee " + formatMoney(serviceFee) + " + Courier " + formatMoney(courierFee);
+                breakdownNode.textContent = "Subtotal " + formatMoney(subtotal) + " + Courier " + formatMoney(courierFee);
             }
         }
 
         function handleCartPanelInput(event) {
+            if (isServicesCartViewActive()) {
+                return;
+            }
+
             var target = event.target;
             var field = target.getAttribute("data-cart-edit");
             if (!field) {
@@ -13983,6 +14735,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+            if (isServicesCartViewActive()) {
+                clearServiceBookingItem();
+                saveBookingSnapshot();
+                renderCartItems();
+                return;
+            }
+
             var card = removeButton.closest("[data-cart-item-id]");
             if (!card) {
                 return;
@@ -14023,7 +14782,7 @@ document.addEventListener("DOMContentLoaded", function () {
             );
 
             clampReceiveDateCalendarCursor(getCartBookingContext());
-            renderReceiveDateCalendar(getCartItems());
+            renderReceiveDateCalendar(getActiveCartItems());
         }
 
         if (receiveDateCalendarGrid) {
@@ -14048,7 +14807,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 receiveDateInput.value = selectedDate;
                 receiveDateCalendarCursor = new Date(selectedDateParts.year, selectedDateParts.month - 1, 1);
 
-                var currentItems = getCartItems();
+                var currentItems = getActiveCartItems();
                 enforceReceiveScheduleConstraints(currentItems);
                 syncReturnDateTimeFromReceive(currentItems);
                 saveBookingSnapshot();
@@ -14091,7 +14850,7 @@ document.addEventListener("DOMContentLoaded", function () {
             bookingCard.querySelectorAll("[data-booking-field], input[name='receivingMethod'], input[name='returningMethod']").forEach(function (control) {
                 control.addEventListener("change", function () {
                     if (control === receiveDateInput || control === receiveTimeSelect) {
-                        var currentItems = getCartItems();
+                        var currentItems = getActiveCartItems();
                         enforceReceiveScheduleConstraints(currentItems);
                         syncReturnDateTimeFromReceive(currentItems);
                     }
@@ -14135,25 +14894,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (confirmButton && bookingNote) {
             confirmButton.addEventListener("click", function () {
-                var items = getCartItems();
+                var items = getActiveCartItems();
+                var servicesCartActive = isServicesCartViewActive();
 
                 enforceReceiveScheduleConstraints(items);
                 syncReturnDateTimeFromReceive(items);
                 saveBookingSnapshot();
 
                 if (!items.length) {
-                    bookingNote.textContent = "Add at least one item before confirming your demo booking.";
+                    bookingNote.textContent = servicesCartActive
+                        ? "Select a service package first by tapping Purchase from a package page."
+                        : "Add at least one item before confirming your demo booking.";
                     return;
                 }
 
+                if (servicesCartActive) {
+                    var eventPlaceValue = eventPlaceInput ? String(eventPlaceInput.value || "").trim() : "";
+
+                    if (!eventPlaceValue) {
+                        bookingNote.textContent = "Please enter the Event Place before confirming.";
+                        return;
+                    }
+                }
+
                 if (!hasValidCurrentReceiveSchedule(items)) {
-                    bookingNote.textContent = "No available receiving slots for the selected quantities and rental days. Adjust your cart or choose a later schedule.";
+                    bookingNote.textContent = servicesCartActive
+                        ? "Please choose a valid event start schedule."
+                        : "No available receiving slots for the selected quantities and rental days. Adjust your cart or choose a later schedule.";
                     return;
                 }
 
                 var unavailableItems = getUnavailableCartItems(items);
 
-                if (unavailableItems.length) {
+                if (!servicesCartActive && unavailableItems.length) {
                     openUnavailableModal(unavailableItems, function () {
                         var remainingItems = removeUnavailableCartItems();
                         enforceReceiveScheduleConstraints(remainingItems);
@@ -14214,8 +14987,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         renderOrderStatusList();
         restoreBookingDefaults();
-        enforceReceiveScheduleConstraints(getCartItems());
-        syncReturnDateTimeFromReceive(getCartItems());
+        enforceReceiveScheduleConstraints(getActiveCartItems());
+        syncReturnDateTimeFromReceive(getActiveCartItems());
         updateDeliveryFields();
         saveBookingSnapshot();
         renderCartItems();
@@ -14228,6 +15001,7 @@ document.addEventListener("DOMContentLoaded", function () {
     initializeAdminNotificationsPage();
     syncCartCountBadges();
     initializeAddToCartButtons();
+    initializeServicePurchaseButtons();
     initializeCartPage();
 
     // Calendar Initialization

@@ -62,7 +62,14 @@ function is_supported_service_image_extension(string $path): bool
 {
     $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
 
-    return in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
+    return in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'ogg'], true);
+}
+
+function is_supported_service_video_extension(string $path): bool
+{
+    $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+
+    return in_array($extension, ['mp4', 'webm', 'ogg'], true);
 }
 
 function normalize_service_asset_path(string $path): string
@@ -375,6 +382,9 @@ if ($isAdminView && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') 
 
         $priceValue = (float) ($_POST['price'] ?? 0);
         $discountValue = (int) ($_POST['discountPercent'] ?? 0);
+        $durationUnitValue = normalize_service_package_duration_unit($_POST['durationUnit'] ?? 'hours');
+        $durationValue = clamp_service_package_duration_value($durationUnitValue, (int) ($_POST['durationValue'] ?? 1));
+        $durationUnitValue = normalize_service_package_duration_unit($durationUnitValue);
         $camera1Value = sanitize_service_package_camera_assignment($_POST['camera1'] ?? '', $servicePackageCameraKeyLookup);
         $camera2Value = sanitize_service_package_camera_assignment($_POST['camera2'] ?? '', $servicePackageCameraKeyLookup);
         $backupCamera1Value = sanitize_service_package_camera_assignment($_POST['backupCamera1'] ?? '', $servicePackageCameraKeyLookup);
@@ -388,6 +398,8 @@ if ($isAdminView && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') 
                 $servicePackagesRepository[$packageKey]['description'] = $descriptionValue;
                 $servicePackagesRepository[$packageKey]['price'] = number_format($priceValue, 2, '.', '');
                 $servicePackagesRepository[$packageKey]['discountPercent'] = max(0, min(95, $discountValue));
+                $servicePackagesRepository[$packageKey]['durationUnit'] = $durationUnitValue;
+                $servicePackagesRepository[$packageKey]['durationValue'] = $durationValue;
                 $servicePackagesRepository[$packageKey]['camera1'] = $camera1Value;
                 $servicePackagesRepository[$packageKey]['camera2'] = $camera2Value;
                 $servicePackagesRepository[$packageKey]['backupCamera1'] = $backupCamera1Value;
@@ -456,6 +468,9 @@ foreach ($servicePackagesRepository as $packageKey => $packageRecord) {
     $priceValue = parse_service_package_price($packageRecord['price'] ?? 0);
     $discountPercent = max(0, min(95, (int) ($packageRecord['discountPercent'] ?? 0)));
     $discountedPriceValue = calculate_discounted_service_package_price($priceValue, $discountPercent);
+    $durationUnit = normalize_service_package_duration_unit($packageRecord['durationUnit'] ?? 'hours');
+    $durationValue = clamp_service_package_duration_value($durationUnit, (int) ($packageRecord['durationValue'] ?? 1));
+    $durationUnit = normalize_service_package_duration_unit($durationUnit);
     $packageFolder = normalize_service_package_key((string) $packageKey);
     $selectedThumbnailImages = sanitize_selected_service_thumbnail_paths($packageRecord['thumbnail_images'] ?? [], __DIR__);
     $selectedThumbnailImages = filter_service_thumbnail_paths_for_folder($selectedThumbnailImages, $packageFolder);
@@ -469,6 +484,8 @@ foreach ($servicePackagesRepository as $packageKey => $packageRecord) {
         'discount_percent' => $discountPercent,
         'discounted_price_value' => $discountedPriceValue,
         'discounted_price_label' => format_service_package_price($discountedPriceValue),
+        'duration_unit' => $durationUnit,
+        'duration_value' => $durationValue,
         'folder' => $packageFolder,
         'selected_thumbnail_images' => $selectedThumbnailImages,
         'camera1' => sanitize_service_package_camera_assignment($packageRecord['camera1'] ?? '', $servicePackageCameraKeyLookup),
@@ -517,7 +534,7 @@ unset($serviceGroup);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260415-5">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260415-7">
 </head>
 <body class="events-page services-page">
     <header class="site-header">
@@ -688,6 +705,8 @@ unset($serviceGroup);
                                 data-admin-service-package-description="<?php echo htmlspecialchars($servicePackageDescription, ENT_QUOTES, 'UTF-8'); ?>"
                                 data-admin-service-package-price="<?php echo htmlspecialchars(number_format($servicePackageBasePriceValue, 2, '.', ''), ENT_QUOTES, 'UTF-8'); ?>"
                                 data-admin-service-package-discount="<?php echo htmlspecialchars((string) $servicePackageDiscountPercent, ENT_QUOTES, 'UTF-8'); ?>"
+                                data-admin-service-package-duration-unit="<?php echo htmlspecialchars((string) ($servicePackage['duration_unit'] ?? 'hours'), ENT_QUOTES, 'UTF-8'); ?>"
+                                data-admin-service-package-duration-value="<?php echo htmlspecialchars((string) max(1, (int) ($servicePackage['duration_value'] ?? 1)), ENT_QUOTES, 'UTF-8'); ?>"
                                 data-admin-service-package-folder="<?php echo htmlspecialchars((string) ($servicePackage['folder'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                 data-admin-service-selected-thumbnails="<?php echo htmlspecialchars((string) json_encode(array_values((array) ($servicePackage['selected_thumbnail_images'] ?? [])), JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8'); ?>"
                                 data-admin-service-package-camera-1="<?php echo htmlspecialchars((string) ($servicePackage['camera1'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
@@ -717,13 +736,27 @@ unset($serviceGroup);
                                     <?php if ($servicePackageImages !== []): ?>
                                         <div class="package-slides">
                                             <?php foreach ($servicePackageImages as $imageIndex => $imagePath): ?>
-                                                <img
-                                                    class="package-slide<?php echo $imageIndex === 0 ? ' is-active' : ''; ?>"
-                                                    src="<?php echo htmlspecialchars(build_service_asset_url($assetBase, (string) $imagePath), ENT_QUOTES, 'UTF-8'); ?>"
-                                                    alt="<?php echo htmlspecialchars($servicePackageTitle . ' sample ' . ($imageIndex + 1), ENT_QUOTES, 'UTF-8'); ?>"
-                                                    loading="lazy"
-                                                    aria-hidden="<?php echo $imageIndex === 0 ? 'false' : 'true'; ?>"
-                                                >
+                                                <?php $isVideoSlide = is_supported_service_video_extension((string) $imagePath); ?>
+                                                <?php if ($isVideoSlide): ?>
+                                                    <video
+                                                        class="package-slide<?php echo $imageIndex === 0 ? ' is-active' : ''; ?>"
+                                                        src="<?php echo htmlspecialchars(build_service_asset_url($assetBase, (string) $imagePath), ENT_QUOTES, 'UTF-8'); ?>"
+                                                        autoplay
+                                                        muted
+                                                        loop
+                                                        playsinline
+                                                        preload="metadata"
+                                                        aria-hidden="<?php echo $imageIndex === 0 ? 'false' : 'true'; ?>"
+                                                    ></video>
+                                                <?php else: ?>
+                                                    <img
+                                                        class="package-slide<?php echo $imageIndex === 0 ? ' is-active' : ''; ?>"
+                                                        src="<?php echo htmlspecialchars(build_service_asset_url($assetBase, (string) $imagePath), ENT_QUOTES, 'UTF-8'); ?>"
+                                                        alt="<?php echo htmlspecialchars($servicePackageTitle . ' sample ' . ($imageIndex + 1), ENT_QUOTES, 'UTF-8'); ?>"
+                                                        loading="lazy"
+                                                        aria-hidden="<?php echo $imageIndex === 0 ? 'false' : 'true'; ?>"
+                                                    >
+                                                <?php endif; ?>
                                             <?php endforeach; ?>
                                         </div>
                                     <?php else: ?>
@@ -769,6 +802,7 @@ unset($serviceGroup);
 
                 <div class="admin-service-edit-tabs" role="tablist" aria-label="Services package edit sections">
                     <button class="admin-service-edit-tab is-active" type="button" data-admin-service-edit-tab="details" aria-selected="true">Details</button>
+                    <button class="admin-service-edit-tab" type="button" data-admin-service-edit-tab="duration" aria-selected="false">Duration</button>
                     <button class="admin-service-edit-tab" type="button" data-admin-service-edit-tab="camera" aria-selected="false">Camera</button>
                 </div>
 
@@ -791,6 +825,17 @@ unset($serviceGroup);
 
                         <label class="admin-edit-label" for="admin-service-edit-discount">Discount Percentage</label>
                         <input id="admin-service-edit-discount" type="number" min="0" max="95" step="1" name="discountPercent" data-admin-service-edit-discount>
+                    </div>
+
+                    <div class="admin-edit-fields-column admin-service-edit-panel" data-admin-service-edit-panel="duration" hidden>
+                        <label class="admin-edit-label" for="admin-service-edit-duration-unit">Duration Unit</label>
+                        <select id="admin-service-edit-duration-unit" name="durationUnit" data-admin-service-edit-duration-unit required>
+                            <option value="hours">Hours</option>
+                            <option value="days">Days</option>
+                        </select>
+
+                        <label class="admin-edit-label" for="admin-service-edit-duration-value">Duration Value</label>
+                        <input id="admin-service-edit-duration-value" type="number" min="1" max="24" step="1" name="durationValue" data-admin-service-edit-duration-value required>
                     </div>
 
                     <div class="admin-edit-fields-column admin-service-edit-panel" data-admin-service-edit-panel="camera" hidden>
@@ -849,16 +894,17 @@ unset($serviceGroup);
                     <input type="hidden" name="selected_paths_json" value="[]" data-admin-service-thumbs-input>
 
                     <p class="admin-event-thumbs-note">
-                        Select images in order. The number badge shows slideshow order for <strong data-admin-service-thumbs-package-title>this package</strong>.
+                        Select media in order. The number badge shows slideshow order for <strong data-admin-service-thumbs-package-title>this package</strong>.
                     </p>
 
                     <?php if ($serviceGalleryImageCandidates === []): ?>
-                        <p class="admin-event-thumbs-empty">No service collection images found.</p>
+                        <p class="admin-event-thumbs-empty">No service collection media found.</p>
                     <?php else: ?>
                         <div class="admin-event-thumbs-grid" data-admin-service-thumbs-grid>
                             <?php foreach ($serviceGalleryImageCandidates as $candidatePath): ?>
                                 <?php $candidateLabel = str_replace('assets/service_packages/', '', (string) $candidatePath); ?>
                                 <?php $candidateFolder = service_gallery_folder_from_path((string) $candidatePath); ?>
+                                <?php $candidateIsVideo = is_supported_service_video_extension((string) $candidatePath); ?>
                                 <button
                                     class="admin-event-thumb-item"
                                     type="button"
@@ -868,12 +914,16 @@ unset($serviceGroup);
                                     aria-label="Toggle thumbnail <?php echo htmlspecialchars((string) $candidateLabel, ENT_QUOTES, 'UTF-8'); ?>"
                                 >
                                     <span class="admin-event-thumb-order" data-admin-service-thumb-order hidden></span>
-                                    <img src="<?php echo htmlspecialchars(build_service_asset_url($assetBase, (string) $candidatePath), ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars((string) $candidateLabel, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?php if ($candidateIsVideo): ?>
+                                        <video src="<?php echo htmlspecialchars(build_service_asset_url($assetBase, (string) $candidatePath), ENT_QUOTES, 'UTF-8'); ?>" autoplay muted loop playsinline preload="metadata"></video>
+                                    <?php else: ?>
+                                        <img src="<?php echo htmlspecialchars(build_service_asset_url($assetBase, (string) $candidatePath), ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars((string) $candidateLabel, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?php endif; ?>
                                     <span class="admin-event-thumb-meta"><?php echo htmlspecialchars((string) $candidateLabel, ENT_QUOTES, 'UTF-8'); ?></span>
                                 </button>
                             <?php endforeach; ?>
                         </div>
-                        <p class="admin-event-thumbs-empty" data-admin-service-thumbs-folder-empty hidden>No images found in this package category.</p>
+                        <p class="admin-event-thumbs-empty" data-admin-service-thumbs-folder-empty hidden>No media found in this package category.</p>
                     <?php endif; ?>
 
                     <div class="admin-edit-actions">
@@ -888,6 +938,6 @@ unset($serviceGroup);
     <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260415-3"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260415-6"></script>
 </body>
 </html>
