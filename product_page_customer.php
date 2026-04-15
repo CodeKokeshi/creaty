@@ -531,7 +531,9 @@ if (
                 $targetDirRelative = 'assets/cameras';
                 $targetDirAbsolute = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $targetDirRelative);
 
-                if (is_dir($targetDirAbsolute) && is_uploaded_file($tmpPath)) {
+                if (!is_dir($targetDirAbsolute) && !mkdir($targetDirAbsolute, 0777, true) && !is_dir($targetDirAbsolute)) {
+                    $result = 'error=invalid-cover-image';
+                } elseif (is_uploaded_file($tmpPath)) {
                     $baseFilename = sanitize_product_filename(normalize_product_brand($productToUpdate['brand'] ?? 'Canon') . ' ' . ($productToUpdate['name'] ?? 'Product'));
                     if ($baseFilename === '') {
                         $baseFilename = 'Product';
@@ -548,7 +550,11 @@ if (
 
                     if (move_uploaded_file($tmpPath, $targetAbsolutePath)) {
                         $productToUpdate['cameraImage'] = $targetRelativePath;
+                    } else {
+                        $result = 'error=invalid-cover-image';
                     }
+                } else {
+                    $result = 'error=invalid-cover-image';
                 }
             }
         }

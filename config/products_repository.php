@@ -684,8 +684,8 @@ function copy_product_image_for_duplicate($sourceRelativePath, $brand, $name, $p
     $targetDirRelative = 'assets/cameras';
     $targetDirAbsolute = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $targetDirRelative);
 
-    if (!is_dir($targetDirAbsolute)) {
-        throw new RuntimeException('Target image directory is missing.');
+    if (!is_dir($targetDirAbsolute) && !mkdir($targetDirAbsolute, 0777, true) && !is_dir($targetDirAbsolute)) {
+        throw new RuntimeException('Unable to access target image directory.');
     }
 
     $baseFilename = sanitize_product_filename(normalize_product_brand($brand) . ' ' . $name);
@@ -890,8 +890,8 @@ function save_product_image_from_data_url($dataUrl, $brand, $name, $projectRoot)
     $targetDirRelative = 'assets/cameras';
     $targetDirAbsolute = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $targetDirRelative);
 
-    if (!is_dir($targetDirAbsolute)) {
-        throw new RuntimeException('Target image directory is missing.');
+    if (!is_dir($targetDirAbsolute) && !mkdir($targetDirAbsolute, 0777, true) && !is_dir($targetDirAbsolute)) {
+        throw new RuntimeException('Unable to access target image directory.');
     }
 
     $baseFilename = sanitize_product_filename(normalize_product_brand($brand) . ' ' . $name);

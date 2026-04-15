@@ -4,10 +4,30 @@ if (!class_exists('mysqli')) {
 	die('MySQLi extension is not available. Please enable the mysqli PHP extension.');
 }
 
-$host = 'localhost';
-$user = 'root';
-$pass = '';
-$dbname = 'creaty_db';
+$envHost = getenv('CREATY_DB_HOST');
+if (!is_string($envHost) || trim($envHost) === '') {
+	$envHost = getenv('DB_HOST');
+}
+
+$envUser = getenv('CREATY_DB_USER');
+if (!is_string($envUser) || trim($envUser) === '') {
+	$envUser = getenv('DB_USER');
+}
+
+$envPass = getenv('CREATY_DB_PASS');
+if ($envPass === false) {
+	$envPass = getenv('DB_PASS');
+}
+
+$envName = getenv('CREATY_DB_NAME');
+if (!is_string($envName) || trim($envName) === '') {
+	$envName = getenv('DB_NAME');
+}
+
+$host = (is_string($envHost) && trim($envHost) !== '') ? trim($envHost) : 'localhost';
+$user = (is_string($envUser) && trim($envUser) !== '') ? trim($envUser) : 'root';
+$pass = is_string($envPass) ? $envPass : '';
+$dbname = (is_string($envName) && trim($envName) !== '') ? trim($envName) : 'creaty_db';
 
 $adminAccountsTable = 'admin_accounts';
 $customerAccountsTable = 'customer_accounts';
@@ -36,7 +56,11 @@ if (!function_exists('creaty_bootstrap_database')) {
 			);
 		} catch (Throwable $exception) {
 			$bootstrapConn->close();
-			die('Unable to create database automatically: ' . $exception->getMessage());
+			die(
+				'Unable to create database automatically. '
+				. 'Please create the database "' . $dbname . '" manually or update DB credentials in config/db.php. '
+				. 'Error: ' . $exception->getMessage()
+			);
 		}
 
 		$bootstrapConn->close();
