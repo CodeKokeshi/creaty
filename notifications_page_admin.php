@@ -11,12 +11,16 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 $routeBase = $routeBase ?? 'admin/';
 $assetBase = $assetBase ?? '';
 
-if (!isset($_SESSION['user_id']) || isset($_SESSION['customer_id'])) {
+$isAdminSession = isset($_SESSION['user_id']) && !isset($_SESSION['customer_id']);
+$isStaffSession = isset($_SESSION['staff_id']) && !isset($_SESSION['customer_id']);
+
+if (!$isAdminSession && !$isStaffSession) {
     header('Location: ' . $routeBase);
     exit;
 }
 
-$accountLabel = 'Admin';
+$accountLabel = $isStaffSession ? 'STAFF' : 'Admin';
+$homeLabel = $isStaffSession ? 'Staff Home' : 'Admin Home';
 $adminHomePath = $routeBase . 'dashboard/';
 $logoutPath = $routeBase . 'logout.php';
 $notificationsPath = $routeBase . 'notifications/';
@@ -198,7 +202,7 @@ function message_notification_view_data(array $notification): array
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Notifications | Creaty</title>
+    <title><?php echo htmlspecialchars($isStaffSession ? 'Staff Notifications | Creaty' : 'Admin Notifications | Creaty', ENT_QUOTES, 'UTF-8'); ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -237,7 +241,7 @@ function message_notification_view_data(array $notification): array
                         <?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($homeLabel, ENT_QUOTES, 'UTF-8'); ?></a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
