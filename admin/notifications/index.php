@@ -8,7 +8,10 @@ if (isset($_SESSION['customer_id'])) {
     exit;
 }
 
-if (!isset($_SESSION['user_id'])) {
+$isAdminSession = isset($_SESSION['user_id']) && !isset($_SESSION['customer_id']);
+$isStaffSession = isset($_SESSION['staff_id']) && !isset($_SESSION['customer_id']);
+
+if (!$isAdminSession && !$isStaffSession) {
     header('Location: ../');
     exit;
 }
