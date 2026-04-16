@@ -61,6 +61,9 @@ if ($isAdminView) {
     $adminNotificationCount = count_unread_message_notifications();
 }
 
+require_once __DIR__ . '/customer_notifications_center.php';
+$customerNotificationCenter = build_customer_notification_center($assetBase, !$isAdminView && $isCustomerLoggedIn);
+
 require __DIR__ . '/config/products_repository.php';
 
 if (!$isAdminView) {
@@ -1046,6 +1049,8 @@ if (!$isAdminView && function_exists('customer_order_build_equipment_availabilit
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
                     </ul>
+
+                    <?php render_customer_notification_trigger_button($customerNotificationCenter, $assetBase); ?>
                 </div>
             <?php else: ?>
                 <a class="account-pill" href="<?php echo htmlspecialchars($loginPath, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($accountLabel, ENT_QUOTES, 'UTF-8'); ?></a>
@@ -2234,10 +2239,12 @@ if (!$isAdminView && function_exists('customer_order_build_equipment_availabilit
 
     <?php if (!$isAdminView): ?>
         <?php require __DIR__ . '/customer_message_modal.php'; ?>
+        <?php render_customer_notification_modal($customerNotificationCenter); ?>
 
         <script>
             window.__creatyEquipmentAvailability = <?php echo json_encode($equipmentAvailability, JSON_UNESCAPED_SLASHES); ?>;
         </script>
+        <?php render_customer_notification_center_bootstrap_script($customerNotificationCenter, $assetBase); ?>
     <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>

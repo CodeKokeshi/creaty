@@ -19,6 +19,7 @@ $servicesPath = $servicesPath ?? $assetBase . 'customer-services/';
 
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/customer_gcash_profiles_repository.php';
+require_once __DIR__ . '/customer_notifications_center.php';
 
 $isCustomerLoggedIn = isset($_SESSION['customer_id']);
 if (!$isCustomerLoggedIn) {
@@ -52,6 +53,7 @@ function normalize_customer_account_skill_level($value)
 
 $cartCount = (int) ($_SESSION['customer_cart_count'] ?? 0);
 $accountLabel = 'Account';
+$customerNotificationCenter = build_customer_notification_center($assetBase, $isCustomerLoggedIn);
 
 $fullName = trim((string) ($_SESSION['customer_name'] ?? ''));
 $nameParts = preg_split('/\s+/', $fullName) ?: [];
@@ -231,6 +233,8 @@ $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No addr
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
                 </ul>
+
+                <?php render_customer_notification_trigger_button($customerNotificationCenter, $assetBase); ?>
             </div>
         </div>
 
@@ -442,6 +446,8 @@ $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No addr
     </main>
 
     <?php require __DIR__ . '/customer_message_modal.php'; ?>
+    <?php render_customer_notification_modal($customerNotificationCenter); ?>
+    <?php render_customer_notification_center_bootstrap_script($customerNotificationCenter, $assetBase); ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260415-6"></script>

@@ -4102,7 +4102,8 @@ function upload_customer_order_delivery_receipt_for_customer($customerId, $order
         }
 
         $currentStatusToken = normalize_customer_order_status_token($record['status'] ?? 'pending');
-        if ($currentStatusToken !== 'return' || customer_order_is_terminal_status($currentStatusToken)) {
+
+        if (!in_array($currentStatusToken, ['ongoing', 'return'], true) || customer_order_is_terminal_status($currentStatusToken)) {
             return null;
         }
 
@@ -4121,6 +4122,13 @@ function upload_customer_order_delivery_receipt_for_customer($customerId, $order
         $record['return_delivery_receipt_uploaded_at'] = customer_order_now_iso8601();
         $record['return_delivery_receipt_uploaded_by'] = 'customer';
         $record['return_delivery_status'] = 'in-transit';
+
+        // Early return by delivery should immediately move an ongoing booking to For Return.
+        if ($currentStatusToken === 'ongoing') {
+            $record['status'] = 'return';
+            $record['cancel_reason'] = '';
+            $record['canceled_by'] = '';
+        }
 
         if ($hasDeliveryReference) {
             $record['return_delivery_reference'] = $deliveryReference;

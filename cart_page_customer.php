@@ -453,7 +453,7 @@ if ($isCustomerLoggedIn) {
                     <div class="cart-summary-card">
                         <h3>TOTAL:</h3>
                         <strong data-cart-total>P 0.00</strong>
-                        <p class="cart-summary-breakdown" data-cart-breakdown>Subtotal P 0.00 + Courier P 0.00</p>
+                        <p class="cart-summary-breakdown" data-cart-breakdown>Subtotal P 0.00</p>
                     </div>
 
                     <select class="cart-payment-select" data-booking-field="paymentMethod"<?php echo $isServicesCartInitialView ? ' hidden disabled aria-disabled="true"' : ''; ?>>

@@ -9737,6 +9737,532 @@ document.addEventListener("DOMContentLoaded", function () {
             .replace(/'/g, "&#039;");
     }
 
+    function initializeCustomerNotificationCenter() {
+        if (document.querySelector("[data-cart-items-panel]")) {
+            return;
+        }
+
+        var customerNotificationTrigger = document.querySelector("[data-customer-notification-trigger]");
+        var customerNotificationCountBadges = document.querySelectorAll("[data-customer-notification-count]");
+        var customerNotificationModal = document.querySelector("[data-customer-notification-modal]");
+        var customerNotificationModalCloseButtons = customerNotificationModal ? customerNotificationModal.querySelectorAll("[data-customer-notification-close]") : [];
+        var customerNotificationList = customerNotificationModal ? customerNotificationModal.querySelector("[data-customer-notification-list]") : null;
+        var customerNotificationEmpty = customerNotificationModal ? customerNotificationModal.querySelector("[data-customer-notification-empty]") : null;
+
+        if (!customerNotificationTrigger || !customerNotificationModal || !customerNotificationList) {
+            return;
+        }
+
+        var customerNotificationLiveEndpoint = typeof window.__creatyCustomerNotificationLiveEndpoint === "string"
+            ? String(window.__creatyCustomerNotificationLiveEndpoint || "")
+            : "";
+        var customerNotificationMarkReadEndpoint = typeof window.__creatyCustomerNotificationMarkReadEndpoint === "string"
+            ? String(window.__creatyCustomerNotificationMarkReadEndpoint || "")
+            : "";
+        var customerCartPath = typeof window.__creatyCustomerCartPath === "string"
+            ? String(window.__creatyCustomerCartPath || "")
+            : "";
+        var assetBase = typeof window.__creatyAssetBase === "string"
+            ? String(window.__creatyAssetBase || "")
+            : "";
+        var customerNotifications = Array.isArray(window.__creatyCustomerNotifications)
+            ? window.__creatyCustomerNotifications.slice()
+            : [];
+        var customerNotificationUnreadCountParsed = Number.parseInt(String(window.__creatyCustomerNotificationUnreadCount || "0"), 10);
+        var customerNotificationUnreadCount = Number.isFinite(customerNotificationUnreadCountParsed) && customerNotificationUnreadCountParsed > 0
+            ? customerNotificationUnreadCountParsed
+            : 0;
+        var customerLivePollIntervalMs = 4000;
+        var customerLivePollTimerId = null;
+        var customerLivePollInFlight = false;
+
+        function normalizeCustomerNotificationCount(value) {
+            var parsed = Number.parseInt(String(value || "0"), 10);
+
+            if (!Number.isFinite(parsed) || parsed < 0) {
+                return 0;
+            }
+
+            return parsed;
+        }
+
+        function normalizeCustomerNotificationRecord(record) {
+            if (!record || typeof record !== "object") {
+                return null;
+            }
+
+            var id = String(record.id || "").trim();
+
+            if (!id) {
+                return null;
+            }
+
+            return {
+                id: id,
+                type: String(record.type || "order-status").trim() || "order-status",
+                orderId: String(record.orderId || record.order_id || "").trim().toUpperCase(),
+                statusToken: String(record.statusToken || record.status_token || "").trim().toLowerCase(),
+                title: String(record.title || "Notification").trim() || "Notification",
+                summary: String(record.summary || "").trim(),
+                targetView: String(record.targetView || record.target_view || "order-status").trim().toLowerCase() === "order-status"
+                    ? "order-status"
+                    : "order-status",
+                isRead: String(record.isRead || record.is_read || "0") === "1" || Boolean(record.isRead || record.is_read),
+                createdAt: String(record.createdAt || record.created_at || "").trim(),
+                createdAtLabel: String(record.createdAtLabel || record.created_at_label || "").trim()
+            };
+        }
+
+        function saveCustomerNotifications(nextNotifications) {
+            if (!Array.isArray(nextNotifications)) {
+                customerNotifications = [];
+                return;
+            }
+
+            customerNotifications = nextNotifications
+                .map(function (notification) {
+                    return normalizeCustomerNotificationRecord(notification);
+                })
+                .filter(function (notification) {
+                    return Boolean(notification);
+                });
+        }
+
+        function updateCustomerNotificationEmptyState() {
+            if (!customerNotificationEmpty) {
+                return;
+            }
+
+            customerNotificationEmpty.hidden = customerNotifications.length > 0;
+        }
+
+        function setCustomerNotificationBadgeCount(nextCount) {
+            var normalizedCount = normalizeCustomerNotificationCount(nextCount);
+            customerNotificationUnreadCount = normalizedCount;
+
+            customerNotificationCountBadges.forEach(function (badge) {
+                badge.textContent = String(normalizedCount);
+            });
+        }
+
+        function getCustomerNotificationTimeLabel(notification) {
+            if (!notification || typeof notification !== "object") {
+                return "";
+            }
+
+            var createdAtLabel = String(notification.createdAtLabel || "").trim();
+
+            if (createdAtLabel) {
+                return createdAtLabel;
+            }
+
+            var createdAt = String(notification.createdAt || "").trim();
+
+            if (!createdAt) {
+                return "";
+            }
+
+            var timestamp = Date.parse(createdAt);
+
+            if (!Number.isFinite(timestamp)) {
+                return createdAt;
+            }
+
+            return new Date(timestamp).toLocaleString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit"
+            });
+        }
+
+        function renderCustomerNotificationList() {
+            if (!customerNotificationList) {
+                return;
+            }
+
+            customerNotificationList.innerHTML = "";
+            updateCustomerNotificationEmptyState();
+
+            customerNotifications.forEach(function (notification) {
+                var item = document.createElement("button");
+                item.type = "button";
+                item.className = "cart-customer-notification-item" + (notification.isRead ? " is-read" : " is-unread");
+                item.setAttribute("role", "listitem");
+                item.setAttribute("data-customer-notification-item", "true");
+                item.setAttribute("data-customer-notification-id", String(notification.id || ""));
+                item.setAttribute("data-customer-notification-type", String(notification.type || "order-status"));
+                item.setAttribute("data-customer-notification-order-id", String(notification.orderId || ""));
+                item.setAttribute("data-customer-notification-target-view", String(notification.targetView || "order-status"));
+
+                var titleValue = String(notification.title || "Notification").trim() || "Notification";
+                var summaryValue = String(notification.summary || "").trim();
+                var timeLabel = getCustomerNotificationTimeLabel(notification);
+
+                var head = document.createElement("div");
+                head.className = "cart-customer-notification-item-head";
+
+                var title = document.createElement("p");
+                title.className = "cart-customer-notification-title";
+                title.textContent = titleValue;
+
+                var time = document.createElement("span");
+                time.className = "cart-customer-notification-time";
+                time.textContent = timeLabel || "";
+
+                head.appendChild(title);
+                head.appendChild(time);
+                item.appendChild(head);
+
+                if (summaryValue) {
+                    var summary = document.createElement("p");
+                    summary.className = "cart-customer-notification-summary";
+                    summary.textContent = summaryValue;
+                    item.appendChild(summary);
+                }
+
+                customerNotificationList.appendChild(item);
+            });
+        }
+
+        function closeCustomerNotificationModal() {
+            if (!customerNotificationModal) {
+                return;
+            }
+
+            customerNotificationModal.hidden = true;
+        }
+
+        function openCustomerNotificationModal() {
+            if (!customerNotificationModal) {
+                return;
+            }
+
+            renderCustomerNotificationList();
+            customerNotificationModal.hidden = false;
+        }
+
+        function setCustomerNotificationReadState(notificationId, shouldRead) {
+            var targetId = String(notificationId || "").trim();
+
+            if (!targetId) {
+                return;
+            }
+
+            customerNotifications = customerNotifications.map(function (notification) {
+                if (!notification || notification.id !== targetId) {
+                    return notification;
+                }
+
+                return Object.assign({}, notification, {
+                    isRead: Boolean(shouldRead)
+                });
+            });
+
+            var unreadCount = customerNotifications.reduce(function (total, notification) {
+                if (!notification || notification.isRead) {
+                    return total;
+                }
+
+                return total + 1;
+            }, 0);
+
+            setCustomerNotificationBadgeCount(unreadCount);
+            renderCustomerNotificationList();
+        }
+
+        function markCustomerNotificationAsRead(notificationId) {
+            var targetId = String(notificationId || "").trim();
+
+            if (!targetId) {
+                return Promise.resolve();
+            }
+
+            if (!customerNotificationMarkReadEndpoint) {
+                setCustomerNotificationReadState(targetId, true);
+                return Promise.resolve();
+            }
+
+            return window.fetch(customerNotificationMarkReadEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                },
+                body: JSON.stringify({
+                    notificationId: targetId
+                })
+            }).then(function (response) {
+                return response.json().catch(function () {
+                    return {
+                        ok: false
+                    };
+                }).then(function (payload) {
+                    return {
+                        ok: response.ok,
+                        payload: payload
+                    };
+                });
+            }).then(function (result) {
+                if (!result.ok || !result.payload || !result.payload.ok) {
+                    setCustomerNotificationReadState(targetId, true);
+                    return;
+                }
+
+                setCustomerNotificationReadState(targetId, true);
+
+                if (typeof result.payload.unreadCount !== "undefined") {
+                    setCustomerNotificationBadgeCount(result.payload.unreadCount);
+                }
+            }).catch(function () {
+                setCustomerNotificationReadState(targetId, true);
+            });
+        }
+
+        function markCustomerOrderNotificationsAsRead() {
+            var targetType = "order-status";
+            var unreadOrderNotificationIds = customerNotifications
+                .filter(function (notification) {
+                    if (!notification || typeof notification !== "object") {
+                        return false;
+                    }
+
+                    return String(notification.type || "").trim().toLowerCase() === targetType && !notification.isRead;
+                })
+                .map(function (notification) {
+                    return String(notification.id || "").trim();
+                })
+                .filter(function (notificationId) {
+                    return notificationId !== "";
+                });
+
+            if (!unreadOrderNotificationIds.length) {
+                return Promise.resolve();
+            }
+
+            customerNotifications = customerNotifications.map(function (notification) {
+                if (!notification || typeof notification !== "object") {
+                    return notification;
+                }
+
+                if (String(notification.type || "").trim().toLowerCase() !== targetType) {
+                    return notification;
+                }
+
+                return Object.assign({}, notification, {
+                    isRead: true
+                });
+            });
+
+            var unreadCount = customerNotifications.reduce(function (total, notification) {
+                if (!notification || notification.isRead) {
+                    return total;
+                }
+
+                return total + 1;
+            }, 0);
+
+            setCustomerNotificationBadgeCount(unreadCount);
+            renderCustomerNotificationList();
+
+            if (!customerNotificationMarkReadEndpoint) {
+                return Promise.resolve();
+            }
+
+            return window.fetch(customerNotificationMarkReadEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                },
+                body: JSON.stringify({
+                    markAllOrderNotifications: true
+                })
+            }).then(function (response) {
+                return response.json().catch(function () {
+                    return {
+                        ok: false
+                    };
+                }).then(function (payload) {
+                    return {
+                        ok: response.ok,
+                        payload: payload
+                    };
+                });
+            }).then(function (result) {
+                if (!result.ok || !result.payload || !result.payload.ok) {
+                    return;
+                }
+
+                if (typeof result.payload.unreadCount !== "undefined") {
+                    setCustomerNotificationBadgeCount(result.payload.unreadCount);
+                }
+            }).catch(function () {
+                // Keep optimistic UI state and let live updates reconcile.
+            });
+        }
+
+        function buildOrderStatusUrl(orderId) {
+            var basePath = String(customerCartPath || "").trim();
+
+            if (!basePath) {
+                basePath = (assetBase ? assetBase : "/") + "customer-cart/";
+            }
+
+            try {
+                var targetUrl = new URL(basePath, window.location.href);
+                targetUrl.searchParams.set("view", "order-status");
+
+                if (orderId) {
+                    targetUrl.searchParams.set("focusOrder", String(orderId).toUpperCase());
+                }
+
+                return targetUrl.toString();
+            } catch (error) {
+                var separator = basePath.indexOf("?") === -1 ? "?" : "&";
+                var fallback = basePath + separator + "view=order-status";
+
+                if (orderId) {
+                    fallback += "&focusOrder=" + encodeURIComponent(String(orderId).toUpperCase());
+                }
+
+                return fallback;
+            }
+        }
+
+        function applyCustomerLivePayload(payload) {
+            if (!payload || typeof payload !== "object") {
+                return;
+            }
+
+            if (Array.isArray(payload.notifications)) {
+                saveCustomerNotifications(payload.notifications);
+            }
+
+            if (typeof payload.unreadCount !== "undefined") {
+                setCustomerNotificationBadgeCount(payload.unreadCount);
+            }
+
+            renderCustomerNotificationList();
+        }
+
+        function pollCustomerLiveUpdates() {
+            if (!customerNotificationLiveEndpoint || customerLivePollInFlight) {
+                return;
+            }
+
+            customerLivePollInFlight = true;
+
+            window.fetch(customerNotificationLiveEndpoint, {
+                headers: {
+                    Accept: "application/json"
+                }
+            }).then(function (response) {
+                return response.json().catch(function () {
+                    return {
+                        ok: false
+                    };
+                }).then(function (payload) {
+                    return {
+                        ok: response.ok,
+                        payload: payload
+                    };
+                });
+            }).then(function (result) {
+                if (!result.ok || !result.payload || !result.payload.ok) {
+                    return;
+                }
+
+                applyCustomerLivePayload(result.payload);
+            }).catch(function () {
+                // Ignore transient polling errors.
+            }).finally(function () {
+                customerLivePollInFlight = false;
+            });
+        }
+
+        function startCustomerLiveUpdates() {
+            if (customerLivePollTimerId !== null || !customerNotificationLiveEndpoint) {
+                return;
+            }
+
+            customerLivePollTimerId = window.setInterval(pollCustomerLiveUpdates, customerLivePollIntervalMs);
+        }
+
+        if (!customerNotificationUnreadCount) {
+            customerNotificationUnreadCount = customerNotifications.reduce(function (total, notification) {
+                if (!notification || notification.isRead) {
+                    return total;
+                }
+
+                return total + 1;
+            }, 0);
+        }
+
+        saveCustomerNotifications(customerNotifications);
+        setCustomerNotificationBadgeCount(customerNotificationUnreadCount);
+        renderCustomerNotificationList();
+
+        customerNotificationTrigger.addEventListener("click", function () {
+            openCustomerNotificationModal();
+            pollCustomerLiveUpdates();
+        });
+
+        customerNotificationModalCloseButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                closeCustomerNotificationModal();
+            });
+        });
+
+        customerNotificationList.addEventListener("click", function (event) {
+            var notificationItem = event.target.closest("[data-customer-notification-item]");
+
+            if (!notificationItem) {
+                return;
+            }
+
+            var notificationId = String(notificationItem.getAttribute("data-customer-notification-id") || "").trim();
+            var notificationType = String(notificationItem.getAttribute("data-customer-notification-type") || "order-status").trim().toLowerCase();
+            var targetView = String(notificationItem.getAttribute("data-customer-notification-target-view") || "order-status").trim().toLowerCase();
+            var orderId = String(notificationItem.getAttribute("data-customer-notification-order-id") || "").trim();
+
+            closeCustomerNotificationModal();
+
+            if (targetView === "order-status") {
+                var targetUrl = buildOrderStatusUrl(orderId);
+
+                if (notificationType === "order-status") {
+                    markCustomerOrderNotificationsAsRead().finally(function () {
+                        window.location.href = targetUrl;
+                    });
+                    return;
+                }
+
+                markCustomerNotificationAsRead(notificationId).finally(function () {
+                    window.location.href = targetUrl;
+                });
+                return;
+            }
+
+            if (notificationType === "order-status") {
+                markCustomerOrderNotificationsAsRead();
+                return;
+            }
+
+            markCustomerNotificationAsRead(notificationId);
+        });
+
+        document.addEventListener("visibilitychange", function () {
+            if (!document.hidden) {
+                pollCustomerLiveUpdates();
+            }
+        });
+
+        pollCustomerLiveUpdates();
+        startCustomerLiveUpdates();
+    }
+
     function initializeCartPage() {
         var panel = document.querySelector("[data-cart-items-panel]");
         if (!panel) {
@@ -12440,7 +12966,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 var canUploadReturnDeliveryReceipt = orderDeliveryReceiptUploadEndpoint !== ""
-                    && statusToken === "return"
+                    && (statusToken === "return" || statusToken === "ongoing")
                     && requiresReturnDelivery
                     && (returnDeliveryStatus === "waiting-customer-proof" || returnDeliveryStatus === "in-transit");
 
@@ -14537,7 +15063,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 if (breakdownNode) {
-                    breakdownNode.textContent = "Subtotal P 0.00 + Courier P 0.00";
+                    breakdownNode.textContent = "Subtotal P 0.00";
                 }
 
                 syncCartCountBadges(equipmentItems);
@@ -14659,26 +15185,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 return sum + (item.price * item.qty * item.days);
             }, 0);
-            var booking = getBookingSnapshot();
-            var deliveryCount = 0;
-
-            if (booking.receivingMethod === "delivery") {
-                deliveryCount += 1;
-            }
-
-            if (booking.returningMethod === "delivery") {
-                deliveryCount += 1;
-            }
-
-            var courierFee = deliveryCount * 120;
-            var total = subtotal + courierFee;
 
             if (totalNode) {
-                totalNode.textContent = formatMoney(total);
+                totalNode.textContent = formatMoney(subtotal);
             }
 
             if (breakdownNode) {
-                breakdownNode.textContent = "Subtotal " + formatMoney(subtotal) + " + Courier " + formatMoney(courierFee);
+                breakdownNode.textContent = "Subtotal " + formatMoney(subtotal);
             }
         }
 
@@ -15002,6 +15515,7 @@ document.addEventListener("DOMContentLoaded", function () {
     syncCartCountBadges();
     initializeAddToCartButtons();
     initializeServicePurchaseButtons();
+    initializeCustomerNotificationCenter();
     initializeCartPage();
 
     // Calendar Initialization

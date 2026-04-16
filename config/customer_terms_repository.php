@@ -37,7 +37,7 @@ function default_customer_terms_content_html()
 <ul>
     <li>Reservations are requests until confirmed by Nifty Fifty staff via the system.</li>
     <li><strong>Equipment assignment is automated by CREATY</strong> based on availability, event suitability, and fair usage rotation.</li>
-    <li>Cancellations must be made through official channels; late cancellations may incur a fee.</li>
+    <li>Cancellations must be made through official channels.</li>
 </ul>
 
 <hr>
@@ -47,7 +47,7 @@ function default_customer_terms_content_html()
 <ul>
     <li><strong>Pick-up:</strong> Collect at Nifty Fifty's location during business hours with a valid ID.</li>
     <li><strong>Meet-up:</strong> Time and location require prior confirmation. Being late may forfeit the reservation.</li>
-    <li><strong>Delivery:</strong> Customer shoulders delivery fees and must submit valid identity verification requirements when requested.</li>
+    <li><strong>Delivery:</strong> Customer arranges delivery directly and must submit valid identity verification requirements when requested.</li>
 </ul>
 
 <hr>
@@ -57,7 +57,7 @@ function default_customer_terms_content_html()
 <ul>
     <li><strong>Return to Store:</strong> Return within the agreed return window.</li>
     <li><strong>Meet-up Return:</strong> Time and location must be pre-arranged with staff.</li>
-    <li><strong>Delivery Return:</strong> Customer books and pays for courier. Return shipment must be initiated within the 2-hour Grace Period.</li>
+    <li><strong>Delivery Return:</strong> Customer arranges courier directly. Return shipment must be initiated within the 2-hour Grace Period.</li>
 </ul>
 <p><strong>Late Return Rules</strong></p>
 <ul>
@@ -72,7 +72,7 @@ function default_customer_terms_content_html()
 <ul>
     <li>You are responsible for the equipment from receipt until verified return.</li>
     <li>You are fully liable for all damage, loss, or theft and corresponding repair or replacement costs.</li>
-    <li>All rental fees, delivery charges, and late penalties are the Customer's responsibility.</li>
+    <li>All rental fees and late penalties are the Customer's responsibility.</li>
     <li>Nifty Fifty is not liable for indirect damages (for example, missed shoots or data loss).</li>
 </ul>
 
@@ -82,7 +82,7 @@ function default_customer_terms_content_html()
 <ul>
     <li><strong>Account Integrity:</strong> You must provide accurate information. Misuse of CREATY may result in account suspension.</li>
     <li><strong>Privacy:</strong> ID photos are collected only for verification and handled according to our Privacy Policy.</li>
-    <li><strong>Limitation of Liability:</strong> Nifty Fifty's maximum liability is limited to the total rental fees paid for the reservation.</li>
+    <li><strong>Limitation of Liability:</strong> Nifty Fifty's maximum liability is limited to the total rental or package amount paid for the reservation.</li>
     <li><strong>Changes to Terms:</strong> We may update these Terms. Continued use of CREATY means acceptance of updated Terms.</li>
 </ul>
 HTML;

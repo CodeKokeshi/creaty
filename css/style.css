@@ -4659,7 +4659,11 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 }
 
 .topbar-account-menu {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
     justify-self: end;
+    white-space: nowrap;
 }
 
 .topbar-admin-actions {

@@ -1,5 +1,18 @@
 [
     {
+        "id": "cust-notif-20260416054300-4e91aa65",
+        "customer_id": "4",
+        "type": "order-status",
+        "order_id": "ORD-20260413231540-D1D3AD10",
+        "status_token": "return",
+        "title": "Order status updated: ORD-20260413231540-D1D3AD10",
+        "summary": "Your order status is now For Return.",
+        "target_view": "order-status",
+        "is_read": false,
+        "created_at": "2026-04-16T05:43:00+00:00",
+        "read_at": ""
+    },
+    {
         "id": "cust-notif-20260415010002-a4a02f85",
         "customer_id": "4",
         "type": "order-status",
