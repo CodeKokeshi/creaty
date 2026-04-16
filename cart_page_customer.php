@@ -25,6 +25,7 @@ $servicesPath = $assetBase . 'customer-services/';
 require_once __DIR__ . '/config/products_repository.php';
 require_once __DIR__ . '/config/event_packages_repository.php';
 require_once __DIR__ . '/config/services_packages_repository.php';
+require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/customer_orders_repository.php';
 require_once __DIR__ . '/config/gcash_qr_repository.php';
 require_once __DIR__ . '/config/customer_notifications_repository.php';
@@ -146,9 +147,32 @@ $gcashPaymentInfo = [
 $customerTermsSettings = load_customer_terms_repository();
 $customerTermsDisplayHtml = customer_terms_prepare_display_html((string) ($customerTermsSettings['contentHtml'] ?? ''));
 $customerGcashInfo = map_customer_gcash_profile_for_frontend([]);
+$customerPhone = '';
 
 if ($isCustomerLoggedIn) {
     $customerId = (string) ($_SESSION['customer_id'] ?? '');
+    $customerPhone = trim((string) ($_SESSION['customer_phone'] ?? ''));
+
+    $customerProfileStmt = $conn->prepare("SELECT customer_phone FROM {$customerAccountsTable} WHERE id = ? LIMIT 1");
+
+    if ($customerProfileStmt instanceof mysqli_stmt) {
+        $customerIdInt = (int) $customerId;
+        $customerProfileStmt->bind_param('i', $customerIdInt);
+        $customerProfileStmt->execute();
+        $customerProfileResult = $customerProfileStmt->get_result();
+        $customerProfile = $customerProfileResult ? $customerProfileResult->fetch_assoc() : null;
+        $customerProfileStmt->close();
+
+        if (is_array($customerProfile)) {
+            $resolvedPhone = trim((string) ($customerProfile['customer_phone'] ?? ''));
+
+            if ($resolvedPhone !== '') {
+                $customerPhone = $resolvedPhone;
+                $_SESSION['customer_phone'] = $resolvedPhone;
+            }
+        }
+    }
+
     $customerOrders = load_customer_orders_for_customer($customerId);
     $customerOrdersSignature = customer_orders_live_state_signature_for_customer($customerId);
     $customerNotifications = load_customer_notifications_for_customer($customerId, null, 20);
@@ -465,6 +489,8 @@ if ($isCustomerLoggedIn) {
                     <button class="cart-confirm-button" type="button">CONFIRM BOOKING</button>
 
                     <p class="cart-booking-note" data-cart-booking-note>Demo flow only: no real booking or payment will be processed.</p>
+                    <p class="cart-booking-payment-note" data-cart-booking-payment-note hidden>Receiving via delivery requires GCash payment.</p>
+                    <a class="cart-booking-note-link" data-cart-booking-note-link href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>" hidden>Open Account Settings</a>
                 </section>
             </aside>
         </section>
@@ -638,15 +664,18 @@ if ($isCustomerLoggedIn) {
         window.__creatyCustomerNotificationUnreadCount = <?php echo json_encode($customerNotificationUnreadCount, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerNotificationLiveEndpoint = <?php echo json_encode($customerNotificationLiveUpdatesEndpoint, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerNotificationMarkReadEndpoint = <?php echo json_encode($customerNotificationMarkReadEndpoint, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerLoggedIn = <?php echo json_encode($isCustomerLoggedIn); ?>;
         window.__creatyCustomerInitialView = <?php echo json_encode($initialCartView, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyGcashPaymentInfo = <?php echo json_encode($gcashPaymentInfo, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerGcashInfo = <?php echo json_encode($customerGcashInfo, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerPhone = <?php echo json_encode($customerPhone, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCustomerAccountSettingsPath = <?php echo json_encode($accountSettingsPath, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyEquipmentAvailability = <?php echo json_encode($equipmentAvailability, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyEventPackageCameras = <?php echo json_encode($eventPackageCameraCatalog, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyServicePackageCameras = <?php echo json_encode($servicePackageCameraCatalog, JSON_UNESCAPED_SLASHES); ?>;
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260415-6"></script>
+    <script src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>js/script.js?v=20260416-1"></script>
 </body>
 </html>

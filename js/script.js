@@ -530,6 +530,631 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function resolveCreatyAppRootPath() {
+        var pathname = String(window.location.pathname || "/");
+        var segments = pathname.split("/").filter(function (segment) {
+            return segment !== "";
+        });
+        var routeAnchors = {
+            admin: true,
+            archive: true,
+            "customer-account-settings": true,
+            "customer-cart": true,
+            "customer-event": true,
+            "customer-events": true,
+            "customer-login": true,
+            "customer-logout": true,
+            "customer-products": true,
+            "customer-service": true,
+            "customer-services": true,
+            "customer-signup": true,
+            "customer-verify-email": true,
+            staff: true
+        };
+
+        for (var index = 0; index < segments.length; index += 1) {
+            var segmentToken = String(segments[index] || "").toLowerCase().trim();
+
+            if (!routeAnchors[segmentToken]) {
+                continue;
+            }
+
+            var rootSegments = segments.slice(0, index);
+            return "/" + (rootSegments.length ? rootSegments.join("/") + "/" : "");
+        }
+
+        if (!segments.length) {
+            return "/";
+        }
+
+        var lastSegment = String(segments[segments.length - 1] || "").toLowerCase().trim();
+
+        if (lastSegment.indexOf(".php") !== -1) {
+            var parentSegments = segments.slice(0, segments.length - 1);
+            return "/" + (parentSegments.length ? parentSegments.join("/") + "/" : "");
+        }
+
+        if (pathname.slice(-1) === "/") {
+            return "/" + segments.join("/") + "/";
+        }
+
+        var fallbackSegments = segments.slice(0, segments.length - 1);
+        return "/" + (fallbackSegments.length ? fallbackSegments.join("/") + "/" : "");
+    }
+
+    function isAdminUniversalSearchContext() {
+        var pathname = String(window.location.pathname || "").toLowerCase();
+
+        if (pathname.indexOf("/admin/") !== -1) {
+            return true;
+        }
+
+        if (document.querySelector("[data-admin-dashboard-nav]")) {
+            return true;
+        }
+
+        return Boolean(document.querySelector(".topbar.topbar-admin"));
+    }
+
+    function initializeUniversalTopbarSearch() {
+        var topbarSearchForms = document.querySelectorAll("form.topbar-search");
+
+        if (!topbarSearchForms.length) {
+            return;
+        }
+
+        var appRootPath = resolveCreatyAppRootPath();
+        var isAdminContext = isAdminUniversalSearchContext();
+        var defaultTargetPath = appRootPath + (isAdminContext ? "admin/products/" : "customer-products/");
+        var suggestionsEndpointPath = appRootPath + "search_suggestions.php";
+        var fallbackThumbnailPath = appRootPath + "assets/images/main_logo.png";
+        var minimumSuggestionQueryLength = 2;
+        var suggestionFetchDebounceMs = 240;
+        var maxCachedSuggestionQueries = 40;
+        var suggestionsCache = new Map();
+
+        function buildSuggestionsCacheKey(queryValue) {
+            return (isAdminContext ? "admin" : "customer") + "|" + String(queryValue || "").toLowerCase().trim();
+        }
+
+        function readCachedSuggestions(queryValue) {
+            var cacheKey = buildSuggestionsCacheKey(queryValue);
+
+            if (!suggestionsCache.has(cacheKey)) {
+                return null;
+            }
+
+            var cachedSuggestions = suggestionsCache.get(cacheKey);
+
+            // Refresh key recency so recent searches stay cached longer.
+            suggestionsCache.delete(cacheKey);
+            suggestionsCache.set(cacheKey, cachedSuggestions);
+
+            if (!Array.isArray(cachedSuggestions)) {
+                return [];
+            }
+
+            return cachedSuggestions;
+        }
+
+        function writeCachedSuggestions(queryValue, suggestionItems) {
+            var cacheKey = buildSuggestionsCacheKey(queryValue);
+            var normalizedSuggestions = Array.isArray(suggestionItems) ? suggestionItems : [];
+
+            suggestionsCache.set(cacheKey, normalizedSuggestions);
+
+            while (suggestionsCache.size > maxCachedSuggestionQueries) {
+                var oldestEntryKey = suggestionsCache.keys().next();
+
+                if (!oldestEntryKey || oldestEntryKey.done) {
+                    break;
+                }
+
+                suggestionsCache.delete(oldestEntryKey.value);
+            }
+        }
+
+        function buildDefaultSearchUrl(queryValue) {
+            var normalizedQuery = String(queryValue || "").trim();
+
+            if (normalizedQuery === "") {
+                return defaultTargetPath;
+            }
+
+            return defaultTargetPath + "?q=" + encodeURIComponent(normalizedQuery);
+        }
+
+        function resolveSuggestionTargetUrl(targetPath, queryValue) {
+            var normalizedTargetPath = String(targetPath || "").trim();
+
+            if (normalizedTargetPath === "") {
+                return buildDefaultSearchUrl(queryValue);
+            }
+
+            try {
+                return new URL(normalizedTargetPath, window.location.origin + appRootPath).toString();
+            } catch (error) {
+                return buildDefaultSearchUrl(queryValue);
+            }
+        }
+
+        function resolveSuggestionThumbnailUrl(thumbnailPath) {
+            var normalizedThumbnailPath = String(thumbnailPath || "").trim();
+
+            if (normalizedThumbnailPath === "") {
+                normalizedThumbnailPath = fallbackThumbnailPath;
+            }
+
+            try {
+                return new URL(normalizedThumbnailPath, window.location.origin + appRootPath).toString();
+            } catch (error) {
+                return new URL(fallbackThumbnailPath, window.location.origin + appRootPath).toString();
+            }
+        }
+
+        function clampDiscountPercent(value) {
+            var parsed = parseInt(value, 10);
+
+            if (!isFinite(parsed)) {
+                return 0;
+            }
+
+            if (parsed < 0) {
+                return 0;
+            }
+
+            if (parsed > 95) {
+                return 95;
+            }
+
+            return parsed;
+        }
+
+        function setOptionActiveState(options, activeIndex) {
+            Array.prototype.forEach.call(options, function (option, index) {
+                var isActive = index === activeIndex;
+                option.classList.toggle("is-active", isActive);
+                option.setAttribute("aria-selected", isActive ? "true" : "false");
+
+                if (isActive && typeof option.scrollIntoView === "function") {
+                    option.scrollIntoView({ block: "nearest" });
+                }
+            });
+        }
+
+        topbarSearchForms.forEach(function (searchForm) {
+            var searchInput = searchForm.querySelector('input[name="q"]');
+
+            if (!searchInput) {
+                return;
+            }
+
+            var suggestionsPanel = document.createElement("div");
+            suggestionsPanel.className = "topbar-search-suggestions";
+            suggestionsPanel.hidden = true;
+            suggestionsPanel.setAttribute("role", "listbox");
+            searchForm.appendChild(suggestionsPanel);
+
+            searchInput.setAttribute("autocomplete", "off");
+            searchInput.setAttribute("aria-autocomplete", "list");
+            searchInput.setAttribute("aria-haspopup", "listbox");
+            searchInput.setAttribute("aria-expanded", "false");
+
+            var activeSuggestionIndex = -1;
+            var suggestions = [];
+            var debounceTimer = 0;
+            var requestSerial = 0;
+            var requestController = null;
+            var skipBlurClose = false;
+            var loadingIndicatorTimer = 0;
+
+            function showSuggestionsPanel() {
+                if (!suggestionsPanel.childNodes.length) {
+                    return;
+                }
+
+                suggestionsPanel.hidden = false;
+                searchInput.setAttribute("aria-expanded", "true");
+            }
+
+            function hideSuggestionsPanel() {
+                suggestionsPanel.hidden = true;
+                searchInput.setAttribute("aria-expanded", "false");
+                activeSuggestionIndex = -1;
+                setOptionActiveState(suggestionsPanel.querySelectorAll(".topbar-search-suggestion"), -1);
+            }
+
+            function renderSuggestionsStatusRow(className, message) {
+                suggestionsPanel.innerHTML = "";
+
+                var statusRow = document.createElement("div");
+                statusRow.className = className;
+                statusRow.textContent = String(message || "").trim();
+                suggestionsPanel.appendChild(statusRow);
+                showSuggestionsPanel();
+            }
+
+            function updateActiveSuggestion(nextIndex) {
+                var optionNodes = suggestionsPanel.querySelectorAll(".topbar-search-suggestion");
+
+                if (!optionNodes.length) {
+                    activeSuggestionIndex = -1;
+                    return;
+                }
+
+                if (nextIndex < 0 || nextIndex >= optionNodes.length) {
+                    activeSuggestionIndex = -1;
+                    setOptionActiveState(optionNodes, -1);
+                    return;
+                }
+
+                activeSuggestionIndex = nextIndex;
+                setOptionActiveState(optionNodes, activeSuggestionIndex);
+            }
+
+            function renderSuggestions(suggestionItems) {
+                suggestions = Array.isArray(suggestionItems) ? suggestionItems : [];
+                suggestionsPanel.innerHTML = "";
+                activeSuggestionIndex = -1;
+
+                if (!suggestions.length) {
+                    renderSuggestionsStatusRow("topbar-search-empty", "No matches yet. Press Enter to search.");
+                    return;
+                }
+
+                suggestions.forEach(function (suggestion, index) {
+                    var targetUrl = resolveSuggestionTargetUrl(suggestion.targetPath, searchInput.value);
+                    var titleText = String(suggestion.title || "Search result").trim();
+                    var descriptionText = String(suggestion.description || "").trim();
+                    var typeLabel = String(suggestion.typeLabel || "Result").trim();
+                    var priceLabel = String(suggestion.priceLabel || "").trim();
+                    var discountedPriceLabel = String(suggestion.discountedPriceLabel || "").trim();
+                    var discountPercent = clampDiscountPercent(suggestion.discountPercent);
+
+                    var suggestionNode = document.createElement("a");
+                    suggestionNode.className = "topbar-search-suggestion";
+                    suggestionNode.href = targetUrl;
+                    suggestionNode.setAttribute("role", "option");
+                    suggestionNode.setAttribute("aria-selected", "false");
+                    suggestionNode.setAttribute("data-suggestion-index", String(index));
+
+                    suggestionNode.addEventListener("mouseenter", function () {
+                        updateActiveSuggestion(index);
+                    });
+
+                    suggestionNode.addEventListener("mousedown", function () {
+                        skipBlurClose = true;
+
+                        window.setTimeout(function () {
+                            skipBlurClose = false;
+                        }, 180);
+                    });
+
+                    var thumbNode = document.createElement("span");
+                    thumbNode.className = "topbar-search-suggestion-thumb";
+
+                    var thumbImage = document.createElement("img");
+                    thumbImage.src = resolveSuggestionThumbnailUrl(suggestion.thumbnailPath);
+                    thumbImage.alt = "";
+                    thumbImage.loading = "lazy";
+                    thumbImage.decoding = "async";
+                    thumbImage.width = 52;
+                    thumbImage.height = 52;
+                    thumbNode.appendChild(thumbImage);
+
+                    var bodyNode = document.createElement("span");
+                    bodyNode.className = "topbar-search-suggestion-body";
+
+                    var headingRow = document.createElement("span");
+                    headingRow.className = "topbar-search-suggestion-heading";
+
+                    var titleNode = document.createElement("span");
+                    titleNode.className = "topbar-search-suggestion-title";
+                    titleNode.textContent = titleText;
+
+                    var typeNode = document.createElement("span");
+                    typeNode.className = "topbar-search-suggestion-type";
+                    typeNode.textContent = typeLabel;
+
+                    headingRow.appendChild(titleNode);
+                    headingRow.appendChild(typeNode);
+                    bodyNode.appendChild(headingRow);
+
+                    if (descriptionText !== "") {
+                        var descriptionNode = document.createElement("span");
+                        descriptionNode.className = "topbar-search-suggestion-description";
+                        descriptionNode.textContent = descriptionText;
+                        bodyNode.appendChild(descriptionNode);
+                    }
+
+                    var priceRow = document.createElement("span");
+                    priceRow.className = "topbar-search-suggestion-price";
+
+                    if (discountPercent > 0 && discountedPriceLabel !== "") {
+                        if (priceLabel !== "") {
+                            var originalPriceNode = document.createElement("span");
+                            originalPriceNode.className = "topbar-search-price-original";
+                            originalPriceNode.textContent = priceLabel;
+                            priceRow.appendChild(originalPriceNode);
+                        }
+
+                        var discountedPriceNode = document.createElement("span");
+                        discountedPriceNode.className = "topbar-search-price-discounted";
+                        discountedPriceNode.textContent = discountedPriceLabel;
+                        priceRow.appendChild(discountedPriceNode);
+
+                        var discountNode = document.createElement("span");
+                        discountNode.className = "topbar-search-price-badge";
+                        discountNode.textContent = discountPercent + "% OFF";
+                        priceRow.appendChild(discountNode);
+                    } else if (priceLabel !== "") {
+                        var currentPriceNode = document.createElement("span");
+                        currentPriceNode.className = "topbar-search-price-discounted";
+                        currentPriceNode.textContent = priceLabel;
+                        priceRow.appendChild(currentPriceNode);
+                    }
+
+                    if (priceRow.childNodes.length) {
+                        bodyNode.appendChild(priceRow);
+                    }
+
+                    suggestionNode.appendChild(thumbNode);
+                    suggestionNode.appendChild(bodyNode);
+                    suggestionsPanel.appendChild(suggestionNode);
+                });
+
+                showSuggestionsPanel();
+                updateActiveSuggestion(-1);
+            }
+
+            function requestSuggestions(rawQuery) {
+                var queryValue = String(rawQuery || "").trim();
+
+                if (queryValue === "") {
+                    suggestions = [];
+                    hideSuggestionsPanel();
+                    return;
+                }
+
+                if (queryValue.length < minimumSuggestionQueryLength) {
+                    suggestions = [];
+                    renderSuggestionsStatusRow(
+                        "topbar-search-empty",
+                        "Type at least " + minimumSuggestionQueryLength + " characters for suggestions."
+                    );
+                    return;
+                }
+
+                var cachedSuggestions = readCachedSuggestions(queryValue);
+
+                if (cachedSuggestions) {
+                    renderSuggestions(cachedSuggestions);
+                    return;
+                }
+
+                if (requestController && typeof requestController.abort === "function") {
+                    requestController.abort();
+                }
+
+                if (loadingIndicatorTimer) {
+                    window.clearTimeout(loadingIndicatorTimer);
+                }
+
+                loadingIndicatorTimer = window.setTimeout(function () {
+                    renderSuggestionsStatusRow("topbar-search-loading", "Searching...");
+                }, 120);
+
+                requestSerial += 1;
+                var currentRequestSerial = requestSerial;
+                requestController = typeof AbortController !== "undefined" ? new AbortController() : null;
+
+                var endpointUrl;
+
+                try {
+                    endpointUrl = new URL(suggestionsEndpointPath, window.location.origin);
+                } catch (error) {
+                    if (loadingIndicatorTimer) {
+                        window.clearTimeout(loadingIndicatorTimer);
+                        loadingIndicatorTimer = 0;
+                    }
+
+                    renderSuggestionsStatusRow("topbar-search-empty", "No matches yet. Press Enter to search.");
+                    return;
+                }
+
+                endpointUrl.searchParams.set("q", queryValue);
+                endpointUrl.searchParams.set("context", isAdminContext ? "admin" : "customer");
+                endpointUrl.searchParams.set("limit", "8");
+
+                var requestOptions = {
+                    credentials: "same-origin"
+                };
+
+                if (requestController && requestController.signal) {
+                    requestOptions.signal = requestController.signal;
+                }
+
+                fetch(endpointUrl.toString(), requestOptions)
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error("Search request failed");
+                        }
+
+                        return response.json();
+                    })
+                    .then(function (payload) {
+                        if (currentRequestSerial !== requestSerial) {
+                            return;
+                        }
+
+                        if (loadingIndicatorTimer) {
+                            window.clearTimeout(loadingIndicatorTimer);
+                            loadingIndicatorTimer = 0;
+                        }
+
+                        var payloadSuggestions = Array.isArray(payload && payload.suggestions)
+                            ? payload.suggestions
+                            : [];
+
+                        writeCachedSuggestions(queryValue, payloadSuggestions);
+
+                        renderSuggestions(payloadSuggestions);
+                    })
+                    .catch(function (error) {
+                        if (error && error.name === "AbortError") {
+                            if (loadingIndicatorTimer) {
+                                window.clearTimeout(loadingIndicatorTimer);
+                                loadingIndicatorTimer = 0;
+                            }
+
+                            return;
+                        }
+
+                        if (currentRequestSerial !== requestSerial) {
+                            return;
+                        }
+
+                        if (loadingIndicatorTimer) {
+                            window.clearTimeout(loadingIndicatorTimer);
+                            loadingIndicatorTimer = 0;
+                        }
+
+                        renderSuggestionsStatusRow("topbar-search-empty", "No matches yet. Press Enter to search.");
+                    });
+            }
+
+            function scheduleSuggestions(rawQuery) {
+                if (debounceTimer) {
+                    window.clearTimeout(debounceTimer);
+                }
+
+                debounceTimer = window.setTimeout(function () {
+                    requestSuggestions(rawQuery);
+                }, suggestionFetchDebounceMs);
+            }
+
+            searchInput.addEventListener("input", function () {
+                scheduleSuggestions(searchInput.value);
+            });
+
+            searchInput.addEventListener("focus", function () {
+                if (!suggestionsPanel.hidden && suggestionsPanel.childNodes.length) {
+                    showSuggestionsPanel();
+                    return;
+                }
+
+                if (String(searchInput.value || "").trim() !== "") {
+                    scheduleSuggestions(searchInput.value);
+                }
+            });
+
+            searchInput.addEventListener("blur", function () {
+                window.setTimeout(function () {
+                    if (skipBlurClose) {
+                        return;
+                    }
+
+                    hideSuggestionsPanel();
+                }, 120);
+            });
+
+            searchInput.addEventListener("keydown", function (event) {
+                var hasVisibleSuggestions = !suggestionsPanel.hidden && suggestions.length > 0;
+
+                if (event.key === "ArrowDown") {
+                    if (!hasVisibleSuggestions) {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    var nextDownIndex = activeSuggestionIndex + 1;
+                    if (nextDownIndex >= suggestions.length) {
+                        nextDownIndex = 0;
+                    }
+
+                    updateActiveSuggestion(nextDownIndex);
+                    return;
+                }
+
+                if (event.key === "ArrowUp") {
+                    if (!hasVisibleSuggestions) {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    var nextUpIndex = activeSuggestionIndex - 1;
+                    if (nextUpIndex < 0) {
+                        nextUpIndex = suggestions.length - 1;
+                    }
+
+                    updateActiveSuggestion(nextUpIndex);
+                    return;
+                }
+
+                if (event.key === "Escape") {
+                    if (!suggestionsPanel.hidden) {
+                        event.preventDefault();
+                        hideSuggestionsPanel();
+                    }
+
+                    return;
+                }
+
+                if (event.key === "Enter") {
+                    var queryValue = String(searchInput.value || "").trim();
+
+                    if (queryValue === "") {
+                        return;
+                    }
+
+                    if (hasVisibleSuggestions && activeSuggestionIndex >= 0 && suggestions[activeSuggestionIndex]) {
+                        event.preventDefault();
+                        window.location.href = resolveSuggestionTargetUrl(
+                            suggestions[activeSuggestionIndex].targetPath,
+                            queryValue
+                        );
+                    }
+                }
+            });
+
+            searchForm.addEventListener("submit", function (event) {
+                var queryValue = String(searchInput.value || "").trim();
+
+                if (queryValue === "") {
+                    hideSuggestionsPanel();
+                    return;
+                }
+
+                event.preventDefault();
+
+                if (!suggestionsPanel.hidden && activeSuggestionIndex >= 0 && suggestions[activeSuggestionIndex]) {
+                    window.location.href = resolveSuggestionTargetUrl(suggestions[activeSuggestionIndex].targetPath, queryValue);
+                    return;
+                }
+
+                window.location.href = buildDefaultSearchUrl(queryValue);
+            });
+
+            searchForm.addEventListener("mousedown", function () {
+                skipBlurClose = true;
+
+                window.setTimeout(function () {
+                    skipBlurClose = false;
+                }, 180);
+            });
+
+            document.addEventListener("click", function (event) {
+                if (searchForm.contains(event.target)) {
+                    return;
+                }
+
+                hideSuggestionsPanel();
+            });
+        });
+    }
+
     if (adminEditBrand && adminEditBrand.options) {
         Array.prototype.forEach.call(adminEditBrand.options, function (option) {
             if (!option) {
@@ -10274,6 +10899,8 @@ document.addEventListener("DOMContentLoaded", function () {
         var breakdownNode = document.querySelector("[data-cart-breakdown]");
         var bookingCard = document.querySelector("[data-cart-booking]");
         var bookingNote = document.querySelector("[data-cart-booking-note]");
+        var bookingNoteLink = document.querySelector("[data-cart-booking-note-link]");
+        var bookingPaymentNote = document.querySelector("[data-cart-booking-payment-note]");
         var confirmButton = bookingCard ? bookingCard.querySelector(".cart-confirm-button") : null;
         var paymentSelect = bookingCard ? bookingCard.querySelector("[data-booking-field='paymentMethod']") : null;
         var deliveryOnlyBlock = bookingCard ? bookingCard.querySelector("[data-delivery-only-block]") : null;
@@ -10411,6 +11038,13 @@ document.addEventListener("DOMContentLoaded", function () {
         var gcashUploadMessage = gcashModal ? gcashModal.querySelector("[data-cart-gcash-upload-message]") : null;
         var gcashPaymentInfo = normalizeGcashPaymentInfo(window.__creatyGcashPaymentInfo);
         var customerGcashInfo = normalizeCustomerGcashInfo(window.__creatyCustomerGcashInfo);
+        var customerPhone = typeof window.__creatyCustomerPhone === "string"
+            ? String(window.__creatyCustomerPhone || "")
+            : "";
+        var customerAccountSettingsPath = typeof window.__creatyCustomerAccountSettingsPath === "string"
+            ? String(window.__creatyCustomerAccountSettingsPath || "")
+            : "";
+        var isCustomerLoggedIn = window.__creatyCustomerLoggedIn === true;
         var paymentReceiptTimeoutSecondsDefault = 10 * 60;
         var paymentReceiptAutoCancelReason = "Failure to upload payment receipt.";
         var customerLivePollIntervalMs = 4000;
@@ -10511,6 +11145,36 @@ document.addEventListener("DOMContentLoaded", function () {
             };
 
             unavailableModal.hidden = false;
+        }
+
+        function normalizeCustomerPhone(value) {
+            var digits = String(value || "").replace(/[^0-9]+/g, "");
+
+            if (digits.length === 12 && digits.indexOf("63") === 0) {
+                digits = "0" + digits.slice(2);
+            }
+
+            if (digits.length === 10 && digits.indexOf("9") === 0) {
+                digits = "0" + digits;
+            }
+
+            if (digits.length !== 11 || digits.indexOf("09") !== 0) {
+                return "";
+            }
+
+            return digits;
+        }
+
+        function hasCustomerContactNumber() {
+            return normalizeCustomerPhone(customerPhone) !== "";
+        }
+
+        function setBookingNoteLinkVisibility(isVisible) {
+            if (!bookingNoteLink) {
+                return;
+            }
+
+            bookingNoteLink.hidden = !Boolean(isVisible);
         }
 
         function setOrderCancelError(message) {
@@ -12677,6 +13341,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (!booking.receiveDate || !booking.receiveTime || !booking.returnDate || !booking.returnTime) {
                 return Promise.reject(new Error("Please complete your booking schedule before confirming."));
+            }
+
+            var paymentMethodToken = String(booking.paymentMethod || "").toLowerCase().trim();
+
+            if (!paymentMethodToken) {
+                return Promise.reject(new Error("Please select a valid payment method."));
+            }
+
+            if (booking.receivingMethod === "delivery" && paymentMethodToken !== "gcash") {
+                return Promise.reject(new Error("Receiving via delivery requires GCash payment."));
             }
 
             var pendingOrder = {
@@ -14911,6 +15585,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var receivingMethod = getMethodValue(receiveMethodInputs, "pickup");
             var returningMethod = getMethodValue(returnMethodInputs, "meetup");
             var hasDelivery = !servicesCartActive && (receivingMethod === "delivery" || returningMethod === "delivery");
+            var isReceiveDelivery = !servicesCartActive && receivingMethod === "delivery";
             var hasMeetup = servicesCartActive || receivingMethod === "meetup" || returningMethod === "meetup";
 
             syncServiceTimeOptionSets();
@@ -14971,15 +15646,45 @@ document.addEventListener("DOMContentLoaded", function () {
                     paymentSelect.hidden = true;
                     paymentSelect.disabled = true;
                     paymentSelect.setAttribute("aria-disabled", "true");
+
+                    Array.prototype.forEach.call(paymentSelect.options, function (option) {
+                        option.disabled = false;
+                        option.hidden = false;
+                    });
                 } else {
                     paymentSelect.hidden = false;
                     paymentSelect.disabled = false;
                     paymentSelect.removeAttribute("aria-disabled");
 
-                    if (!paymentSelect.value && paymentSelect.options.length) {
-                        paymentSelect.selectedIndex = 0;
+                    var firstEnabledPaymentOptionValue = "";
+
+                    Array.prototype.forEach.call(paymentSelect.options, function (option) {
+                        var optionToken = String(option.value || "").toLowerCase().trim();
+                        var shouldDisableOption = isReceiveDelivery && optionToken !== "gcash";
+
+                        option.disabled = shouldDisableOption;
+                        option.hidden = shouldDisableOption;
+
+                        if (!shouldDisableOption && firstEnabledPaymentOptionValue === "") {
+                            firstEnabledPaymentOptionValue = String(option.value || "");
+                        }
+                    });
+
+                    if (isReceiveDelivery) {
+                        paymentSelect.value = "gcash";
+                    }
+
+                    var selectedOption = paymentSelect.options[paymentSelect.selectedIndex];
+                    var hasSelectableValue = selectedOption && !selectedOption.disabled;
+
+                    if (!hasSelectableValue && firstEnabledPaymentOptionValue !== "") {
+                        paymentSelect.value = firstEnabledPaymentOptionValue;
                     }
                 }
+            }
+
+            if (bookingPaymentNote) {
+                bookingPaymentNote.hidden = !isReceiveDelivery;
             }
 
             if (placeFieldLabel) {
@@ -15153,6 +15858,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 enforceReceiveScheduleConstraints(items);
                 syncReturnDateTimeFromReceive(items);
                 saveBookingSnapshot();
+                setBookingNoteLinkVisibility(false);
             }
 
             panel.querySelectorAll(".cart-item-thumb-image").forEach(function (imageNode) {
@@ -15421,6 +16127,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
+                if (isCustomerLoggedIn && !hasCustomerContactNumber()) {
+                    bookingNote.textContent = customerAccountSettingsPath
+                        ? "Please add your contact number in Account Settings before booking."
+                        : "Please add your contact number before booking.";
+                    setBookingNoteLinkVisibility(customerAccountSettingsPath !== "");
+                    return;
+                }
+
                 if (servicesCartActive) {
                     var eventPlaceValue = eventPlaceInput ? String(eventPlaceInput.value || "").trim() : "";
 
@@ -15509,6 +16223,7 @@ document.addEventListener("DOMContentLoaded", function () {
         initializeCustomerLiveUpdates();
     }
 
+    initializeUniversalTopbarSearch();
     initializeCustomerMessageModal();
     initializeAdminLiveNotifications();
     initializeAdminNotificationsPage();

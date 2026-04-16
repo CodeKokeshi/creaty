@@ -453,6 +453,153 @@ function product_reco_effective_price($product)
     return $effectivePrice;
 }
 
+function normalize_product_search_text($value)
+{
+    $normalized = strtolower(trim((string) $value));
+
+    if ($normalized === '') {
+        return '';
+    }
+
+    return trim((string) (preg_replace('/\s+/', ' ', $normalized) ?? ''));
+}
+
+function normalize_product_search_digits($value)
+{
+    return (string) (preg_replace('/[^0-9]/', '', (string) $value) ?? '');
+}
+
+function product_matches_search_query($product, $queryText, $queryDigits)
+{
+    if (!is_array($product)) {
+        return false;
+    }
+
+    if ($queryText === '' && $queryDigits === '') {
+        return true;
+    }
+
+    $brand = normalize_product_brand($product['brand'] ?? default_product_brand());
+    $name = trim((string) ($product['name'] ?? ''));
+    $tagline = trim((string) ($product['tagline'] ?? ''));
+    $specOne = trim((string) ($product['spec1'] ?? ''));
+    $specTwo = trim((string) ($product['spec2'] ?? ''));
+
+    $basePrice = max(0, (float) ($product['price'] ?? 0));
+    $discountPercent = max(0, min(95, (int) ($product['discountPercent'] ?? 0)));
+    $effectivePrice = $basePrice * (1 - ($discountPercent / 100));
+
+    $priceCandidates = [
+        number_format($basePrice, 2, '.', ''),
+        number_format($basePrice, 2, '.', ','),
+        (string) ((int) round($basePrice)),
+        number_format($effectivePrice, 2, '.', ''),
+        number_format($effectivePrice, 2, '.', ','),
+        (string) ((int) round($effectivePrice)),
+    ];
+
+    $textHaystack = normalize_product_search_text(implode(' ', array_merge([
+        $brand,
+        $name,
+        $tagline,
+        $specOne,
+        $specTwo,
+    ], $priceCandidates)));
+
+    if ($queryText !== '' && $textHaystack !== '' && strpos($textHaystack, $queryText) !== false) {
+        return true;
+    }
+
+    if ($queryDigits !== '') {
+        $digitHaystackParts = [];
+
+        foreach ($priceCandidates as $priceCandidate) {
+            $normalizedDigits = normalize_product_search_digits($priceCandidate);
+
+            if ($normalizedDigits !== '') {
+                $digitHaystackParts[] = $normalizedDigits;
+            }
+        }
+
+        $digitHaystack = implode(' ', $digitHaystackParts);
+
+        if ($digitHaystack !== '' && strpos($digitHaystack, $queryDigits) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function product_search_match_score($product, $queryText, $queryDigits)
+{
+    if (!is_array($product)) {
+        return -1;
+    }
+
+    $score = 0;
+    $brand = normalize_product_search_text(normalize_product_brand($product['brand'] ?? default_product_brand()));
+    $name = normalize_product_search_text($product['name'] ?? '');
+    $tagline = normalize_product_search_text($product['tagline'] ?? '');
+    $specOne = normalize_product_search_text($product['spec1'] ?? '');
+    $specTwo = normalize_product_search_text($product['spec2'] ?? '');
+
+    if ($queryText !== '') {
+        if ($name === $queryText) {
+            $score += 1200;
+        }
+
+        if ($brand === $queryText) {
+            $score += 1000;
+        }
+
+        if ($name !== '' && strpos($name, $queryText) === 0) {
+            $score += 920;
+        }
+
+        if ($name !== '' && strpos($name, $queryText) !== false) {
+            $score += 680;
+        }
+
+        if ($brand !== '' && strpos($brand, $queryText) === 0) {
+            $score += 660;
+        }
+
+        if ($brand !== '' && strpos($brand, $queryText) !== false) {
+            $score += 610;
+        }
+
+        if ($tagline !== '' && strpos($tagline, $queryText) !== false) {
+            $score += 520;
+        }
+
+        if ($specOne !== '' && strpos($specOne, $queryText) !== false) {
+            $score += 420;
+        }
+
+        if ($specTwo !== '' && strpos($specTwo, $queryText) !== false) {
+            $score += 420;
+        }
+    }
+
+    if ($queryDigits !== '') {
+        $basePrice = max(0, (float) ($product['price'] ?? 0));
+        $effectivePrice = product_reco_effective_price($product);
+        $basePriceDigits = normalize_product_search_digits(number_format($basePrice, 2, '.', ''));
+        $effectivePriceDigits = normalize_product_search_digits(number_format($effectivePrice, 2, '.', ''));
+
+        if ($basePriceDigits !== '' && strpos($basePriceDigits, $queryDigits) !== false) {
+            $score += $basePriceDigits === $queryDigits ? 700 : 470;
+        }
+
+        if ($effectivePriceDigits !== '' && strpos($effectivePriceDigits, $queryDigits) !== false) {
+            $score += $effectivePriceDigits === $queryDigits ? 680 : 450;
+        }
+    }
+
+    return $score;
+}
+
 $products = load_products_repository();
 $productBrandOptions = load_product_brands_repository();
 $productBrandValueMap = product_brand_value_map($productBrandOptions);
@@ -720,6 +867,67 @@ if (!is_array($products) || !$products) {
     $products = [];
 }
 
+$searchQuery = trim((string) ($_GET['q'] ?? ''));
+$searchQueryText = normalize_product_search_text($searchQuery);
+$searchQueryDigits = normalize_product_search_digits($searchQuery);
+$hasProductSearchQuery = $searchQueryText !== '' || $searchQueryDigits !== '';
+$hasExplicitProductSelection = trim((string) ($_GET['product'] ?? '')) !== '';
+$isSearchResultsLanding = $hasProductSearchQuery && !$hasExplicitProductSelection;
+$searchMatchedProductKeys = [];
+$searchMatchedProducts = [];
+
+if ($hasProductSearchQuery) {
+    foreach ($products as $candidateKey => $candidateProduct) {
+        if (!is_array($candidateProduct)) {
+            continue;
+        }
+
+        if (!product_matches_search_query($candidateProduct, $searchQueryText, $searchQueryDigits)) {
+            continue;
+        }
+
+        $searchMatchedProducts[] = [
+            'key' => (string) $candidateKey,
+            'score' => product_search_match_score($candidateProduct, $searchQueryText, $searchQueryDigits),
+            'name' => normalize_product_search_text($candidateProduct['name'] ?? ''),
+        ];
+    }
+
+    usort($searchMatchedProducts, static function ($left, $right) {
+        $scoreCompare = ((int) ($right['score'] ?? 0)) <=> ((int) ($left['score'] ?? 0));
+
+        if ($scoreCompare !== 0) {
+            return $scoreCompare;
+        }
+
+        $nameCompare = strcmp((string) ($left['name'] ?? ''), (string) ($right['name'] ?? ''));
+
+        if ($nameCompare !== 0) {
+            return $nameCompare;
+        }
+
+        return strcmp((string) ($left['key'] ?? ''), (string) ($right['key'] ?? ''));
+    });
+
+    foreach ($searchMatchedProducts as $searchMatchedProduct) {
+        $matchedKey = trim((string) ($searchMatchedProduct['key'] ?? ''));
+
+        if ($matchedKey === '' || !isset($products[$matchedKey])) {
+            continue;
+        }
+
+        $searchMatchedProductKeys[] = $matchedKey;
+    }
+
+    if ($isSearchResultsLanding && $searchMatchedProductKeys !== []) {
+        $firstMatchKey = trim((string) $searchMatchedProductKeys[0]);
+
+        if ($firstMatchKey !== '' && isset($products[$firstMatchKey])) {
+            $productKey = $firstMatchKey;
+        }
+    }
+}
+
 if (!isset($products[$productKey])) {
     $keys = array_keys($products);
     $productKey = isset($keys[0]) ? $keys[0] : null;
@@ -767,10 +975,34 @@ if (!$selectedInformationImages) {
 }
 
 $selectedInformationImages = array_values($selectedInformationImages);
+$searchResultCount = count($searchMatchedProductKeys);
+$searchHasResults = $hasProductSearchQuery && $searchResultCount > 0;
 $recommendedProductKeys = [];
 $recommendationLimit = 3;
 
-if (!$isAdminView) {
+if ($searchHasResults) {
+    $searchRecommendationLimit = $isSearchResultsLanding ? 24 : 8;
+
+    foreach ($searchMatchedProductKeys as $matchedProductKey) {
+        $matchedKey = trim((string) $matchedProductKey);
+
+        if ($matchedKey === '' || !isset($products[$matchedKey])) {
+            continue;
+        }
+
+        if (!$isSearchResultsLanding && $matchedKey === $productKey) {
+            continue;
+        }
+
+        $recommendedProductKeys[] = $matchedKey;
+
+        if (count($recommendedProductKeys) >= $searchRecommendationLimit) {
+            break;
+        }
+    }
+}
+
+if (!$isAdminView && !$searchHasResults) {
     $recommendationNowDateTime = function_exists('customer_order_datetime_from_timestamp')
         ? customer_order_datetime_from_timestamp()
         : (new DateTimeImmutable('now', product_reco_timezone()));
@@ -936,7 +1168,7 @@ if (!$isAdminView) {
     }
 }
 
-if (!$recommendedProductKeys) {
+if (!$recommendedProductKeys && !$hasProductSearchQuery) {
     foreach ((array) ($selectedProduct['recommendations'] ?? []) as $fallbackRecommendedKey) {
         $fallbackKey = trim((string) $fallbackRecommendedKey);
 
@@ -961,6 +1193,10 @@ if (!$isAdminView && function_exists('customer_order_build_equipment_availabilit
         'horizon_days' => 1095,
     ]);
 }
+
+$pageTitleLabel = $isSearchResultsLanding
+    ? 'Search Results'
+    : ($selectedBrand . ' ' . $selectedProductName);
 ?>
 
 <!DOCTYPE html>
@@ -968,7 +1204,7 @@ if (!$isAdminView && function_exists('customer_order_build_equipment_availabilit
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Nifty Fifty | <?php echo htmlspecialchars($selectedBrand . ' ' . $selectedProductName, ENT_QUOTES, 'UTF-8'); ?></title>
+    <title>The Nifty Fifty | <?php echo htmlspecialchars($pageTitleLabel, ENT_QUOTES, 'UTF-8'); ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -990,7 +1226,7 @@ if (!$isAdminView && function_exists('customer_order_build_equipment_availabilit
             <?php endif; ?>
 
             <form class="topbar-search" action="#" method="get">
-                <input type="search" name="q" placeholder="Search cameras, services, or rentals">
+                <input type="search" name="q" placeholder="Search cameras, services, or rentals" value="<?php echo htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8'); ?>">
             </form>
 
             <?php if (!$isAdminView): ?>
@@ -1085,10 +1321,20 @@ if (!$isAdminView && function_exists('customer_order_build_equipment_availabilit
                     <a class="catalog-back" href="<?php echo htmlspecialchars($productListPath, ENT_QUOTES, 'UTF-8'); ?>" aria-label="Back to featured products">
                         <span class="catalog-back-icon" aria-hidden="true"></span>
                     </a>
-                    <h1>Product</h1>
+                    <h1><?php echo $isSearchResultsLanding ? 'Search Results' : 'Product'; ?></h1>
+
+                    <?php if ($hasProductSearchQuery): ?>
+                        <p style="margin: 0.35rem 0 0; font-size: 0.82rem; color: rgba(255, 255, 255, 0.78);">
+                            <?php if ($searchHasResults): ?>
+                                Showing <?php echo htmlspecialchars((string) $searchResultCount, ENT_QUOTES, 'UTF-8'); ?> result<?php echo $searchResultCount === 1 ? '' : 's'; ?> for "<?php echo htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8'); ?>".
+                            <?php else: ?>
+                                No product matched "<?php echo htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8'); ?>".
+                            <?php endif; ?>
+                        </p>
+                    <?php endif; ?>
                 </div>
 
-                <?php if ($isAdminView): ?>
+                <?php if ($isAdminView && !$isSearchResultsLanding): ?>
                     <aside class="product-specs-card product-specs-card-admin-left">
                         <div class="admin-specs-head">
                             <h2>Full Specifications</h2>
@@ -1169,18 +1415,26 @@ if (!$isAdminView && function_exists('customer_order_build_equipment_availabilit
                         </div>
                     </aside>
                 <?php else: ?>
-                    <article class="product-primary-card">
-                        <div class="product-device-placeholder">
-                            <img
-                                class="product-device-image"
-                                src="<?php echo htmlspecialchars($assetBase . $selectedProduct['cameraImage'], ENT_QUOTES, 'UTF-8'); ?>"
-                                alt="<?php echo htmlspecialchars($selectedBrand . ' ' . $selectedProductName, ENT_QUOTES, 'UTF-8'); ?>"
-                            >
-                        </div>
-                    </article>
+                    <?php if (!$isSearchResultsLanding): ?>
+                        <article class="product-primary-card">
+                            <div class="product-device-placeholder">
+                                <img
+                                    class="product-device-image"
+                                    src="<?php echo htmlspecialchars($assetBase . $selectedProduct['cameraImage'], ENT_QUOTES, 'UTF-8'); ?>"
+                                    alt="<?php echo htmlspecialchars($selectedBrand . ' ' . $selectedProductName, ENT_QUOTES, 'UTF-8'); ?>"
+                                >
+                            </div>
+                        </article>
+                    <?php endif; ?>
 
                     <section class="product-recommendations">
-                        <h2>Recommendations</h2>
+                        <h2>
+                            <?php if ($hasProductSearchQuery): ?>
+                                <?php echo $isSearchResultsLanding ? 'Search Results' : 'More Results'; ?>
+                            <?php else: ?>
+                                Recommendations
+                            <?php endif; ?>
+                        </h2>
 
                         <div class="recommendation-list">
                             <?php if ($recommendedProductKeys): ?>
@@ -1193,7 +1447,8 @@ if (!$isAdminView && function_exists('customer_order_build_equipment_availabilit
                                         $recommendedBrand = normalize_product_brand($recommended['brand'] ?? 'Canon');
                                         $recommendedName = trim((string) ($recommended['name'] ?? ''));
                                     ?>
-                                    <a class="recommendation-card" href="?product=<?php echo urlencode((string) $recommendedKey); ?>" style="display: flex; flex-direction: column; gap: 0.8rem; text-decoration: none; color: inherit;">
+                                    <a class="recommendation-card" href="?product=<?php echo urlencode((string) $recommendedKey); ?><?php echo $hasProductSearchQuery ? '&amp;q=' . rawurlencode($searchQuery) : ''; ?>" style="display: flex; flex-direction: column; gap: 0.8rem; text-decoration: none; color: inherit;">
+                                        <span style="font-weight: 700; font-size: 0.95rem; line-height: 1.3; color: #f4f4f4;"><?php echo htmlspecialchars($recommendedBrand . ' ' . $recommendedName, ENT_QUOTES, 'UTF-8'); ?></span>
                                         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
                                             <p style="margin: 0; font-size: 0.85rem; line-height: 1.4; flex: 1;"><?php echo htmlspecialchars((string) ($recommended['tagline'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></p>
                                             <div class="recommendation-thumb" style="width: 80px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
@@ -1209,7 +1464,13 @@ if (!$isAdminView && function_exists('customer_order_build_equipment_availabilit
                                     </a>
                                 <?php endforeach; ?>
                             <?php else: ?>
-                                <p style="margin: 0; font-size: 0.9rem; color: rgba(244, 244, 244, 0.82);">No recommendations available yet.</p>
+                                <p style="margin: 0; font-size: 0.9rem; color: rgba(244, 244, 244, 0.82);">
+                                    <?php if ($hasProductSearchQuery): ?>
+                                        <?php echo $isSearchResultsLanding ? 'No products matched your search.' : 'No additional products matched your search.'; ?>
+                                    <?php else: ?>
+                                        No recommendations available yet.
+                                    <?php endif; ?>
+                                </p>
                             <?php endif; ?>
                         </div>
                     </section>
@@ -1217,6 +1478,21 @@ if (!$isAdminView && function_exists('customer_order_build_equipment_availabilit
             </aside>
 
             <section class="product-main-column">
+                <?php if ($isSearchResultsLanding): ?>
+                    <article class="product-information-card">
+                        <div class="product-panel-head">
+                            <div class="product-panel-label">Search</div>
+                        </div>
+
+                        <div class="admin-static-view" style="padding: 1.5rem 1.8rem 1.8rem;">
+                            <?php if ($searchHasResults): ?>
+                                <p class="product-information-copy" style="margin: 0; color: rgba(244, 244, 244, 0.9);">Select any product in the Search Results list to open its full details, specs, and availability calendar.</p>
+                            <?php else: ?>
+                                <p class="product-information-copy" style="margin: 0; color: rgba(244, 244, 244, 0.9);">No matches yet. Try a different name, short description keyword, or price.</p>
+                            <?php endif; ?>
+                        </div>
+                    </article>
+                <?php else: ?>
                 <?php if ($isAdminView): ?>
                     <article class="product-primary-card admin-cover-identity-card">
                         <div class="admin-cover-identity-grid">
@@ -1425,9 +1701,10 @@ if (!$isAdminView && function_exists('customer_order_build_equipment_availabilit
                         <div class="calendar-grid" id="calendar-grid-container"></div>
                     </article>
                 <?php endif; ?>
+                <?php endif; ?>
             </section>
 
-            <?php if (!$isAdminView): ?>
+            <?php if (!$isAdminView && !$isSearchResultsLanding): ?>
             <aside class="product-specs-card">
                 <div class="admin-specs-head">
                     <h2>Full Specifications</h2>

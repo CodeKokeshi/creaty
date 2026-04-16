@@ -118,6 +118,7 @@ $conn->query(
 		first_name VARCHAR(100) NOT NULL,
 		last_name VARCHAR(100) NOT NULL,
 		email VARCHAR(190) NOT NULL UNIQUE,
+		customer_phone VARCHAR(32) NOT NULL DEFAULT '',
 		skill_level VARCHAR(32) NOT NULL DEFAULT 'Beginner',
 		password VARCHAR(255) NOT NULL,
 		email_verified_at TIMESTAMP NULL DEFAULT NULL,
@@ -169,6 +170,12 @@ $customerSkillLevelColumnResult = $conn->query("SHOW COLUMNS FROM {$customerAcco
 
 if ($customerSkillLevelColumnResult && $customerSkillLevelColumnResult->num_rows === 0) {
 	$conn->query("ALTER TABLE {$customerAccountsTable} ADD COLUMN skill_level VARCHAR(32) NOT NULL DEFAULT 'Beginner' AFTER email");
+}
+
+$customerPhoneColumnResult = $conn->query("SHOW COLUMNS FROM {$customerAccountsTable} LIKE 'customer_phone'");
+
+if ($customerPhoneColumnResult && $customerPhoneColumnResult->num_rows === 0) {
+	$conn->query("ALTER TABLE {$customerAccountsTable} ADD COLUMN customer_phone VARCHAR(32) NOT NULL DEFAULT '' AFTER email");
 }
 
 $conn->query(

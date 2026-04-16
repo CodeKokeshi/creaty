@@ -242,8 +242,10 @@ function message_notification_view_data(array $notification): array
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminHomePath, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($homeLabel, ENT_QUOTES, 'UTF-8'); ?></a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
-                        <li><hr class="dropdown-divider"></li>
+                        <?php if (!$isStaffSession): ?>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                        <?php endif; ?>
                         <li><a class="dropdown-item account-logout-item" href="<?php echo htmlspecialchars($logoutPath, ENT_QUOTES, 'UTF-8'); ?>">Log Out</a></li>
                     </ul>
                 </div>

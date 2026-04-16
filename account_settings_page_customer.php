@@ -51,6 +51,31 @@ function normalize_customer_account_skill_level($value)
     return default_customer_account_skill_level();
 }
 
+function normalize_customer_account_phone($value)
+{
+    $rawPhone = trim((string) $value);
+
+    if ($rawPhone === '') {
+        return '';
+    }
+
+    $digits = preg_replace('/\D+/', '', $rawPhone) ?? '';
+
+    if (strlen($digits) === 12 && strpos($digits, '63') === 0) {
+        $digits = '0' . substr($digits, 2);
+    }
+
+    if (strlen($digits) === 10 && strpos($digits, '9') === 0) {
+        $digits = '0' . $digits;
+    }
+
+    if (strlen($digits) !== 11 || strpos($digits, '09') !== 0) {
+        return '';
+    }
+
+    return $digits;
+}
+
 $cartCount = (int) ($_SESSION['customer_cart_count'] ?? 0);
 $accountLabel = 'Account';
 $customerNotificationCenter = build_customer_notification_center($assetBase, $isCustomerLoggedIn);
@@ -60,6 +85,7 @@ $nameParts = preg_split('/\s+/', $fullName) ?: [];
 $firstNameDefault = $nameParts[0] ?? '';
 $lastNameDefault = count($nameParts) > 1 ? implode(' ', array_slice($nameParts, 1)) : '';
 $emailDefault = (string) ($_SESSION['customer_email'] ?? '');
+$phoneDefault = normalize_customer_account_phone($_SESSION['customer_phone'] ?? '');
 
 $customerAccountsTable = $customerAccountsTable ?? 'customer_accounts';
 $customerId = (string) ($_SESSION['customer_id'] ?? '');
@@ -67,7 +93,7 @@ $customerSkillLevelOptions = customer_account_skill_level_options();
 $skillLevelValue = default_customer_account_skill_level();
 
 if ($customerId !== '') {
-    $customerProfileStmt = $conn->prepare("SELECT first_name, last_name, email, skill_level FROM {$customerAccountsTable} WHERE id = ? LIMIT 1");
+    $customerProfileStmt = $conn->prepare("SELECT first_name, last_name, email, customer_phone, skill_level FROM {$customerAccountsTable} WHERE id = ? LIMIT 1");
 
     if ($customerProfileStmt instanceof mysqli_stmt) {
         $customerIdInt = (int) $customerId;
@@ -94,6 +120,12 @@ if ($customerId !== '') {
                 $emailDefault = $resolvedEmail;
             }
 
+            $resolvedPhone = normalize_customer_account_phone($customerProfile['customer_phone'] ?? $phoneDefault);
+
+            if ($resolvedPhone !== '') {
+                $phoneDefault = $resolvedPhone;
+            }
+
             $skillLevelValue = normalize_customer_account_skill_level($customerProfile['skill_level'] ?? $skillLevelValue);
         }
     }
@@ -102,7 +134,7 @@ if ($customerId !== '') {
 $firstNameValue = $firstNameDefault;
 $lastNameValue = $lastNameDefault;
 $emailValue = $emailDefault;
-$phoneValue = '';
+$phoneValue = $phoneDefault;
 $customerGcashProfile = find_customer_gcash_profile_for_customer($customerId);
 $gcashNameValue = (string) ($customerGcashProfile['gcash_name'] ?? '');
 $gcashNumberValue = (string) ($customerGcashProfile['gcash_number'] ?? '');
@@ -119,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $firstNameValue = trim($_POST['first_name'] ?? '');
     $lastNameValue = trim($_POST['last_name'] ?? '');
     $emailValue = trim($_POST['email'] ?? '');
-    $phoneValue = trim($_POST['phone'] ?? '');
+    $phoneValue = normalize_customer_account_phone($_POST['phone'] ?? '');
     $skillLevelValue = normalize_customer_account_skill_level($_POST['skill_level'] ?? $skillLevelValue);
     $gcashNameValue = trim($_POST['gcash_name'] ?? $gcashNameValue);
     $gcashNumberValue = trim($_POST['gcash_number'] ?? $gcashNumberValue);
@@ -130,22 +162,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postalValue = trim($_POST['postal_code'] ?? '');
 
     if ($formAction === 'profile_info') {
-        $updateSkillStmt = $conn->prepare("UPDATE {$customerAccountsTable} SET skill_level = ? WHERE id = ? LIMIT 1");
-
-        if ($updateSkillStmt instanceof mysqli_stmt) {
-            $customerIdInt = (int) $customerId;
-            $updateSkillStmt->bind_param('si', $skillLevelValue, $customerIdInt);
-
-            if ($updateSkillStmt->execute()) {
-                $_SESSION['customer_skill_level'] = $skillLevelValue;
-                $infoMessage = 'Skill level updated successfully. Other personal information fields are still preview only.';
-            } else {
-                $infoMessage = 'Unable to save skill level right now.';
-            }
-
-            $updateSkillStmt->close();
+        if ($phoneValue === '') {
+            $infoMessage = 'Please enter a valid contact number (ex. 09XXXXXXXXX).';
         } else {
-            $infoMessage = 'Unable to save skill level right now.';
+            $updateSkillStmt = $conn->prepare("UPDATE {$customerAccountsTable} SET skill_level = ?, customer_phone = ? WHERE id = ? LIMIT 1");
+
+            if ($updateSkillStmt instanceof mysqli_stmt) {
+                $customerIdInt = (int) $customerId;
+                $updateSkillStmt->bind_param('ssi', $skillLevelValue, $phoneValue, $customerIdInt);
+
+                if ($updateSkillStmt->execute()) {
+                    $_SESSION['customer_skill_level'] = $skillLevelValue;
+                    $_SESSION['customer_phone'] = $phoneValue;
+                    $infoMessage = 'Skill level and contact number updated successfully. Other personal information fields are still preview only.';
+                } else {
+                    $infoMessage = 'Unable to save profile details right now.';
+                }
+
+                $updateSkillStmt->close();
+            } else {
+                $infoMessage = 'Unable to save profile details right now.';
+            }
         }
     } elseif ($formAction === 'gcash_info') {
         $savedGcashProfile = upsert_customer_gcash_profile_for_customer($customerId, $gcashNameValue, $gcashNumberValue);
@@ -312,7 +349,7 @@ $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No addr
 
                         <label>
                             <span>Contact Number</span>
-                            <input type="text" name="phone" value="<?php echo htmlspecialchars($phoneValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="09xx xxx xxxx">
+                            <input type="text" name="phone" value="<?php echo htmlspecialchars($phoneValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="09xx xxx xxxx" inputmode="numeric" pattern="^09[0-9]{9}$" maxlength="11" required>
                         </label>
 
                         <label>

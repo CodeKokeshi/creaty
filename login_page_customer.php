@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!filter_var($emailValue, FILTER_VALIDATE_EMAIL)) {
         $errorMessage = 'Please enter a valid email address.';
     } else {
-        $loginStmt = $conn->prepare("SELECT id, first_name, last_name, email, skill_level, password, email_verified_at FROM {$customerAccountsTable} WHERE email = ? LIMIT 1");
+        $loginStmt = $conn->prepare("SELECT id, first_name, last_name, email, customer_phone, skill_level, password, email_verified_at FROM {$customerAccountsTable} WHERE email = ? LIMIT 1");
         $loginStmt->bind_param('s', $emailValue);
         $loginStmt->execute();
         $customerResult = $loginStmt->get_result();
@@ -86,6 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['customer_id'] = (int) $customer['id'];
             $_SESSION['customer_name'] = trim(($customer['first_name'] ?? '') . ' ' . ($customer['last_name'] ?? ''));
             $_SESSION['customer_email'] = $customer['email'];
+            $_SESSION['customer_phone'] = trim((string) ($customer['customer_phone'] ?? ''));
             $_SESSION['customer_skill_level'] = $customerSkillLevel;
 
             if (!isset($_SESSION['customer_cart_count'])) {

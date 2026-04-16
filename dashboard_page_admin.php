@@ -31,9 +31,7 @@ $cartCount = 0;
 $accountLabel = $isStaffSession ? 'STAFF' : 'Admin';
 $adminHomePath = $routeBase . 'dashboard/';
 $logoutPath = $routeBase . 'logout.php';
-$notificationsPath = $isStaffSession
-    ? ($adminHomePath . '?admin_view=bookings')
-    : ($routeBase . 'notifications/');
+$notificationsPath = $routeBase . 'notifications/';
 $liveUpdatesEndpoint = $routeBase . 'notifications/live_updates.php';
 $uploadDeliveryReceiptEndpoint = $routeBase . 'dashboard/upload_delivery_receipt.php';
 $closeDeliveryLegEndpoint = $routeBase . 'dashboard/close_delivery_leg.php';

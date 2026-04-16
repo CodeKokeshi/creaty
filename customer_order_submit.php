@@ -26,6 +26,32 @@ if (!isset($_SESSION['customer_id']) || isset($_SESSION['user_id'])) {
     ]);
 }
 
+function normalize_customer_booking_phone($value)
+{
+    $rawPhone = trim((string) $value);
+
+    if ($rawPhone === '') {
+        return '';
+    }
+
+    $digits = preg_replace('/\D+/', '', $rawPhone) ?? '';
+
+    if (strlen($digits) === 12 && strpos($digits, '63') === 0) {
+        $digits = '0' . substr($digits, 2);
+    }
+
+    if (strlen($digits) === 10 && strpos($digits, '9') === 0) {
+        $digits = '0' . $digits;
+    }
+
+    if (strlen($digits) !== 11 || strpos($digits, '09') !== 0) {
+        return '';
+    }
+
+    return $digits;
+}
+
+require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/customer_orders_repository.php';
 require_once __DIR__ . '/config/message_notifications_repository.php';
 
@@ -53,6 +79,32 @@ if (!is_array($items) || count($items) === 0) {
 $customerId = (string) ($_SESSION['customer_id'] ?? '');
 $customerName = (string) ($_SESSION['customer_name'] ?? ('Customer #' . $customerId));
 $customerEmail = (string) ($_SESSION['customer_email'] ?? '');
+$customerAccountsTable = $customerAccountsTable ?? 'customer_accounts';
+
+$customerPhone = '';
+$profileStmt = $conn->prepare("SELECT customer_phone FROM {$customerAccountsTable} WHERE id = ? LIMIT 1");
+
+if ($profileStmt instanceof mysqli_stmt) {
+    $customerIdInt = (int) $customerId;
+    $profileStmt->bind_param('i', $customerIdInt);
+    $profileStmt->execute();
+    $profileResult = $profileStmt->get_result();
+    $profileRow = $profileResult ? $profileResult->fetch_assoc() : null;
+    $profileStmt->close();
+
+    if (is_array($profileRow)) {
+        $customerPhone = normalize_customer_booking_phone($profileRow['customer_phone'] ?? '');
+    }
+}
+
+if ($customerPhone === '') {
+    customer_order_submit_respond(422, [
+        'ok' => false,
+        'message' => 'Please add your contact number in Account Settings before booking.',
+    ]);
+}
+
+$_SESSION['customer_phone'] = $customerPhone;
 
 $submitErrorMessage = '';
 

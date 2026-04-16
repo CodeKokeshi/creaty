@@ -3464,12 +3464,23 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
     $returnTime = normalize_customer_order_time($payload['returnTime'] ?? '');
     $receivingMethod = normalize_customer_order_receiving_method($payload['receivingMethod'] ?? '');
     $returningMethod = normalize_customer_order_returning_method($payload['returningMethod'] ?? '');
+    $paymentMethod = normalize_customer_order_payment_method($payload['paymentMethod'] ?? '');
     $requiresIdentityDocuments = $receivingMethod === 'delivery' || $returningMethod === 'delivery';
     $validIdImageDataUrl = trim((string) ($payload['validIdImageDataUrl'] ?? ''));
     $selfieWithIdImageDataUrl = trim((string) ($payload['selfieWithIdImageDataUrl'] ?? ''));
 
     if ($items === []) {
         $errorMessage = 'At least one item is required to create a booking.';
+        return null;
+    }
+
+    if ($paymentMethod === '') {
+        $errorMessage = 'Please select a valid payment method.';
+        return null;
+    }
+
+    if ($receivingMethod === 'delivery' && $paymentMethod !== 'gcash') {
+        $errorMessage = 'Receiving via delivery requires GCash payment.';
         return null;
     }
 
@@ -3518,7 +3529,7 @@ function append_customer_order_for_customer($customerId, $customerName, $custome
         'selfie_with_id_uploaded_at' => '',
         'cancel_reason' => '',
         'canceled_by' => '',
-        'payment_method' => $payload['paymentMethod'] ?? '',
+        'payment_method' => $paymentMethod,
         'payment_receipt_path' => '',
         'payment_receipt_uploaded_at' => '',
         'receive_delivery_status' => $receivingMethod === 'delivery'

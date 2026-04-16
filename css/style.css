@@ -4391,6 +4391,30 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     text-align: center;
 }
 
+.cart-booking-payment-note {
+    margin: -0.35rem 0 0;
+    padding: 0 0.2rem;
+    text-align: center;
+    color: #ffe3a7;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    font-weight: 600;
+}
+
+.cart-booking-note-link {
+    justify-self: center;
+    color: #a6ccff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 0.12em;
+}
+
+.cart-booking-note-link:hover,
+.cart-booking-note-link:focus-visible {
+    color: #d1e4ff;
+}
+
 .product-calendar-card {
     background: #dbdbdb;
     color: #111214;
@@ -4590,6 +4614,7 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 }
 
 .topbar-search {
+    position: relative;
     width: 100%;
     min-width: 0;
 }
@@ -4602,6 +4627,148 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     background: #e3e3e3;
     color: #111214;
     padding: 0 1.1rem;
+}
+
+.topbar-search-suggestions {
+    position: absolute;
+    top: calc(100% + 0.45rem);
+    left: 0;
+    right: 0;
+    z-index: 35;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(18, 19, 22, 0.98);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.42);
+    max-height: min(68vh, 420px);
+    overflow-y: auto;
+    backdrop-filter: blur(10px);
+}
+
+.topbar-search-suggestion {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 0.72rem;
+    align-items: flex-start;
+    padding: 0.62rem 0.74rem;
+    text-decoration: none;
+    color: var(--text);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.topbar-search-suggestion:first-child {
+    border-top: 0;
+}
+
+.topbar-search-suggestion:hover,
+.topbar-search-suggestion:focus-visible,
+.topbar-search-suggestion.is-active {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.topbar-search-suggestion:focus-visible {
+    outline: none;
+}
+
+.topbar-search-suggestion-thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.topbar-search-suggestion-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.topbar-search-suggestion-body {
+    min-width: 0;
+    display: grid;
+    gap: 0.34rem;
+}
+
+.topbar-search-suggestion-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.topbar-search-suggestion-title {
+    min-width: 0;
+    font-size: 0.86rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.topbar-search-suggestion-type {
+    flex-shrink: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(221, 229, 49, 0.55);
+    color: #dde531;
+    background: rgba(221, 229, 49, 0.14);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.12rem 0.44rem;
+}
+
+.topbar-search-suggestion-description {
+    font-size: 0.74rem;
+    line-height: 1.35;
+    color: rgba(244, 244, 244, 0.78);
+}
+
+.topbar-search-suggestion-price {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.topbar-search-price-original {
+    color: rgba(244, 244, 244, 0.55);
+    text-decoration: line-through;
+    font-size: 0.72rem;
+}
+
+.topbar-search-price-discounted {
+    color: #f7fb8f;
+    font-size: 0.79rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.topbar-search-price-badge {
+    border-radius: 999px;
+    border: 1px solid rgba(255, 179, 105, 0.62);
+    background: rgba(255, 179, 105, 0.18);
+    color: #ffc67f;
+    font-size: 0.63rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 0.1rem 0.38rem;
+}
+
+.topbar-search-loading,
+.topbar-search-empty {
+    padding: 0.76rem 0.85rem;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: rgba(244, 244, 244, 0.86);
+}
+
+.topbar-search-empty {
+    color: rgba(244, 244, 244, 0.68);
 }
 
 .topbar-cart {
@@ -8176,6 +8343,21 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
         grid-area: search;
     }
 
+    .topbar-search-suggestions {
+        max-height: min(62vh, 360px);
+    }
+
+    .topbar-search-suggestion {
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 0.62rem;
+        padding: 0.58rem 0.62rem;
+    }
+
+    .topbar-search-suggestion-thumb {
+        width: 48px;
+        height: 48px;
+    }
+
     .topbar-link:not(.topbar-help) {
         grid-area: message;
     }
@@ -8333,6 +8515,18 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
 
     .section-nav-filter::after {
         display: none;
+    }
+
+    .topbar-search-suggestion-title {
+        font-size: 0.81rem;
+    }
+
+    .topbar-search-suggestion-description {
+        font-size: 0.71rem;
+    }
+
+    .topbar-search-price-discounted {
+        font-size: 0.76rem;
     }
 
     .section-nav > a,
