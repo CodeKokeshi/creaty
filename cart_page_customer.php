@@ -198,7 +198,7 @@ if ($isCustomerLoggedIn) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Nifty Fifty | Cart</title>
+    <title>The Nifty Fifty | Reservation</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -221,7 +221,7 @@ if ($isCustomerLoggedIn) {
                 <input type="search" name="q" placeholder="Search cameras, services, or rentals">
             </form>
 
-            <a class="topbar-cart" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>customer-cart/" aria-label="Cart">
+            <a class="topbar-cart" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>customer-cart/" aria-label="Reservation">
                 <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cart_icon.svg" alt="">
                 <span class="cart-count"><?php echo $cartCount; ?></span>
             </a>
@@ -234,7 +234,7 @@ if ($isCustomerLoggedIn) {
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Reservation</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                         <li><a class="dropdown-item" href="#">Help Center</a></li>
@@ -268,7 +268,7 @@ if ($isCustomerLoggedIn) {
                     data-cart-nav="cart"
                     <?php echo $initialCartView === 'cart' ? 'aria-current="page"' : ''; ?>
                 >
-                    Cart
+                    Reservation
                 </button>
                 <button
                     type="button"
@@ -290,11 +290,11 @@ if ($isCustomerLoggedIn) {
                     <a class="catalog-back" href="<?php echo htmlspecialchars($productListPath, ENT_QUOTES, 'UTF-8'); ?>" aria-label="Back to featured products">
                         <span class="catalog-back-icon" aria-hidden="true"></span>
                     </a>
-                    <h1 data-cart-main-heading>CART</h1>
+                    <h1 data-cart-main-heading>RESERVATION</h1>
                 </div>
 
                 <div class="cart-items-panel" data-cart-items-panel>
-                    <p class="cart-items-empty" data-cart-empty-message>Your cart is empty. Add event packages or camera rentals to continue.</p>
+                    <p class="cart-items-empty" data-cart-empty-message>Your reservation is empty. Add event packages or camera rentals to continue.</p>
                 </div>
 
                 <section class="cart-terms-block">
@@ -330,8 +330,15 @@ if ($isCustomerLoggedIn) {
 
                     <p class="cart-order-status-copy">Track your reservations and current fulfillment status.</p>
 
+                    <div class="cart-order-status-table-head" data-cart-orders-head hidden aria-hidden="true">
+                        <span>Order / Items</span>
+                        <span>Schedule</span>
+                        <span>Status</span>
+                        <span>Details</span>
+                        <span class="cart-order-status-table-head-actions">Actions</span>
+                    </div>
                     <div class="profile-order-list" data-cart-orders-list aria-label="Order status list"></div>
-                    <p class="cart-order-status-empty" data-cart-orders-empty hidden>No orders yet. Confirm a booking to see it here.</p>
+                    <p class="cart-order-status-empty" data-cart-orders-empty hidden>No orders yet. Confirm a reservation to see it here.</p>
                 </section>
             </div>
 
@@ -486,9 +493,9 @@ if ($isCustomerLoggedIn) {
                         <option value="cash-meetup"<?php echo $isServicesCartInitialView ? ' selected' : ''; ?>>Cash on Meetup</option>
                     </select>
 
-                    <button class="cart-confirm-button" type="button">CONFIRM BOOKING</button>
+                    <button class="cart-confirm-button" type="button">CONFIRM RESERVATION</button>
 
-                    <p class="cart-booking-note" data-cart-booking-note>Demo flow only: no real booking or payment will be processed.</p>
+                    <p class="cart-booking-note" data-cart-booking-note>Demo flow only: no real reservation or payment will be processed.</p>
                     <p class="cart-booking-payment-note" data-cart-booking-payment-note hidden>Receiving via delivery requires GCash payment.</p>
                     <a class="cart-booking-note-link" data-cart-booking-note-link href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>" hidden>Open Account Settings</a>
                 </section>
@@ -516,8 +523,8 @@ if ($isCustomerLoggedIn) {
     <section class="profile-modal cart-order-cancel-modal" data-cart-order-cancel-modal hidden>
         <div class="profile-modal-backdrop" data-cart-order-cancel-close></div>
         <div class="profile-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-order-cancel-title">
-            <h3 id="cart-order-cancel-title">Cancel booking</h3>
-            <p>Please tell us why you want to cancel this booking.</p>
+            <h3 id="cart-order-cancel-title">Cancel reservation</h3>
+            <p>Please tell us why you want to cancel this reservation.</p>
             <textarea data-cart-order-cancel-reason placeholder="Write your reason here" maxlength="500"></textarea>
             <p class="cart-order-cancel-error" data-cart-order-cancel-error hidden></p>
             <div class="profile-modal-actions">
@@ -570,7 +577,7 @@ if ($isCustomerLoggedIn) {
             </div>
 
             <div class="profile-modal-actions">
-                <button type="button" class="profile-order-action primary" data-cart-gcash-continue>Continue Booking</button>
+                <button type="button" class="profile-order-action primary" data-cart-gcash-continue>Continue Reservation</button>
             </div>
         </div>
     </section>
@@ -622,7 +629,7 @@ if ($isCustomerLoggedIn) {
 
             <label class="cart-delivery-upload-field" for="cart-delivery-upload-reference">
                 <span>Delivery Reference (optional)</span>
-                <input id="cart-delivery-upload-reference" type="text" maxlength="120" data-cart-delivery-upload-reference placeholder="Tracking number or booking reference">
+                <input id="cart-delivery-upload-reference" type="text" maxlength="120" data-cart-delivery-upload-reference placeholder="Tracking number or reservation reference">
             </label>
 
             <label class="cart-delivery-upload-field" for="cart-delivery-upload-notes">

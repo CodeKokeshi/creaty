@@ -1,5 +1,31 @@
 [
     {
+        "id": "cust-notif-20260427111116-52493146",
+        "customer_id": "1",
+        "type": "order-status",
+        "order_id": "ORD-20260427190116-F02720B6",
+        "status_token": "canceled",
+        "title": "Order canceled: ORD-20260427190116-F02720B6",
+        "summary": "Reason: Failure to upload payment receipt.",
+        "target_view": "order-status",
+        "is_read": false,
+        "created_at": "2026-04-27T11:11:16+00:00",
+        "read_at": ""
+    },
+    {
+        "id": "cust-notif-20260427110020-3e3eb21c",
+        "customer_id": "4",
+        "type": "order-status",
+        "order_id": "ORD-20260413231540-D1D3AD10",
+        "status_token": "completed",
+        "title": "Order status updated: ORD-20260413231540-D1D3AD10",
+        "summary": "Your order status is now Completed.",
+        "target_view": "order-status",
+        "is_read": false,
+        "created_at": "2026-04-27T11:00:20+00:00",
+        "read_at": ""
+    },
+    {
         "id": "cust-notif-20260416054300-4e91aa65",
         "customer_id": "4",
         "type": "order-status",

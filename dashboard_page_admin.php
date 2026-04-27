@@ -39,6 +39,12 @@ $manageBrandsPath = $routeBase . 'brands/';
 $manageCategoriesPath = $routeBase . 'categories/';
 $setGcashQrPath = $routeBase . 'gcash-qr/';
 $editTocPath = $routeBase . 'toc/';
+$featuredProductsPath = $adminHomePath . '?catalog=featured#featured-products-title';
+$adminDefaultView = strtolower(trim((string) ($_GET['catalog'] ?? '')));
+
+if (!in_array($adminDefaultView, ['dashboard', 'featured'], true)) {
+    $adminDefaultView = 'dashboard';
+}
 
 $allowedAdminPanels = $isStaffSession
     ? ['equipments', 'bookings']
@@ -595,6 +601,117 @@ function admin_resolve_order_thumbnail_relative_path($productKey, $sourceRelativ
     return $existingThumbnailRelativePath !== '' ? $existingThumbnailRelativePath : $normalizedSourceRelativePath;
 }
 
+function admin_dashboard_format_currency($amount)
+{
+    return 'P ' . number_format((float) $amount, 2);
+}
+
+function admin_dashboard_chart_geometry($values, $width = 420, $height = 180, $padding = 18)
+{
+    $normalizedValues = [];
+
+    foreach ((array) $values as $value) {
+        $numericValue = (float) $value;
+        $normalizedValues[] = $numericValue > 0 ? $numericValue : 0.0;
+    }
+
+    if ($normalizedValues === []) {
+        $normalizedValues = [0.0];
+    }
+
+    $maxValue = max($normalizedValues);
+    if ($maxValue <= 0) {
+        $maxValue = 1.0;
+    }
+
+    $pointCount = count($normalizedValues);
+    $innerWidth = max(1.0, (float) $width - ($padding * 2));
+    $innerHeight = max(1.0, (float) $height - ($padding * 2));
+    $baselineY = (float) $height - $padding;
+    $points = [];
+
+    foreach ($normalizedValues as $index => $value) {
+        $x = $pointCount === 1
+            ? ((float) $width / 2)
+            : ($padding + ($innerWidth * ((float) $index / max(1, $pointCount - 1))));
+        $y = $baselineY - (($value / $maxValue) * $innerHeight);
+        $points[] = [
+            'x' => $x,
+            'y' => $y,
+        ];
+    }
+
+    $linePathParts = [];
+    $polylinePoints = [];
+
+    foreach ($points as $index => $point) {
+        $xLabel = number_format((float) $point['x'], 2, '.', '');
+        $yLabel = number_format((float) $point['y'], 2, '.', '');
+        $polylinePoints[] = $xLabel . ',' . $yLabel;
+        $linePathParts[] = ($index === 0 ? 'M ' : 'L ') . $xLabel . ' ' . $yLabel;
+    }
+
+    $firstPoint = $points[0];
+    $lastPoint = $points[count($points) - 1];
+    $areaPath = implode(' ', $linePathParts)
+        . ' L ' . number_format((float) $lastPoint['x'], 2, '.', '') . ' ' . number_format($baselineY, 2, '.', '')
+        . ' L ' . number_format((float) $firstPoint['x'], 2, '.', '') . ' ' . number_format($baselineY, 2, '.', '')
+        . ' Z';
+
+    return [
+        'linePath' => implode(' ', $linePathParts),
+        'areaPath' => $areaPath,
+        'polylinePoints' => implode(' ', $polylinePoints),
+        'maxValue' => $maxValue,
+    ];
+}
+
+function admin_dashboard_build_conic_gradient($segments)
+{
+    $resolvedSegments = [];
+    $total = 0.0;
+
+    foreach ((array) $segments as $segment) {
+        if (!is_array($segment)) {
+            continue;
+        }
+
+        $amount = max(0.0, (float) ($segment['amount'] ?? 0));
+
+        if ($amount <= 0) {
+            continue;
+        }
+
+        $resolvedSegments[] = [
+            'color' => (string) ($segment['color'] ?? 'rgba(255,255,255,0.18)'),
+            'amount' => $amount,
+        ];
+        $total += $amount;
+    }
+
+    if ($total <= 0) {
+        return 'conic-gradient(rgba(255,255,255,0.08) 0deg 360deg)';
+    }
+
+    $parts = [];
+    $startAngle = 0.0;
+
+    foreach ($resolvedSegments as $segment) {
+        $sliceAngle = ((float) $segment['amount'] / $total) * 360;
+        $endAngle = $startAngle + $sliceAngle;
+        $parts[] = $segment['color'] . ' '
+            . number_format($startAngle, 2, '.', '') . 'deg '
+            . number_format($endAngle, 2, '.', '') . 'deg';
+        $startAngle = $endAngle;
+    }
+
+    if ($startAngle < 360) {
+        $parts[] = 'rgba(255,255,255,0.08) ' . number_format($startAngle, 2, '.', '') . 'deg 360deg';
+    }
+
+    return 'conic-gradient(' . implode(', ', $parts) . ')';
+}
+
 $adminUsersFlashMessage = (isset($_GET['created']) && (string) $_GET['created'] === '1')
     ? 'User account created successfully.'
     : '';
@@ -1139,6 +1256,54 @@ foreach ($customerBookingsRecords as $bookingRecord) {
     }
 }
 
+$dashboardRevenueRowsByMonth = [];
+
+foreach ($reportsMonthLabels as $monthNumber => $monthLabel) {
+    $dashboardRevenueRowsByMonth[$monthNumber] = [
+        'monthNumber' => (int) $monthNumber,
+        'monthLabel' => $monthLabel,
+        'transactions' => 0,
+        'revenue' => 0.0,
+    ];
+}
+
+foreach ($customerBookingsRecords as $bookingRecord) {
+    if (!is_array($bookingRecord)) {
+        continue;
+    }
+
+    $createdAtDateTime = admin_extract_order_report_datetime($bookingRecord);
+
+    if (!$createdAtDateTime instanceof DateTimeImmutable || (int) $createdAtDateTime->format('Y') !== $currentReportYear) {
+        continue;
+    }
+
+    $monthNumber = (int) $createdAtDateTime->format('n');
+
+    if (!isset($dashboardRevenueRowsByMonth[$monthNumber])) {
+        continue;
+    }
+
+    $statusToken = normalize_customer_order_status_token($bookingRecord['status'] ?? 'pending');
+    $bookingAmount = admin_calculate_booking_amount_without_penalty(
+        $bookingRecord,
+        $products,
+        $productNameLookup,
+        $archivedProductsByOriginalKey,
+        $archivedProductsByLookupLabel
+    );
+
+    if (in_array($statusToken, $reportApprovedPaymentStatuses, true)) {
+        $dashboardRevenueRowsByMonth[$monthNumber]['transactions']++;
+        $dashboardRevenueRowsByMonth[$monthNumber]['revenue'] += $bookingAmount;
+    }
+
+    if ($statusToken === 'refunded') {
+        $dashboardRevenueRowsByMonth[$monthNumber]['transactions']--;
+        $dashboardRevenueRowsByMonth[$monthNumber]['revenue'] -= $bookingAmount;
+    }
+}
+
 $reportRows = array_values($reportRowsByMonth);
 
 usort($reportRows, static function ($left, $right) use ($reportsSortColumn, $reportsSortDirection) {
@@ -1312,6 +1477,17 @@ foreach ($customerBookingsRecords as $bookingRecord) {
     $returnDeliveryReceiptUrl = $returnDeliveryReceiptPath !== ''
         ? $assetBase . ltrim($returnDeliveryReceiptPath, '/')
         : '';
+    $bookingAmount = admin_calculate_booking_amount_without_penalty(
+        $bookingRecord,
+        $products,
+        $productNameLookup,
+        $archivedProductsByOriginalKey,
+        $archivedProductsByLookupLabel
+    );
+    $bookingCreatedAtDateTime = admin_extract_order_report_datetime($bookingRecord);
+    $bookingCreatedAtUnix = $bookingCreatedAtDateTime instanceof DateTimeImmutable
+        ? (int) $bookingCreatedAtDateTime->getTimestamp()
+        : 0;
     $bookingTimestampRaw = trim((string) ($bookingRecord['created_at'] ?? ''));
     $bookingTimestampLabel = format_admin_local_datetime_label($bookingTimestampRaw, true);
     $bookingCustomerId = trim((string) ($bookingRecord['customer_id'] ?? ''));
@@ -1340,11 +1516,14 @@ foreach ($customerBookingsRecords as $bookingRecord) {
 
     $bookingItemsWithImages = [];
     $bookingItems = is_array($bookingRecord['items'] ?? null) ? array_values($bookingRecord['items']) : [];
+    $bookingItemsQuantityTotal = 0;
 
     foreach ($bookingItems as $bookingItem) {
         if (!is_array($bookingItem)) {
             continue;
         }
+
+        $bookingItemsQuantityTotal += max(1, (int) ($bookingItem['qty'] ?? 1));
 
         $resolvedProductKey = normalize_customer_order_product_key($bookingItem['product_key'] ?? $bookingItem['productKey'] ?? '');
         $itemLookupLabel = customer_order_normalize_lookup_label($bookingItem['name'] ?? '');
@@ -1413,12 +1592,17 @@ foreach ($customerBookingsRecords as $bookingRecord) {
         'email' => trim((string) ($bookingRecord['customer_email'] ?? '')),
         'orderNumber' => $orderNumberLabel,
         'timestamp' => $bookingTimestampLabel,
+        'createdAtRaw' => $bookingTimestampRaw,
+        'createdAtUnix' => $bookingCreatedAtUnix,
         'status' => $bookingStatusLabel,
         'statusClass' => $bookingStatusClass,
         'statusToken' => $bookingStatusToken,
         'isPriorityCustomer' => $isPriorityCustomer,
         'successfulTransactions' => $successfulTransactionCount,
+        'amount' => $bookingAmount,
         'items' => $bookingItemsWithImages,
+        'itemsCount' => count($bookingItemsWithImages),
+        'itemsQuantity' => $bookingItemsQuantityTotal,
         'receiveDate' => (string) ($bookingRecord['receive_date'] ?? ''),
         'receiveTime' => (string) ($bookingRecord['receive_time'] ?? ''),
         'returnDate' => (string) ($bookingRecord['return_date'] ?? ''),
@@ -2065,6 +2249,172 @@ usort($equipmentRows, static function ($left, $right) {
     return ((int) ($left['serial'] ?? 0)) <=> ((int) ($right['serial'] ?? 0));
 });
 
+$dashboardYearRevenueTotal = 0.0;
+$dashboardYearTransactionsTotal = 0;
+$dashboardPeakRevenue = 0.0;
+$dashboardPeakTransactions = 0;
+$dashboardMonthlyRevenueRows = [];
+
+foreach ($dashboardRevenueRowsByMonth as $monthNumber => $monthRow) {
+    $monthRevenue = (float) ($monthRow['revenue'] ?? 0);
+    $monthTransactions = (int) ($monthRow['transactions'] ?? 0);
+
+    $dashboardYearRevenueTotal += $monthRevenue;
+    $dashboardYearTransactionsTotal += $monthTransactions;
+    $dashboardPeakRevenue = max($dashboardPeakRevenue, $monthRevenue);
+    $dashboardPeakTransactions = max($dashboardPeakTransactions, $monthTransactions);
+    $dashboardMonthlyRevenueRows[] = [
+        'monthNumber' => (int) $monthNumber,
+        'shortLabel' => strtoupper(substr((string) ($monthRow['monthLabel'] ?? ''), 0, 3)),
+        'revenue' => $monthRevenue,
+        'transactions' => $monthTransactions,
+    ];
+}
+
+$dashboardRevenueSparkline = admin_dashboard_chart_geometry(
+    array_map(static function ($monthRow) {
+        return (float) ($monthRow['revenue'] ?? 0);
+    }, $dashboardMonthlyRevenueRows),
+    420,
+    180,
+    18
+);
+
+$dashboardTransactionsSparkline = admin_dashboard_chart_geometry(
+    array_map(static function ($monthRow) {
+        return (float) max(0, (int) ($monthRow['transactions'] ?? 0));
+    }, $dashboardMonthlyRevenueRows),
+    220,
+    92,
+    12
+);
+
+$dashboardTopProducts = [];
+$productKeysByNormalized = [];
+
+foreach ($products as $productKey => $productPayload) {
+    if (!is_array($productPayload)) {
+        continue;
+    }
+
+    $normalizedProductKey = normalize_customer_order_product_key($productKey);
+
+    if ($normalizedProductKey !== '' && !isset($productKeysByNormalized[$normalizedProductKey])) {
+        $productKeysByNormalized[$normalizedProductKey] = (string) $productKey;
+    }
+}
+
+arsort($timesUsedLast30DaysByProduct, SORT_NUMERIC);
+$topUsageScale = max(1, (int) reset($timesUsedLast30DaysByProduct));
+
+foreach ($timesUsedLast30DaysByProduct as $normalizedProductKey => $usageCount) {
+    $resolvedProductKey = (string) ($productKeysByNormalized[$normalizedProductKey] ?? $normalizedProductKey);
+    $productPayload = admin_resolve_product_payload_by_key(
+        $resolvedProductKey,
+        ['name' => ''],
+        $products,
+        $archivedProductsByOriginalKey,
+        $archivedProductsByLookupLabel
+    );
+
+    if (!is_array($productPayload)) {
+        continue;
+    }
+
+    $brandLabel = normalize_product_brand($productPayload['brand'] ?? 'Canon');
+    $productName = trim((string) ($productPayload['name'] ?? 'Untitled Product'));
+    $displayName = trim($brandLabel . ' ' . $productName);
+    $imageRelativePath = admin_resolve_order_thumbnail_relative_path(
+        $normalizedProductKey,
+        admin_normalize_media_relative_path($productPayload['cameraImage'] ?? '')
+    );
+    $effectivePrice = (float) ($productPayload['price'] ?? 0);
+    $discountPercent = max(0, min(95, (int) ($productPayload['discountPercent'] ?? 0)));
+
+    if ($discountPercent > 0) {
+        $effectivePrice *= (1 - ($discountPercent / 100));
+    }
+
+    $inventoryEntry = normalize_equipment_inventory_entry($equipmentInventory[$resolvedProductKey] ?? [], 12, false);
+    $inventoryUnits = is_array($inventoryEntry['units'] ?? null) ? $inventoryEntry['units'] : [];
+    $availableUnits = 0;
+
+    foreach ($inventoryUnits as $inventoryUnit) {
+        $unitStatus = normalize_equipment_status($inventoryUnit['status'] ?? 'available');
+
+        if ($unitStatus === 'available') {
+            $availableUnits++;
+        }
+    }
+
+    $dashboardTopProducts[] = [
+        'productKey' => $resolvedProductKey,
+        'displayName' => $displayName !== '' ? $displayName : 'Untitled Product',
+        'category' => normalize_product_category($productPayload['category'] ?? default_product_category()),
+        'usageCount' => max(0, (int) $usageCount),
+        'usagePct' => min(100, (int) round((max(0, (int) $usageCount) / $topUsageScale) * 100)),
+        'priceLabel' => admin_dashboard_format_currency($effectivePrice),
+        'availableUnits' => $availableUnits,
+        'totalUnits' => count($inventoryUnits),
+        'imageUrl' => $imageRelativePath !== '' ? $assetBase . ltrim($imageRelativePath, '/') : '',
+        'productUrl' => $routeBase . 'products/?product=' . urlencode((string) $resolvedProductKey),
+    ];
+
+    if (count($dashboardTopProducts) >= 4) {
+        break;
+    }
+}
+
+$dashboardRecentOrders = $adminBookingDetails;
+
+usort($dashboardRecentOrders, static function ($left, $right) {
+    return ((int) ($right['createdAtUnix'] ?? 0)) <=> ((int) ($left['createdAtUnix'] ?? 0));
+});
+
+$dashboardRecentOrders = array_slice($dashboardRecentOrders, 0, 6);
+$dashboardNewOrdersThisWeek = 0;
+$dashboardPendingOrdersCount = 0;
+$dashboardFulfillmentOrdersCount = 0;
+$dashboardRevenueMixSegments = [
+    'completed' => ['label' => 'Completed', 'amount' => 0.0, 'color' => '#dde531'],
+    'active' => ['label' => 'Active Fulfillment', 'amount' => 0.0, 'color' => '#7eaee9'],
+    'awaiting-refund' => ['label' => 'Awaiting Refund', 'amount' => 0.0, 'color' => '#f4c26e'],
+    'refunded' => ['label' => 'Refunded', 'amount' => 0.0, 'color' => '#ff8b8b'],
+];
+$dashboardNewOrderCutoff = $reportNowDateTime->sub(new DateInterval('P7D'))->getTimestamp();
+
+foreach ($adminBookingDetails as $bookingDetail) {
+    $createdAtUnix = (int) ($bookingDetail['createdAtUnix'] ?? 0);
+    $statusToken = (string) ($bookingDetail['statusToken'] ?? '');
+    $bookingAmount = max(0.0, (float) ($bookingDetail['amount'] ?? 0));
+
+    if ($createdAtUnix >= $dashboardNewOrderCutoff) {
+        $dashboardNewOrdersThisWeek++;
+    }
+
+    if ($statusToken === 'pending') {
+        $dashboardPendingOrdersCount++;
+    }
+
+    if (in_array($statusToken, ['approved', 'ongoing', 'return'], true)) {
+        $dashboardFulfillmentOrdersCount++;
+        $dashboardRevenueMixSegments['active']['amount'] += $bookingAmount;
+    } elseif ($statusToken === 'completed') {
+        $dashboardRevenueMixSegments['completed']['amount'] += $bookingAmount;
+    } elseif ($statusToken === 'awaiting-refund') {
+        $dashboardRevenueMixSegments['awaiting-refund']['amount'] += $bookingAmount;
+    } elseif ($statusToken === 'refunded') {
+        $dashboardRevenueMixSegments['refunded']['amount'] += $bookingAmount;
+    }
+}
+
+$dashboardRevenueMixGradient = admin_dashboard_build_conic_gradient(array_values($dashboardRevenueMixSegments));
+$dashboardRevenueMixTotal = 0.0;
+
+foreach ($dashboardRevenueMixSegments as $segmentMeta) {
+    $dashboardRevenueMixTotal += max(0.0, (float) ($segmentMeta['amount'] ?? 0));
+}
+
 $archivedEquipmentRows = [];
 
 foreach ($archivedEquipmentUnits as $archivedEquipmentEntry) {
@@ -2181,10 +2531,11 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260415-8">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260427-2">
 </head>
 <body
     class="home-page-customer"
+    data-admin-default-view="<?php echo htmlspecialchars($adminDefaultView, ENT_QUOTES, 'UTF-8'); ?>"
     <?php if ($initialAdminPanel !== ''): ?>data-admin-initial-panel="<?php echo htmlspecialchars($initialAdminPanel, ENT_QUOTES, 'UTF-8'); ?>"<?php endif; ?>
     <?php if ($openAdminCreateUserModal): ?>data-admin-open-create-user-modal="true"<?php endif; ?>
     <?php if ($openEquipmentArchiveModal): ?>data-admin-open-equipment-archive-modal="true"<?php endif; ?>
@@ -2238,67 +2589,75 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
 
         <nav class="section-nav section-nav-interactive section-nav-admin" aria-label="Catalog filters" data-admin-nav data-admin-dashboard-nav>
             <?php if (!$isStaffSession): ?>
-                <div class="section-nav-item section-nav-item-filter admin-nav-primary" data-admin-nav-item="primary">
-                    <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="brands-filter-panel">
-                        BRANDS
-                    </button>
+                <?php if ($adminDefaultView === 'featured'): ?>
+                    <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($adminHomePath . '#admin-dashboard-overview', ENT_QUOTES, 'UTF-8'); ?>">DASHBOARD</a>
+                    <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($routeBase . 'services/', ENT_QUOTES, 'UTF-8'); ?>">SERVICES</a>
 
-                    <div class="filter-panel filter-panel-brands" id="brands-filter-panel" hidden>
-                        <button class="filter-option is-selected" type="button" data-filter-group="brand" data-filter-value="all">ALL BRANDS</button>
-                        <?php foreach ($productBrandValueMap as $brandValue => $brandLabel): ?>
-                            <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="<?php echo htmlspecialchars($brandValue, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(strtoupper($brandLabel), ENT_QUOTES, 'UTF-8'); ?></button>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
+                    <div class="section-nav-item section-nav-item-filter admin-nav-primary" data-admin-nav-item="primary">
+                        <button class="section-nav-filter filter-toggle is-active" type="button" aria-expanded="false" aria-controls="brands-filter-panel">
+                            BRANDS
+                        </button>
 
-                <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($routeBase . 'services/', ENT_QUOTES, 'UTF-8'); ?>">SERVICES</a>
-
-                <div class="section-nav-item section-nav-item-filter admin-nav-primary" data-admin-nav-item="primary">
-                    <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="date-filter-panel">
-                        DATE
-                    </button>
-
-                    <div class="filter-panel filter-panel-date" id="date-filter-panel" hidden>
-                        <div class="date-picker-tabs" role="tablist" aria-label="Date filter groups">
-                            <button class="date-picker-tab is-active" type="button" data-date-tab="month" aria-selected="true">Month</button>
-                            <button class="date-picker-tab" type="button" data-date-tab="day" aria-selected="false">Day</button>
-                            <button class="date-picker-tab" type="button" data-date-tab="year" aria-selected="false">Year</button>
-                        </div>
-
-                        <div class="date-picker-content">
-                            <section class="date-picker-view is-active" data-date-view="month" aria-label="Choose month">
-                                <div class="filter-group-options date-filter-options-grid" data-date-month-options></div>
-                            </section>
-
-                            <section class="date-picker-view" data-date-view="day" aria-label="Choose day">
-                                <div class="date-calendar-panel">
-                                    <div class="date-calendar-header">
-                                        <p class="date-calendar-title" data-calendar-title>Calendar</p>
-                                    </div>
-                                    <div class="date-calendar-weekdays" aria-hidden="true">
-                                        <span>Sun</span>
-                                        <span>Mon</span>
-                                        <span>Tue</span>
-                                        <span>Wed</span>
-                                        <span>Thu</span>
-                                        <span>Fri</span>
-                                        <span>Sat</span>
-                                    </div>
-                                    <div class="date-calendar-grid" data-date-calendar-grid></div>
-                                    <button class="filter-option date-clear-option" type="button" data-filter-group="day" data-filter-value="all">All Days</button>
-                                </div>
-                            </section>
-
-                            <section class="date-picker-view" data-date-view="year" aria-label="Choose year">
-                                <div class="filter-group-options date-filter-options-grid" data-date-year-options></div>
-                            </section>
+                        <div class="filter-panel filter-panel-brands" id="brands-filter-panel" hidden>
+                            <button class="filter-option is-selected" type="button" data-filter-group="brand" data-filter-value="all">ALL BRANDS</button>
+                            <?php foreach ($productBrandValueMap as $brandValue => $brandLabel): ?>
+                                <button class="filter-option" type="button" data-filter-group="brand" data-filter-value="<?php echo htmlspecialchars($brandValue, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(strtoupper($brandLabel), ENT_QUOTES, 'UTF-8'); ?></button>
+                            <?php endforeach; ?>
                         </div>
                     </div>
-                </div>
+
+                    <div class="section-nav-item section-nav-item-filter admin-nav-primary" data-admin-nav-item="primary">
+                        <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="date-filter-panel">
+                            DATE
+                        </button>
+
+                        <div class="filter-panel filter-panel-date" id="date-filter-panel" hidden>
+                            <div class="date-picker-tabs" role="tablist" aria-label="Date filter groups">
+                                <button class="date-picker-tab is-active" type="button" data-date-tab="month" aria-selected="true">Month</button>
+                                <button class="date-picker-tab" type="button" data-date-tab="day" aria-selected="false">Day</button>
+                                <button class="date-picker-tab" type="button" data-date-tab="year" aria-selected="false">Year</button>
+                            </div>
+
+                            <div class="date-picker-content">
+                                <section class="date-picker-view is-active" data-date-view="month" aria-label="Choose month">
+                                    <div class="filter-group-options date-filter-options-grid" data-date-month-options></div>
+                                </section>
+
+                                <section class="date-picker-view" data-date-view="day" aria-label="Choose day">
+                                    <div class="date-calendar-panel">
+                                        <div class="date-calendar-header">
+                                            <p class="date-calendar-title" data-calendar-title>Calendar</p>
+                                        </div>
+                                        <div class="date-calendar-weekdays" aria-hidden="true">
+                                            <span>Sun</span>
+                                            <span>Mon</span>
+                                            <span>Tue</span>
+                                            <span>Wed</span>
+                                            <span>Thu</span>
+                                            <span>Fri</span>
+                                            <span>Sat</span>
+                                        </div>
+                                        <div class="date-calendar-grid" data-date-calendar-grid></div>
+                                        <button class="filter-option date-clear-option" type="button" data-filter-group="day" data-filter-value="all">All Days</button>
+                                    </div>
+                                </section>
+
+                                <section class="date-picker-view" data-date-view="year" aria-label="Choose year">
+                                    <div class="filter-group-options date-filter-options-grid" data-date-year-options></div>
+                                </section>
+                            </div>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <span class="section-nav-section is-active admin-nav-primary" data-admin-nav-item="primary" aria-current="page">DASHBOARD</span>
+                    <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($routeBase . 'services/', ENT_QUOTES, 'UTF-8'); ?>">SERVICES</a>
+                    <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($featuredProductsPath, ENT_QUOTES, 'UTF-8'); ?>">BRANDS</a>
+                    <span class="section-nav-filter is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">DATE</span>
+                <?php endif; ?>
             <?php endif; ?>
 
             <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="equipments" hidden>EQUIPMENTS</button>
-            <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="bookings" hidden>BOOKINGS</button>
+            <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="bookings" hidden>RESERVATIONS</button>
             <?php if (!$isStaffSession): ?>
                 <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="reports" hidden>REPORTS</button>
                 <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="users" hidden>USERS</button>
@@ -2426,7 +2785,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         </section>
 
         <section class="admin-bookings-shell" data-admin-dashboard-panel="bookings" hidden>
-            <div class="admin-bookings-table-wrap" role="region" aria-label="Bookings list">
+            <div class="admin-bookings-table-wrap" role="region" aria-label="Reservations list">
                 <table class="admin-bookings-table">
                     <thead>
                         <tr>
@@ -2459,7 +2818,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="4">No bookings yet.</td>
+                                <td colspan="4">No reservations yet.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -2470,11 +2829,11 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         <div class="admin-booking-detail-backdrop" data-admin-booking-detail-backdrop hidden>
             <section class="admin-booking-detail-modal" role="dialog" aria-modal="true" aria-labelledby="admin-booking-detail-title">
                 <div class="admin-booking-detail-head">
-                    <h2 id="admin-booking-detail-title">Booking Details</h2>
-                    <button class="admin-booking-detail-close" type="button" data-admin-booking-detail-close aria-label="Close booking details">&times;</button>
+                    <h2 id="admin-booking-detail-title">Reservation Details</h2>
+                    <button class="admin-booking-detail-close" type="button" data-admin-booking-detail-close aria-label="Close reservation details">&times;</button>
                 </div>
 
-                <div class="admin-booking-detail-pages-nav" role="tablist" aria-label="Booking detail sections">
+                <div class="admin-booking-detail-pages-nav" role="tablist" aria-label="Reservation detail sections">
                     <button type="button" class="admin-booking-detail-page-tab is-active" data-admin-booking-page-tab="items" role="tab" aria-selected="true">Items &amp; Total</button>
                     <button type="button" class="admin-booking-detail-page-tab" data-admin-booking-page-tab="images" role="tab" aria-selected="false" tabindex="-1">Images</button>
                     <button type="button" class="admin-booking-detail-page-tab" data-admin-booking-page-tab="details" role="tab" aria-selected="false" tabindex="-1">Order Details</button>
@@ -2564,7 +2923,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
                             <strong>Status:</strong>
                             <span class="admin-bookings-status status-pending" data-admin-booking-detail-status>-</span>
                         </p>
-                        <p><strong>Booking Duration:</strong> <span data-admin-booking-detail-duration>-</span></p>
+                        <p><strong>Reservation Duration:</strong> <span data-admin-booking-detail-duration>-</span></p>
                         <p><strong>Meeting Place:</strong> <span data-admin-booking-detail-place>-</span></p>
                         <p><strong>Receiving:</strong> <span data-admin-booking-detail-receive>-</span></p>
                         <p><strong>Returning:</strong> <span data-admin-booking-detail-return>-</span></p>
@@ -2604,7 +2963,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         <div class="admin-booking-review-backdrop" data-admin-booking-review-backdrop hidden>
             <section class="admin-booking-review-modal" role="dialog" aria-modal="true" aria-labelledby="admin-booking-review-title">
                 <div class="admin-booking-review-head">
-                    <h3 id="admin-booking-review-title" data-admin-booking-review-title>Booking Decision</h3>
+                    <h3 id="admin-booking-review-title" data-admin-booking-review-title>Reservation Decision</h3>
                     <button class="admin-booking-review-close" type="button" data-admin-booking-review-close aria-label="Close decision dialog">&times;</button>
                 </div>
 
@@ -2673,7 +3032,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
 
                 <label class="admin-booking-delivery-field" for="admin-booking-delivery-reference">
                     <span>Delivery Reference (optional)</span>
-                    <input id="admin-booking-delivery-reference" class="admin-booking-delivery-input" type="text" maxlength="120" data-admin-booking-delivery-reference placeholder="Tracking number or courier booking reference">
+                    <input id="admin-booking-delivery-reference" class="admin-booking-delivery-input" type="text" maxlength="120" data-admin-booking-delivery-reference placeholder="Tracking number or courier reservation reference">
                 </label>
 
                 <label class="admin-booking-delivery-field" for="admin-booking-delivery-notes">
@@ -2807,7 +3166,252 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
         </section>
         <?php endif; ?>
 
-        <section class="promo-banner promo-banner-admin reveal" data-admin-dashboard-default aria-label="Promo carousel" data-admin-promo-banner data-admin-promo-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-image-base="<?php echo htmlspecialchars($assetBase . 'assets/promo_images/', ENT_QUOTES, 'UTF-8'); ?>">
+        <section class="landing-section admin-dashboard-hero reveal" data-admin-dashboard-default="dashboard" id="admin-dashboard-overview" aria-labelledby="admin-dashboard-overview-title"<?php echo $adminDefaultView !== 'dashboard' ? ' hidden' : ''; ?>>
+            <div class="admin-dashboard-hero-copy">
+                <p class="admin-dashboard-kicker">Admin Dashboard</p>
+                <h1 class="admin-dashboard-title" id="admin-dashboard-overview-title">Your rental flow at a glance.</h1>
+                <p class="admin-dashboard-summary">Track the cameras customers keep reserving, the freshest incoming orders, and how revenue is moving this year without leaving the main admin landing page.</p>
+                <div class="admin-dashboard-hero-actions">
+                    <a class="admin-dashboard-hero-link" href="<?php echo htmlspecialchars($adminHomePath . '?admin_view=bookings', ENT_QUOTES, 'UTF-8'); ?>">Open Reservation Queue</a>
+                    <a class="admin-dashboard-hero-link is-muted" href="<?php echo htmlspecialchars($adminHomePath . '?admin_view=reports', ENT_QUOTES, 'UTF-8'); ?>">Open Reports Table</a>
+                </div>
+            </div>
+
+            <div class="admin-dashboard-stat-grid">
+                <article class="admin-dashboard-stat-card">
+                    <span class="admin-dashboard-stat-label">Revenue This Year</span>
+                    <strong class="admin-dashboard-stat-value"><?php echo htmlspecialchars(admin_dashboard_format_currency($dashboardYearRevenueTotal), ENT_QUOTES, 'UTF-8'); ?></strong>
+                    <span class="admin-dashboard-stat-meta"><?php echo htmlspecialchars((string) $currentReportYear, ENT_QUOTES, 'UTF-8'); ?> running total</span>
+                </article>
+
+                <article class="admin-dashboard-stat-card">
+                    <span class="admin-dashboard-stat-label">Transactions</span>
+                    <strong class="admin-dashboard-stat-value"><?php echo htmlspecialchars((string) $dashboardYearTransactionsTotal, ENT_QUOTES, 'UTF-8'); ?></strong>
+                    <span class="admin-dashboard-stat-meta">Approved, ongoing, completed, and refund-adjusted</span>
+                </article>
+
+                <article class="admin-dashboard-stat-card">
+                    <span class="admin-dashboard-stat-label">New Orders</span>
+                    <strong class="admin-dashboard-stat-value"><?php echo htmlspecialchars((string) $dashboardNewOrdersThisWeek, ENT_QUOTES, 'UTF-8'); ?></strong>
+                    <span class="admin-dashboard-stat-meta">Created in the last 7 days</span>
+                </article>
+
+                <article class="admin-dashboard-stat-card">
+                    <span class="admin-dashboard-stat-label">Live Queue</span>
+                    <strong class="admin-dashboard-stat-value"><?php echo htmlspecialchars((string) $dashboardFulfillmentOrdersCount, ENT_QUOTES, 'UTF-8'); ?></strong>
+                    <span class="admin-dashboard-stat-meta"><?php echo htmlspecialchars((string) $dashboardPendingOrdersCount, ENT_QUOTES, 'UTF-8'); ?> pending for review</span>
+                </article>
+            </div>
+        </section>
+
+        <section class="landing-section admin-dashboard-analytics reveal" data-admin-dashboard-default="dashboard" aria-labelledby="admin-dashboard-earnings-title"<?php echo $adminDefaultView !== 'dashboard' ? ' hidden' : ''; ?>>
+            <div class="admin-dashboard-panel admin-dashboard-panel-chart">
+                <div class="admin-dashboard-panel-head">
+                    <div>
+                        <p class="admin-dashboard-panel-eyebrow">Earnings Breakdown</p>
+                        <h2 class="landing-title admin-dashboard-panel-title" id="admin-dashboard-earnings-title">Monthly revenue with transaction momentum</h2>
+                    </div>
+                    <div class="admin-dashboard-panel-aside">
+                        <span class="admin-dashboard-panel-highlight"><?php echo htmlspecialchars(admin_dashboard_format_currency($dashboardPeakRevenue), ENT_QUOTES, 'UTF-8'); ?></span>
+                        <span class="admin-dashboard-panel-caption">Highest month this year</span>
+                    </div>
+                </div>
+
+                <div class="admin-dashboard-revenue-chart">
+                    <svg class="admin-dashboard-revenue-spark" viewBox="0 0 420 180" role="img" aria-label="Revenue trend for the current year">
+                        <defs>
+                            <linearGradient id="adminRevenueAreaGradient" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0%" stop-color="rgba(221, 229, 49, 0.42)"></stop>
+                                <stop offset="100%" stop-color="rgba(221, 229, 49, 0.02)"></stop>
+                            </linearGradient>
+                        </defs>
+                        <path class="admin-dashboard-revenue-area" fill="url(#adminRevenueAreaGradient)" d="<?php echo htmlspecialchars((string) ($dashboardRevenueSparkline['areaPath'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></path>
+                        <path class="admin-dashboard-revenue-line" fill="none" stroke="#dde531" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="<?php echo htmlspecialchars((string) ($dashboardRevenueSparkline['linePath'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></path>
+                    </svg>
+
+                    <div class="admin-dashboard-revenue-bars" aria-hidden="true">
+                        <?php foreach ($dashboardMonthlyRevenueRows as $monthRow): ?>
+                            <?php
+                                $monthRevenue = (float) ($monthRow['revenue'] ?? 0);
+                                $monthTransactions = (int) ($monthRow['transactions'] ?? 0);
+                                $monthRevenueHeight = $dashboardPeakRevenue > 0
+                                    ? max(10, (int) round(($monthRevenue / $dashboardPeakRevenue) * 100))
+                                    : 10;
+                            ?>
+                            <div class="admin-dashboard-revenue-bar-group">
+                                <span class="admin-dashboard-revenue-bar-value"><?php echo htmlspecialchars(admin_dashboard_format_currency($monthRevenue), ENT_QUOTES, 'UTF-8'); ?></span>
+                                <div class="admin-dashboard-revenue-bar-track">
+                                    <div class="admin-dashboard-revenue-bar-fill" style="height: <?php echo htmlspecialchars((string) $monthRevenueHeight, ENT_QUOTES, 'UTF-8'); ?>%;"></div>
+                                </div>
+                                <span class="admin-dashboard-revenue-bar-month"><?php echo htmlspecialchars((string) ($monthRow['shortLabel'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span class="admin-dashboard-revenue-bar-note"><?php echo htmlspecialchars((string) $monthTransactions, ENT_QUOTES, 'UTF-8'); ?> txns</span>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-dashboard-panel admin-dashboard-panel-mix">
+                <div class="admin-dashboard-panel-head">
+                    <div>
+                        <p class="admin-dashboard-panel-eyebrow">Revenue Mix</p>
+                        <h2 class="landing-title admin-dashboard-panel-title">Where the money is sitting</h2>
+                    </div>
+                    <div class="admin-dashboard-panel-aside">
+                        <span class="admin-dashboard-panel-highlight"><?php echo htmlspecialchars(admin_dashboard_format_currency($dashboardRevenueMixTotal), ENT_QUOTES, 'UTF-8'); ?></span>
+                        <span class="admin-dashboard-panel-caption">Tracked value across active and completed orders</span>
+                    </div>
+                </div>
+
+                <div class="admin-dashboard-mix-visual">
+                    <div class="admin-dashboard-mix-ring" style="background: <?php echo htmlspecialchars($dashboardRevenueMixGradient, ENT_QUOTES, 'UTF-8'); ?>;">
+                        <div class="admin-dashboard-mix-ring-core">
+                            <strong><?php echo htmlspecialchars((string) $currentReportYear, ENT_QUOTES, 'UTF-8'); ?></strong>
+                            <span>Revenue Mix</span>
+                        </div>
+                    </div>
+
+                    <svg class="admin-dashboard-transactions-mini" viewBox="0 0 220 92" role="img" aria-label="Transactions trend for the current year">
+                        <defs>
+                            <linearGradient id="adminTransactionsMiniGradient" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0%" stop-color="rgba(126, 173, 233, 0.42)"></stop>
+                                <stop offset="100%" stop-color="rgba(126, 173, 233, 0.02)"></stop>
+                            </linearGradient>
+                        </defs>
+                        <path class="admin-dashboard-transactions-area" fill="url(#adminTransactionsMiniGradient)" d="<?php echo htmlspecialchars((string) ($dashboardTransactionsSparkline['areaPath'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></path>
+                        <polyline class="admin-dashboard-transactions-line" fill="none" stroke="#7eaee9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="<?php echo htmlspecialchars((string) ($dashboardTransactionsSparkline['polylinePoints'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></polyline>
+                    </svg>
+                </div>
+
+                <div class="admin-dashboard-mix-legend">
+                    <?php foreach ($dashboardRevenueMixSegments as $segmentKey => $segmentMeta): ?>
+                        <?php
+                            $segmentAmount = max(0.0, (float) ($segmentMeta['amount'] ?? 0));
+                            $segmentPct = $dashboardRevenueMixTotal > 0
+                                ? (int) round(($segmentAmount / $dashboardRevenueMixTotal) * 100)
+                                : 0;
+                        ?>
+                        <div class="admin-dashboard-mix-legend-row">
+                            <span class="admin-dashboard-mix-dot" style="background: <?php echo htmlspecialchars((string) ($segmentMeta['color'] ?? '#d9d9d9'), ENT_QUOTES, 'UTF-8'); ?>;"></span>
+                            <span class="admin-dashboard-mix-name"><?php echo htmlspecialchars((string) ($segmentMeta['label'] ?? strtoupper($segmentKey)), ENT_QUOTES, 'UTF-8'); ?></span>
+                            <span class="admin-dashboard-mix-percent"><?php echo htmlspecialchars((string) $segmentPct, ENT_QUOTES, 'UTF-8'); ?>%</span>
+                            <span class="admin-dashboard-mix-amount"><?php echo htmlspecialchars(admin_dashboard_format_currency($segmentAmount), ENT_QUOTES, 'UTF-8'); ?></span>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </section>
+
+        <section class="landing-section admin-dashboard-content reveal" data-admin-dashboard-default="dashboard" aria-labelledby="admin-dashboard-cameras-title"<?php echo $adminDefaultView !== 'dashboard' ? ' hidden' : ''; ?>>
+            <div class="admin-dashboard-panel admin-dashboard-panel-cameras">
+                <div class="admin-dashboard-panel-head">
+                    <div>
+                        <p class="admin-dashboard-panel-eyebrow">Most Used Cameras</p>
+                        <h2 class="landing-title admin-dashboard-panel-title" id="admin-dashboard-cameras-title">The gear people keep reaching for</h2>
+                    </div>
+                    <div class="admin-dashboard-panel-aside">
+                        <span class="admin-dashboard-panel-caption">Based on the last 30 days of ongoing, return, and completed orders</span>
+                    </div>
+                </div>
+
+                <div class="admin-dashboard-camera-grid">
+                    <?php if ($dashboardTopProducts): ?>
+                        <?php foreach ($dashboardTopProducts as $cameraIndex => $cameraCard): ?>
+                            <a class="admin-dashboard-camera-card<?php echo $cameraIndex === 0 ? ' is-featured' : ''; ?>" href="<?php echo htmlspecialchars((string) ($cameraCard['productUrl'] ?? '#'), ENT_QUOTES, 'UTF-8'); ?>">
+                                <div class="admin-dashboard-camera-visual">
+                                    <?php if ((string) ($cameraCard['imageUrl'] ?? '') !== ''): ?>
+                                        <img src="<?php echo htmlspecialchars((string) $cameraCard['imageUrl'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars((string) ($cameraCard['displayName'] ?? 'Camera'), ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?php else: ?>
+                                        <div class="admin-dashboard-camera-visual-empty">No Image</div>
+                                    <?php endif; ?>
+                                    <span class="admin-dashboard-camera-rank">#<?php echo htmlspecialchars((string) ($cameraIndex + 1), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+                                <div class="admin-dashboard-camera-copy">
+                                    <span class="admin-dashboard-camera-category"><?php echo htmlspecialchars((string) ($cameraCard['category'] ?? 'Camera'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <h3><?php echo htmlspecialchars((string) ($cameraCard['displayName'] ?? 'Untitled Camera'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                                    <p><?php echo htmlspecialchars((string) ($cameraCard['usageCount'] ?? 0), ENT_QUOTES, 'UTF-8'); ?> reservation use(s) in the last 30 days</p>
+                                    <div class="admin-dashboard-camera-bar">
+                                        <span class="admin-dashboard-camera-bar-fill" style="width: <?php echo htmlspecialchars((string) ($cameraCard['usagePct'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>%;"></span>
+                                    </div>
+                                    <div class="admin-dashboard-camera-meta">
+                                        <span><?php echo htmlspecialchars((string) ($cameraCard['priceLabel'] ?? admin_dashboard_format_currency(0)), ENT_QUOTES, 'UTF-8'); ?></span>
+                                        <span><?php echo htmlspecialchars((string) ($cameraCard['availableUnits'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>/<?php echo htmlspecialchars((string) ($cameraCard['totalUnits'] ?? 0), ENT_QUOTES, 'UTF-8'); ?> available</span>
+                                    </div>
+                                </div>
+                            </a>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p class="admin-dashboard-empty-state">No camera usage data yet. Once rental orders start moving, this board will spotlight your most-booked gear here.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="admin-dashboard-panel admin-dashboard-panel-orders">
+                <div class="admin-dashboard-panel-head">
+                    <div>
+                        <p class="admin-dashboard-panel-eyebrow">New Orders</p>
+                        <h2 class="landing-title admin-dashboard-panel-title">Fresh activity from customers</h2>
+                    </div>
+                    <div class="admin-dashboard-panel-aside">
+                        <a class="admin-dashboard-panel-link" href="<?php echo htmlspecialchars($adminHomePath . '?admin_view=bookings', ENT_QUOTES, 'UTF-8'); ?>">View all reservations</a>
+                    </div>
+                </div>
+
+                <div class="admin-dashboard-order-list">
+                    <?php if ($dashboardRecentOrders): ?>
+                        <?php foreach ($dashboardRecentOrders as $recentOrder): ?>
+                            <?php
+                                $recentOrderItems = is_array($recentOrder['items'] ?? null) ? $recentOrder['items'] : [];
+                                $recentOrderThumbs = array_slice($recentOrderItems, 0, 3);
+                                $recentOrderAmount = (float) ($recentOrder['amount'] ?? 0);
+                                $recentReceiveDate = trim((string) ($recentOrder['receiveDate'] ?? ''));
+                                $recentReceiveTime = trim((string) ($recentOrder['receiveTime'] ?? ''));
+                            ?>
+                            <article class="admin-dashboard-order-card">
+                                <div class="admin-dashboard-order-top">
+                                    <div>
+                                        <p class="admin-dashboard-order-id"><?php echo htmlspecialchars((string) ($recentOrder['orderNumber'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></p>
+                                        <h3><?php echo htmlspecialchars((string) ($recentOrder['name'] ?? 'Customer'), ENT_QUOTES, 'UTF-8'); ?></h3>
+                                    </div>
+                                    <span class="admin-bookings-status <?php echo htmlspecialchars((string) ($recentOrder['statusClass'] ?? 'status-pending'), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) ($recentOrder['status'] ?? 'PENDING'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+
+                                <div class="admin-dashboard-order-thumbs">
+                                    <?php if ($recentOrderThumbs): ?>
+                                        <?php foreach ($recentOrderThumbs as $thumbItem): ?>
+                                            <?php $thumbImageUrl = trim((string) ($thumbItem['imageUrl'] ?? '')); ?>
+                                            <span class="admin-dashboard-order-thumb">
+                                                <?php if ($thumbImageUrl !== ''): ?>
+                                                    <img src="<?php echo htmlspecialchars($thumbImageUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="">
+                                                <?php else: ?>
+                                                    <span>IMG</span>
+                                                <?php endif; ?>
+                                            </span>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <span class="admin-dashboard-order-thumb is-empty"><span>IMG</span></span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <div class="admin-dashboard-order-meta">
+                                    <span><?php echo htmlspecialchars((string) ($recentOrder['itemsQuantity'] ?? 0), ENT_QUOTES, 'UTF-8'); ?> item(s)</span>
+                                    <span><?php echo htmlspecialchars(admin_dashboard_format_currency($recentOrderAmount), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+
+                                <div class="admin-dashboard-order-footer">
+                                    <span><?php echo htmlspecialchars((string) ($recentOrder['timestamp'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <span><?php echo htmlspecialchars($recentReceiveDate !== '' ? $recentReceiveDate . ($recentReceiveTime !== '' ? ' • ' . $recentReceiveTime : '') : 'Schedule pending', ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+                            </article>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p class="admin-dashboard-empty-state">No customer orders yet. New reservations will appear here as compact cards with status, item thumbnails, and totals.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </section>
+
+        <section class="promo-banner promo-banner-admin reveal" aria-label="Promo carousel" data-admin-promo-banner data-admin-promo-archive-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/archive_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_promo_banner.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-promo-image-base="<?php echo htmlspecialchars($assetBase . 'assets/promo_images/', ENT_QUOTES, 'UTF-8'); ?>" hidden>
             <button class="step-card-admin-remove promo-banner-admin-remove" type="button" data-admin-promo-remove aria-label="Archive active promo banner">&times;</button>
             <button class="promo-arrow promo-arrow-left" type="button" aria-label="Previous promo">&#10094;</button>
 
@@ -2838,7 +3442,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             <button class="promo-arrow promo-arrow-right" type="button" aria-label="Next promo">&#10095;</button>
         </section>
 
-        <section class="landing-section reveal" data-admin-dashboard-default aria-labelledby="how-it-works-title">
+        <section class="landing-section reveal" aria-labelledby="how-it-works-title" hidden>
             <h2 class="landing-title" id="how-it-works-title">HOW IT WORKS</h2>
 
             <div class="steps-grid" data-admin-how-grid data-admin-how-update-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/update_how_it_works.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-how-delete-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/delete_how_it_works.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-how-restore-endpoint="<?php echo htmlspecialchars($assetBase . 'admin/dashboard/restore_archived_how_it_works.php', ENT_QUOTES, 'UTF-8'); ?>" data-admin-how-image-base="<?php echo htmlspecialchars($assetBase . 'assets/how_it_works/', ENT_QUOTES, 'UTF-8'); ?>">
@@ -2865,7 +3469,7 @@ $nextPromoBannerSlot = max(1, $lastPromoSlot + 1);
             </div>
         </section>
 
-        <section class="landing-section reveal" data-admin-dashboard-default aria-labelledby="featured-products-title">
+        <section class="landing-section reveal" data-admin-dashboard-default="featured" aria-labelledby="featured-products-title"<?php echo $adminDefaultView !== 'featured' ? ' hidden' : ''; ?>>
             <h2 class="landing-title" id="featured-products-title">FEATURED PRODUCTS</h2>
 
             <div class="product-grid">

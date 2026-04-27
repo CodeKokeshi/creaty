@@ -358,7 +358,7 @@ foreach ($packageCollections as $collection) {
             </form>
 
             <?php if (!$isAdminView): ?>
-                <a class="topbar-cart" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>customer-cart/" aria-label="Cart">
+                <a class="topbar-cart" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>customer-cart/" aria-label="Reservation">
                     <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cart_icon.svg" alt="">
                     <span class="cart-count"><?php echo $cartCount; ?></span>
                 </a>
@@ -405,7 +405,7 @@ foreach ($packageCollections as $collection) {
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Reservation</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                         <li><a class="dropdown-item" href="#">Help Center</a></li>
@@ -501,7 +501,7 @@ foreach ($packageCollections as $collection) {
                             data-item-type="service-package"
                             data-service-package-key="<?php echo htmlspecialchars($selectedPackageKey, ENT_QUOTES, 'UTF-8'); ?>"
                             data-item-name="<?php echo htmlspecialchars((string) ($selectedPackage['title'] ?? 'SERVICE PACKAGE'), ENT_QUOTES, 'UTF-8'); ?>"
-                            data-item-copy="Service package booking for <?php echo htmlspecialchars((string) ($selectedPackage['title'] ?? 'SERVICE PACKAGE'), ENT_QUOTES, 'UTF-8'); ?>."
+                            data-item-copy="Service package reservation for <?php echo htmlspecialchars((string) ($selectedPackage['title'] ?? 'SERVICE PACKAGE'), ENT_QUOTES, 'UTF-8'); ?>."
                             data-item-image="<?php echo htmlspecialchars($packagePreview, ENT_QUOTES, 'UTF-8'); ?>"
                             data-item-price="<?php echo htmlspecialchars($selectedPackageFinalLabel, ENT_QUOTES, 'UTF-8'); ?>"
                             data-duration-unit="<?php echo htmlspecialchars((string) $selectedPackageDurationUnit, ENT_QUOTES, 'UTF-8'); ?>"
@@ -511,7 +511,7 @@ foreach ($packageCollections as $collection) {
                                 data-login-url="<?php echo htmlspecialchars($serviceDetailLoginUrl, ENT_QUOTES, 'UTF-8'); ?>"
                             <?php endif; ?>
                         >
-                            PURCHASE
+                            ADD TO RESERVATION
                         </button>
                     <?php endif; ?>
                 </div>

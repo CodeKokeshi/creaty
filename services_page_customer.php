@@ -41,6 +41,8 @@ if ($isAdminView) {
     $adminNotificationCount = count_unread_message_notifications();
 }
 
+$adminFeaturedProductsPath = $assetBase . 'admin/dashboard/?catalog=featured#featured-products-title';
+
 require_once __DIR__ . '/customer_notifications_center.php';
 $customerNotificationCenter = build_customer_notification_center($assetBase, !$isAdminView && $isCustomerLoggedIn);
 
@@ -537,7 +539,7 @@ unset($serviceGroup);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260415-7">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260427-2">
 </head>
 <body class="events-page services-page">
     <header class="site-header">
@@ -558,7 +560,7 @@ unset($serviceGroup);
             </form>
 
             <?php if (!$isAdminView): ?>
-                <a class="topbar-cart" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>" aria-label="Cart">
+                <a class="topbar-cart" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>" aria-label="Reservation">
                     <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cart_icon.svg" alt="">
                     <span class="cart-count"><?php echo $cartCount; ?></span>
                 </a>
@@ -605,7 +607,7 @@ unset($serviceGroup);
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Reservation</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                         <li><a class="dropdown-item" href="#">Help Center</a></li>
@@ -620,11 +622,27 @@ unset($serviceGroup);
             <?php endif; ?>
         </div>
 
-        <nav class="section-nav section-nav-disabled" aria-label="Catalog filters">
-            <span class="section-nav-filter is-disabled" aria-disabled="true">BRANDS</span>
-            <a class="section-nav-section" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">EVENTS</a>
-            <a class="section-nav-section is-active" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>" aria-current="page">SERVICES</a>
-            <span class="section-nav-filter is-disabled" aria-disabled="true">DATE</span>
+        <nav class="section-nav section-nav-disabled<?php echo $isAdminView ? ' section-nav-admin' : ''; ?>" aria-label="Catalog filters"<?php if ($isAdminView): ?> data-admin-nav data-admin-dashboard-base-url="<?php echo htmlspecialchars($homePath, ENT_QUOTES, 'UTF-8'); ?>"<?php endif; ?>>
+            <?php if ($isAdminView): ?>
+                <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($homePath . '#admin-dashboard-overview', ENT_QUOTES, 'UTF-8'); ?>">DASHBOARD</a>
+                <span class="section-nav-section is-active admin-nav-primary" data-admin-nav-item="primary" aria-current="page">SERVICES</span>
+                <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($adminFeaturedProductsPath, ENT_QUOTES, 'UTF-8'); ?>">BRANDS</a>
+                <span class="section-nav-filter is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">DATE</span>
+
+                <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="equipments" hidden>EQUIPMENTS</button>
+                <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="bookings" hidden>RESERVATIONS</button>
+                <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="reports" hidden>REPORTS</button>
+                <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="users" hidden>USERS</button>
+
+                <button class="section-nav-swap" type="button" data-admin-nav-swap aria-pressed="false" aria-label="Swap admin navigation" title="Show management bar">
+                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/swap_horizontal_arrows.svg" alt="" aria-hidden="true">
+                </button>
+            <?php else: ?>
+                <span class="section-nav-filter is-disabled" aria-disabled="true">BRANDS</span>
+                <a class="section-nav-section" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">EVENTS</a>
+                <a class="section-nav-section is-active" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>" aria-current="page">SERVICES</a>
+                <span class="section-nav-filter is-disabled" aria-disabled="true">DATE</span>
+            <?php endif; ?>
         </nav>
     </header>
 

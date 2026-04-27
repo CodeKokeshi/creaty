@@ -54,6 +54,7 @@ $notificationsPath = $assetBase . 'admin/notifications/';
 $manageBrandsPath = $assetBase . 'admin/brands/';
 $manageCategoriesPath = $assetBase . 'admin/categories/';
 $adminNotificationCount = 0;
+$adminFeaturedProductsPath = $assetBase . 'admin/dashboard/?catalog=featured#featured-products-title';
 $addToCartLoginUrl = $loginPath . '?redirect=' . rawurlencode($_SERVER['REQUEST_URI'] ?? ($assetBase . 'customer-products/?product=' . urlencode($productKey)));
 
 if ($isAdminView) {
@@ -1184,7 +1185,7 @@ if (!$recommendedProductKeys && !$hasProductSearchQuery) {
     }
 }
 
-$productListPath = $homePath . '#featured-products-title';
+$productListPath = $adminFeaturedProductsPath;
 $equipmentAvailability = [];
 
 if (!$isAdminView && function_exists('customer_order_build_equipment_availability_payload')) {
@@ -1209,7 +1210,7 @@ $pageTitleLabel = $isSearchResultsLanding
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260415-8">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260427-2">
 </head>
 <body class="product-page">
     <header class="site-header">
@@ -1230,7 +1231,7 @@ $pageTitleLabel = $isSearchResultsLanding
             </form>
 
             <?php if (!$isAdminView): ?>
-                <a class="topbar-cart" href="<?php echo htmlspecialchars($assetBase . 'customer-cart/', ENT_QUOTES, 'UTF-8'); ?>" aria-label="Cart">
+                <a class="topbar-cart" href="<?php echo htmlspecialchars($assetBase . 'customer-cart/', ENT_QUOTES, 'UTF-8'); ?>" aria-label="Reservation">
                     <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cart_icon.svg" alt="">
                     <span class="cart-count"><?php echo $cartCount; ?></span>
                 </a>
@@ -1262,7 +1263,7 @@ $pageTitleLabel = $isSearchResultsLanding
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                             <li><a class="dropdown-item" href="<?php echo htmlspecialchars($homePath, ENT_QUOTES, 'UTF-8'); ?>">Admin Home</a></li>
-                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($homePath . '#featured-products-title', ENT_QUOTES, 'UTF-8'); ?>">Manage Featured Products</a></li>
+                            <li><a class="dropdown-item" href="<?php echo htmlspecialchars($adminFeaturedProductsPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Featured Products</a></li>
                             <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageBrandsPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Brands</a></li>
                             <li><a class="dropdown-item" href="<?php echo htmlspecialchars($manageCategoriesPath, ENT_QUOTES, 'UTF-8'); ?>">Manage Categories</a></li>
                             <li><a class="dropdown-item" href="<?php echo htmlspecialchars($assetBase . 'archive/', ENT_QUOTES, 'UTF-8'); ?>">Archived</a></li>
@@ -1278,7 +1279,7 @@ $pageTitleLabel = $isSearchResultsLanding
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
-                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Reservation</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                         <li><a class="dropdown-item" href="#">Help Center</a></li>
@@ -1298,12 +1299,19 @@ $pageTitleLabel = $isSearchResultsLanding
             aria-label="Catalog filters"
             <?php if ($isAdminView): ?>data-admin-nav data-admin-dashboard-base-url="<?php echo htmlspecialchars($homePath, ENT_QUOTES, 'UTF-8'); ?>"<?php endif; ?>
         >
-            <span class="section-nav-filter is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">BRANDS</span>
-            <span class="section-nav-section is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">SERVICES</span>
-            <span class="section-nav-filter is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">DATE</span>
+            <?php if ($isAdminView): ?>
+                <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($homePath . '#admin-dashboard-overview', ENT_QUOTES, 'UTF-8'); ?>">DASHBOARD</a>
+                <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($assetBase . 'admin/services/', ENT_QUOTES, 'UTF-8'); ?>">SERVICES</a>
+                <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($adminFeaturedProductsPath, ENT_QUOTES, 'UTF-8'); ?>">BRANDS</a>
+                <span class="section-nav-filter is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">DATE</span>
+            <?php else: ?>
+                <span class="section-nav-filter is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">BRANDS</span>
+                <span class="section-nav-section is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">SERVICES</span>
+                <span class="section-nav-filter is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">DATE</span>
+            <?php endif; ?>
             <?php if ($isAdminView): ?>
                 <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="equipments" hidden>EQUIPMENTS</button>
-                <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="bookings" hidden>BOOKINGS</button>
+                <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="bookings" hidden>RESERVATIONS</button>
                 <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="reports" hidden>REPORTS</button>
                 <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="users" hidden>USERS</button>
 
@@ -1636,7 +1644,7 @@ $pageTitleLabel = $isSearchResultsLanding
                                             data-login-url="<?php echo htmlspecialchars($addToCartLoginUrl, ENT_QUOTES, 'UTF-8'); ?>"
                                         <?php endif; ?>
                                     >
-                                        ADD TO CART
+                                        ADD TO RESERVATION
                                     </button>
                                 <?php endif; ?>
                             </div>

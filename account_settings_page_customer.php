@@ -251,7 +251,7 @@ $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No addr
                 <input type="search" name="q" placeholder="Search cameras, services, or rentals">
             </form>
 
-            <a class="topbar-cart" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>" aria-label="Cart">
+            <a class="topbar-cart" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>" aria-label="Reservation">
                 <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/cart_icon.svg" alt="">
                 <span class="cart-count"><?php echo $cartCount; ?></span>
             </a>
@@ -263,7 +263,7 @@ $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No addr
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                     <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
-                    <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
+                    <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Reservation</a></li>
                     <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
                     <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                     <li><a class="dropdown-item" href="#">Help Center</a></li>

@@ -95,7 +95,7 @@ $ordersTabPath = $notificationsPath . '?tab=orders';
 $currentNotificationsPath = $notificationsPath . '?tab=' . rawurlencode($activeNotificationTab);
 $activeTabTitle = $activeNotificationTab === 'orders' ? 'Orders' : 'Inbox';
 $activeTabDescription = $activeNotificationTab === 'orders'
-    ? 'New booking order alerts appear here so they do not clutter inbox messages.'
+    ? 'New reservation order alerts appear here so they do not clutter inbox messages.'
     : 'Customer messages and non-order updates appear here.';
 $activeTabListAriaLabel = $activeNotificationTab === 'orders'
     ? 'Order notifications'

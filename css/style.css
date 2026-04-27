@@ -540,6 +540,562 @@ button {
     letter-spacing: 0.03em;
 }
 
+.admin-dashboard-hero,
+.admin-dashboard-analytics,
+.admin-dashboard-content {
+    display: grid;
+    gap: 1rem;
+    width: min(100%, 1180px);
+}
+
+.admin-dashboard-hero {
+    grid-template-columns: minmax(0, 1.18fr) minmax(360px, 0.82fr);
+    padding: 1.6rem;
+    border: 1px solid rgba(221, 229, 49, 0.14);
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at top left, rgba(221, 229, 49, 0.24), transparent 32%),
+        linear-gradient(145deg, #16181d 0%, #111214 44%, #1d2025 100%);
+    box-shadow: 0 28px 56px rgba(0, 0, 0, 0.34);
+}
+
+.admin-dashboard-kicker,
+.admin-dashboard-panel-eyebrow {
+    margin: 0 0 0.55rem;
+    color: rgba(221, 229, 49, 0.88);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.admin-dashboard-title {
+    margin: 0;
+    color: #f4f4f4;
+    font-size: 2.55rem;
+    line-height: 1.04;
+}
+
+.admin-dashboard-summary {
+    margin: 0.95rem 0 0;
+    max-width: 56ch;
+    color: rgba(244, 244, 244, 0.82);
+    line-height: 1.7;
+}
+
+.admin-dashboard-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    margin-top: 1.2rem;
+}
+
+.admin-dashboard-hero-link,
+.admin-dashboard-panel-link {
+    min-height: 44px;
+    padding: 0.7rem 1.08rem;
+    border-radius: 999px;
+    border: 1px solid rgba(221, 229, 49, 0.38);
+    background: rgba(221, 229, 49, 0.12);
+    color: #f4f4f4;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 0.84rem;
+    font-weight: 700;
+    transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+
+.admin-dashboard-hero-link.is-muted {
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(244, 244, 244, 0.86);
+}
+
+.admin-dashboard-hero-link:hover,
+.admin-dashboard-hero-link:focus-visible,
+.admin-dashboard-panel-link:hover,
+.admin-dashboard-panel-link:focus-visible {
+    transform: translateY(-1px);
+    background: rgba(221, 229, 49, 0.14);
+    border-color: rgba(221, 229, 49, 0.52);
+}
+
+.admin-dashboard-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+.admin-dashboard-stat-card,
+.admin-dashboard-panel {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(18, 20, 24, 0.92) 100%);
+}
+
+.admin-dashboard-stat-card {
+    min-height: 150px;
+    padding: 1.15rem;
+    display: grid;
+    gap: 0.48rem;
+    align-content: start;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.admin-dashboard-stat-label,
+.admin-dashboard-panel-caption,
+.admin-dashboard-order-id,
+.admin-dashboard-camera-category,
+.admin-dashboard-revenue-bar-note {
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.admin-dashboard-stat-value {
+    color: #f4f4f4;
+    font-size: 1.5rem;
+    line-height: 1.1;
+}
+
+.admin-dashboard-stat-meta {
+    color: rgba(244, 244, 244, 0.72);
+    font-size: 0.84rem;
+    line-height: 1.55;
+}
+
+.admin-dashboard-analytics {
+    grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.85fr);
+}
+
+.admin-dashboard-content {
+    grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+}
+
+.admin-dashboard-panel {
+    padding: 1.35rem;
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.24);
+}
+
+.admin-dashboard-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.admin-dashboard-panel-title {
+    margin-bottom: 0;
+    font-size: 1.32rem;
+}
+
+.admin-dashboard-panel-aside {
+    display: grid;
+    gap: 0.18rem;
+    text-align: right;
+}
+
+.admin-dashboard-panel-highlight {
+    color: #dde531;
+    font-size: 1.18rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.admin-dashboard-revenue-chart {
+    position: relative;
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 18px;
+    background:
+        linear-gradient(180deg, rgba(126, 173, 233, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%),
+        rgba(10, 11, 14, 0.74);
+}
+
+.admin-dashboard-revenue-spark,
+.admin-dashboard-transactions-mini {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.admin-dashboard-revenue-area {
+    fill: url(#adminRevenueAreaGradient);
+}
+
+.admin-dashboard-revenue-line {
+    fill: none;
+    stroke: #dde531;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.admin-dashboard-revenue-bars {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 0.82rem;
+    align-items: end;
+}
+
+.admin-dashboard-revenue-bar-group {
+    display: grid;
+    gap: 0.38rem;
+    justify-items: center;
+}
+
+.admin-dashboard-revenue-bar-value {
+    color: rgba(244, 244, 244, 0.7);
+    font-size: 0.68rem;
+    text-align: center;
+    line-height: 1.35;
+}
+
+.admin-dashboard-revenue-bar-track {
+    width: 100%;
+    height: 148px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.12) 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-dashboard-revenue-bar-fill {
+    position: absolute;
+    inset: auto 0 0;
+    border-radius: 16px 16px 14px 14px;
+    background: linear-gradient(180deg, #dde531 0%, #8ea72b 100%);
+    box-shadow: 0 10px 18px rgba(221, 229, 49, 0.18);
+}
+
+.admin-dashboard-revenue-bar-month {
+    color: #f4f4f4;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+.admin-dashboard-mix-visual {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: center;
+    padding: 0.85rem 0;
+}
+
+.admin-dashboard-mix-ring {
+    width: min(100%, 210px);
+    aspect-ratio: 1;
+    margin: 0 auto;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+}
+
+.admin-dashboard-mix-ring-core {
+    width: 62%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #151619;
+    display: grid;
+    place-content: center;
+    text-align: center;
+    gap: 0.18rem;
+    color: #f4f4f4;
+}
+
+.admin-dashboard-mix-ring-core strong {
+    font-size: 1.18rem;
+}
+
+.admin-dashboard-mix-ring-core span {
+    color: rgba(244, 244, 244, 0.64);
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.admin-dashboard-transactions-area {
+    fill: url(#adminTransactionsMiniGradient);
+}
+
+.admin-dashboard-transactions-line {
+    fill: none;
+    stroke: #7eaee9;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.admin-dashboard-mix-legend {
+    display: grid;
+    gap: 0.62rem;
+    margin-top: 0.9rem;
+}
+
+.admin-dashboard-mix-legend-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    gap: 0.6rem;
+    align-items: center;
+}
+
+.admin-dashboard-mix-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.admin-dashboard-mix-name,
+.admin-dashboard-mix-amount,
+.admin-dashboard-mix-percent {
+    color: #f4f4f4;
+    font-size: 0.84rem;
+}
+
+.admin-dashboard-mix-percent {
+    color: rgba(244, 244, 244, 0.64);
+}
+
+.admin-dashboard-camera-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.1rem;
+}
+
+.admin-dashboard-camera-card {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 22px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.09) 0%, rgba(17, 18, 20, 0.88) 100%);
+    overflow: hidden;
+    color: inherit;
+    text-decoration: none;
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.admin-dashboard-camera-card.is-featured {
+    grid-column: span 2;
+    display: grid;
+    grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
+}
+
+.admin-dashboard-camera-card:hover,
+.admin-dashboard-camera-card:focus-visible {
+    transform: translateY(-2px);
+    border-color: rgba(221, 229, 49, 0.4);
+    box-shadow: 0 16px 28px rgba(0, 0, 0, 0.24);
+}
+
+.admin-dashboard-camera-visual {
+    position: relative;
+    min-height: 230px;
+    background:
+        radial-gradient(circle at top, rgba(221, 229, 49, 0.18), transparent 46%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(8, 8, 10, 0.96) 100%);
+    display: grid;
+    place-items: center;
+    padding: 1.4rem;
+}
+
+.admin-dashboard-camera-visual img {
+    width: 100%;
+    max-width: 280px;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.28));
+}
+
+.admin-dashboard-camera-rank {
+    position: absolute;
+    top: 0.9rem;
+    left: 0.9rem;
+    min-width: 46px;
+    min-height: 30px;
+    padding: 0 0.8rem;
+    border-radius: 999px;
+    background: rgba(17, 18, 20, 0.74);
+    color: #dde531;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.admin-dashboard-camera-copy {
+    padding: 1.15rem 1.2rem 1.2rem;
+    display: grid;
+    gap: 0.62rem;
+}
+
+.admin-dashboard-camera-copy h3,
+.admin-dashboard-order-top h3 {
+    margin: 0;
+    color: #f4f4f4;
+    font-size: 1.06rem;
+}
+
+.admin-dashboard-camera-copy p,
+.admin-dashboard-empty-state {
+    margin: 0;
+    color: rgba(244, 244, 244, 0.78);
+    line-height: 1.55;
+}
+
+.admin-dashboard-camera-bar {
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.admin-dashboard-camera-bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #dde531 0%, #80c87b 100%);
+}
+
+.admin-dashboard-camera-meta,
+.admin-dashboard-order-meta,
+.admin-dashboard-order-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    color: rgba(244, 244, 244, 0.72);
+    font-size: 0.82rem;
+}
+
+.admin-dashboard-order-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.admin-dashboard-order-card {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(17, 18, 20, 0.9) 100%);
+    padding: 1.05rem;
+    display: grid;
+    gap: 0.72rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.admin-dashboard-order-top,
+.admin-dashboard-order-thumbs {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.admin-dashboard-order-thumbs {
+    justify-content: flex-start;
+}
+
+.admin-dashboard-order-thumb {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    display: grid;
+    place-items: center;
+    margin-right: -10px;
+}
+
+.admin-dashboard-order-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.admin-dashboard-order-thumb span,
+.admin-dashboard-camera-visual-empty {
+    color: rgba(244, 244, 244, 0.56);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.admin-dashboard-camera-visual-empty {
+    min-height: 160px;
+    display: grid;
+    place-items: center;
+}
+
+.admin-dashboard-order-footer {
+    font-size: 0.76rem;
+    color: rgba(255, 255, 255, 0.58);
+}
+
+@media (max-width: 900px) {
+    .admin-dashboard-hero,
+    .admin-dashboard-analytics,
+    .admin-dashboard-content,
+    .admin-dashboard-camera-card.is-featured,
+    .admin-dashboard-mix-visual {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-dashboard-revenue-bars {
+        gap: 0.45rem;
+    }
+
+    .admin-dashboard-revenue-bar-track {
+        height: 110px;
+    }
+}
+
+@media (max-width: 640px) {
+    .admin-dashboard-title {
+        font-size: 2rem;
+    }
+
+    .admin-dashboard-stat-grid,
+    .admin-dashboard-camera-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-dashboard-camera-card.is-featured {
+        grid-column: auto;
+    }
+
+    .admin-dashboard-panel-head,
+    .admin-dashboard-camera-meta,
+    .admin-dashboard-order-meta,
+    .admin-dashboard-order-footer {
+        display: grid;
+        justify-content: stretch;
+    }
+
+    .admin-dashboard-panel-aside {
+        text-align: left;
+    }
+
+    .admin-dashboard-revenue-bars {
+        overflow-x: auto;
+        padding-bottom: 0.2rem;
+    }
+
+    .admin-dashboard-revenue-bar-group {
+        min-width: 56px;
+    }
+}
+
 .promo-banner {
     width: min(100%, 930px);
     aspect-ratio: 3 / 1;
@@ -2744,6 +3300,23 @@ button {
     gap: 0.9rem;
 }
 
+.cart-order-status-table-head {
+    display: grid;
+    grid-template-columns: minmax(200px, 1.5fr) minmax(170px, 1.05fr) minmax(120px, 0.75fr) minmax(220px, 1.6fr) minmax(170px, auto);
+    gap: 0.8rem;
+    align-items: center;
+    padding: 0 0.7rem;
+    color: rgba(255, 255, 255, 0.64);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.cart-order-status-table-head-actions {
+    text-align: right;
+}
+
 .cart-order-status-copy {
     margin: 0;
     color: var(--cart-soft-text);
@@ -2758,18 +3331,42 @@ button {
 }
 
 .cart-order-status-panel .profile-order-item {
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: minmax(200px, 1.5fr) minmax(170px, 1.05fr) minmax(120px, 0.75fr) minmax(220px, 1.6fr) minmax(170px, auto);
+    align-items: start;
+    gap: 0.8rem;
 }
 
-.cart-order-status-panel .profile-order-meta {
+.cart-order-status-cell {
     min-width: 0;
-    flex: 1;
+    display: grid;
+    gap: 0.28rem;
+    align-content: start;
+}
+
+.cart-order-status-cell-label {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.79rem;
+    line-height: 1.5;
 }
 
 .cart-order-status-panel .profile-order-id {
     white-space: normal;
     line-height: 1.45;
     font-size: 0.86rem;
+}
+
+.cart-order-status-reference {
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.cart-order-status-ordered {
+    color: #f4f6f9;
 }
 
 .cart-order-status-date {
@@ -2869,6 +3466,7 @@ button {
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 0.45rem;
+    align-self: stretch;
 }
 
 .cart-order-status-actions.is-stacked {
@@ -2879,6 +3477,57 @@ button {
 
 .cart-order-status-actions.is-stacked .profile-order-action {
     width: 100%;
+}
+
+.cart-order-status-actions.is-empty {
+    min-height: 100%;
+}
+
+.cart-order-status-empty-detail {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.48);
+    font-size: 0.79rem;
+    line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+    .cart-order-status-table-head,
+    .cart-order-status-panel .profile-order-item {
+        grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.9fr);
+    }
+
+    .cart-order-status-cell-details {
+        grid-column: 1 / -2;
+    }
+
+    .cart-order-status-actions {
+        grid-column: 3;
+        grid-row: 1 / span 2;
+    }
+}
+
+@media (max-width: 640px) {
+    .cart-order-status-table-head {
+        display: none;
+    }
+
+    .cart-order-status-panel .profile-order-item {
+        grid-template-columns: 1fr;
+    }
+
+    .cart-order-status-actions,
+    .cart-order-status-cell-details {
+        grid-column: auto;
+        grid-row: auto;
+    }
+
+    .cart-order-status-actions {
+        justify-content: stretch;
+    }
+
+    .cart-order-status-actions .profile-order-action {
+        width: 100%;
+    }
 }
 
 .profile-order-item.is-flash-highlight {
@@ -4372,6 +5021,10 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     border-radius: 14px;
     background: #dde531;
     color: #111214;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
     font-size: 1rem;
     font-weight: 800;
     letter-spacing: 0.05em;
@@ -5508,6 +6161,10 @@ ol.cart-terms-editor-mini-list > .cart-terms-editor-mini-item::before {
     letter-spacing: 0.06em;
     text-transform: uppercase;
     padding: 0 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
     cursor: pointer;
     transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
 }
