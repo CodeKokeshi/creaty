@@ -1280,6 +1280,7 @@ $pageTitleLabel = $isSearchResultsLanding
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Reservation</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath . '?view=history', ENT_QUOTES, 'UTF-8'); ?>">Reservation History</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                         <li><a class="dropdown-item" href="#">Help Center</a></li>
@@ -1295,7 +1296,7 @@ $pageTitleLabel = $isSearchResultsLanding
         </div>
 
         <nav
-            class="section-nav section-nav-disabled<?php echo $isAdminView ? ' section-nav-admin' : ''; ?>"
+            class="section-nav section-nav-disabled<?php echo $isAdminView ? ' section-nav-admin' : ' section-nav-with-history'; ?>"
             aria-label="Catalog filters"
             <?php if ($isAdminView): ?>data-admin-nav data-admin-dashboard-base-url="<?php echo htmlspecialchars($homePath, ENT_QUOTES, 'UTF-8'); ?>"<?php endif; ?>
         >
@@ -1303,7 +1304,6 @@ $pageTitleLabel = $isSearchResultsLanding
                 <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($homePath . '#admin-dashboard-overview', ENT_QUOTES, 'UTF-8'); ?>">DASHBOARD</a>
                 <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($assetBase . 'admin/services/', ENT_QUOTES, 'UTF-8'); ?>">SERVICES</a>
                 <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($adminFeaturedProductsPath, ENT_QUOTES, 'UTF-8'); ?>">BRANDS</a>
-                <span class="section-nav-filter is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">DATE</span>
             <?php else: ?>
                 <span class="section-nav-filter is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">BRANDS</span>
                 <span class="section-nav-section is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">SERVICES</span>
@@ -1318,6 +1318,8 @@ $pageTitleLabel = $isSearchResultsLanding
                 <button class="section-nav-swap" type="button" data-admin-nav-swap aria-pressed="false" aria-label="Swap admin navigation" title="Show management bar">
                     <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/swap_horizontal_arrows.svg" alt="" aria-hidden="true">
                 </button>
+            <?php elseif ($isCustomerLoggedIn): ?>
+                <a class="section-nav-history-link" href="<?php echo htmlspecialchars($cartPath . '?view=history', ENT_QUOTES, 'UTF-8'); ?>">Reservation History</a>
             <?php endif; ?>
         </nav>
     </header>

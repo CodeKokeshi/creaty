@@ -13,17 +13,18 @@ $assetBase = $assetBase ?? '';
 $customerLoginPath = $customerLoginPath ?? 'customer-login/';
 $customerSignupPath = $customerSignupPath ?? 'customer-signup/';
 $customerPrivacyPolicyPath = $customerPrivacyPolicyPath ?? 'customer-privacy-policy/';
-$adminLoginPath = $adminLoginPath ?? $routeBase . 'admin/';
-$staffLoginPath = $staffLoginPath ?? $routeBase . 'staff/';
-$staffDashboardPath = $staffDashboardPath ?? $routeBase . 'admin/dashboard/?admin_view=bookings';
+$adminSignupPath = $adminSignupPath ?? $routeBase . 'admin/signup/';
+$staffDashboardPath = $staffDashboardPath ?? $routeBase . 'admin/dashboard/';
 
 require_once __DIR__ . '/config/db.php';
 
 $customerAccountsTable = $customerAccountsTable ?? 'customer_accounts';
+$staffAccountsTable = $staffAccountsTable ?? 'staff_accounts';
+$adminAccountsTable = $adminAccountsTable ?? 'admin_accounts';
 
 $successMessage = '';
 $errorMessage = '';
-$emailValue = '';
+$identifierValue = '';
 $redirectTarget = trim((string) ($_POST['redirect'] ?? $_GET['redirect'] ?? ''));
 
 $defaultRedirect = $routeBase === '' ? '/' : $routeBase;
@@ -52,54 +53,105 @@ if (isset($_GET['verified']) && $_GET['verified'] === '1') {
     $successMessage = 'Email verified. Your account has been created successfully.';
 } elseif (isset($_GET['registered']) && $_GET['registered'] === '1') {
     $successMessage = 'Account created successfully. Please verify your email address first.';
+} elseif (isset($_GET['admin_registered']) && $_GET['admin_registered'] === '1') {
+    $successMessage = 'Admin account created. You can sign in now.';
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $emailValue = trim($_POST['email'] ?? '');
+    $identifierValue = trim((string) ($_POST['identifier'] ?? ''));
     $passwordValue = $_POST['password'] ?? '';
 
-    if ($emailValue === '' || $passwordValue === '') {
-        $errorMessage = 'Please enter both email and password.';
-    } elseif (!filter_var($emailValue, FILTER_VALIDATE_EMAIL)) {
-        $errorMessage = 'Please enter a valid email address.';
+    if ($identifierValue === '' || $passwordValue === '') {
+        $errorMessage = 'Please enter both login ID and password.';
     } else {
-        $loginStmt = $conn->prepare("SELECT id, first_name, last_name, email, customer_phone, skill_level, password, email_verified_at FROM {$customerAccountsTable} WHERE email = ? LIMIT 1");
-        $loginStmt->bind_param('s', $emailValue);
-        $loginStmt->execute();
-        $customerResult = $loginStmt->get_result();
-        $customer = $customerResult->fetch_assoc();
-        $loginStmt->close();
+        $isEmailIdentifier = filter_var($identifierValue, FILTER_VALIDATE_EMAIL) !== false;
 
-        if (!$customer || !password_verify($passwordValue, $customer['password'])) {
-            $errorMessage = 'Invalid email or password.';
-        } elseif ($customer['email_verified_at'] === null) {
-            $errorMessage = 'Please verify your email address before logging in.';
-        } else {
-            $customerSkillLevel = trim((string) ($customer['skill_level'] ?? ''));
+        if ($isEmailIdentifier) {
+            $loginStmt = $conn->prepare("SELECT id, name, email, password FROM {$staffAccountsTable} WHERE email = ? LIMIT 1");
 
-            if (strcasecmp($customerSkillLevel, 'Professional') === 0) {
-                $customerSkillLevel = 'Professional';
+            if ($loginStmt) {
+                $loginStmt->bind_param('s', $identifierValue);
+                $loginStmt->execute();
+                $staffResult = $loginStmt->get_result();
+                $staffRecord = $staffResult ? $staffResult->fetch_assoc() : null;
+                $loginStmt->close();
+
+                if ($staffRecord && password_verify($passwordValue, (string) ($staffRecord['password'] ?? ''))) {
+                    $_SESSION['staff_id'] = (int) ($staffRecord['id'] ?? 0);
+                    $_SESSION['staff_name'] = trim((string) ($staffRecord['name'] ?? ''));
+                    $_SESSION['staff_email'] = (string) ($staffRecord['email'] ?? '');
+                    $_SESSION['staff_role'] = 'staff';
+
+                    header('Location: ' . $staffDashboardPath);
+                    exit;
+                }
+            }
+
+            $loginStmt = $conn->prepare("SELECT id, first_name, last_name, email, customer_phone, skill_level, password, email_verified_at FROM {$customerAccountsTable} WHERE email = ? LIMIT 1");
+
+            if ($loginStmt) {
+                $loginStmt->bind_param('s', $identifierValue);
+                $loginStmt->execute();
+                $customerResult = $loginStmt->get_result();
+                $customer = $customerResult ? $customerResult->fetch_assoc() : null;
+                $loginStmt->close();
             } else {
-                $customerSkillLevel = 'Beginner';
+                $customer = null;
             }
 
-            $_SESSION['customer_id'] = (int) $customer['id'];
-            $_SESSION['customer_name'] = trim(($customer['first_name'] ?? '') . ' ' . ($customer['last_name'] ?? ''));
-            $_SESSION['customer_email'] = $customer['email'];
-            $_SESSION['customer_phone'] = trim((string) ($customer['customer_phone'] ?? ''));
-            $_SESSION['customer_skill_level'] = $customerSkillLevel;
+            if (!$customer || !password_verify($passwordValue, (string) ($customer['password'] ?? ''))) {
+                $errorMessage = 'Invalid login ID or password.';
+            } elseif ($customer['email_verified_at'] === null) {
+                $errorMessage = 'Please verify your email address before logging in.';
+            } else {
+                $customerSkillLevel = trim((string) ($customer['skill_level'] ?? ''));
 
-            if (!isset($_SESSION['customer_cart_count'])) {
-                $_SESSION['customer_cart_count'] = 0;
+                if (strcasecmp($customerSkillLevel, 'Professional') === 0) {
+                    $customerSkillLevel = 'Professional';
+                } else {
+                    $customerSkillLevel = 'Beginner';
+                }
+
+                $_SESSION['customer_id'] = (int) $customer['id'];
+                $_SESSION['customer_name'] = trim(($customer['first_name'] ?? '') . ' ' . ($customer['last_name'] ?? ''));
+                $_SESSION['customer_email'] = $customer['email'];
+                $_SESSION['customer_phone'] = trim((string) ($customer['customer_phone'] ?? ''));
+                $_SESSION['customer_skill_level'] = $customerSkillLevel;
+
+                if (!isset($_SESSION['customer_cart_count'])) {
+                    $_SESSION['customer_cart_count'] = 0;
+                }
+
+                if ($redirectTarget !== '' && preg_match('/^(?:\/|\.\.?\/)/', $redirectTarget) === 1 && strpos($redirectTarget, '://') === false && strpos($redirectTarget, '//') !== 0) {
+                    header('Location: ' . $redirectTarget);
+                    exit;
+                }
+
+                header('Location: ' . $defaultRedirect);
+                exit;
+            }
+        } else {
+            $loginStmt = $conn->prepare("SELECT id, username, password FROM {$adminAccountsTable} WHERE username = ? LIMIT 1");
+
+            if ($loginStmt) {
+                $loginStmt->bind_param('s', $identifierValue);
+                $loginStmt->execute();
+                $adminResult = $loginStmt->get_result();
+                $admin = $adminResult ? $adminResult->fetch_assoc() : null;
+                $loginStmt->close();
+            } else {
+                $admin = null;
             }
 
-            if ($redirectTarget !== '' && preg_match('/^(?:\/|\.\.?\/)/', $redirectTarget) === 1 && strpos($redirectTarget, '://') === false && strpos($redirectTarget, '//') !== 0) {
-                header('Location: ' . $redirectTarget);
+            if ($admin && password_verify($passwordValue, (string) ($admin['password'] ?? ''))) {
+                $_SESSION['user_id'] = (int) ($admin['id'] ?? 0);
+                $_SESSION['username'] = (string) ($admin['username'] ?? '');
+
+                header('Location: ' . $routeBase . 'admin/dashboard/');
                 exit;
             }
 
-            header('Location: ' . $defaultRedirect);
-            exit;
+            $errorMessage = 'Invalid login ID or password.';
         }
     }
 }
@@ -119,10 +171,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body class="login-page">
     <main class="login-page-shell">
-        <a class="auth-switch-link" href="<?php echo htmlspecialchars($staffLoginPath, ENT_QUOTES, 'UTF-8'); ?>" data-auth-switch aria-label="Switch to staff login">
-            <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/admin-login-icon.svg" alt="">
-        </a>
-
         <section class="login-card reveal">
             <div class="brand-wrap">
                 <img class="brand-logo" src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/images/main_logo.png" alt="The Nifty Fifty">
@@ -139,12 +187,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <input type="hidden" name="redirect" value="<?php echo htmlspecialchars($redirectTarget, ENT_QUOTES, 'UTF-8'); ?>">
 
-                <label class="sr-only" for="customer_email">Email address</label>
+                <label class="sr-only" for="login_identifier">Email or username</label>
                 <div class="input-row">
                     <span class="field-icon" aria-hidden="true">
                         <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/email_icon.svg" alt="">
                     </span>
-                    <input id="customer_email" name="email" type="email" placeholder="Enter your email address" autocomplete="email" value="<?php echo htmlspecialchars($emailValue, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input id="login_identifier" name="identifier" type="text" placeholder="Email / Username" autocomplete="username" value="<?php echo htmlspecialchars($identifierValue, ENT_QUOTES, 'UTF-8'); ?>">
                     <span class="field-icon" aria-hidden="true"></span>
                 </div>
 
@@ -177,12 +225,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <button class="login-submit" type="submit">LOGIN</button>
 
-                <button class="google-submit" type="button">
-                    <span>Sign In With Google</span>
-                    <img src="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>assets/icons/google_icon.svg" alt="Google">
-                </button>
-
-                <p class="switch-auth">Not a Member? <a href="<?php echo htmlspecialchars($customerSignupPath, ENT_QUOTES, 'UTF-8'); ?>">Sign up</a></p>
+                <p class="switch-auth">Not a member? <a href="<?php echo htmlspecialchars($customerSignupPath, ENT_QUOTES, 'UTF-8'); ?>">Sign up as customer</a></p>
+                <p class="switch-auth">Are you an admin? <a href="<?php echo htmlspecialchars($adminSignupPath, ENT_QUOTES, 'UTF-8'); ?>">Sign up here</a></p>
             </form>
         </section>
     </main>

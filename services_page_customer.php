@@ -608,6 +608,7 @@ unset($serviceGroup);
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Reservation</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath . '?view=history', ENT_QUOTES, 'UTF-8'); ?>">Reservation History</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                         <li><a class="dropdown-item" href="#">Help Center</a></li>
@@ -622,12 +623,11 @@ unset($serviceGroup);
             <?php endif; ?>
         </div>
 
-        <nav class="section-nav section-nav-disabled<?php echo $isAdminView ? ' section-nav-admin' : ''; ?>" aria-label="Catalog filters"<?php if ($isAdminView): ?> data-admin-nav data-admin-dashboard-base-url="<?php echo htmlspecialchars($homePath, ENT_QUOTES, 'UTF-8'); ?>"<?php endif; ?>>
+        <nav class="section-nav section-nav-disabled<?php echo $isAdminView ? ' section-nav-admin' : ' section-nav-with-history'; ?>" aria-label="Catalog filters"<?php if ($isAdminView): ?> data-admin-nav data-admin-dashboard-base-url="<?php echo htmlspecialchars($homePath, ENT_QUOTES, 'UTF-8'); ?>"<?php endif; ?>>
             <?php if ($isAdminView): ?>
                 <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($homePath . '#admin-dashboard-overview', ENT_QUOTES, 'UTF-8'); ?>">DASHBOARD</a>
                 <span class="section-nav-section is-active admin-nav-primary" data-admin-nav-item="primary" aria-current="page">SERVICES</span>
                 <a class="section-nav-section admin-nav-primary" data-admin-nav-item="primary" href="<?php echo htmlspecialchars($adminFeaturedProductsPath, ENT_QUOTES, 'UTF-8'); ?>">BRANDS</a>
-                <span class="section-nav-filter is-disabled admin-nav-primary" data-admin-nav-item="primary" aria-disabled="true">DATE</span>
 
                 <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="equipments" hidden>EQUIPMENTS</button>
                 <button class="section-nav-section admin-nav-alt" type="button" data-admin-nav-item="swapped" data-admin-nav-pill data-admin-panel-target="bookings" hidden>RESERVATIONS</button>
@@ -642,6 +642,9 @@ unset($serviceGroup);
                 <a class="section-nav-section" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">EVENTS</a>
                 <a class="section-nav-section is-active" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>" aria-current="page">SERVICES</a>
                 <span class="section-nav-filter is-disabled" aria-disabled="true">DATE</span>
+                <?php if ($isCustomerLoggedIn): ?>
+                    <a class="section-nav-history-link" href="<?php echo htmlspecialchars($cartPath . '?view=history', ENT_QUOTES, 'UTF-8'); ?>">Reservation History</a>
+                <?php endif; ?>
             <?php endif; ?>
         </nav>
     </header>

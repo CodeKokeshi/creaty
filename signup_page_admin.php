@@ -10,6 +10,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 $routeBase = $routeBase ?? 'admin/';
 $assetBase = $assetBase ?? '';
+$unifiedLoginPath = $unifiedLoginPath ?? $assetBase . 'customer-login/';
 
 require_once __DIR__ . '/config/db.php';
 
@@ -51,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($insertStmt->execute()) {
                 $insertStmt->close();
-                header('Location: ' . $routeBase . '?registered=1');
+                header('Location: ' . $unifiedLoginPath . '?admin_registered=1');
                 exit;
             }
 

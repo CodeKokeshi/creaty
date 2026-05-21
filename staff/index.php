@@ -9,14 +9,9 @@ if (isset($_SESSION['customer_id'])) {
 }
 
 if (isset($_SESSION['user_id']) || isset($_SESSION['staff_id'])) {
-    header('Location: ../admin/dashboard/?admin_view=bookings');
+    header('Location: ../admin/dashboard/');
     exit;
 }
 
-$routeBase = '../';
-$assetBase = '../';
-$customerLoginPath = '../customer-login/';
-$adminLoginPath = '../admin/';
-$staffDashboardPath = '../admin/dashboard/?admin_view=bookings';
-
-require dirname(__DIR__) . '/login_page_staff.php';
+header('Location: ../customer-login/');
+exit;

@@ -22,7 +22,7 @@ if (isset($_SESSION['customer_id'])) {
 }
 
 if (isset($_SESSION['staff_id'])) {
-    header('Location: ' . $routeBase . 'dashboard/?admin_view=bookings');
+    header('Location: ' . $routeBase . 'dashboard/');
     exit;
 }
 

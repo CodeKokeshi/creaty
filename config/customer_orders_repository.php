@@ -1296,6 +1296,31 @@ function normalize_customer_order_items($items)
             'days' => $days,
         ];
 
+        $copy = trim((string) ($item['copy'] ?? ''));
+        if ($copy !== '') {
+            $normalizedItem['copy'] = $copy;
+        }
+
+        $image = trim((string) ($item['image'] ?? ''));
+        if ($image !== '') {
+            $normalizedItem['image'] = $image;
+        }
+
+        $price = trim((string) ($item['price'] ?? ''));
+        if ($price !== '') {
+            $normalizedItem['price'] = $price;
+        }
+
+        $durationUnit = trim((string) ($item['durationUnit'] ?? $item['duration_unit'] ?? ''));
+        if ($durationUnit !== '') {
+            $normalizedItem['durationUnit'] = $durationUnit;
+        }
+
+        $durationValue = $item['durationValue'] ?? $item['duration_value'] ?? null;
+        if ($durationValue !== null && $durationValue !== '') {
+            $normalizedItem['durationValue'] = (int) $durationValue;
+        }
+
         if ($itemId !== '') {
             $normalizedItem['item_id'] = $itemId;
         }

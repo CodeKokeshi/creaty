@@ -10,4 +10,5 @@ if (isset($_SESSION['customer_id'])) {
 
 $routeBase = '../';
 $assetBase = '../../';
+$unifiedLoginPath = '../../customer-login/';
 require dirname(__DIR__, 2) . '/signup_page_admin.php';

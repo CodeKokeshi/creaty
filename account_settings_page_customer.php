@@ -264,6 +264,7 @@ $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No addr
                 <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                     <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
                     <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Reservation</a></li>
+                    <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath . '?view=history', ENT_QUOTES, 'UTF-8'); ?>">Reservation History</a></li>
                     <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
                     <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                     <li><a class="dropdown-item" href="#">Help Center</a></li>
@@ -275,10 +276,11 @@ $displayAddress = count($addressParts) ? implode(', ', $addressParts) : 'No addr
             </div>
         </div>
 
-        <nav class="section-nav section-nav-disabled" aria-label="Catalog filters">
+        <nav class="section-nav section-nav-disabled section-nav-with-history" aria-label="Catalog filters">
             <span class="section-nav-filter is-disabled" aria-disabled="true">PROFILE</span>
             <span class="section-nav-section is-disabled" aria-disabled="true">PERSONAL INFORMATION</span>
             <span class="section-nav-filter is-disabled" aria-disabled="true">ADDRESS</span>
+            <a class="section-nav-history-link" href="<?php echo htmlspecialchars($cartPath . '?view=history', ENT_QUOTES, 'UTF-8'); ?>">Reservation History</a>
         </nav>
     </header>
 

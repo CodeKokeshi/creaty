@@ -19,6 +19,7 @@ $accountLabel = $isCustomerLoggedIn ? 'Account' : 'Sign In';
 $accountSettingsPath = $assetBase . 'customer-account-settings/';
 $logoutPath = $assetBase . 'customer-logout/';
 $cartPath = $assetBase . 'customer-cart/';
+$reservationHistoryPath = $cartPath . '?view=history';
 $eventsPath = $assetBase . 'customer-events/';
 $servicesPath = $assetBase . 'customer-services/';
 
@@ -73,6 +74,115 @@ function map_cart_package_camera_catalog($repository): array
     return $catalog;
 }
 
+function cart_history_asset_url(string $assetBase, string $path, string $fallback = ''): string
+{
+    $normalizedPath = ltrim(trim(str_replace('\\', '/', $path)), '/');
+
+    if ($normalizedPath === '') {
+        return $fallback;
+    }
+
+    if (preg_match('/^(?:https?:)?\/\//i', $normalizedPath)) {
+        return $normalizedPath;
+    }
+
+    return $assetBase . $normalizedPath;
+}
+
+function cart_history_discounted_price($priceValue, $discountPercent): float
+{
+    $price = max(0, (float) $priceValue);
+    $discount = max(0, min(95, (int) $discountPercent));
+
+    if ($discount <= 0) {
+        return $price;
+    }
+
+    return $price - ($price * ($discount / 100));
+}
+
+function build_cart_catalog_payload(array $productsRepository, array $eventPackagesRepository, array $servicePackagesRepository, string $assetBase): array
+{
+    $fallbackImage = $assetBase . 'assets/images/main_logo.png';
+    $catalog = [];
+
+    foreach ($productsRepository as $productKey => $productRecord) {
+        if (!is_string($productKey) || trim($productKey) === '' || !is_array($productRecord)) {
+            continue;
+        }
+
+        $itemId = 'camera-' . trim($productKey);
+        $nameParts = [
+            trim((string) ($productRecord['brand'] ?? '')),
+            trim((string) ($productRecord['name'] ?? '')),
+        ];
+        $name = trim(implode(' ', array_filter($nameParts, static function ($value): bool {
+            return $value !== '';
+        })));
+
+        $catalog[$itemId] = [
+            'id' => $itemId,
+            'type' => 'camera',
+            'productKey' => trim($productKey),
+            'name' => $name !== '' ? $name : 'Camera',
+            'copy' => trim((string) ($productRecord['tagline'] ?? '')),
+            'image' => cart_history_asset_url($assetBase, (string) ($productRecord['cameraImage'] ?? ''), $fallbackImage),
+            'price' => cart_history_discounted_price($productRecord['price'] ?? 0, $productRecord['discountPercent'] ?? 0),
+        ];
+    }
+
+    foreach ($eventPackagesRepository as $packageKey => $packageRecord) {
+        if (!is_string($packageKey) || trim($packageKey) === '' || !is_array($packageRecord) || !empty($packageRecord['archived'])) {
+            continue;
+        }
+
+        $itemId = 'event-' . trim($packageKey);
+        $thumbnailImages = is_array($packageRecord['thumbnail_images'] ?? null)
+            ? array_values($packageRecord['thumbnail_images'])
+            : [];
+        $imagePath = isset($thumbnailImages[0]) ? (string) $thumbnailImages[0] : '';
+        $title = trim((string) ($packageRecord['title'] ?? 'EVENT PACKAGE'));
+
+        $catalog[$itemId] = [
+            'id' => $itemId,
+            'type' => 'event-package',
+            'productKey' => trim($packageKey),
+            'name' => $title !== '' ? $title : 'EVENT PACKAGE',
+            'copy' => 'Event package with curated coverage style and sample gallery references.',
+            'image' => cart_history_asset_url($assetBase, $imagePath, $fallbackImage),
+            'price' => cart_history_discounted_price($packageRecord['price'] ?? 0, $packageRecord['discountPercent'] ?? 0),
+        ];
+    }
+
+    foreach ($servicePackagesRepository as $packageKey => $packageRecord) {
+        if (!is_string($packageKey) || trim($packageKey) === '' || !is_array($packageRecord) || !empty($packageRecord['archived'])) {
+            continue;
+        }
+
+        $itemId = 'service-' . trim($packageKey);
+        $thumbnailImages = is_array($packageRecord['thumbnail_images'] ?? null)
+            ? array_values($packageRecord['thumbnail_images'])
+            : [];
+        $imagePath = isset($thumbnailImages[0]) ? (string) $thumbnailImages[0] : '';
+        $title = trim((string) ($packageRecord['title'] ?? 'SERVICE PACKAGE'));
+
+        $catalog[$itemId] = [
+            'id' => $itemId,
+            'type' => 'service-package',
+            'productKey' => trim($packageKey),
+            'servicePackageKey' => trim($packageKey),
+            'name' => $title !== '' ? $title : 'SERVICE PACKAGE',
+            'copy' => trim((string) ($packageRecord['description'] ?? '')),
+            'image' => cart_history_asset_url($assetBase, $imagePath, $fallbackImage),
+            'price' => cart_history_discounted_price($packageRecord['price'] ?? 0, $packageRecord['discountPercent'] ?? 0),
+            'durationUnit' => (string) ($packageRecord['durationUnit'] ?? 'hours'),
+            'durationValue' => (int) ($packageRecord['durationValue'] ?? 1),
+        ];
+    }
+
+    return $catalog;
+}
+
 $productsRepository = load_products_repository();
 $eventPackagesRepository = load_event_packages_repository();
 $servicePackagesRepository = load_services_packages_repository();
@@ -119,6 +229,12 @@ if (is_array($servicePackagesRepository)) {
 }
 
 $availableCartItemIds = array_values(array_unique($availableCartItemIds));
+$cartCatalogPayload = build_cart_catalog_payload(
+    is_array($productsRepository) ? $productsRepository : [],
+    is_array($eventPackagesRepository) ? $eventPackagesRepository : [],
+    is_array($servicePackagesRepository) ? $servicePackagesRepository : [],
+    $assetBase
+);
 $equipmentAvailability = customer_order_build_equipment_availability_payload([
     'horizon_days' => 1095,
 ]);
@@ -134,7 +250,7 @@ $customerNotificationUnreadCount = 0;
 $customerNotificationLiveUpdatesEndpoint = $assetBase . 'customer_notifications_live_updates.php';
 $customerNotificationMarkReadEndpoint = $assetBase . 'customer_notifications_mark_read.php';
 $requestedCartView = strtolower(trim((string) ($_GET['view'] ?? 'cart')));
-$allowedCartViews = ['cart', 'services-cart', 'order-status'];
+$allowedCartViews = ['cart', 'services-cart', 'order-status', 'history'];
 $initialCartView = in_array($requestedCartView, $allowedCartViews, true) ? $requestedCartView : 'cart';
 $isServicesCartInitialView = $initialCartView === 'services-cart';
 $gcashQrSettings = load_gcash_qr_repository();
@@ -203,7 +319,7 @@ if ($isCustomerLoggedIn) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260410-1">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8'); ?>css/style.css?v=20260521-2">
 </head>
 <body class="cart-page">
     <header class="site-header">
@@ -235,6 +351,7 @@ if ($isCustomerLoggedIn) {
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Reservation</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($reservationHistoryPath, ENT_QUOTES, 'UTF-8'); ?>">Reservation History</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                         <li><a class="dropdown-item" href="#">Help Center</a></li>
@@ -278,6 +395,14 @@ if ($isCustomerLoggedIn) {
                 >
                     Order Status
                 </button>
+                <button
+                    type="button"
+                    class="section-nav-section<?php echo $initialCartView === 'history' ? ' is-active' : ''; ?>"
+                    data-cart-nav="history"
+                    <?php echo $initialCartView === 'history' ? 'aria-current="page"' : ''; ?>
+                >
+                    Reservation History
+                </button>
             </nav>
         <?php endif; ?>
     </header>
@@ -296,31 +421,6 @@ if ($isCustomerLoggedIn) {
                 <div class="cart-items-panel" data-cart-items-panel>
                     <p class="cart-items-empty" data-cart-empty-message>Your reservation is empty. Add event packages or camera rentals to continue.</p>
                 </div>
-
-                <section class="cart-terms-block">
-                    <div class="cart-terms-header">
-                        <h2>Terms and Conditions</h2>
-                        <button
-                            class="cart-terms-toggle"
-                            type="button"
-                            data-terms-toggle
-                            data-label-show="Show Full Terms and Conditions"
-                            data-label-hide="Hide Full Terms and Conditions"
-                            aria-expanded="false"
-                            aria-controls="cart-terms-content"
-                        >
-                            Show Full Terms and Conditions
-                        </button>
-                    </div>
-
-                    <p class="cart-terms-intro">Please review and accept before confirming your reservation.</p>
-
-                    <div class="cart-terms-content" id="cart-terms-content" hidden>
-                        <article class="cart-terms-markdown" aria-label="Full Terms and Conditions">
-                            <?php echo $customerTermsDisplayHtml; ?>
-                        </article>
-                    </div>
-                </section>
                 </section>
 
                 <section class="profile-section-card cart-order-status-panel" data-cart-view="order-status" aria-labelledby="cart-order-status-heading" hidden>
@@ -330,15 +430,19 @@ if ($isCustomerLoggedIn) {
 
                     <p class="cart-order-status-copy">Track your reservations and current fulfillment status.</p>
 
-                    <div class="cart-order-status-table-head" data-cart-orders-head hidden aria-hidden="true">
-                        <span>Order / Items</span>
-                        <span>Schedule</span>
-                        <span>Status</span>
-                        <span>Details</span>
-                        <span class="cart-order-status-table-head-actions">Actions</span>
-                    </div>
                     <div class="profile-order-list" data-cart-orders-list aria-label="Order status list"></div>
                     <p class="cart-order-status-empty" data-cart-orders-empty hidden>No orders yet. Confirm a reservation to see it here.</p>
+                </section>
+
+                <section class="profile-section-card cart-history-panel" data-cart-view="history" aria-labelledby="cart-history-heading" hidden>
+                    <div class="profile-section-head">
+                        <h2 id="cart-history-heading">Reservation History</h2>
+                    </div>
+
+                    <p class="cart-history-copy">Revisit successful reservations and re-add the items you want back into your cart.</p>
+
+                    <div class="cart-history-grid" data-cart-history-list aria-label="Reservation history list"></div>
+                    <p class="cart-history-empty" data-cart-history-empty hidden>No successful reservations yet. Completed and active handover reservations will appear here.</p>
                 </section>
             </div>
 
@@ -493,9 +597,17 @@ if ($isCustomerLoggedIn) {
                         <option value="cash-meetup"<?php echo $isServicesCartInitialView ? ' selected' : ''; ?>>Cash on Meetup</option>
                     </select>
 
+                    <label class="cart-terms-consent" data-cart-terms-consent>
+                        <input type="checkbox" data-cart-terms-checkbox>
+                        <span class="cart-terms-consent-copy">
+                            <span>Check if you agree to the terms and conditions.</span>
+                            <button type="button" class="cart-terms-consent-link" data-cart-terms-open>Read Terms and Conditions</button>
+                        </span>
+                    </label>
+
                     <button class="cart-confirm-button" type="button">CONFIRM RESERVATION</button>
 
-                    <p class="cart-booking-note" data-cart-booking-note>Demo flow only: no real reservation or payment will be processed.</p>
+                    <p class="cart-booking-note" data-cart-booking-note>Please review and agree to the Terms and Conditions before confirming your reservation.</p>
                     <p class="cart-booking-payment-note" data-cart-booking-payment-note hidden>Receiving via delivery requires GCash payment.</p>
                     <a class="cart-booking-note-link" data-cart-booking-note-link href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>" hidden>Open Account Settings</a>
                 </section>
@@ -658,9 +770,30 @@ if ($isCustomerLoggedIn) {
         </div>
     </section>
 
+    <section class="profile-modal cart-terms-modal" data-cart-terms-modal hidden>
+        <div class="profile-modal-backdrop" data-cart-terms-close></div>
+        <div class="profile-modal-dialog cart-terms-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="cart-terms-modal-title">
+            <div class="cart-terms-modal-head">
+                <h3 id="cart-terms-modal-title">Terms and Conditions</h3>
+                <button type="button" class="profile-order-action" data-cart-terms-close>Close</button>
+            </div>
+            <p class="cart-terms-modal-copy">Scroll through the full agreement to enable the final confirmation button.</p>
+            <div class="cart-terms-modal-scroll" data-cart-terms-scroll>
+                <article class="cart-terms-markdown" aria-label="Full Terms and Conditions">
+                    <?php echo $customerTermsDisplayHtml; ?>
+                </article>
+            </div>
+            <div class="profile-modal-actions">
+                <button type="button" class="profile-order-action" data-cart-terms-close>Back</button>
+                <button type="button" class="profile-order-action primary" data-cart-terms-agree disabled>Agree</button>
+            </div>
+        </div>
+    </section>
+
     <script>
         window.__creatyAssetBase = <?php echo json_encode($assetBase, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCartAvailableItemIds = <?php echo json_encode($availableCartItemIds, JSON_UNESCAPED_SLASHES); ?>;
+        window.__creatyCartCatalog = <?php echo json_encode($cartCatalogPayload, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerOrders = <?php echo json_encode($customerOrders, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerOrderSubmitEndpoint = <?php echo json_encode($orderSubmitEndpoint, JSON_UNESCAPED_SLASHES); ?>;
         window.__creatyCustomerOrderCancelEndpoint = <?php echo json_encode($orderCancelEndpoint, JSON_UNESCAPED_SLASHES); ?>;

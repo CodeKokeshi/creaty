@@ -584,6 +584,7 @@ unset($eventPackage);
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath, ENT_QUOTES, 'UTF-8'); ?>">My Cart</a></li>
+                        <li><a class="dropdown-item" href="<?php echo htmlspecialchars($cartPath . '?view=history', ENT_QUOTES, 'UTF-8'); ?>">Reservation History</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Events</a></li>
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">Browse Services</a></li>
                         <li><a class="dropdown-item" href="#">Help Center</a></li>
@@ -598,11 +599,14 @@ unset($eventPackage);
             <?php endif; ?>
         </div>
 
-        <nav class="section-nav section-nav-disabled" aria-label="Catalog filters">
+        <nav class="section-nav section-nav-disabled section-nav-with-history" aria-label="Catalog filters">
             <span class="section-nav-filter is-disabled" aria-disabled="true">BRANDS</span>
             <a class="section-nav-section is-active" href="<?php echo htmlspecialchars($eventsPath, ENT_QUOTES, 'UTF-8'); ?>" aria-current="page">EVENTS</a>
             <a class="section-nav-section" href="<?php echo htmlspecialchars($servicesPath, ENT_QUOTES, 'UTF-8'); ?>">SERVICES</a>
             <span class="section-nav-filter is-disabled" aria-disabled="true">DATE</span>
+            <?php if ($isCustomerLoggedIn): ?>
+                <a class="section-nav-history-link" href="<?php echo htmlspecialchars($cartPath . '?view=history', ENT_QUOTES, 'UTF-8'); ?>">Reservation History</a>
+            <?php endif; ?>
         </nav>
     </header>
 

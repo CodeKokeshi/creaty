@@ -14,10 +14,16 @@ if (isset($_SESSION['user_id'])) {
 }
 
 if (isset($_SESSION['staff_id'])) {
-	header('Location: dashboard/?admin_view=bookings');
+	header('Location: dashboard/');
 	exit;
 }
 
-$routeBase = '';
-$assetBase = '../';
-require dirname(__DIR__) . '/login_page_admin.php';
+$target = '../customer-login/';
+$query = $_SERVER['QUERY_STRING'] ?? '';
+
+if (is_string($query) && trim($query) !== '') {
+    $target .= '?' . $query;
+}
+
+header('Location: ' . $target);
+exit;

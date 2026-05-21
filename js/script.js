@@ -75,6 +75,16 @@ document.addEventListener("DOMContentLoaded", function () {
     var filterNav = document.querySelector(".section-nav-interactive");
     var filterToggles = filterNav ? filterNav.querySelectorAll(".filter-toggle") : [];
     var adminNavBars = document.querySelectorAll("[data-admin-nav]");
+    var adminDashboardSettingsOpenButtons = document.querySelectorAll("[data-admin-dashboard-settings-open]");
+    var adminBusinessReportPrintButtons = document.querySelectorAll("[data-admin-business-report-print]");
+    var adminDashboardSettingsBackdrop = document.querySelector("[data-admin-dashboard-settings-backdrop]");
+    var adminDashboardSettingsCloseButtons = adminDashboardSettingsBackdrop ? adminDashboardSettingsBackdrop.querySelectorAll("[data-admin-dashboard-settings-close]") : [];
+    var adminDashboardSettingsList = adminDashboardSettingsBackdrop ? adminDashboardSettingsBackdrop.querySelector("[data-admin-dashboard-settings-list]") : null;
+    var adminDashboardSettingsResetButton = adminDashboardSettingsBackdrop ? adminDashboardSettingsBackdrop.querySelector("[data-admin-dashboard-settings-reset]") : null;
+    var adminDashboardSections = document.querySelectorAll("[data-admin-dashboard-section]");
+    var adminBusinessReportPayload = window.__creatyAdminBusinessReport && typeof window.__creatyAdminBusinessReport === "object"
+        ? window.__creatyAdminBusinessReport
+        : null;
     var adminUsersCreateBackdrop = document.querySelector("[data-admin-users-create-backdrop]");
     var adminUsersOpenModalButtons = document.querySelectorAll("[data-admin-users-open-modal]");
     var adminUsersCloseModalButtons = document.querySelectorAll("[data-admin-users-close-modal]");
@@ -6543,6 +6553,461 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function initializeAdminBusinessReportPrint() {
+        if (!adminBusinessReportPrintButtons.length || !adminBusinessReportPayload) {
+            return;
+        }
+
+        function formatReportCurrency(value) {
+            var parsed = Number(value);
+            if (!Number.isFinite(parsed)) {
+                parsed = 0;
+            }
+
+            return "PHP " + parsed.toLocaleString("en-PH", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function buildBusinessReportPdf() {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                window.alert("PDF library is unavailable right now.");
+                return;
+            }
+
+            var jsPDF = window.jspdf.jsPDF;
+            var doc = new jsPDF({
+                orientation: "portrait",
+                unit: "pt",
+                format: "a4"
+            });
+
+            var pageWidth = doc.internal.pageSize.getWidth();
+            var marginX = 42;
+            var y = 56;
+            var pageHeight = doc.internal.pageSize.getHeight();
+            var timestamp = String(adminBusinessReportPayload.generatedAt || "");
+            var reportYear = Number(adminBusinessReportPayload.year || new Date().getFullYear());
+            var summary = adminBusinessReportPayload.summary && typeof adminBusinessReportPayload.summary === "object"
+                ? adminBusinessReportPayload.summary
+                : {};
+
+            function ensureVerticalSpace(requiredHeight) {
+                if ((y + requiredHeight) <= (pageHeight - 44)) {
+                    return;
+                }
+
+                doc.addPage();
+                y = 56;
+            }
+
+            function sectionTitle(titleText) {
+                ensureVerticalSpace(34);
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(13);
+                doc.setTextColor(16, 18, 20);
+                doc.text(titleText, marginX, y);
+                y += 16;
+            }
+
+            doc.setTextColor(16, 18, 20);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(24);
+            doc.text("THE NIFTY FIFTY", pageWidth / 2, y, { align: "center" });
+            y += 20;
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(11);
+            doc.setTextColor(71, 75, 84);
+            doc.text("Business Performance Report (" + String(reportYear) + ")", pageWidth / 2, y, { align: "center" });
+            y += 16;
+            doc.text("Generated: " + (timestamp || "-"), pageWidth / 2, y, { align: "center" });
+            y += 26;
+
+            doc.setDrawColor(210, 214, 222);
+            doc.line(marginX, y, pageWidth - marginX, y);
+            y += 24;
+
+            sectionTitle("Executive Summary");
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(11);
+            doc.setTextColor(50, 53, 60);
+            doc.text("Transactions: " + String(Number(summary.transactions || 0)), marginX, y);
+            y += 14;
+            doc.text("Revenue: " + formatReportCurrency(summary.revenue || 0), marginX, y);
+            y += 26;
+
+            var monthlyRows = Array.isArray(adminBusinessReportPayload.monthlyRevenueRows)
+                ? adminBusinessReportPayload.monthlyRevenueRows
+                : [];
+
+            if (typeof doc.autoTable === "function") {
+                ensureVerticalSpace(120);
+                doc.autoTable({
+                    startY: y,
+                    head: [["Month", "Transactions", "Revenue"]],
+                    body: monthlyRows.map(function (row) {
+                        return [
+                            String(row.month || "-"),
+                            String(Number(row.transactions || 0)),
+                            formatReportCurrency(row.revenue || 0)
+                        ];
+                    }),
+                    theme: "grid",
+                    headStyles: { fillColor: [17, 18, 20], textColor: 245, fontSize: 10 },
+                    bodyStyles: { fontSize: 9, textColor: [28, 30, 34] },
+                    styles: { cellPadding: { top: 7, right: 7, bottom: 7, left: 7 } },
+                    margin: { left: marginX, right: marginX }
+                });
+                y = doc.lastAutoTable.finalY + 30;
+            }
+
+            sectionTitle("Equipment Inventory and Status");
+
+            var equipmentRows = Array.isArray(adminBusinessReportPayload.equipmentInventoryRows)
+                ? adminBusinessReportPayload.equipmentInventoryRows
+                : [];
+
+            if (typeof doc.autoTable === "function") {
+                ensureVerticalSpace(140);
+                doc.autoTable({
+                    startY: y,
+                    head: [["Equipment", "Available", "Maintenance", "Unavailable", "Total"]],
+                    body: equipmentRows.map(function (row) {
+                        return [
+                            String(row.name || "Equipment"),
+                            String(Number(row.available || 0)),
+                            String(Number(row.maintenance || 0)),
+                            String(Number(row.unavailable || 0)),
+                            String(Number(row.total || 0))
+                        ];
+                    }),
+                    theme: "grid",
+                    headStyles: { fillColor: [17, 18, 20], textColor: 245, fontSize: 10 },
+                    bodyStyles: { fontSize: 9, textColor: [28, 30, 34] },
+                    styles: { cellPadding: { top: 7, right: 7, bottom: 7, left: 7 } },
+                    margin: { left: marginX, right: marginX }
+                });
+                y = doc.lastAutoTable.finalY + 32;
+            }
+
+            var damagedRows = Array.isArray(adminBusinessReportPayload.damagedEquipmentRows)
+                ? adminBusinessReportPayload.damagedEquipmentRows
+                : [];
+
+            sectionTitle("Maintenance / Damage Unit List");
+
+            if (typeof doc.autoTable === "function") {
+                ensureVerticalSpace(120);
+                doc.autoTable({
+                    startY: y,
+                    head: [["Equipment", "Unit ID", "Status"]],
+                    body: (damagedRows.length ? damagedRows : [{ name: "No damaged equipment reported.", unitId: "-", status: "-" }]).map(function (row) {
+                        return [
+                            String(row.name || "-"),
+                            String(row.unitId || "-"),
+                            String(row.status || "-")
+                        ];
+                    }),
+                    theme: "grid",
+                    headStyles: { fillColor: [17, 18, 20], textColor: 245, fontSize: 10 },
+                    bodyStyles: { fontSize: 9, textColor: [28, 30, 34] },
+                    styles: { cellPadding: { top: 7, right: 7, bottom: 7, left: 7 } },
+                    margin: { left: marginX, right: marginX }
+                });
+                y = doc.lastAutoTable.finalY + 32;
+            }
+
+            var servicesRows = Array.isArray(adminBusinessReportPayload.servicesRevenueRows)
+                ? adminBusinessReportPayload.servicesRevenueRows
+                : [];
+
+            sectionTitle("Services Revenue Report");
+
+            if (typeof doc.autoTable === "function") {
+                ensureVerticalSpace(140);
+                doc.autoTable({
+                    startY: y,
+                    head: [["Service Type", "Package", "Bookings", "Revenue"]],
+                    body: (function () {
+                        var rows = [];
+
+                        servicesRows.forEach(function (serviceGroup) {
+                            var typeLabel = String(serviceGroup.typeLabel || "Service");
+                            var packages = Array.isArray(serviceGroup.packages) ? serviceGroup.packages : [];
+
+                            if (!packages.length) {
+                                rows.push([typeLabel, "-", "0", formatReportCurrency(serviceGroup.totalRevenue || 0)]);
+                                return;
+                            }
+
+                            packages.forEach(function (packageRow, index) {
+                                rows.push([
+                                    index === 0 ? typeLabel : "",
+                                    String(packageRow.title || "Service Package"),
+                                    String(Number(packageRow.bookings || 0)),
+                                    formatReportCurrency(packageRow.revenue || 0)
+                                ]);
+                            });
+
+                            rows.push(["", "Type Total", "", formatReportCurrency(serviceGroup.totalRevenue || 0)]);
+                        });
+
+                        if (!rows.length) {
+                            rows.push(["No service revenue rows available.", "-", "-", formatReportCurrency(0)]);
+                        }
+
+                        return rows;
+                    })(),
+                    theme: "grid",
+                    headStyles: { fillColor: [17, 18, 20], textColor: 245, fontSize: 10 },
+                    bodyStyles: { fontSize: 9, textColor: [28, 30, 34] },
+                    styles: { cellPadding: { top: 7, right: 7, bottom: 7, left: 7 } },
+                    margin: { left: marginX, right: marginX }
+                });
+                y = doc.lastAutoTable.finalY + 24;
+            }
+
+            var filename = "nifty-fifty-business-report-" + String(reportYear) + ".pdf";
+            doc.save(filename);
+        }
+
+        adminBusinessReportPrintButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                buildBusinessReportPdf();
+            });
+        });
+    }
+
+    function getAdminDashboardVisibilityStorageKey() {
+        return "creaty.adminDashboardVisibility.v2";
+    }
+
+    function getAdminDashboardSectionDefaults() {
+        var defaults = {};
+
+        adminDashboardSections.forEach(function (section) {
+            var key = String(section.getAttribute("data-admin-dashboard-section") || "").trim();
+
+            if (!key) {
+                return;
+            }
+
+            defaults[key] = section.getAttribute("data-admin-dashboard-section-default-visible") !== "false";
+        });
+
+        return defaults;
+    }
+
+    function getAdminDashboardSectionMetaByKey() {
+        var sectionMap = {};
+
+        adminDashboardSections.forEach(function (section) {
+            var key = String(section.getAttribute("data-admin-dashboard-section") || "").trim();
+
+            if (!key || sectionMap[key]) {
+                return;
+            }
+
+            sectionMap[key] = {
+                label: String(section.getAttribute("data-admin-dashboard-section-label") || key).trim(),
+                isDefaultVisible: section.getAttribute("data-admin-dashboard-section-default-visible") !== "false"
+            };
+        });
+
+        return sectionMap;
+    }
+
+    function loadAdminDashboardVisibility() {
+        var defaults = getAdminDashboardSectionDefaults();
+
+        try {
+            var storedValue = window.localStorage.getItem(getAdminDashboardVisibilityStorageKey());
+
+            if (!storedValue) {
+                return defaults;
+            }
+
+            var parsed = JSON.parse(storedValue);
+
+            if (!parsed || typeof parsed !== "object") {
+                return defaults;
+            }
+
+            Object.keys(defaults).forEach(function (key) {
+                if (typeof parsed[key] === "boolean") {
+                    defaults[key] = parsed[key];
+                }
+            });
+        } catch (error) {
+            return defaults;
+        }
+
+        return defaults;
+    }
+
+    function saveAdminDashboardVisibility(settings) {
+        try {
+            window.localStorage.setItem(getAdminDashboardVisibilityStorageKey(), JSON.stringify(settings || {}));
+        } catch (error) {
+            // Ignore storage failures and keep current visibility state.
+        }
+    }
+
+    function applyAdminDashboardVisibility(settings) {
+        var effectiveSettings = settings && typeof settings === "object"
+            ? settings
+            : getAdminDashboardSectionDefaults();
+
+        adminDashboardSections.forEach(function (section) {
+            var key = String(section.getAttribute("data-admin-dashboard-section") || "").trim();
+
+            if (!key) {
+                return;
+            }
+
+            section.classList.toggle("admin-dashboard-section-hidden", effectiveSettings[key] === false);
+        });
+    }
+
+    function buildAdminDashboardSettingsList() {
+        if (!adminDashboardSettingsList) {
+            return;
+        }
+
+        var sectionMap = getAdminDashboardSectionMetaByKey();
+
+        adminDashboardSettingsList.innerHTML = "";
+
+        Object.keys(sectionMap).forEach(function (key) {
+            var meta = sectionMap[key];
+            var label = String(meta.label || key).trim();
+
+            if (!key || !label) {
+                return;
+            }
+
+            var option = document.createElement("label");
+            option.className = "admin-dashboard-settings-option";
+
+            var copy = document.createElement("div");
+            var title = document.createElement("strong");
+            title.textContent = label;
+            copy.appendChild(title);
+
+            var note = document.createElement("span");
+            note.textContent = key === "operations"
+                ? "Instructor-focused operations board"
+                : "Dashboard visibility";
+            copy.appendChild(note);
+
+            var checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = meta.isDefaultVisible !== false;
+            checkbox.setAttribute("data-admin-dashboard-settings-key", key);
+
+            option.appendChild(copy);
+            option.appendChild(checkbox);
+            adminDashboardSettingsList.appendChild(option);
+        });
+    }
+
+    function syncAdminDashboardSettingsInputs(settings) {
+        if (!adminDashboardSettingsList) {
+            return;
+        }
+
+        var effectiveSettings = settings && typeof settings === "object"
+            ? settings
+            : getAdminDashboardSectionDefaults();
+
+        adminDashboardSettingsList.querySelectorAll("[data-admin-dashboard-settings-key]").forEach(function (input) {
+            var key = String(input.getAttribute("data-admin-dashboard-settings-key") || "").trim();
+            input.checked = effectiveSettings[key] !== false;
+        });
+    }
+
+    function collectAdminDashboardVisibilityFromInputs() {
+        var nextSettings = getAdminDashboardSectionDefaults();
+
+        if (!adminDashboardSettingsList) {
+            return nextSettings;
+        }
+
+        adminDashboardSettingsList.querySelectorAll("[data-admin-dashboard-settings-key]").forEach(function (input) {
+            var key = String(input.getAttribute("data-admin-dashboard-settings-key") || "").trim();
+
+            if (!key) {
+                return;
+            }
+
+            nextSettings[key] = Boolean(input.checked);
+        });
+
+        return nextSettings;
+    }
+
+    function openAdminDashboardSettings() {
+        if (!adminDashboardSettingsBackdrop) {
+            return;
+        }
+
+        syncAdminDashboardSettingsInputs(loadAdminDashboardVisibility());
+        adminDashboardSettingsBackdrop.hidden = false;
+    }
+
+    function closeAdminDashboardSettings() {
+        if (!adminDashboardSettingsBackdrop) {
+            return;
+        }
+
+        adminDashboardSettingsBackdrop.hidden = true;
+    }
+
+    if (adminDashboardSections.length) {
+        buildAdminDashboardSettingsList();
+        applyAdminDashboardVisibility(loadAdminDashboardVisibility());
+    }
+
+    adminDashboardSettingsOpenButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            openAdminDashboardSettings();
+        });
+    });
+
+    adminDashboardSettingsCloseButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            closeAdminDashboardSettings();
+        });
+    });
+
+    if (adminDashboardSettingsList) {
+        adminDashboardSettingsList.addEventListener("change", function () {
+            var nextSettings = collectAdminDashboardVisibilityFromInputs();
+            applyAdminDashboardVisibility(nextSettings);
+            saveAdminDashboardVisibility(nextSettings);
+        });
+    }
+
+    if (adminDashboardSettingsResetButton) {
+        adminDashboardSettingsResetButton.addEventListener("click", function () {
+            var defaults = getAdminDashboardSectionDefaults();
+            applyAdminDashboardVisibility(defaults);
+            syncAdminDashboardSettingsInputs(defaults);
+            saveAdminDashboardVisibility(defaults);
+        });
+    }
+
+    if (adminDashboardSettingsBackdrop) {
+        adminDashboardSettingsBackdrop.addEventListener("click", function (event) {
+            if (event.target === adminDashboardSettingsBackdrop) {
+                closeAdminDashboardSettings();
+            }
+        });
+    }
+
     function padTwo(value) {
         return String(value).padStart(2, "0");
     }
@@ -10952,11 +11417,13 @@ document.addEventListener("DOMContentLoaded", function () {
         var cartMainHeading = document.querySelector("[data-cart-main-heading]");
         var cartViewPanels = {
             cart: document.querySelector("[data-cart-view='cart']"),
-            orderStatus: document.querySelector("[data-cart-view='order-status']")
+            orderStatus: document.querySelector("[data-cart-view='order-status']"),
+            history: document.querySelector("[data-cart-view='history']")
         };
-        var orderStatusHead = document.querySelector("[data-cart-orders-head]");
         var orderStatusList = document.querySelector("[data-cart-orders-list]");
         var orderStatusEmpty = document.querySelector("[data-cart-orders-empty]");
+        var historyList = document.querySelector("[data-cart-history-list]");
+        var historyEmpty = document.querySelector("[data-cart-history-empty]");
         var customerNotificationTrigger = document.querySelector("[data-customer-notification-trigger]");
         var customerNotificationCountBadges = document.querySelectorAll("[data-customer-notification-count]");
         var customerNotificationModal = document.querySelector("[data-customer-notification-modal]");
@@ -10985,9 +11452,12 @@ document.addEventListener("DOMContentLoaded", function () {
             ? String(window.__creatyCustomerNotificationMarkReadEndpoint || "")
             : "";
         var customerInitialViewRaw = String(window.__creatyCustomerInitialView || "").toLowerCase().trim();
-        var customerInitialView = customerInitialViewRaw === "order-status" || customerInitialViewRaw === "services-cart"
+        var customerInitialView = customerInitialViewRaw === "order-status" || customerInitialViewRaw === "services-cart" || customerInitialViewRaw === "history"
             ? customerInitialViewRaw
             : "cart";
+        var cartCatalogSource = window.__creatyCartCatalog && typeof window.__creatyCartCatalog === "object"
+            ? window.__creatyCartCatalog
+            : {};
         var serverOrders = Array.isArray(window.__creatyCustomerOrders)
             ? window.__creatyCustomerOrders.slice()
             : [];
@@ -10998,6 +11468,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var unavailableModal = document.querySelector("[data-cart-unavailable-modal]");
         var unavailableModalMessage = unavailableModal ? unavailableModal.querySelector("[data-cart-unavailable-message]") : null;
         var unavailableModalConfirm = unavailableModal ? unavailableModal.querySelector("[data-cart-unavailable-confirm]") : null;
+        var unavailableModalConfirmDefaultText = unavailableModalConfirm ? String(unavailableModalConfirm.textContent || "Remove and Continue") : "Remove and Continue";
         var unavailableModalCloseButtons = unavailableModal ? unavailableModal.querySelectorAll("[data-cart-unavailable-close]") : [];
         var orderCancelModal = document.querySelector("[data-cart-order-cancel-modal]");
         var orderCancelReasonInput = orderCancelModal ? orderCancelModal.querySelector("[data-cart-order-cancel-reason]") : null;
@@ -11023,6 +11494,13 @@ document.addEventListener("DOMContentLoaded", function () {
         var deliveryUploadMessage = deliveryUploadModal ? deliveryUploadModal.querySelector("[data-cart-delivery-upload-message]") : null;
         var deliveryUploadSubmitButton = deliveryUploadModal ? deliveryUploadModal.querySelector("[data-cart-delivery-upload-submit]") : null;
         var deliveryUploadCloseButtons = deliveryUploadModal ? deliveryUploadModal.querySelectorAll("[data-cart-delivery-upload-close]") : [];
+        var termsConsentWrap = document.querySelector("[data-cart-terms-consent]");
+        var termsCheckbox = termsConsentWrap ? termsConsentWrap.querySelector("[data-cart-terms-checkbox]") : null;
+        var termsOpenButton = document.querySelector("[data-cart-terms-open]");
+        var termsModal = document.querySelector("[data-cart-terms-modal]");
+        var termsModalScroll = termsModal ? termsModal.querySelector("[data-cart-terms-scroll]") : null;
+        var termsModalAgreeButton = termsModal ? termsModal.querySelector("[data-cart-terms-agree]") : null;
+        var termsModalCloseButtons = termsModal ? termsModal.querySelectorAll("[data-cart-terms-close]") : [];
         var gcashModal = document.querySelector("[data-cart-gcash-modal]");
         var gcashModalCloseButtons = gcashModal ? gcashModal.querySelectorAll("[data-cart-gcash-close]") : [];
         var gcashModalContinueButton = gcashModal ? gcashModal.querySelector("[data-cart-gcash-continue]") : null;
@@ -11064,6 +11542,7 @@ document.addEventListener("DOMContentLoaded", function () {
             : 0;
         var activeCartView = "cart";
         var orderStatusFocusId = "";
+        var activeOrderStatusEntryId = "";
         var activeCancelOrderId = "";
         var pendingGcashOrderRecord = null;
         var activeGcashUploadOrderId = "";
@@ -11085,6 +11564,8 @@ document.addEventListener("DOMContentLoaded", function () {
         var hasAvailabilitySnapshot = Object.keys(availableCartItemIdsSet).length > 0;
         var receiveDateCalendarCursor = null;
         var receiveCalendarWeekdays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+        var termsModalScrolledToEnd = false;
+        var hasAcceptedTerms = String(bookingState.termsAccepted || "") === "1" || bookingState.termsAccepted === true;
 
         function isUnavailableCartItem(item) {
             if (!item || !item.id || !hasAvailabilitySnapshot) {
@@ -11118,9 +11599,13 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             unavailableModal.hidden = true;
+
+            if (unavailableModalConfirm) {
+                unavailableModalConfirm.textContent = unavailableModalConfirmDefaultText;
+            }
         }
 
-        function openUnavailableModal(items, onConfirm) {
+        function openUnavailableModal(items, onConfirm, options) {
             if (!unavailableModal || !unavailableModalConfirm) {
                 if (typeof onConfirm === "function") {
                     onConfirm();
@@ -11132,14 +11617,21 @@ document.addEventListener("DOMContentLoaded", function () {
             var unavailableNames = unavailableItems.map(function (item) {
                 return String(item && item.name ? item.name : "Item");
             });
+            var modalOptions = options && typeof options === "object" ? options : {};
+            var customMessage = String(modalOptions.message || "").trim();
+            var confirmText = String(modalOptions.confirmText || "").trim();
 
             if (unavailableModalMessage) {
-                if (!unavailableNames.length) {
+                if (customMessage) {
+                    unavailableModalMessage.textContent = customMessage;
+                } else if (!unavailableNames.length) {
                     unavailableModalMessage.textContent = "Some items are no longer available and will be removed from your cart.";
                 } else {
                     unavailableModalMessage.textContent = "The following items are out of stock and will be removed: " + unavailableNames.join(", ") + ".";
                 }
             }
+
+            unavailableModalConfirm.textContent = confirmText || unavailableModalConfirmDefaultText;
 
             unavailableModalConfirm.onclick = function () {
                 closeUnavailableModal();
@@ -11150,6 +11642,70 @@ document.addEventListener("DOMContentLoaded", function () {
             };
 
             unavailableModal.hidden = false;
+        }
+
+        function syncConfirmButtonAvailability() {
+            if (!confirmButton) {
+                return;
+            }
+
+            confirmButton.disabled = isSubmittingPendingOrder || !hasAcceptedTerms;
+        }
+
+        function updateTermsAgreeAvailability() {
+            if (!termsModalScroll || !termsModalAgreeButton) {
+                return;
+            }
+
+            var maxScrollTop = termsModalScroll.scrollHeight - termsModalScroll.clientHeight;
+
+            if (maxScrollTop <= 0) {
+                termsModalScrolledToEnd = true;
+            } else {
+                termsModalScrolledToEnd = termsModalScroll.scrollTop + termsModalScroll.clientHeight >= termsModalScroll.scrollHeight - 8;
+            }
+
+            termsModalAgreeButton.disabled = !termsModalScrolledToEnd;
+        }
+
+        function setTermsAccepted(nextAccepted, shouldPersist) {
+            hasAcceptedTerms = Boolean(nextAccepted);
+
+            if (termsCheckbox) {
+                termsCheckbox.checked = hasAcceptedTerms;
+            }
+
+            if (termsConsentWrap) {
+                termsConsentWrap.classList.toggle("is-accepted", hasAcceptedTerms);
+            }
+
+            syncConfirmButtonAvailability();
+
+            if (shouldPersist !== false) {
+                saveBookingSnapshot();
+            }
+        }
+
+        function closeTermsModal() {
+            if (!termsModal) {
+                return;
+            }
+
+            termsModal.hidden = true;
+        }
+
+        function openTermsModal() {
+            if (!termsModal) {
+                return;
+            }
+
+            if (termsModalScroll) {
+                termsModalScroll.scrollTop = 0;
+            }
+
+            termsModalScrolledToEnd = false;
+            updateTermsAgreeAvailability();
+            termsModal.hidden = false;
         }
 
         function normalizeCustomerPhone(value) {
@@ -11253,6 +11809,122 @@ document.addEventListener("DOMContentLoaded", function () {
                 gcashNumber: String(source.gcashNumber || source.gcash_number || "").trim(),
                 updatedAt: String(source.updatedAt || source.updated_at || "").trim()
             };
+        }
+
+        function normalizeCartCatalog() {
+            var fallbackImage = (assetBase ? assetBase : "/") + "assets/images/main_logo.png";
+            var catalog = {};
+
+            Object.keys(cartCatalogSource).forEach(function (itemId) {
+                var source = cartCatalogSource[itemId];
+                if (!source || typeof source !== "object") {
+                    return;
+                }
+
+                var normalizedId = String(source.id || itemId || "").trim();
+                if (!normalizedId) {
+                    return;
+                }
+
+                catalog[normalizedId] = {
+                    id: normalizedId,
+                    type: String(source.type || "").trim(),
+                    productKey: String(source.productKey || source.product_key || "").trim().toLowerCase(),
+                    servicePackageKey: String(source.servicePackageKey || source.service_package_key || "").trim().toLowerCase(),
+                    name: String(source.name || "Item").trim() || "Item",
+                    copy: String(source.copy || "").trim(),
+                    image: resolveCartAssetUrl(String(source.image || "").trim()) || fallbackImage,
+                    price: parseMoney(source.price || 0),
+                    durationUnit: String(source.durationUnit || source.duration_unit || "").trim().toLowerCase(),
+                    durationValue: Number.parseInt(source.durationValue || source.duration_value || 1, 10)
+                };
+            });
+
+            return catalog;
+        }
+
+        var cartCatalog = normalizeCartCatalog();
+
+        function getCatalogItemIdFromOrderItem(item) {
+            if (!item || typeof item !== "object") {
+                return "";
+            }
+
+            var itemId = String(item.itemId || item.item_id || item.id || "").trim();
+            if (itemId) {
+                return itemId;
+            }
+
+            var itemType = String(item.itemType || item.item_type || item.type || "").trim().toLowerCase();
+            var productKey = String(item.productKey || item.product_key || "").trim().toLowerCase();
+
+            if (!itemType || !productKey) {
+                return "";
+            }
+
+            if (itemType === "camera") {
+                return "camera-" + productKey;
+            }
+
+            if (itemType === "event-package") {
+                return "event-" + productKey;
+            }
+
+            if (itemType === "service-package") {
+                return "service-" + productKey;
+            }
+
+            return "";
+        }
+
+        function getCatalogItemMetaForOrderItem(item) {
+            if (!item || typeof item !== "object") {
+                return null;
+            }
+
+            var catalogItemId = getCatalogItemIdFromOrderItem(item);
+
+            if (catalogItemId && cartCatalog[catalogItemId]) {
+                return cartCatalog[catalogItemId];
+            }
+
+            var fallbackImage = (assetBase ? assetBase : "/") + "assets/images/main_logo.png";
+            var fallbackPrice = parseMoney(item.price || 0);
+
+            return {
+                id: catalogItemId,
+                type: String(item.itemType || item.item_type || item.type || "").trim().toLowerCase(),
+                productKey: String(item.productKey || item.product_key || "").trim().toLowerCase(),
+                servicePackageKey: String(item.servicePackageKey || item.service_package_key || "").trim().toLowerCase(),
+                name: String(item.name || "Item").trim() || "Item",
+                copy: String(item.copy || "").trim(),
+                image: resolveCartAssetUrl(String(item.image || "").trim()) || fallbackImage,
+                price: fallbackPrice,
+                durationUnit: String(item.durationUnit || item.duration_unit || "").trim().toLowerCase(),
+                durationValue: Number.parseInt(item.durationValue || item.duration_value || 1, 10)
+            };
+        }
+
+        function calculateHistoryOrderTotal(order) {
+            if (!order || !Array.isArray(order.items)) {
+                return 0;
+            }
+
+            return order.items.reduce(function (total, item) {
+                var meta = getCatalogItemMetaForOrderItem(item);
+                var qty = Number.parseInt(item.qty, 10);
+                var days = Number.parseInt(item.days, 10);
+                var isService = meta && meta.type === "service-package";
+
+                qty = Number.isFinite(qty) && qty > 0 ? qty : 1;
+                days = Number.isFinite(days) && days > 0 ? days : 1;
+
+                if (!meta) {
+                    return total;
+                }
+
+                return total + (isService ? meta.price : (meta.price * qty * days));
+            }, 0);
         }
 
         function setCustomerGcashModalFields() {
@@ -11623,7 +12295,7 @@ document.addEventListener("DOMContentLoaded", function () {
             try {
                 var nextUrl = new URL(window.location.href);
 
-                if (nextView === "order-status" || nextView === "services-cart") {
+                if (nextView === "order-status" || nextView === "services-cart" || nextView === "history") {
                     nextUrl.searchParams.set("view", nextView);
                 } else {
                     nextUrl.searchParams.delete("view");
@@ -11634,6 +12306,67 @@ document.addEventListener("DOMContentLoaded", function () {
             } catch (error) {
                 // Ignore URL parsing failures and keep current route.
             }
+        }
+
+        function setExpandedOrderStatusEntry(orderId) {
+            activeOrderStatusEntryId = String(orderId || "").trim();
+        }
+
+        function syncOrderStatusColumnWidths() {
+            if (!orderStatusList) {
+                return;
+            }
+
+            var firstSummary = orderStatusList.querySelector(".cart-order-status-summary");
+            if (!firstSummary) {
+                return;
+            }
+
+            var article = firstSummary.closest(".profile-order-item");
+            if (!article) {
+                return;
+            }
+
+            var articleWidth = article.getBoundingClientRect().width;
+            if (!Number.isFinite(articleWidth) || articleWidth <= 0) {
+                return;
+            }
+
+            var itemsPx = Math.floor(articleWidth * 0.44);
+            var schedulePx = Math.floor(articleWidth * 0.28);
+            var statusPx = Math.max(0, Math.floor(articleWidth - itemsPx - schedulePx));
+
+            orderStatusList.style.setProperty("--order-col-items", itemsPx + "px");
+            orderStatusList.style.setProperty("--order-col-schedule", schedulePx + "px");
+            orderStatusList.style.setProperty("--order-col-status", statusPx + "px");
+        }
+
+        function focusOrderStatusSummaryButton(orderId) {
+            var targetOrderId = String(orderId || "").trim();
+
+            if (!targetOrderId || !orderStatusList) {
+                return;
+            }
+
+            window.requestAnimationFrame(function () {
+                var matchedButton = null;
+
+                orderStatusList.querySelectorAll("[data-cart-order-summary-toggle]").forEach(function (button) {
+                    if (matchedButton) {
+                        return;
+                    }
+
+                    if (String(button.getAttribute("data-cart-order-id") || "").trim() !== targetOrderId) {
+                        return;
+                    }
+
+                    matchedButton = button;
+                });
+
+                if (matchedButton && typeof matchedButton.focus === "function") {
+                    matchedButton.focus();
+                }
+            });
         }
 
         function highlightOrderStatusEntry(orderId) {
@@ -12034,11 +12767,13 @@ document.addEventListener("DOMContentLoaded", function () {
             var settings = options && typeof options === "object" ? options : {};
             var shouldPersist = settings.persist !== false;
             var requestedView = String(nextView || "").toLowerCase().trim();
-            var normalizedView = requestedView === "order-status" || requestedView === "services-cart"
+            var normalizedView = requestedView === "order-status" || requestedView === "services-cart" || requestedView === "history"
                 ? requestedView
                 : "cart";
             var isOrderStatusView = normalizedView === "order-status";
+            var isHistoryView = normalizedView === "history";
             var isServicesCartView = normalizedView === "services-cart";
+            var isFullWidthView = isOrderStatusView || isHistoryView;
 
             activeCartView = normalizedView;
 
@@ -12051,19 +12786,23 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             if (cartViewPanels.cart) {
-                cartViewPanels.cart.hidden = isOrderStatusView;
+                cartViewPanels.cart.hidden = isFullWidthView;
             }
 
             if (cartViewPanels.orderStatus) {
                 cartViewPanels.orderStatus.hidden = !isOrderStatusView;
             }
 
+            if (cartViewPanels.history) {
+                cartViewPanels.history.hidden = !isHistoryView;
+            }
+
             if (cartSidebar) {
-                cartSidebar.hidden = isOrderStatusView;
+                cartSidebar.hidden = isFullWidthView;
             }
 
             if (cartLayout) {
-                cartLayout.classList.toggle("is-order-status-view", isOrderStatusView);
+                cartLayout.classList.toggle("is-order-status-view", isFullWidthView);
             }
 
             if (cartMainHeading) {
@@ -12077,6 +12816,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (isOrderStatusView) {
                 renderOrderStatusList();
+            }
+
+            if (isHistoryView) {
+                renderHistoryList();
             }
 
             Array.prototype.forEach.call(cartNavButtons, function (button) {
@@ -12269,6 +13012,31 @@ document.addEventListener("DOMContentLoaded", function () {
                         normalizedItem.productKey = productKey;
                     }
 
+                    var itemCopy = String(item.copy || "").trim();
+                    if (itemCopy) {
+                        normalizedItem.copy = itemCopy;
+                    }
+
+                    var itemImage = String(item.image || "").trim();
+                    if (itemImage) {
+                        normalizedItem.image = itemImage;
+                    }
+
+                    var itemPrice = String(item.price || "").trim();
+                    if (itemPrice) {
+                        normalizedItem.price = itemPrice;
+                    }
+
+                    var itemDurationUnit = String(item.durationUnit || item.duration_unit || "").trim().toLowerCase();
+                    if (itemDurationUnit) {
+                        normalizedItem.durationUnit = itemDurationUnit;
+                    }
+
+                    var itemDurationValue = Number.parseInt(item.durationValue || item.duration_value || "", 10);
+                    if (Number.isFinite(itemDurationValue) && itemDurationValue > 0) {
+                        normalizedItem.durationValue = itemDurationValue;
+                    }
+
                     return normalizedItem;
                 }).filter(function (item) {
                     return Boolean(item);
@@ -12360,6 +13128,7 @@ document.addEventListener("DOMContentLoaded", function () {
         function saveStoredOrders(orders) {
             if (!Array.isArray(orders)) {
                 serverOrders = [];
+                renderHistoryList();
                 return;
             }
 
@@ -12370,6 +13139,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 .filter(function (order) {
                     return Boolean(order);
                 });
+
+            renderHistoryList();
         }
 
         function applyCustomerLivePayload(payload) {
@@ -13105,10 +13876,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             isSubmittingPendingOrder = true;
-
-            if (confirmButton) {
-                confirmButton.disabled = true;
-            }
+            syncConfirmButtonAvailability();
 
             if (gcashModalContinueButton) {
                 gcashModalContinueButton.disabled = true;
@@ -13131,6 +13899,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         saveCartItems([]);
                     }
 
+                    setTermsAccepted(false);
                     renderCartItems();
 
                     if (bookingNote) {
@@ -13150,13 +13919,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 .finally(function () {
                     isSubmittingPendingOrder = false;
 
-                    if (confirmButton) {
-                        confirmButton.disabled = false;
-                    }
-
                     if (gcashModalContinueButton) {
                         gcashModalContinueButton.disabled = false;
                     }
+
+                    syncConfirmButtonAvailability();
                 });
         }
 
@@ -13323,6 +14090,16 @@ document.addEventListener("DOMContentLoaded", function () {
                         normalizedItem.productKey = productKey;
                     }
 
+                    if (String(item.copy || "").trim()) {
+                        normalizedItem.copy = String(item.copy || "").trim();
+                    }
+
+                    if (String(item.image || "").trim()) {
+                        normalizedItem.image = String(item.image || "").trim();
+                    }
+
+                    normalizedItem.price = String(item.price || "0");
+
                     if (servicePackageKey) {
                         if (!Number.isFinite(itemDurationMinHours) || itemDurationMinHours < 1) {
                             itemDurationMinHours = 1;
@@ -13335,6 +14112,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         normalizedItem.servicePackageKey = servicePackageKey;
                         normalizedItem.durationMinHours = itemDurationMinHours;
                         normalizedItem.durationMaxHours = itemDurationMaxHours;
+                        normalizedItem.durationUnit = String(item.durationUnit || "").trim().toLowerCase() || "hours";
+                        normalizedItem.durationValue = Number.parseInt(item.durationValue || 1, 10) || 1;
                     }
 
                     return normalizedItem;
@@ -13416,16 +14195,30 @@ document.addEventListener("DOMContentLoaded", function () {
             orderStatusList.innerHTML = "";
 
             var allOrders = getStoredOrders();
+            var hasExpandedOrder = false;
 
-            if (orderStatusHead) {
-                orderStatusHead.hidden = allOrders.length === 0;
+            if (activeOrderStatusEntryId) {
+                hasExpandedOrder = allOrders.some(function (order) {
+                    return String(order && order.id ? order.id : "").trim() === activeOrderStatusEntryId;
+                });
+            }
+
+            if (!hasExpandedOrder && orderStatusFocusId) {
+                setExpandedOrderStatusEntry(orderStatusFocusId);
+                hasExpandedOrder = allOrders.some(function (order) {
+                    return String(order && order.id ? order.id : "").trim() === activeOrderStatusEntryId;
+                });
+            }
+
+            if (!hasExpandedOrder) {
+                setExpandedOrderStatusEntry("");
             }
 
             if (orderStatusEmpty) {
                 orderStatusEmpty.hidden = allOrders.length > 0;
             }
 
-            allOrders.forEach(function (order) {
+            allOrders.forEach(function (order, orderIndex) {
                 function appendTextDetail(container, className, text) {
                     if (!container || !text) {
                         return;
@@ -13476,46 +14269,130 @@ document.addEventListener("DOMContentLoaded", function () {
                 var receiveSchedule = formatOrderSchedule(order.receiveDate, order.receiveTime) || "Not set";
                 var returnSchedule = formatOrderSchedule(order.returnDate, order.returnTime) || "Not set";
                 var orderReferenceText = String(order.id || "").trim() || "Pending reference";
+                var orderEntryId = String(order.id || "").trim();
+                var detailsPanelId = "cart-order-status-panel-" + (orderEntryId || String(orderIndex));
+                var isExpanded = orderEntryId !== "" && orderEntryId === activeOrderStatusEntryId;
 
                 var orderItem = document.createElement("article");
                 orderItem.className = "profile-order-item";
-                orderItem.setAttribute("data-cart-order-entry-id", String(order.id || ""));
+                orderItem.setAttribute("data-cart-order-entry-id", orderEntryId);
+                orderItem.classList.toggle("is-expanded", isExpanded);
 
-                var orderItemsCell = document.createElement("div");
-                orderItemsCell.className = "cart-order-status-cell cart-order-status-cell-order";
+                var summaryButton = document.createElement("button");
+                summaryButton.type = "button";
+                summaryButton.className = "cart-order-status-summary";
+                summaryButton.setAttribute("data-cart-order-summary-toggle", "true");
+                summaryButton.setAttribute("data-cart-order-id", orderEntryId);
+                summaryButton.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+                summaryButton.setAttribute("aria-controls", detailsPanelId);
 
-                var orderReferenceLine = document.createElement("p");
-                orderReferenceLine.className = "profile-order-id cart-order-status-reference";
-                orderReferenceLine.textContent = "Order ID: " + orderReferenceText;
-                orderItemsCell.appendChild(orderReferenceLine);
+                var summaryMain = document.createElement("div");
+                summaryMain.className = "cart-order-status-summary-main";
+
+                var summaryItemsLabel = document.createElement("p");
+                summaryItemsLabel.className = "cart-order-status-summary-label";
+                summaryItemsLabel.textContent = "Items";
+                summaryMain.appendChild(summaryItemsLabel);
 
                 var orderedLine = document.createElement("p");
                 orderedLine.className = "profile-order-id cart-order-status-ordered";
                 orderedLine.textContent = itemsSummaryText;
-                orderItemsCell.appendChild(orderedLine);
+                summaryMain.appendChild(orderedLine);
+
+                summaryButton.appendChild(summaryMain);
+
+                var summarySchedule = document.createElement("div");
+                summarySchedule.className = "cart-order-status-summary-schedule";
+
+                var summaryScheduleLabel = document.createElement("p");
+                summaryScheduleLabel.className = "cart-order-status-summary-label";
+                summaryScheduleLabel.textContent = "Schedule";
+                summarySchedule.appendChild(summaryScheduleLabel);
+
+                var summaryReceiveLine = document.createElement("p");
+                summaryReceiveLine.className = "cart-order-status-date";
+                summaryReceiveLine.textContent = "Receive: " + receiveSchedule;
+                summarySchedule.appendChild(summaryReceiveLine);
+
+                var summaryReturnLine = document.createElement("p");
+                summaryReturnLine.className = "cart-order-status-date";
+                summaryReturnLine.textContent = "Return: " + returnSchedule;
+                summarySchedule.appendChild(summaryReturnLine);
+
+                summaryButton.appendChild(summarySchedule);
+
+                var summaryStatus = document.createElement("div");
+                summaryStatus.className = "cart-order-status-summary-status";
+
+                var summaryStatusLabel = document.createElement("p");
+                summaryStatusLabel.className = "cart-order-status-summary-label";
+                summaryStatusLabel.textContent = "Current Status";
+                summaryStatus.appendChild(summaryStatusLabel);
+
+                var summaryStatusBadge = document.createElement("span");
+                summaryStatusBadge.className = "profile-order-status status-" + statusClassToken;
+                summaryStatusBadge.textContent = statusText;
+                summaryStatusBadge.title = statusText;
+                summaryStatus.appendChild(summaryStatusBadge);
+
+                var summaryEnd = document.createElement("div");
+                summaryEnd.className = "cart-order-status-summary-end";
+                summaryEnd.appendChild(summaryStatus);
+
+                var summaryToggle = document.createElement("span");
+                summaryToggle.className = "cart-order-status-summary-toggle";
+                summaryToggle.setAttribute("aria-hidden", "true");
+                summaryToggle.innerHTML = "&#9662;";
+                summaryEnd.appendChild(summaryToggle);
+                summaryButton.appendChild(summaryEnd);
+
+                orderItem.appendChild(summaryButton);
+
+                var detailPanel = document.createElement("div");
+                detailPanel.className = "cart-order-status-detail-panel";
+                detailPanel.id = detailsPanelId;
+                detailPanel.hidden = !isExpanded;
+
+                var detailMeta = document.createElement("div");
+                detailMeta.className = "cart-order-status-detail-meta";
+
+                var detailReference = document.createElement("p");
+                detailReference.className = "cart-order-status-reference";
+                detailReference.textContent = "Order ID: " + orderReferenceText;
+                detailMeta.appendChild(detailReference);
+                detailPanel.appendChild(detailMeta);
+
+                var detailTable = document.createElement("div");
+                detailTable.className = "cart-order-status-detail-table";
+
+                ["Schedule", "Status", "Details", "Actions"].forEach(function (headingText) {
+                    var heading = document.createElement("p");
+                    heading.className = "cart-order-status-table-heading";
+                    heading.textContent = headingText;
+                    detailTable.appendChild(heading);
+                });
 
                 var scheduleCell = document.createElement("div");
                 scheduleCell.className = "cart-order-status-cell cart-order-status-cell-schedule";
+                scheduleCell.setAttribute("data-order-column-label", "Schedule");
 
                 appendTextDetail(scheduleCell, "cart-order-status-date", "Receive: " + receiveSchedule);
                 appendTextDetail(scheduleCell, "cart-order-status-date", "Return: " + returnSchedule);
 
                 var statusCell = document.createElement("div");
                 statusCell.className = "cart-order-status-cell cart-order-status-cell-status";
-
-                var statusLabel = document.createElement("p");
-                statusLabel.className = "cart-order-status-cell-label";
-                statusLabel.textContent = "Current";
+                statusCell.setAttribute("data-order-column-label", "Status");
 
                 var statusBadge = document.createElement("span");
                 statusBadge.className = "profile-order-status status-" + statusClassToken;
                 statusBadge.textContent = statusText;
+                statusBadge.title = statusText;
 
-                statusCell.appendChild(statusLabel);
                 statusCell.appendChild(statusBadge);
 
                 var detailsCell = document.createElement("div");
                 detailsCell.className = "cart-order-status-cell cart-order-status-cell-details";
+                detailsCell.setAttribute("data-order-column-label", "Details");
                 var detailsCount = 0;
 
                 if (countdownState.active) {
@@ -13677,13 +14554,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     detailsCell.appendChild(detailsEmptyLine);
                 }
 
-                orderItem.appendChild(orderItemsCell);
-                orderItem.appendChild(scheduleCell);
-                orderItem.appendChild(statusCell);
-                orderItem.appendChild(detailsCell);
-
                 var actionWrap = document.createElement("div");
                 actionWrap.className = "cart-order-status-cell cart-order-status-actions";
+                actionWrap.setAttribute("data-order-column-label", "Actions");
 
                 if (statusToken === "pending" && paymentMethodSlug === "gcash" && !countdownState.expired) {
                     var pendingAction = document.createElement("button");
@@ -13729,10 +14602,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 if (actionWrap.children.length === 0) {
-                    actionWrap.classList.add("is-empty");
+                    var actionEmptyLine = document.createElement("p");
+                    actionEmptyLine.className = "cart-order-status-empty-detail";
+                    actionEmptyLine.textContent = "No actions available.";
+                    actionWrap.appendChild(actionEmptyLine);
                 }
 
-                orderItem.appendChild(actionWrap);
+                detailTable.appendChild(scheduleCell);
+                detailTable.appendChild(statusCell);
+                detailTable.appendChild(detailsCell);
+                detailTable.appendChild(actionWrap);
+                detailPanel.appendChild(detailTable);
+                orderItem.appendChild(detailPanel);
 
                 orderStatusList.appendChild(orderItem);
             });
@@ -13742,11 +14623,292 @@ document.addEventListener("DOMContentLoaded", function () {
                 orderStatusFocusId = "";
             }
 
+            syncOrderStatusColumnWidths();
             startReceiptCountdownTicker();
+        }
+
+        function getHistoryEligibleOrders() {
+            return getStoredOrders().filter(function (order) {
+                var statusToken = String(order && order.statusToken ? order.statusToken : "").toLowerCase().trim();
+                return statusToken === "completed" || statusToken === "ongoing" || statusToken === "return";
+            });
+        }
+
+        function renderHistoryList() {
+            if (!historyList) {
+                return;
+            }
+
+            historyList.innerHTML = "";
+
+            var orders = getHistoryEligibleOrders();
+
+            if (historyEmpty) {
+                historyEmpty.hidden = orders.length > 0;
+            }
+
+            orders.forEach(function (order) {
+                var statusDisplay = resolveOrderStatusDisplay(order);
+                var orderCard = document.createElement("article");
+                orderCard.className = "cart-history-card";
+                orderCard.setAttribute("data-cart-history-order-id", String(order.id || ""));
+
+                var gallery = document.createElement("div");
+                gallery.className = "cart-history-gallery";
+
+                var galleryItems = Array.isArray(order.items) ? order.items.slice(0, 4) : [];
+
+                galleryItems.forEach(function (item, itemIndex) {
+                    var meta = getCatalogItemMetaForOrderItem(item);
+                    var thumb = document.createElement("div");
+                    thumb.className = "cart-history-thumb";
+
+                    var image = document.createElement("img");
+                    image.src = meta ? meta.image : ((assetBase ? assetBase : "/") + "assets/images/main_logo.png");
+                    image.alt = String(item && item.name ? item.name : "Reservation item");
+                    thumb.appendChild(image);
+
+                    if (itemIndex === 3 && Array.isArray(order.items) && order.items.length > 4) {
+                        var moreBadge = document.createElement("span");
+                        moreBadge.className = "cart-history-thumb-more";
+                        moreBadge.textContent = "+" + String(order.items.length - 4) + " more";
+                        thumb.appendChild(moreBadge);
+                    }
+
+                    gallery.appendChild(thumb);
+                });
+
+                orderCard.appendChild(gallery);
+
+                var head = document.createElement("div");
+                head.className = "cart-history-head";
+
+                var titleWrap = document.createElement("div");
+
+                var title = document.createElement("h3");
+                title.textContent = buildOrderItemsSummary(order.items);
+                titleWrap.appendChild(title);
+
+                var reference = document.createElement("p");
+                reference.className = "cart-history-reference";
+                reference.textContent = "Reservation ID: " + (String(order.id || "").trim() || "Pending reference");
+                titleWrap.appendChild(reference);
+
+                head.appendChild(titleWrap);
+
+                var statusBadge = document.createElement("span");
+                statusBadge.className = "profile-order-status status-" + statusDisplay.classToken;
+                statusBadge.textContent = statusDisplay.text;
+                head.appendChild(statusBadge);
+
+                orderCard.appendChild(head);
+
+                var metaBlock = document.createElement("div");
+                metaBlock.className = "cart-history-meta";
+
+                var scheduleLine = document.createElement("p");
+                scheduleLine.className = "cart-history-schedule";
+                scheduleLine.textContent = "Receive: "
+                    + (formatOrderSchedule(order.receiveDate, order.receiveTime) || "Not set")
+                    + " | Return: "
+                    + (formatOrderSchedule(order.returnDate, order.returnTime) || "Not set");
+                metaBlock.appendChild(scheduleLine);
+
+                var totalLine = document.createElement("p");
+                totalLine.className = "cart-history-price";
+                totalLine.textContent = "Estimated Total: " + formatMoney(calculateHistoryOrderTotal(order));
+                metaBlock.appendChild(totalLine);
+
+                orderCard.appendChild(metaBlock);
+
+                var itemList = document.createElement("div");
+                itemList.className = "cart-history-items";
+
+                (Array.isArray(order.items) ? order.items : []).forEach(function (item) {
+                    var itemMeta = getCatalogItemMetaForOrderItem(item);
+                    var qty = Number.parseInt(item.qty, 10);
+                    var days = Number.parseInt(item.days, 10);
+                    var itemCard = document.createElement("div");
+                    itemCard.className = "cart-history-item";
+
+                    qty = Number.isFinite(qty) && qty > 0 ? qty : 1;
+                    days = Number.isFinite(days) && days > 0 ? days : 1;
+
+                    var itemMain = document.createElement("div");
+                    itemMain.className = "cart-history-item-main";
+
+                    var itemName = document.createElement("p");
+                    itemName.className = "cart-history-item-name";
+                    itemName.textContent = String(item && item.name ? item.name : "Item");
+                    itemMain.appendChild(itemName);
+
+                    var itemCopy = document.createElement("p");
+                    itemCopy.className = "cart-history-item-copy";
+                    itemCopy.textContent = String(itemMeta && itemMeta.copy ? itemMeta.copy : "Ready for re-reserve.");
+                    itemMain.appendChild(itemCopy);
+                    itemCard.appendChild(itemMain);
+
+                    var itemMetaText = document.createElement("p");
+                    itemMetaText.className = "cart-history-item-meta";
+                    itemMetaText.textContent = "Qty " + String(qty) + " | " + String(days) + " day" + (days === 1 ? "" : "s");
+                    itemCard.appendChild(itemMetaText);
+
+                    itemList.appendChild(itemCard);
+                });
+
+                orderCard.appendChild(itemList);
+
+                var actions = document.createElement("div");
+                actions.className = "cart-history-actions";
+
+                var actionNote = document.createElement("p");
+                actionNote.className = "cart-history-action-note";
+                actionNote.textContent = "Uses the latest catalog availability and current item pricing.";
+                actions.appendChild(actionNote);
+
+                var reReserveButton = document.createElement("button");
+                reReserveButton.type = "button";
+                reReserveButton.className = "cart-history-rereserve";
+                reReserveButton.textContent = "RE-RESERVE";
+                reReserveButton.setAttribute("data-cart-history-rereserve", "true");
+                reReserveButton.setAttribute("data-cart-order-id", String(order.id || ""));
+                actions.appendChild(reReserveButton);
+
+                orderCard.appendChild(actions);
+                historyList.appendChild(orderCard);
+            });
+        }
+
+        function rebuildCartItemsFromHistoryOrder(order) {
+            var equipmentItems = [];
+            var serviceItem = null;
+            var skippedItems = [];
+
+            (Array.isArray(order && order.items) ? order.items : []).forEach(function (item) {
+                var meta = getCatalogItemMetaForOrderItem(item);
+                var itemId = getCatalogItemIdFromOrderItem(item);
+                var qty = Number.parseInt(item.qty, 10);
+                var days = Number.parseInt(item.days, 10);
+
+                qty = Number.isFinite(qty) && qty > 0 ? qty : 1;
+                days = Number.isFinite(days) && days > 0 ? days : 1;
+
+                if (!meta || !itemId || !availableCartItemIdsSet[itemId]) {
+                    skippedItems.push({
+                        name: String(item && item.name ? item.name : "Item")
+                    });
+                    return;
+                }
+
+                if (meta.type === "service-package") {
+                    serviceItem = {
+                        id: itemId,
+                        type: "service-package",
+                        servicePackageKey: String(meta.servicePackageKey || meta.productKey || "").trim().toLowerCase(),
+                        name: meta.name,
+                        copy: meta.copy,
+                        image: meta.image,
+                        price: meta.price,
+                        qty: 1,
+                        days: 1,
+                        durationUnit: meta.durationUnit || "hours",
+                        durationValue: Number.isFinite(meta.durationValue) && meta.durationValue > 0 ? meta.durationValue : 1
+                    };
+                    return;
+                }
+
+                equipmentItems.push({
+                    id: itemId,
+                    type: meta.type || String(item.itemType || item.item_type || "item").trim(),
+                    productKey: String(meta.productKey || "").trim().toLowerCase(),
+                    name: meta.name,
+                    copy: meta.copy,
+                    image: meta.image,
+                    price: meta.price,
+                    qty: qty,
+                    days: days
+                });
+            });
+
+            return {
+                equipmentItems: equipmentItems,
+                serviceItem: serviceItem,
+                skippedItems: skippedItems
+            };
+        }
+
+        function handleHistoryReReserve(orderId) {
+            var targetOrder = findStoredOrderById(orderId);
+            if (!targetOrder) {
+                return;
+            }
+
+            var rebuilt = rebuildCartItemsFromHistoryOrder(targetOrder);
+
+            if (!rebuilt.equipmentItems.length && !rebuilt.serviceItem) {
+                bookingNote.textContent = "None of the reservation items are currently available for re-reserve.";
+                return;
+            }
+
+            function applyReReserveItems() {
+                if (rebuilt.equipmentItems.length) {
+                    saveCartItems(rebuilt.equipmentItems);
+                    clearServiceBookingItem();
+                    syncCartCountBadges(rebuilt.equipmentItems);
+                    setTermsAccepted(false);
+                    showCartToast("Items re-added to reservation");
+                    setCartView("cart");
+                } else if (rebuilt.serviceItem) {
+                    saveCartItems([]);
+                    saveServiceBookingItem(rebuilt.serviceItem);
+                    syncCartCountBadges([]);
+                    setTermsAccepted(false);
+                    showCartToast("Service package re-added to reservation");
+                    setCartView("services-cart");
+                }
+
+                renderCartItems();
+                saveBookingSnapshot();
+
+                if (bookingNote) {
+                    bookingNote.textContent = rebuilt.skippedItems.length
+                        ? "Available items were re-added. Missing items were skipped."
+                        : "Reservation items were re-added. Review your schedule and confirm again.";
+                }
+            }
+
+            if (rebuilt.skippedItems.length) {
+                openUnavailableModal(
+                    rebuilt.skippedItems,
+                    applyReReserveItems,
+                    {
+                        message: "The following items are no longer available for re-reserve and will be skipped: "
+                            + rebuilt.skippedItems.map(function (item) {
+                                return String(item.name || "Item");
+                            }).join(", ")
+                            + ".",
+                        confirmText: "Skip Missing and Continue"
+                    }
+                );
+                return;
+            }
+
+            applyReReserveItems();
         }
 
         if (orderStatusList) {
             orderStatusList.addEventListener("click", function (event) {
+                var summaryButton = event.target.closest("[data-cart-order-summary-toggle]");
+                if (summaryButton) {
+                    var summaryOrderId = String(summaryButton.getAttribute("data-cart-order-id") || "").trim();
+                    var shouldExpand = summaryOrderId !== "" && summaryOrderId !== activeOrderStatusEntryId;
+
+                    setExpandedOrderStatusEntry(shouldExpand ? summaryOrderId : "");
+                    renderOrderStatusList();
+                    focusOrderStatusSummaryButton(summaryOrderId);
+                    return;
+                }
+
                 var uploadButton = event.target.closest("[data-cart-order-upload]");
                 if (uploadButton) {
                     var targetOrderId = String(uploadButton.getAttribute("data-cart-order-id") || "").trim();
@@ -15416,6 +16578,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     input.checked = input.value === bookingState.returningMethod;
                 });
             }
+
+            setTermsAccepted(hasAcceptedTerms, false);
         }
 
         function updateMethodOptionStyles() {
@@ -15476,7 +16640,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 courier: hasDelivery && courierSelect ? courierSelect.value : "",
                 receivingMethod: receivingMethod,
                 returningMethod: returningMethod,
-                paymentMethod: paymentSelect ? paymentSelect.value : ""
+                paymentMethod: paymentSelect ? paymentSelect.value : "",
+                termsAccepted: hasAcceptedTerms
             };
         }
 
@@ -15897,11 +17062,11 @@ document.addEventListener("DOMContentLoaded", function () {
                             ? '<span class="cart-item-thumb-missing-text">Missing</span>'
                             : '<img class="cart-item-thumb-image" src="' + escapeHtml(item.image) + '" alt="' + escapeHtml(item.name) + '">') +
                     '</div>' +
+                    '<label class="cart-mini-field cart-item-days-field">' +
+                        '<span>Days Reserved</span>' +
+                        '<input type="number" min="1" max="14" value="' + item.days + '" data-cart-edit="days"' + (itemIsUnavailable ? ' disabled' : '') + '>' +
+                    '</label>' +
                     '<div class="cart-item-pricebox">' +
-                        '<label class="cart-mini-field">' +
-                            '<span>Days</span>' +
-                            '<input type="number" min="1" max="14" value="' + item.days + '" data-cart-edit="days"' + (itemIsUnavailable ? ' disabled' : '') + '>' +
-                        '</label>' +
                         '<label class="cart-mini-field">' +
                             '<span>Qty</span>' +
                             '<input type="number" min="1" max="' + quantityMax + '" value="' + item.qty + '" data-cart-edit="qty"' + (itemIsUnavailable ? ' disabled' : '') + '>' +
@@ -16172,6 +17337,72 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
+        if (historyList) {
+            historyList.addEventListener("click", function (event) {
+                var reReserveButton = event.target.closest("[data-cart-history-rereserve]");
+                if (!reReserveButton) {
+                    return;
+                }
+
+                var targetOrderId = String(reReserveButton.getAttribute("data-cart-order-id") || "").trim();
+                if (!targetOrderId) {
+                    return;
+                }
+
+                handleHistoryReReserve(targetOrderId);
+            });
+        }
+
+        if (termsCheckbox) {
+            termsCheckbox.addEventListener("click", function (event) {
+                event.preventDefault();
+
+                if (hasAcceptedTerms) {
+                    setTermsAccepted(false);
+
+                    if (bookingNote) {
+                        bookingNote.textContent = "Terms agreement removed. Review the Terms and Conditions again before confirming.";
+                    }
+                    return;
+                }
+
+                openTermsModal();
+            });
+        }
+
+        if (termsOpenButton) {
+            termsOpenButton.addEventListener("click", function () {
+                openTermsModal();
+            });
+        }
+
+        if (termsModalScroll) {
+            termsModalScroll.addEventListener("scroll", function () {
+                updateTermsAgreeAvailability();
+            });
+        }
+
+        termsModalCloseButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                closeTermsModal();
+            });
+        });
+
+        if (termsModalAgreeButton) {
+            termsModalAgreeButton.addEventListener("click", function () {
+                if (!termsModalScrolledToEnd) {
+                    return;
+                }
+
+                setTermsAccepted(true);
+                closeTermsModal();
+
+                if (bookingNote) {
+                    bookingNote.textContent = "Terms accepted. Review your reservation details, then confirm when ready.";
+                }
+            });
+        }
+
         if (confirmButton && bookingNote) {
             confirmButton.addEventListener("click", function () {
                 var items = getActiveCartItems();
@@ -16239,9 +17470,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
-                if (confirmButton) {
-                    confirmButton.disabled = true;
+                if (!hasAcceptedTerms) {
+                    bookingNote.textContent = "You must scroll through and agree to the Terms and Conditions before confirming.";
+                    openTermsModal();
+                    return;
                 }
+
+                syncConfirmButtonAvailability();
 
                 createPendingOrderRecord(items)
                     .then(function (pendingOrder) {
@@ -16266,28 +17501,37 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
                     })
                     .finally(function () {
-                        if (!isSubmittingPendingOrder && confirmButton) {
-                            confirmButton.disabled = false;
+                        if (!isSubmittingPendingOrder) {
+                            syncConfirmButtonAvailability();
                         }
                     });
             });
         }
 
         renderOrderStatusList();
+        renderHistoryList();
         restoreBookingDefaults();
         enforceReceiveScheduleConstraints(getActiveCartItems());
         syncReturnDateTimeFromReceive(getActiveCartItems());
         updateDeliveryFields();
         saveBookingSnapshot();
         renderCartItems();
+        syncConfirmButtonAvailability();
         scheduleCartTopOfHourReload();
         initializeCustomerLiveUpdates();
+
+        window.addEventListener("resize", function () {
+            if (activeCartView === "order-status") {
+                syncOrderStatusColumnWidths();
+            }
+        });
     }
 
     initializeUniversalTopbarSearch();
     initializeCustomerMessageModal();
     initializeAdminLiveNotifications();
     initializeAdminNotificationsPage();
+    initializeAdminBusinessReportPrint();
     syncCartCountBadges();
     initializeAddToCartButtons();
     initializeServicePurchaseButtons();

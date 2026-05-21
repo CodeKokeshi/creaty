@@ -11,7 +11,7 @@ if ($isAdminLoggedIn) {
 
 $isStaffLoggedIn = isset($_SESSION['staff_id']);
 if ($isStaffLoggedIn) {
-    header('Location: admin/dashboard/?admin_view=bookings');
+    header('Location: admin/dashboard/');
     exit;
 }
 
@@ -157,6 +157,7 @@ $activePromoBannerSlots = $promoBannerSlots;
                     <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu">
                         <li><a class="dropdown-item" href="<?php echo htmlspecialchars($accountSettingsPath, ENT_QUOTES, 'UTF-8'); ?>">Account Settings</a></li>
                         <li><a class="dropdown-item" href="customer-cart/">My Cart</a></li>
+                        <li><a class="dropdown-item" href="customer-cart/?view=history">Reservation History</a></li>
                         <li><a class="dropdown-item" href="customer-events/">Browse Events</a></li>
                         <li><a class="dropdown-item" href="customer-services/">Browse Services</a></li>
                         <li><a class="dropdown-item" href="#">Help Center</a></li>
@@ -171,7 +172,7 @@ $activePromoBannerSlots = $promoBannerSlots;
             <?php endif; ?>
         </div>
 
-        <nav class="section-nav section-nav-interactive" aria-label="Catalog filters">
+        <nav class="section-nav section-nav-interactive section-nav-with-history" aria-label="Catalog filters">
             <div class="section-nav-item section-nav-item-filter">
                 <button class="section-nav-filter filter-toggle" type="button" aria-expanded="false" aria-controls="brands-filter-panel">
                     BRANDS
@@ -230,6 +231,10 @@ $activePromoBannerSlots = $promoBannerSlots;
                     </div>
                 </div>
             </div>
+
+            <?php if ($isCustomerLoggedIn): ?>
+                <a class="section-nav-history-link" href="customer-cart/?view=history">Reservation History</a>
+            <?php endif; ?>
         </nav>
     </header>
 

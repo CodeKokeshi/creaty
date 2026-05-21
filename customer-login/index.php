@@ -9,7 +9,7 @@ if (isset($_SESSION['user_id'])) {
 }
 
 if (isset($_SESSION['staff_id'])) {
-	header('Location: ../admin/dashboard/?admin_view=bookings');
+	header('Location: ../admin/dashboard/');
 	exit;
 }
 

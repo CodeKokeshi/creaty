@@ -12,7 +12,7 @@ $routeBase = $routeBase ?? '';
 $assetBase = $assetBase ?? '';
 $customerLoginPath = $customerLoginPath ?? $routeBase . 'customer-login/';
 $adminLoginPath = $adminLoginPath ?? $routeBase . 'admin/';
-$staffDashboardPath = $staffDashboardPath ?? $routeBase . 'admin/dashboard/?admin_view=bookings';
+$staffDashboardPath = $staffDashboardPath ?? $routeBase . 'admin/dashboard/';
 
 require_once __DIR__ . '/config/db.php';
 
